@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
-import 'package:chat/chat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:l10n/l10n.dart';
 import 'package:notifications/notifications.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template reminders_listener}
 /// Keeps the reminder queue in step with the day, and opens what a reminder
@@ -119,13 +120,16 @@ class _RemindersListenerState extends State<RemindersListener>
     if (!mounted) return;
 
     final eventId = tap.eventId;
-    if (tap.confirmStart && eventId != null) {
-      unawaited(_askToStart(eventId, tap.title ?? 'Próximo bloco'));
+    if (eventId == null) return;
+
+    if (tap.confirmStart) {
+      unawaited(
+        _askToStart(eventId, tap.title ?? context.l10n.remindersNextBlock),
+      );
       return;
     }
 
-    final slug = tap.threadSlug;
-    if (slug != null) unawaited(context.push<void>('/chat/$slug'));
+    unawaited(context.push<void>('/evento/${Uri.encodeComponent(eventId)}'));
   }
 
   /// Asks whether the waiting block starts now or in fifteen minutes.
@@ -260,22 +264,21 @@ Future<bool> _explain(BuildContext context) async {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Quer lembretes?', style: AppTypography.title),
+              Text(context.l10n.remindersAskTitle, style: AppTypography.title),
               const SizedBox(height: AppSpacing.s1),
               Text(
-                'Pergunto quando é hora de começar um bloco, aviso dez '
-                'minutos antes de acabar, e mando um bom dia e um boa noite.',
+                context.l10n.remindersAskBody,
                 style: AppTypography.body.copyWith(color: AppColors.ink2),
               ),
               const SizedBox(height: AppSpacing.s5),
               AppButton(
-                text: 'Ativar lembretes',
+                text: context.l10n.remindersEnable,
                 expand: true,
                 onPressed: () => Navigator.of(sheetContext).pop(true),
               ),
               const SizedBox(height: AppSpacing.s2),
               AppButton.text(
-                text: 'Agora não',
+                text: context.l10n.commonNotNow,
                 color: AppColors.ink2,
                 expand: true,
                 onPressed: () => Navigator.of(sheetContext).pop(false),
@@ -320,23 +323,25 @@ Future<_StartAnswer?> _startSheet(BuildContext context, String title) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Começar “$title”?', style: AppTypography.title),
+              Text(
+                context.l10n.remindersStartTitle(title),
+                style: AppTypography.title,
+              ),
               const SizedBox(height: AppSpacing.s1),
               Text(
-                'Enquanto você não confirmar, ele vai para mais tarde a cada '
-                'minuto, e o resto do dia anda junto.',
+                context.l10n.remindersStartBody,
                 style: AppTypography.body.copyWith(color: AppColors.ink2),
               ),
               const SizedBox(height: AppSpacing.s5),
               AppButton(
-                text: 'Começar agora',
+                text: context.l10n.controlStartNow,
                 expand: true,
                 onPressed: () =>
                     Navigator.of(sheetContext).pop(_StartAnswer.now),
               ),
               const SizedBox(height: AppSpacing.s2),
               AppButton.text(
-                text: 'Esperar 15 min',
+                text: context.l10n.controlWait15,
                 color: AppColors.ink2,
                 expand: true,
                 onPressed: () =>

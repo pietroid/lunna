@@ -8,7 +8,7 @@ import workmanager_apple
   /// The background refresh that re-syncs the reminder queue. Must match
   /// `BGTaskSchedulerPermittedIdentifiers` in Info.plist and the name the
   /// Dart side registers.
-  static let notificationsRefreshTask = "focus.notifications.refresh"
+  static let notificationsRefreshTask = "lunna.notifications.refresh"
 
   override func application(
     _ application: UIApplication,

@@ -118,19 +118,6 @@ app/env/dev.json
 app/env/production.json
 app/env/*.local.json
 
-# Generated Firebase config files (regenerate with ./app/update_firebase_config.sh)
-app/firebase.json
-app/lib/firebase_options_*.dart
-!app/lib/firebase_options_production.dart
-!app/lib/firebase_options_dev.dart
-app/android/app/src/production/google-services.json
-app/android/app/src/dev/google-services.json
-app/ios/Runner/GoogleService-Info.plist
-app/ios/Runner/GoogleService-Info-Dev.plist
-
-# Generated l10n files
-app/lib/l10n/gen/
-
 # Server (NestJS/Node.js)
 server/node_modules/
 server/dist/
@@ -146,21 +133,6 @@ server/.pnpm-debug.log*
 server/.eslintcache
 server/*.tsbuildinfo
 server/.nyc_output/
-
-# Agent (Express/Node.js)
-agent/node_modules/
-agent/dist/
-agent/coverage/
-# Keep .env.example as the public template; all other agent env files are local.
-agent/.env
-agent/.env.*
-!agent/.env.example
-agent/npm-debug.log*
-agent/yarn-debug.log*
-agent/yarn-error.log*
-agent/.pnpm-debug.log*
-agent/.eslintcache
-agent/*.tsbuildinfo
-agent/.nyc_output/
+server/.pglite/
 
 .secrets

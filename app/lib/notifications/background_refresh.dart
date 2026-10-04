@@ -3,11 +3,10 @@ import 'dart:developer';
 
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
-import 'package:focus/auth_token_provider.dart';
-import 'package:focus/firebase_options_production.dart' as prod;
+import 'package:lunna/auth_token_provider.dart';
+import 'package:lunna/config.dart';
 import 'package:notifications/notifications.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -15,9 +14,7 @@ import 'package:workmanager/workmanager.dart';
 ///
 /// Must match `AppDelegate.notificationsRefreshTask` and
 /// `BGTaskSchedulerPermittedIdentifiers` in the iOS Info.plist.
-const notificationsRefreshTask = 'focus.notifications.refresh';
-
-const _kApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+const notificationsRefreshTask = 'lunna.notifications.refresh';
 
 /// Asks the system to wake the app now and then to refresh the queue.
 ///
@@ -58,19 +55,14 @@ void notificationsRefreshDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
       WidgetsFlutterBinding.ensureInitialized();
-      await Firebase.initializeApp(
-        options: prod.DefaultFirebaseOptions.currentPlatform,
-      );
 
-      final authRepository = FirebaseAuthRepository();
-      // The signed-in user is restored from disk, which takes a moment.
-      final user = await authRepository.user.first.timeout(
-        const Duration(seconds: 10),
-      );
-      if (user == null) return true;
+      // Signed out is nothing to refresh. The token is read straight off
+      // the device; the server checks it on the request itself.
+      final authRepository = BetterAuthRepository(apiBaseUrl: kApiBaseUrl);
+      if (await authRepository.token() == null) return true;
 
       final apiClient = ApiClient(
-        baseUrl: _kApiBaseUrl,
+        baseUrl: kApiBaseUrl,
         tokenProvider: AuthTokenProvider(authRepository),
       );
       await NotificationScheduler(

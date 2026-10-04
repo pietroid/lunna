@@ -1,51 +1,22 @@
+import 'package:l10n/l10n.dart';
+
 /// "Bom dia Pietro!", or without the name when there is not one yet.
-String greeting(DateTime now, String? firstName) {
+String greeting(AppLocalizations l10n, DateTime now, String? firstName) {
   final part = switch (now.hour) {
-    >= 5 && < 12 => 'Bom dia',
-    >= 12 && < 18 => 'Boa tarde',
-    _ => 'Boa noite',
+    >= 5 && < 12 => l10n.greetingMorning,
+    >= 12 && < 18 => l10n.greetingAfternoon,
+    _ => l10n.greetingEvening,
   };
 
-  return firstName == null ? '$part!' : '$part $firstName!';
+  return firstName == null
+      ? l10n.greetingAlone(part)
+      : l10n.greetingWithName(part, firstName);
 }
 
-/// Portuguese dates, written out.
-///
-/// Doing this through `intl` would mean loading its locale data at startup
-/// and still telling it how Brazilian Portuguese writes a date. Three lists
-/// of names is less machinery, and only the home screen and its demo need
-/// them.
-abstract final class PtDate {
-  static const _weekdays = <String>[
-    'Segunda-feira',
-    'Terça-feira',
-    'Quarta-feira',
-    'Quinta-feira',
-    'Sexta-feira',
-    'Sábado',
-    'Domingo',
-  ];
+/// "Quarta-feira, 27 de agosto", capitalised the way a heading is.
+String longDate(AppLocalizations l10n, DateTime at) {
+  final date = l10n.longDate(at);
+  if (date.isEmpty) return date;
 
-  static const _months = <String>[
-    'janeiro',
-    'fevereiro',
-    'março',
-    'abril',
-    'maio',
-    'junho',
-    'julho',
-    'agosto',
-    'setembro',
-    'outubro',
-    'novembro',
-    'dezembro',
-  ];
-
-  /// "Quarta-feira, 27 de agosto".
-  static String long(DateTime at) {
-    final weekday = _weekdays[at.weekday - DateTime.monday];
-    final month = _months[at.month - 1];
-
-    return '$weekday, ${at.day} de $month';
-  }
+  return date[0].toUpperCase() + date.substring(1);
 }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
+import 'package:l10n/l10n.dart';
 
 /// What the creation sheet came back with.
 ///
@@ -85,17 +86,17 @@ class AppPromptSheet extends StatefulWidget {
   ///
   /// All ten mean the same thing. They exist so that opening the sheet twice
   /// in a row does not feel like opening the same drawer twice.
-  static const hints = <String>[
-    'O que precisa ser feito?',
-    'No que vamos trabalhar?',
-    'O que entra no dia?',
-    'Por onde começamos?',
-    'O que está na sua cabeça?',
-    'Me conta o que precisa.',
-    'Qual é a próxima?',
-    'O que resolvemos hoje?',
-    'Escreve aí.',
-    'Pode falar.',
+  static List<String> hints(AppLocalizations l10n) => [
+    l10n.promptHint01,
+    l10n.promptHint02,
+    l10n.promptHint03,
+    l10n.promptHint04,
+    l10n.promptHint05,
+    l10n.promptHint06,
+    l10n.promptHint07,
+    l10n.promptHint08,
+    l10n.promptHint09,
+    l10n.promptHint10,
   ];
 
   /// Opens the sheet and resolves with what was confirmed, or null if it was
@@ -127,8 +128,10 @@ class AppPromptSheet extends StatefulWidget {
 
 class _AppPromptSheetState extends State<AppPromptSheet> {
   late final _controller = TextEditingController(text: widget.initialText);
-  late final String _hint =
-      AppPromptSheet.hints[math.Random().nextInt(AppPromptSheet.hints.length)];
+  late final String _hint = _pick(AppPromptSheet.hints(context.l10n));
+
+  static String _pick(List<String> options) =>
+      options[math.Random().nextInt(options.length)];
 
   late Duration _duration =
       widget.initialDuration ?? AppPromptSheet.defaultDuration;
@@ -280,7 +283,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
                     children: [
                       AppPillButton(
                         iconData: AppIcons.timer,
-                        label: formatDuration(_duration),
+                        label: formatDuration(context.l10n, _duration),
                         onPressed: _pickDuration,
                       ),
                       const Spacer(),
@@ -357,15 +360,18 @@ class _Controls extends StatelessWidget {
         AppSegmented(
           selected: fixed ? 1 : 0,
           onSelected: (index) => onFixed(index == 1),
-          segments: const [
-            AppSegment(label: 'Flexível', iconData: AppIcons.time),
-            AppSegment(label: 'Fixo', iconData: AppIcons.pin),
+          segments: [
+            AppSegment(
+              label: context.l10n.promptFlexible,
+              iconData: AppIcons.time,
+            ),
+            AppSegment(label: context.l10n.promptFixed, iconData: AppIcons.pin),
           ],
         ),
         const SizedBox(width: AppSpacing.s2),
         AppPillButton(
           iconData: AppIcons.timer,
-          label: formatDuration(duration),
+          label: formatDuration(context.l10n, duration),
           onPressed: onDuration,
         ),
       ],
@@ -408,7 +414,7 @@ class _Preview extends StatelessWidget {
                   children: [
                     AppPillButton(
                       iconData: AppIcons.calendar,
-                      label: AppWheelPicker.dayLabel(span.start),
+                      label: AppWheelPicker.dayLabel(context.l10n, span.start),
                       onPressed: onDay,
                     ),
                     AppPillButton(
@@ -419,7 +425,7 @@ class _Preview extends StatelessWidget {
                   ],
                 )
               : Text(
-                  '${_hhmm(span.start)}${_day(span.start)}',
+                  _when(context.l10n, span.start),
                   style: AppTypography.body.copyWith(color: AppColors.ink3),
                 ),
         ),
@@ -428,10 +434,17 @@ class _Preview extends StatelessWidget {
     );
   }
 
-  /// ", amanhã" when the hour has run past midnight, and nothing otherwise.
-  static String _day(DateTime start) {
-    final label = AppWheelPicker.dayLabel(start);
-    return label == 'Hoje' ? '' : ', ${label.toLowerCase()}';
+  /// "14:30", or "14:30, amanhã" when the hour has run past midnight.
+  static String _when(AppLocalizations l10n, DateTime start) {
+    final now = DateTime.now();
+    final today =
+        start.year == now.year &&
+        start.month == now.month &&
+        start.day == now.day;
+    if (today) return _hhmm(start);
+
+    final day = AppWheelPicker.dayLabel(l10n, start).toLowerCase();
+    return l10n.promptAtOnDay(_hhmm(start), day);
   }
 
   static String _hhmm(DateTime at) {
@@ -482,13 +495,13 @@ class _Send extends StatelessWidget {
 }
 
 /// "45 min", "1 h", "1h30", the way every length in the app is written.
-String formatDuration(Duration duration) {
+String formatDuration(AppLocalizations l10n, Duration duration) {
   final minutes = duration.inMinutes;
-  if (minutes < 60) return '$minutes min';
+  if (minutes < 60) return l10n.formatMinutes(minutes);
 
   final hours = minutes ~/ 60;
   final rest = minutes % 60;
-  if (rest == 0) return '$hours h';
+  if (rest == 0) return l10n.formatHours(hours);
 
-  return '${hours}h${rest.toString().padLeft(2, '0')}';
+  return l10n.formatHoursMinutes(hours, rest.toString().padLeft(2, '0'));
 }

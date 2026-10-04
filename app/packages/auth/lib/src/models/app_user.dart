@@ -12,17 +12,17 @@ class AppUser extends Equatable {
     this.photoUrl,
   });
 
-  /// Creates an [AppUser] from a JSON map.
+  /// Creates an [AppUser] from Better Auth's user object.
   factory AppUser.fromJson(Map<String, dynamic> json) {
     return AppUser(
-      id: json['uid'] as String? ?? '',
+      id: json['id'] as String? ?? '',
       name: json['name'] as String?,
       email: json['email'] as String?,
-      photoUrl: json['photoUrl'] as String?,
+      photoUrl: json['image'] as String?,
     );
   }
 
-  /// Unique identifier of the user (Firebase Auth UID).
+  /// Unique identifier of the user.
   final String id;
 
   /// Display name of the user, if available.
@@ -33,14 +33,6 @@ class AppUser extends Equatable {
 
   /// Profile photo URL of the user, if available.
   final String? photoUrl;
-
-  /// Converts this [AppUser] into a JSON map.
-  Map<String, dynamic> toJson() => {
-    'uid': id,
-    if (name != null) 'name': name,
-    if (email != null) 'email': email,
-    if (photoUrl != null) 'photoUrl': photoUrl,
-  };
 
   @override
   List<Object?> get props => [id, name, email, photoUrl];

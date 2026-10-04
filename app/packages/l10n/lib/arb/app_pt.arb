@@ -1,0 +1,389 @@
+{
+  "@@locale": "pt",
+  "appName": "Lunna",
+  "authSignIn": "Entrar",
+  "authSignInWithGoogle": "Entrar com Google",
+  "authSignInFailed": "Não foi possível entrar",
+  "shellTimelineTab": "Tempo",
+  "shellSecondTab": "Aba 2",
+  "shellThirdTab": "Aba 3",
+  "shellComingSoon": "Em breve.",
+  "shellWriteDown": "Anotar",
+  "greetingMorning": "Bom dia",
+  "greetingAfternoon": "Boa tarde",
+  "greetingEvening": "Boa noite",
+  "greetingAlone": "{part}!",
+  "@greetingAlone": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      }
+    }
+  },
+  "greetingWithName": "{part} {name}!",
+  "@greetingWithName": {
+    "placeholders": {
+      "part": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "longDate": "{date}",
+  "@longDate": {
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "EEEE, d 'de' MMMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "homeRoutines": "Rotina",
+  "homeSignOut": "Sair",
+  "commonCancel": "Cancelar",
+  "guardStartNowTitle": "Começar agora?",
+  "guardStartNowRunning": "{title} está rodando, {start}–{end}.",
+  "@guardStartNowRunning": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "guardFinishCurrent": "Concluir o atual",
+  "guardPostponeCurrent": "Deixar para depois",
+  "durationMinutes": "{minutes} min",
+  "@durationMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHours": "{hours}h",
+  "@durationHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "durationHoursMinutes": "{hours}h{minutes}",
+  "@durationHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmDeleteTitle": "Excluir “{title}”?",
+  "@confirmDeleteTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDeleteBody": "Sai da agenda e não volta.",
+  "confirmDeleteAction": "Excluir",
+  "confirmShortenTitle": "Não cabe inteiro aqui",
+  "confirmShortenBody": "“{title}” leva {duration} min e esse intervalo tem espaço para {minutes} min, já contando a pausa. Ajustar para {minutes} min?",
+  "@confirmShortenBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "duration": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmShortenAction": "Ajustar para {minutes} min",
+  "@confirmShortenAction": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmMoreTitle": "Mais {minutes} minutos?",
+  "@confirmMoreTitle": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmLessTitle": "Menos {minutes} minutos?",
+  "@confirmLessTitle": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmMoreBody": "“{title}” passa a terminar às {end}. O que vem depois anda junto.",
+  "@confirmMoreBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmLessBody": "“{title}” passa a terminar às {end}. O que vem depois adianta.",
+  "@confirmLessBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmMoreAction": "Adicionar",
+  "confirmLessAction": "Tirar",
+  "eventUntitled": "Sem título",
+  "eventStartsNow": "Começa agora",
+  "eventStartsIn": "Começa em {minutes} min",
+  "@eventStartsIn": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "eventStartsAt": "Começa às {time}",
+  "@eventStartsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventStartsTomorrowAt": "Amanhã às {time}",
+  "@eventStartsTomorrowAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventTomorrowAt": "amanhã {time}",
+  "@eventTomorrowAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventDayAt": "{day}/{month} {time}",
+  "@eventDayAt": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventGone": "Esse bloco não está mais no dia.",
+  "eventNotesHint": "Anotações",
+  "restTip01": "Respire fundo. Três vezes, devagar.",
+  "restTip02": "Levante, alongue as costas e olhe pela janela.",
+  "restTip03": "Beba um copo d’água antes de continuar.",
+  "restTip04": "Feche os olhos por um minuto. Só isso.",
+  "restTip05": "Deixe a cabeça vazia. O próximo passo espera.",
+  "restTip06": "Solte os ombros. Eles estavam tensos, não estavam?",
+  "restTip07": "Olhe para algo longe. Seus olhos agradecem.",
+  "restTip08": "Nada para resolver agora. Aproveite.",
+  "restTip09": "Caminhe um pouco, nem que seja até a cozinha.",
+  "restTip10": "Um minuto de silêncio. Sem tela.",
+  "restTip11": "Repare no que você está ouvindo agora.",
+  "restTip12": "Você terminou algo. Reconheça isso.",
+  "restTip13": "Inspire em quatro, segure em quatro, solte em quatro.",
+  "restTip14": "Desligue a mente. Ela volta melhor.",
+  "restTip15": "Mexa as mãos, gire os pulsos, relaxe o rosto.",
+  "restTip16": "Pausa de verdade: sem celular.",
+  "restTip17": "Sinta os pés no chão por alguns segundos.",
+  "restTip18": "Descansar também é parte do trabalho.",
+  "restTip19": "Deixe o último assunto ir embora.",
+  "restTip20": "Medite por um instante. Só respire e observe.",
+  "freeNothingScheduled": "Nada programado",
+  "controlStart": "Começar",
+  "controlResume": "Retomar",
+  "controlPause": "Pausar",
+  "controlStartNow": "Começar agora",
+  "controlLess15": "Menos 15 min",
+  "controlWait15": "Esperar 15 min",
+  "controlMore15": "Mais 15 min",
+  "controlDone": "Concluir",
+  "nowPausedLeft": "Pausado · faltam {left}",
+  "@nowPausedLeft": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "nowLeft": "Faltam {left}",
+  "@nowLeft": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionNow": "Agora",
+  "sectionToday": "Ainda hoje",
+  "sectionTomorrow": "Amanhã",
+  "routineDaily": "Todo dia",
+  "routineWeekdays": "Dias úteis",
+  "routineWeekend": "Fim de semana",
+  "failureUnreachable": "Não consegui falar com o servidor.",
+  "failureRetry": "{reason} Toque para tentar de novo.",
+  "@failureRetry": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "timelineEmpty": "Nada marcado. Toque no + para anotar algo.",
+  "pickerDurationTitle": "Quanto tempo leva?",
+  "pickerTimeTitle": "A que horas?",
+  "pickerWhenTitle": "Quando?",
+  "commonConfirm": "Confirmar",
+  "dayToday": "Hoje",
+  "dayTomorrow": "Amanhã",
+  "weekdaysShort": "seg,ter,qua,qui,sex,sáb,dom",
+  "monthsShort": "jan,fev,mar,abr,mai,jun,jul,ago,set,out,nov,dez",
+  "dayShort": "{weekday}, {day} {month}",
+  "@dayShort": {
+    "placeholders": {
+      "weekday": {
+        "type": "String"
+      },
+      "day": {
+        "type": "int"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "promptHint01": "O que precisa ser feito?",
+  "promptHint02": "No que vamos trabalhar?",
+  "promptHint03": "O que entra no dia?",
+  "promptHint04": "Por onde começamos?",
+  "promptHint05": "O que está na sua cabeça?",
+  "promptHint06": "Me conta o que precisa.",
+  "promptHint07": "Qual é a próxima?",
+  "promptHint08": "O que resolvemos hoje?",
+  "promptHint09": "Escreve aí.",
+  "promptHint10": "Pode falar.",
+  "promptFlexible": "Flexível",
+  "promptFixed": "Fixo",
+  "promptAtOnDay": "{time}, {day}",
+  "@promptAtOnDay": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "formatMinutes": "{minutes} min",
+  "@formatMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "formatHours": "{hours} h",
+  "@formatHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "formatHoursMinutes": "{hours}h{minutes}",
+  "@formatHoursMinutes": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationChannelBlocks": "Blocos",
+  "notificationChannelBlocksDescription": "Quando um bloco começa e quando está perto de terminar.",
+  "notificationChannelDaily": "Bom dia e boa noite",
+  "notificationChannelDailyDescription": "Um recado no começo e no fim do dia.",
+  "remindersNextBlock": "Próximo bloco",
+  "remindersAskTitle": "Quer lembretes?",
+  "remindersAskBody": "Pergunto quando é hora de começar um bloco, aviso dez minutos antes de acabar, e mando um bom dia e um boa noite.",
+  "remindersEnable": "Ativar lembretes",
+  "commonNotNow": "Agora não",
+  "remindersStartTitle": "Começar “{title}”?",
+  "@remindersStartTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "remindersStartBody": "Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.",
+  "routinesHelp": "Toque num horário para criar. Segure um bloco para mudar a hora.",
+  "routinesTitleHint": "Almoço, rotina da manhã…",
+  "commonSave": "Salvar",
+  "routinesDelete": "Excluir rotina",
+  "landingHeadline": "Seu dia, no lugar.",
+  "landingPitch": "Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e o Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.",
+  "landingDemoHint": "O celular ao lado é o app de verdade. Toque no + para anotar algo, ou num bloco para abri-lo.",
+  "landingHowTitle": "Como funciona",
+  "landingPartTimelineTitle": "Tempo",
+  "landingPartTimelineText": "O dia como uma fila: o que está rodando agora, o que vem ainda hoje e o que fica para amanhã.",
+  "landingPartRoutinesTitle": "Rotinas",
+  "landingPartRoutinesText": "Blocos que voltam todo dia, nos dias úteis ou no fim de semana, sempre no mesmo horário.",
+  "landingPartRemindersTitle": "Lembretes",
+  "landingPartRemindersText": "Um aviso quando é hora de começar, outro perto do fim, e um bom dia e um boa noite.",
+  "landingDayTitle": "No dia a dia",
+  "landingUseWrite": "Anote o que precisa ser feito.",
+  "landingUseHour": "Dê a cada coisa a sua hora.",
+  "landingUsePause": "Pause, estenda ou adie, e o resto do dia anda junto.",
+  "landingUseRoutine": "Deixe a rotina se repetir sozinha.",
+  "landingFooter": "Lunna · Organização pessoal",
+  "demoBuilding": "Fazendo o Lunna",
+  "demoGroceries": "Comprar leite e ovos",
+  "demoStandup": "Standup",
+  "demoDentist": "Marcar dentista"
+}

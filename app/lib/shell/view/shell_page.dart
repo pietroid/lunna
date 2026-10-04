@@ -1,25 +1,24 @@
+import 'dart:async';
+
 import 'package:app_ui/app_ui.dart';
-import 'package:chat/chat.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:focus/conversations/conversations.dart';
-import 'package:focus/home/home.dart';
-import 'package:focus/menu/menu.dart';
-import 'package:focus/notifications/notifications.dart';
-import 'package:focus/things/things.dart';
-import 'package:go_router/go_router.dart';
+import 'package:l10n/l10n.dart';
+import 'package:lunna/home/home.dart';
+import 'package:lunna/notifications/notifications.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template shell_page}
-/// The four destinations of the app, and the orb that starts something new.
+/// The app's three destinations, and the button that writes something down.
 ///
 /// The destinations are kept alive behind an [IndexedStack] rather than
 /// rebuilt on every tap: moving between them is not navigation, it is looking
 /// somewhere else, and a list should be where it was left.
 ///
-/// The orb is the app's one action from anywhere, and it does the thing the
-/// screen under it is about. On Tempo that is writing something down with an
-/// hour on it, and on Coisas writing something down without one; neither
-/// involves the model. On Conversas, and everywhere else, it is starting a
-/// conversation. The tab bar underneath already says which one is live.
+/// Only Tempo is built so far. The other two are placeholders that hold
+/// their places in the bar.
+///
+/// The [AppFab] writes something down on the timeline from anywhere. From a
+/// tab other than Tempo it brings Tempo forward first, so the new block is on
+/// screen when the sheet closes.
 /// {@endtemplate}
 class ShellPage extends StatefulWidget {
   /// {@macro shell_page}
@@ -30,65 +29,20 @@ class ShellPage extends StatefulWidget {
 }
 
 class _ShellPageState extends State<ShellPage> {
-  /// Tempo, where the orb writes something straight onto the timeline.
+  /// Tempo, the timeline.
   static const _timelineIndex = 0;
 
-  /// Coisas, where the orb writes down something with no hour.
-  static const _thingsIndex = 1;
+  int _index = _timelineIndex;
 
-  int _index = 0;
-
-  /// How many conversations have been started from the orb.
-  ///
-  /// Conversas is kept alive behind the bar, so it cannot notice a thread that
-  /// appeared while it was off screen. This is how it is told.
-  int _conversations = 0;
-
-  Future<void> _onOrbTapped() async {
-    if (_index == _timelineIndex) {
-      await _schedule();
-      return;
-    }
-
-    if (_index == _thingsIndex) {
-      await _note();
-      return;
-    }
-
-    await _converse();
-  }
-
-  /// Writes a thing down on Coisas: what it is and how long, no hour.
-  Future<void> _note() async {
-    final bloc = context.read<ThingsBloc>();
-    final result = await AppPromptSheet.show(context);
-    if (result == null) return;
-
-    bloc.add(
-      ThingAdded(
-        title: result.text,
-        durationMinutes: result.duration.inMinutes,
-      ),
-    );
-  }
-
-  /// Writes something down with an hour on it. No conversation.
-  Future<void> _schedule() => writeDownOnTimeline(context);
-
-  /// Opens a new thread on whatever the user typed.
-  Future<void> _converse() async {
-    final text = await AppTextPromptSheet.show(context);
-    if (text == null || !mounted) return;
-
-    await context.push<void>('/chat', extra: text);
-    if (mounted) {
-      context.read<TimelineBloc>().add(const TimelineRequested());
-      setState(() => _conversations++);
-    }
+  Future<void> _onFabPressed() async {
+    if (_index != _timelineIndex) setState(() => _index = _timelineIndex);
+    await writeDownOnTimeline(context);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return RemindersListener(
       child: Scaffold(
         // The bar fogs whatever runs under it, so the body runs under it.
@@ -97,24 +51,61 @@ class _ShellPageState extends State<ShellPage> {
           index: _index,
           children: [
             const HomePage(),
-            const ThingsPage(),
-            ConversationsPage(reloadToken: _conversations),
-            const MenuPage(),
+            _Placeholder(title: l10n.shellSecondTab),
+            _Placeholder(title: l10n.shellThirdTab),
           ],
+        ),
+        floatingActionButton: AppFab(
+          tooltip: l10n.shellWriteDown,
+          onPressed: () => unawaited(_onFabPressed()),
         ),
         bottomNavigationBar: AppBottomBar(
           currentIndex: _index,
           onSelected: (index) => setState(() => _index = index),
-          center: AppOrb(onTap: _onOrbTapped),
-          items: const [
-            AppBottomBarItem(iconData: AppIcons.time, label: 'Tempo'),
-            AppBottomBarItem(iconData: AppIcons.things, label: 'Coisas'),
+          items: [
             AppBottomBarItem(
-              iconData: AppIcons.conversations,
-              label: 'Conversas',
+              iconData: AppIcons.time,
+              label: l10n.shellTimelineTab,
             ),
-            AppBottomBarItem(iconData: AppIcons.menu, label: 'Menu'),
+            AppBottomBarItem(
+              iconData: AppIcons.things,
+              label: l10n.shellSecondTab,
+            ),
+            AppBottomBarItem(
+              iconData: AppIcons.menu,
+              label: l10n.shellThirdTab,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A destination that is not built yet.
+class _Placeholder extends StatelessWidget {
+  const _Placeholder({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.s6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, style: AppTypography.headline),
+              const SizedBox(height: AppSpacing.s2),
+              Text(
+                context.l10n.shellComingSoon,
+                style: AppTypography.body.copyWith(color: AppColors.ink3),
+              ),
+            ],
+          ),
         ),
       ),
     );

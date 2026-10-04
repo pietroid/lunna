@@ -1,7 +1,6 @@
 {
-  "GOOGLE_SIGN_IN_CLIENT_ID": "YOUR_DEV_WEB_CLIENT_ID",
-  "PROJECT_ID": "focus-local-dev",
-  "BACKEND_SERVICE_ACCOUNT": "focus-backend@focus-local-dev.iam.gserviceaccount.com",
-  "API_BASE_URL": "http://localhost:3001",
+  "API_BASE_URL": "http://localhost:3000/api",
+  "GOOGLE_WEB_CLIENT_ID": "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+  "GOOGLE_IOS_CLIENT_ID": "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com",
   "FLAVOR": "dev"
 }

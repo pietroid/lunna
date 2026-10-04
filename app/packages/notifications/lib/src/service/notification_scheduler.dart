@@ -16,14 +16,10 @@ import 'package:timezone/timezone.dart' as tz;
 class NotificationTap {
   /// {@macro notification_tap}
   const NotificationTap({
-    this.threadSlug,
     this.eventId,
     this.title,
     this.confirmStart = false,
   });
-
-  /// The conversation it was about, when it had one.
-  final String? threadSlug;
 
   /// The block it was about, when it was about one.
   final String? eventId;
@@ -278,7 +274,6 @@ String payloadOf(PlannedNotification item) {
     'id': item.id,
     'kind': item.kind.name,
     'title': item.title,
-    if (item.threadSlug != null) 'threadSlug': item.threadSlug,
     if (item.eventId != null) 'eventId': item.eventId,
   });
 }
@@ -291,11 +286,9 @@ NotificationTap tapOf(String? payload) {
     final json = jsonDecode(payload);
     if (json is! Map<String, dynamic>) return const NotificationTap();
 
-    final slug = json['threadSlug'];
     final eventId = json['eventId'];
     final title = json['title'];
     return NotificationTap(
-      threadSlug: slug is String ? slug : null,
       eventId: eventId is String ? eventId : null,
       title: title is String ? title : null,
       confirmStart: json['kind'] == NotificationKind.confirmStart.name,

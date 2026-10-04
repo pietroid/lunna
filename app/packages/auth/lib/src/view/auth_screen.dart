@@ -1,8 +1,8 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:auth/src/auth_bloc/auth_bloc.dart';
 import 'package:auth/src/data/auth_repository.dart';
-import 'package:auth/src/models/app_user.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:l10n/l10n.dart';
 
 /// {@template auth_screen}
 /// The screen someone signs in on.
@@ -15,21 +15,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 class AuthScreen extends StatelessWidget {
   /// {@macro auth_screen}
   const AuthScreen({
-    this.authRepository,
-    this.onUserAuthenticated,
+    required this.authRepository,
     this.onAuthenticated,
     this.child,
     super.key,
   });
 
   /// Repository used for authentication operations.
-  ///
-  /// Defaults to [FirebaseAuthRepository] when not provided.
-  final AuthRepository? authRepository;
-
-  /// Called with the authenticated user after a successful sign-in so the
-  /// caller can create the user record on the backend.
-  final Future<void> Function(AppUser user)? onUserAuthenticated;
+  final AuthRepository authRepository;
 
   /// Called when the user has successfully signed in.
   final VoidCallback? onAuthenticated;
@@ -41,8 +34,7 @@ class AuthScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => AuthBloc(
-        authRepository: authRepository ?? FirebaseAuthRepository(),
-        onUserAuthenticated: onUserAuthenticated,
+        authRepository: authRepository,
       ),
       child: _AuthScreenView(
         onAuthenticated: onAuthenticated,
@@ -68,7 +60,10 @@ class _AuthScreenView extends StatelessWidget {
           onAuthenticated?.call();
         }
         if (state.status == AuthStatus.failure) {
-          _showError(context, state.errorMessage ?? 'Não foi possível entrar');
+          _showError(
+            context,
+            state.errorMessage ?? context.l10n.authSignInFailed,
+          );
         }
       },
       child: Scaffold(body: child),
@@ -100,7 +95,7 @@ class _DefaultAuthBody extends StatelessWidget {
             Image.asset('assets/images/icon.png', height: 160),
             const SizedBox(height: AppSpacing.s6),
             Text(
-              'Focus',
+              context.l10n.appName,
               textAlign: TextAlign.center,
               style: AppTypography.headline,
             ),
@@ -162,7 +157,7 @@ class AuthSignInButton extends StatelessWidget {
     if (compact) {
       return AppButton.text(
         onPressed: signIn,
-        text: label ?? 'Entrar',
+        text: label ?? context.l10n.authSignIn,
         expand: expand,
       );
     }
@@ -170,7 +165,7 @@ class AuthSignInButton extends StatelessWidget {
     return AppButton.icon(
       onPressed: signIn,
       icon: const AppIcon(iconData: AppIcons.google, color: AppColors.onAccent),
-      text: label ?? 'Entrar com Google',
+      text: label ?? context.l10n.authSignInWithGoogle,
       expand: expand,
     );
   }

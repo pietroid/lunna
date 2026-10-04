@@ -48,7 +48,7 @@ class _FakeQueue implements NotificationQueue {
 
 final _now = DateTime.utc(2026, 9, 21, 15);
 
-PlannedNotification _item(String id, {int minutes = 60, String? slug}) {
+PlannedNotification _item(String id, {int minutes = 60, String? eventId}) {
   return PlannedNotification(
     id: id,
     kind: NotificationKind.starting,
@@ -56,7 +56,7 @@ PlannedNotification _item(String id, {int minutes = 60, String? slug}) {
     title: 'Revisão de código',
     body: 'Começa agora, até 15:00',
     timeSensitive: true,
-    threadSlug: slug,
+    eventId: eventId,
   );
 }
 
@@ -148,13 +148,13 @@ void main() {
       expect(queue.queued, hasLength(1));
     });
 
-    test('carries the conversation to open on tap', () async {
-      planIs([_item('a', slug: 'revisao-de-codigo')]);
+    test('carries the block to open on tap', () async {
+      planIs([_item('a', eventId: 'evt-1')]);
 
       await scheduler.sync();
 
       final payload = queue.queued[queueIdOf('a')]!.payload;
-      expect(tapOf(payload).threadSlug, 'revisao-de-codigo');
+      expect(tapOf(payload).eventId, 'evt-1');
     });
 
     test('carries the block a start question is about', () async {
@@ -288,7 +288,7 @@ void main() {
             'title': 'Revisão de código',
             'body': 'Começa agora, até 15:00',
             'timeSensitive': true,
-            'threadSlug': 'revisao-de-codigo',
+            'eventId': 'evt-1',
           },
           {
             'id': 'x',
@@ -302,7 +302,7 @@ void main() {
 
       expect(plan.items, hasLength(1));
       expect(plan.items.single.fireAt, DateTime.utc(2026, 9, 21, 16, 55));
-      expect(plan.items.single.threadSlug, 'revisao-de-codigo');
+      expect(plan.items.single.eventId, 'evt-1');
     });
   });
 }

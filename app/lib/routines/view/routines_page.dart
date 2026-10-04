@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
-import 'package:chat/chat.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:l10n/l10n.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template routines_page}
 /// Rotina: the blocks that come back every day, drawn on the working day.
@@ -13,9 +14,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 /// week will actually look. Tapping an empty hour writes a routine down
 /// there; tapping one opens it; holding one picks it up and moves it.
 ///
-/// The repeating is Google's. Every routine is one recurring event, so
-/// nothing here keeps a copy of anything: the list is read back after every
-/// change, and the timeline picks the new days up like any fixed block.
+/// The repeating is the server's. Nothing here keeps a copy of anything: the
+/// list is read back after every change, and the timeline picks the new days
+/// up like any fixed block.
 /// {@endtemplate}
 class RoutinesPage extends StatefulWidget {
   /// {@macro routines_page}
@@ -28,7 +29,7 @@ class RoutinesPage extends StatefulWidget {
 class _RoutinesPageState extends State<RoutinesPage> {
   RoutineDays _tab = RoutineDays.daily;
   List<Routine>? _routines;
-  String? _failure;
+  TimelineFailure? _failure;
   bool _busy = false;
 
   RoutinesRepository get _repository => context.read<RoutinesRepository>();
@@ -60,7 +61,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
       if (refreshDay) timeline.add(const TimelineRequested());
     } on Object catch (error) {
       if (!mounted) return;
-      setState(() => _failure = ChatFailure.from(error).message);
+      setState(() => _failure = TimelineFailure.from(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -136,7 +137,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         titleSpacing: 0,
-        title: Text('Rotina', style: AppTypography.title),
+        title: Text(context.l10n.homeRoutines, style: AppTypography.title),
         actions: [
           if (_busy)
             const Padding(
@@ -176,7 +177,9 @@ class _RoutinesPageState extends State<RoutinesPage> {
                           setState(() => _tab = RoutineDays.values[index]),
                       segments: [
                         for (final days in RoutineDays.values)
-                          AppSegment(label: days.label),
+                          AppSegment(
+                            label: context.l10n.routineDaysLabel(days),
+                          ),
                       ],
                     ),
                   ),
@@ -189,10 +192,12 @@ class _RoutinesPageState extends State<RoutinesPage> {
                     AppSpacing.s3,
                   ),
                   child: Text(
-                    _failure == null
-                        ? 'Toque num horário para criar. Segure um bloco '
-                              'para mudar a hora.'
-                        : '$_failure Toque para tentar de novo.',
+                    switch (_failure) {
+                      null => context.l10n.routinesHelp,
+                      final failure => context.l10n.failureRetry(
+                        failure.message ?? context.l10n.failureUnreachable,
+                      ),
+                    },
                     style: AppTypography.label.copyWith(color: AppColors.ink3),
                   ),
                 ),
@@ -598,7 +603,7 @@ class _RoutineSheetState extends State<_RoutineSheet> {
                   cursorColor: AppColors.ink,
                   onSubmitted: (_) => _save(),
                   decoration: InputDecoration(
-                    hintText: 'Almoço, rotina da manhã…',
+                    hintText: context.l10n.routinesTitleHint,
                     hintStyle: AppTypography.body.copyWith(
                       color: AppColors.ink3,
                     ),
@@ -620,17 +625,24 @@ class _RoutineSheetState extends State<_RoutineSheet> {
                     const SizedBox(width: AppSpacing.s2),
                     AppPillButton(
                       iconData: AppIcons.timer,
-                      label: formatDuration(Duration(minutes: _duration)),
+                      label: formatDuration(
+                        context.l10n,
+                        Duration(minutes: _duration),
+                      ),
                       onPressed: _pickDuration,
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s5),
-                AppButton(text: 'Salvar', expand: true, onPressed: _save),
+                AppButton(
+                  text: context.l10n.commonSave,
+                  expand: true,
+                  onPressed: _save,
+                ),
                 if (widget.editing) ...[
                   const SizedBox(height: AppSpacing.s2),
                   AppButton.text(
-                    text: 'Excluir rotina',
+                    text: context.l10n.routinesDelete,
                     color: AppColors.dangerInk,
                     expand: true,
                     onPressed: () => Navigator.of(

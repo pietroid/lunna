@@ -1,20 +1,20 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
-import 'package:chat/chat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:focus/app/app.dart';
-import 'package:focus/home/view/greeting.dart';
 import 'package:go_router/go_router.dart';
+import 'package:l10n/l10n.dart';
+import 'package:lunna/app/app.dart';
+import 'package:lunna/home/view/greeting.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template home_page}
 /// The timeline: who you are and what time it is at the top, and the three
 /// lists below it.
 ///
-/// There is no field on this screen, and no orb either. Typing is a
-/// deliberate act that starts from the bar at the foot of the app, which
-/// keeps this screen about what is already there rather than about the next
-/// thing to add to it.
+/// There is no field on this screen. Writing something down starts from the
+/// button at the foot of the app, which keeps this screen about what is
+/// already there rather than about the next thing to add to it.
 /// {@endtemplate}
 class HomePage extends StatelessWidget {
   /// {@macro home_page}
@@ -68,9 +68,12 @@ class _Header extends StatelessWidget {
                 // The greeting is the account: it is the only thing on the
                 // screen that names the person, so it is also the only thing
                 // that opens their menu.
-                _Profile(greeting: greeting(now, firstName)),
+                _Profile(greeting: greeting(context.l10n, now, firstName)),
                 const SizedBox(height: AppSpacing.s1),
-                Text(PtDate.long(now), style: AppTypography.label),
+                Text(
+                  longDate(context.l10n, now),
+                  style: AppTypography.label,
+                ),
               ],
             ),
           ),
@@ -82,7 +85,8 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// The greeting, and the account menu behind it.
+/// The greeting, and the account menu behind it: the routines, and signing
+/// out.
 class _Profile extends StatelessWidget {
   const _Profile({required this.greeting});
 
@@ -97,12 +101,22 @@ class _Profile extends StatelessWidget {
       constraints: const BoxConstraints(minWidth: AppSpacing.s12 * 3),
       itemBuilder: (context) => [
         PopupMenuItem<void>(
-          onTap: () => context.read<AppBloc>().add(const AppLogoutRequested()),
-          child: const Row(
+          onTap: () => unawaited(context.push<void>('/rotina')),
+          child: Row(
             children: [
-              AppIcon(iconData: AppIcons.logout, size: AppSpacing.s5),
-              SizedBox(width: AppSpacing.s3),
-              Text('Sair'),
+              const AppIcon(iconData: AppIcons.repeat, size: AppSpacing.s5),
+              const SizedBox(width: AppSpacing.s3),
+              Text(context.l10n.homeRoutines),
+            ],
+          ),
+        ),
+        PopupMenuItem<void>(
+          onTap: () => context.read<AppBloc>().add(const AppLogoutRequested()),
+          child: Row(
+            children: [
+              const AppIcon(iconData: AppIcons.logout, size: AppSpacing.s5),
+              const SizedBox(width: AppSpacing.s3),
+              Text(context.l10n.homeSignOut),
             ],
           ),
         ),
@@ -122,7 +136,7 @@ class _Threads extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final guard = context.select<TimelineBloc, A2uiComponent?>(
+    final guard = context.select<TimelineBloc, StartNowGuard?>(
       (bloc) => bloc.state.guard,
     );
     final busy = context.select<TimelineBloc, bool>(
@@ -145,16 +159,9 @@ class _Threads extends StatelessWidget {
     );
   }
 
-  /// Opens the block: its header, its commands, and the conversation about
-  /// it when the user wants one.
+  /// Opens the block: its header, its commands, and its notes.
   Future<void> _open(BuildContext context, TimelineEvent card) async {
     await context.push<void>('/evento/${Uri.encodeComponent(card.id)}');
-
-    // The card's preview changes while the conversation is open, so the day
-    // is refetched on the way back rather than left stale.
-    if (context.mounted) {
-      context.read<TimelineBloc>().add(const TimelineRequested());
-    }
   }
 }
 

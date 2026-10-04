@@ -1,32 +1,33 @@
-import 'package:chat/chat.dart';
+import 'package:l10n/l10n.dart';
+import 'package:timeline/timeline.dart';
 
 /// The day the demo opens on, drawn around the moment it is opened.
 ///
 /// [resting] leaves out the block that would be running, so the day starts
 /// on the break between two blocks instead.
-List<TimelineEvent> demoCards({bool resting = false}) {
+List<TimelineEvent> demoCards(AppLocalizations l10n, {bool resting = false}) {
   final now = DateTime.now();
   final tomorrow = DateTime(now.year, now.month, now.day + 1, 9);
 
   return [
     if (!resting)
       _card(
-        'focus',
-        'Fazendo Focus',
+        'lunna',
+        l10n.demoBuilding,
         TimelineSection.agora,
         now.subtract(const Duration(minutes: 12)),
         45,
       ),
     _card(
       'mercado',
-      'Comprar leite e ovos',
+      l10n.demoGroceries,
       TimelineSection.hoje,
       now.add(const Duration(minutes: 40)),
       30,
     ),
     _card(
       'standup',
-      'Standup',
+      l10n.demoStandup,
       TimelineSection.hoje,
       now.add(const Duration(hours: 2)),
       15,
@@ -34,7 +35,7 @@ List<TimelineEvent> demoCards({bool resting = false}) {
     ),
     _card(
       'dentista',
-      'Marcar dentista',
+      l10n.demoDentist,
       TimelineSection.amanha,
       tomorrow,
       30,
@@ -71,8 +72,8 @@ TimelineEvent _card(
 /// {@endtemplate}
 class DemoTimelineRepository implements TimelineRepository {
   /// {@macro demo_timeline_repository}
-  DemoTimelineRepository({bool resting = false})
-    : _cards = demoCards(resting: resting);
+  DemoTimelineRepository(AppLocalizations l10n, {bool resting = false})
+    : _cards = demoCards(l10n, resting: resting);
 
   List<TimelineEvent> _cards;
 
@@ -145,13 +146,6 @@ class DemoTimelineRepository implements TimelineRepository {
       TimelineOutcome(cards: _cards);
 
   @override
-  Future<SyncOutcome> awaitSync() async => const SyncOutcome(ok: true);
-
-  @override
-  Future<Thread> startThread(String id) async =>
-      Thread.fromJson({'slug': id, 'title': id, 'messages': const <dynamic>[]});
-
-  @override
   Future<List<TimelineEvent>> pauseEvent(String id) async => _cards = [
     for (final card in _cards)
       card.id == id ? card.copyWith(pausedAt: DateTime.now()) : card,
@@ -179,44 +173,10 @@ class DemoTimelineRepository implements TimelineRepository {
   Future<List<TimelineEvent>> editEvent(
     String id, {
     String? title,
+    String? notes,
     int? workMinutes,
     DateTime? startTime,
   }) async => _cards;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw UnimplementedError('${invocation.memberName} is not in the demo');
-}
-
-/// {@template demo_chat_repository}
-/// A chat that answers every message with the same line, after a beat.
-/// {@endtemplate}
-class DemoChatRepository implements ChatRepository {
-  /// {@macro demo_chat_repository}
-  DemoChatRepository();
-
-  final _messages = <Map<String, dynamic>>[];
-
-  @override
-  Future<Thread> sendMessage(String slug, String message) async {
-    // Long enough for the typing indicator to be seen, which is most of what
-    // makes a canned answer read as an answer.
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-
-    _messages
-      ..add({'id': '${_messages.length}', 'role': 'user', 'text': message})
-      ..add({
-        'id': '${_messages.length + 1}',
-        'role': 'agent',
-        'text': 'Entendi. Vamos por partes.',
-      });
-
-    return Thread.fromJson({
-      'slug': slug,
-      'title': 'Fazendo Focus',
-      'messages': _messages,
-    });
-  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) =>

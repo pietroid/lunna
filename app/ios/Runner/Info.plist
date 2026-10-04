@@ -4,8 +4,7 @@
 	<dict>
 		<key>CFBundleLocalizations</key>
 		<array>
-			<string>en</string>
-			<string>es</string>
+			<string>pt-BR</string>
 		</array>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
@@ -82,21 +81,20 @@
 				<string>Google Sign-In</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>com.googleusercontent.apps.392630770562-sm05h5l29140puk6osh709c9uunqt376</string>
-					<string>com.googleusercontent.apps.122163867410-586l67ekldu8k5mtmv419u5ge3311nbj</string>
+					<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
 				</array>
 			</dict>
 		</array>
 		<key>BGTaskSchedulerPermittedIdentifiers</key>
 		<array>
-			<string>focus.notifications.refresh</string>
+			<string>lunna.notifications.refresh</string>
 		</array>
 		<key>UIBackgroundModes</key>
 		<array>
 			<string>fetch</string>
 		</array>
 		<key>NSLocalNetworkUsageDescription</key>
-		<string>Focus needs to connect to the development server on your local network.</string>
+		<string>Lunna needs to connect to the development server on your local network.</string>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>

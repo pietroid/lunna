@@ -1,8 +1,9 @@
 import 'package:app_ui/app_ui.dart';
-import 'package:chat/chat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:focus/demo/data/demo_repositories.dart';
-import 'package:focus/home/home.dart';
+import 'package:l10n/l10n.dart';
+import 'package:lunna/demo/data/demo_repositories.dart';
+import 'package:lunna/home/home.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template demo_app}
 /// The timeline, running on the demo repositories inside whatever box it is
@@ -25,10 +26,8 @@ class DemoApp extends StatelessWidget {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<TimelineRepository>(
-          create: (_) => DemoTimelineRepository(resting: resting),
-        ),
-        RepositoryProvider<ChatRepository>(
-          create: (_) => DemoChatRepository(),
+          create: (context) =>
+              DemoTimelineRepository(context.l10n, resting: resting),
         ),
       ],
       child: BlocProvider<TimelineBloc>(
@@ -97,20 +96,28 @@ class _DemoHome extends StatelessWidget {
           ),
         ),
       ),
+      floatingActionButton: AppFab(
+        tooltip: context.l10n.shellWriteDown,
+        onPressed: () => _schedule(context),
+      ),
       // Only Tempo is in the demo, so the other destinations are drawn and
       // stay where they are.
       bottomNavigationBar: AppBottomBar(
         currentIndex: 0,
         onSelected: (_) {},
-        center: AppOrb(onTap: () => _schedule(context)),
-        items: const [
-          AppBottomBarItem(iconData: AppIcons.time, label: 'Tempo'),
-          AppBottomBarItem(iconData: AppIcons.things, label: 'Coisas'),
+        items: [
           AppBottomBarItem(
-            iconData: AppIcons.conversations,
-            label: 'Conversas',
+            iconData: AppIcons.time,
+            label: context.l10n.shellTimelineTab,
           ),
-          AppBottomBarItem(iconData: AppIcons.menu, label: 'Menu'),
+          AppBottomBarItem(
+            iconData: AppIcons.things,
+            label: context.l10n.shellSecondTab,
+          ),
+          AppBottomBarItem(
+            iconData: AppIcons.menu,
+            label: context.l10n.shellThirdTab,
+          ),
         ],
       ),
     );
@@ -136,9 +143,15 @@ class _Header extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(greeting(now, null), style: AppTypography.headline),
+                  Text(
+                    greeting(context.l10n, now, null),
+                    style: AppTypography.headline,
+                  ),
                   const SizedBox(height: AppSpacing.s1),
-                  Text(PtDate.long(now), style: AppTypography.label),
+                  Text(
+                    longDate(context.l10n, now),
+                    style: AppTypography.label,
+                  ),
                 ],
               ),
             ),

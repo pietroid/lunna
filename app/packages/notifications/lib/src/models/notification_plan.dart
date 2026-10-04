@@ -46,7 +46,6 @@ class PlannedNotification extends Equatable {
     required this.title,
     required this.body,
     this.timeSensitive = false,
-    this.threadSlug,
     this.eventId,
   });
 
@@ -62,7 +61,6 @@ class PlannedNotification extends Equatable {
     if (kind == null || fireAt == null) return null;
     if (title is! String || body is! String) return null;
 
-    final slug = json['threadSlug'];
     final eventId = json['eventId'];
     return PlannedNotification(
       id: id,
@@ -71,7 +69,6 @@ class PlannedNotification extends Equatable {
       title: title,
       body: body,
       timeSensitive: json['timeSensitive'] == true,
-      threadSlug: slug is String && slug.isNotEmpty ? slug : null,
       eventId: eventId is String && eventId.isNotEmpty ? eventId : null,
     );
   }
@@ -95,9 +92,6 @@ class PlannedNotification extends Equatable {
   /// Whether it should break through a Focus mode.
   final bool timeSensitive;
 
-  /// The conversation a tap opens, when there is one.
-  final String? threadSlug;
-
   /// The block it is about, when it is about one.
   final String? eventId;
 
@@ -109,7 +103,6 @@ class PlannedNotification extends Equatable {
     title,
     body,
     timeSensitive,
-    threadSlug,
     eventId,
   ];
 }

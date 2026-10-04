@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:l10n/l10n.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 /// {@template queued_notification}
@@ -80,17 +82,24 @@ class LocalNotificationQueue implements NotificationQueue {
 
   final FlutterLocalNotificationsPlugin _plugin;
 
-  static const _blocksChannel = AndroidNotificationChannel(
+  /// The strings for the channels' names, which Android shows in the app's
+  /// notification settings. Looked up without a [BuildContext], because
+  /// the background refresh registers them from an isolate with no widgets.
+  static final AppLocalizations _l10n = lookupAppLocalizations(
+    const Locale('pt'),
+  );
+
+  static final _blocksChannel = AndroidNotificationChannel(
     'blocks',
-    'Blocos',
-    description: 'Quando um bloco começa e quando está perto de terminar.',
+    _l10n.notificationChannelBlocks,
+    description: _l10n.notificationChannelBlocksDescription,
     importance: Importance.high,
   );
 
-  static const _dailyChannel = AndroidNotificationChannel(
+  static final _dailyChannel = AndroidNotificationChannel(
     'daily',
-    'Bom dia e boa noite',
-    description: 'Um recado no começo e no fim do dia.',
+    _l10n.notificationChannelDaily,
+    description: _l10n.notificationChannelDailyDescription,
   );
 
   IOSFlutterLocalNotificationsPlugin? get _ios => _plugin

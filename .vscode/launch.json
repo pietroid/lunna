@@ -26,6 +26,19 @@
       ]
     },
     {
+      "name": "App - Dev (web)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "deviceId": "chrome",
+      "args": [
+        "--web-port",
+        "5173",
+        "--dart-define-from-file",
+        "env/dev.json"
+      ]
+    },
+    {
       "name": "App - Production Profile",
       "request": "launch",
       "type": "dart",
@@ -43,20 +56,11 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start:local"],
+      "runtimeArgs": [
+        "run",
+        "start:local"
+      ],
       "cwd": "${workspaceFolder}/server",
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "restart": true,
-      "autoAttachChildProcesses": true
-    },
-    {
-      "name": "Agent - Local",
-      "type": "node",
-      "request": "launch",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start:local"],
-      "cwd": "${workspaceFolder}/agent",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "restart": true,

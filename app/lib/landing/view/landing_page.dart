@@ -2,20 +2,17 @@ import 'dart:ui';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
-import 'package:focus/demo/demo.dart';
-import 'package:focus/landing/widgets/phone_frame.dart';
+import 'package:l10n/l10n.dart';
+import 'package:lunna/demo/demo.dart';
+import 'package:lunna/landing/widgets/phone_frame.dart';
 
 /// {@template landing_page}
-/// What someone who is not signed in sees: what Focus is, with the app itself
+/// What someone who is not signed in sees: what Lunna is, with the app itself
 /// running in a phone beside it.
 ///
 /// It is drawn inside an [AuthScreen], and signing in is one quiet word in
 /// the corner. The page is there to be read, and the person it lets in
 /// already knows where to tap.
-///
-/// The page is in English, unlike the rest of the app: it is read by people
-/// who have not met Focus yet. The app in the phone stays in Portuguese,
-/// because it is the app as it ships.
 ///
 /// On a narrow screen there is no phone. The screen already is one, and a
 /// phone drawn inside it would be a thumbnail.
@@ -31,6 +28,8 @@ class LandingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= _wide;
@@ -57,77 +56,37 @@ class LandingPage extends StatelessWidget {
                           child: _Pitch(wide: false),
                         ),
                       _Section(
-                        title: 'How it is built',
+                        title: l10n.landingHowTitle,
                         child: _Columns(
                           wide: wide,
-                          children: const [
+                          children: [
                             _Part(
                               number: '01',
-                              title: 'The app',
-                              text:
-                                  'The control center. The same app on '
-                                  'iPhone, Android and the web.',
+                              title: l10n.landingPartTimelineTitle,
+                              text: l10n.landingPartTimelineText,
                             ),
                             _Part(
                               number: '02',
-                              title: 'The server',
-                              text:
-                                  'Talks to the app and to the agent, and '
-                                  'keeps every conversation in its place.',
+                              title: l10n.landingPartRoutinesTitle,
+                              text: l10n.landingPartRoutinesText,
                             ),
                             _Part(
                               number: '03',
-                              title: 'The agent',
-                              text:
-                                  'Autonomous and sandboxed. It connects to '
-                                  'any tool and does whatever the job '
-                                  'needs.',
-                            ),
-                          ],
-                        ),
-                      ),
-                      const _Section(
-                        title: 'Integrations',
-                        child: Column(
-                          children: [
-                            _Row(
-                              title: 'Google Calendar',
-                              text:
-                                  'A Google account that belongs to Focus '
-                                  'alone. Its calendar, and yours untouched.',
-                            ),
-                            _Row(
-                              title: 'GitHub',
-                              text:
-                                  'The agent can change the code of Focus '
-                                  'itself and ship a new version.',
-                            ),
-                            _Row(
-                              title: 'Web search',
-                              text:
-                                  'When the answer is not at home, it goes '
-                                  'looking.',
-                            ),
-                            _Row(
-                              title: 'OpenRouter',
-                              text:
-                                  'Picks the model for each request, with '
-                                  'no lock-in to a single provider.',
+                              title: l10n.landingPartRemindersTitle,
+                              text: l10n.landingPartRemindersText,
                             ),
                           ],
                         ),
                       ),
                       _Section(
-                        title: 'Day to day',
+                        title: l10n.landingDayTitle,
                         child: _Columns(
                           wide: wide,
-                          children: const [
-                            _Use('Write down what needs doing.'),
-                            _Use('Give every task its hour.'),
-                            _Use(
-                              'Ask anything, of any model.',
-                            ),
-                            _Use('Look after agents, tokens and accounts.'),
+                          children: [
+                            _Use(l10n.landingUseWrite),
+                            _Use(l10n.landingUseHour),
+                            _Use(l10n.landingUsePause),
+                            _Use(l10n.landingUseRoutine),
                           ],
                         ),
                       ),
@@ -156,7 +115,7 @@ class _TopBar extends StatelessWidget {
           Image.asset('assets/images/icon.png', height: 38),
           const SizedBox(width: AppSpacing.s3),
           Text(
-            'Focus',
+            context.l10n.appName,
             style: AppTypography.onest(
               size: 32,
               weight: FontWeight.w500,
@@ -164,7 +123,7 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          const AuthSignInButton(compact: true, label: 'Sign in'),
+          AuthSignInButton(compact: true, label: context.l10n.authSignIn),
         ],
       ),
     );
@@ -210,7 +169,7 @@ class _WideHero extends StatelessWidget {
   }
 }
 
-/// The orb from the icon, blurred out behind the phone.
+/// The mark from the icon, blurred out behind the phone.
 ///
 /// It is the only colour on the page that is not an action, and it is the
 /// mark itself rather than a decoration picked to go with it.
@@ -252,15 +211,12 @@ class _Pitch extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Lock-in and relax.', style: headline),
+        Text(context.l10n.landingHeadline, style: headline),
         const SizedBox(height: AppSpacing.s6),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Text(
-            'Focus is a domestic and personal organization system. '
-            'Write what you need, paste '
-            'a link or just ask. Focus will organize your day and help you '
-            'do what you need.',
+            context.l10n.landingPitch,
             style: AppTypography.onest(
               size: wide ? 19 : 17,
               weight: FontWeight.w400,
@@ -272,8 +228,7 @@ class _Pitch extends StatelessWidget {
         if (wide) ...[
           const SizedBox(height: AppSpacing.s8),
           Text(
-            'The phone beside this is the real app. Tap the orb to schedule '
-            'something, or a block to open it.',
+            context.l10n.landingDemoHint,
             style: AppTypography.caption.copyWith(
               color: AppColors.ink3,
               height: 1.6,
@@ -370,51 +325,6 @@ class _Part extends StatelessWidget {
   }
 }
 
-class _Row extends StatelessWidget {
-  const _Row({required this.title, required this.text});
-
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s4),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.line)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final name = Text(title, style: AppTypography.bodyStrong);
-          final body = Text(
-            text,
-            style: AppTypography.label.copyWith(height: 1.65),
-          );
-
-          if (constraints.maxWidth < 560) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                name,
-                const SizedBox(height: AppSpacing.s1),
-                body,
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(width: 240, child: name),
-              Expanded(child: body),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _Use extends StatelessWidget {
   const _Use(this.text);
 
@@ -446,7 +356,7 @@ class _Footer extends StatelessWidget {
           const SizedBox(width: AppSpacing.s2),
           Expanded(
             child: Text(
-              'Focus · Informational human organicity',
+              context.l10n.landingFooter,
               style: AppTypography.caption.copyWith(color: AppColors.ink3),
             ),
           ),

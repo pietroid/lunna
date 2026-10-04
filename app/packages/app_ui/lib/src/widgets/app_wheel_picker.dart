@@ -1,5 +1,6 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:l10n/l10n.dart';
 
 /// {@template app_wheel_picker}
 /// The sheet behind a duration or an hour: one wheel and two buttons.
@@ -23,7 +24,7 @@ abstract final class AppWheelPicker {
 
     return _show<Duration>(
       context,
-      title: 'Quanto tempo leva?',
+      title: context.l10n.pickerDurationTitle,
       onConfirm: () => picked,
       wheel: CupertinoTimerPicker(
         mode: CupertinoTimerPickerMode.hm,
@@ -45,7 +46,7 @@ abstract final class AppWheelPicker {
 
     return _show<DateTime>(
       context,
-      title: 'A que horas?',
+      title: context.l10n.pickerTimeTitle,
       onConfirm: () => picked,
       wheel: CupertinoDatePicker(
         mode: CupertinoDatePickerMode.time,
@@ -92,35 +93,24 @@ abstract final class AppWheelPicker {
     return minute.add(Duration(minutes: minuteInterval - over));
   }
 
-  static const _weekdays = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
-  static const _months = [
-    'jan',
-    'fev',
-    'mar',
-    'abr',
-    'mai',
-    'jun',
-    'jul',
-    'ago',
-    'set',
-    'out',
-    'nov',
-    'dez',
-  ];
-
   /// "Hoje", "Amanhã", or "qui, 2 out": a day the way a person names it.
-  static String dayLabel(DateTime day, {DateTime? now}) {
+  static String dayLabel(
+    AppLocalizations l10n,
+    DateTime day, {
+    DateTime? now,
+  }) {
     final today = now ?? DateTime.now();
     final offset = DateTime.utc(
       day.year,
       day.month,
       day.day,
     ).difference(DateTime.utc(today.year, today.month, today.day)).inDays;
-    if (offset == 0) return 'Hoje';
-    if (offset == 1) return 'Amanhã';
+    if (offset == 0) return l10n.dayToday;
+    if (offset == 1) return l10n.dayTomorrow;
 
-    final weekday = _weekdays[day.weekday - 1];
-    return '$weekday, ${day.day} ${_months[day.month - 1]}';
+    final weekday = l10n.weekdaysShort.split(',')[day.weekday - 1];
+    final month = l10n.monthsShort.split(',')[day.month - 1];
+    return l10n.dayShort(weekday, day.day, month);
   }
 
   static Future<T?> _show<T>(
@@ -196,7 +186,7 @@ class _Sheet extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.s2),
               AppButton(
-                text: 'Confirmar',
+                text: context.l10n.commonConfirm,
                 onPressed: onConfirm,
                 expand: true,
               ),
@@ -276,7 +266,7 @@ class _DayAndTimeState extends State<_DayAndTime> {
     );
 
     return _Sheet(
-      title: 'Quando?',
+      title: context.l10n.pickerWhenTitle,
       onConfirm: () => Navigator.of(context).pop(value),
       wheel: Row(
         children: [
@@ -290,7 +280,7 @@ class _DayAndTimeState extends State<_DayAndTime> {
                   setState(() => _offset = offset),
               itemBuilder: (context, offset) => Center(
                 child: Text(
-                  AppWheelPicker.dayLabel(_dayAt(offset)),
+                  AppWheelPicker.dayLabel(context.l10n, _dayAt(offset)),
                   style: const TextStyle(color: AppColors.ink, fontSize: 20),
                 ),
               ),

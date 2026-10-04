@@ -1,5 +1,8 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:l10n/l10n.dart';
+
+final l10n = lookupAppLocalizations(const Locale('pt'));
 
 void main() {
   group('dayLabel', () {
@@ -7,15 +10,15 @@ void main() {
 
     test('names today and tomorrow, and writes out the rest', () {
       expect(
-        AppWheelPicker.dayLabel(DateTime(2026, 9, 24), now: today),
+        AppWheelPicker.dayLabel(l10n, DateTime(2026, 9, 24), now: today),
         'Hoje',
       );
       expect(
-        AppWheelPicker.dayLabel(DateTime(2026, 9, 25), now: today),
+        AppWheelPicker.dayLabel(l10n, DateTime(2026, 9, 25), now: today),
         'Amanhã',
       );
       expect(
-        AppWheelPicker.dayLabel(DateTime(2026, 10, 2), now: today),
+        AppWheelPicker.dayLabel(l10n, DateTime(2026, 10, 2), now: today),
         'sex, 2 out',
       );
     });
@@ -31,6 +34,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
+        locale: const Locale('pt', 'BR'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
@@ -48,7 +54,7 @@ void main() {
     await tester.tap(find.text('abrir'));
     await tester.pumpAndSettle();
 
-    expect(find.text(AppWheelPicker.dayLabel(at)), findsOneWidget);
+    expect(find.text(AppWheelPicker.dayLabel(l10n, at)), findsOneWidget);
     expect(find.text('20:00–20:30'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Jantar');
@@ -69,6 +75,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.dark,
+        locale: const Locale('pt', 'BR'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(

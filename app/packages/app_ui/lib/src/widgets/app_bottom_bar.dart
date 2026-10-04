@@ -15,12 +15,11 @@ class AppBottomBarItem {
 }
 
 /// {@template app_bottom_bar}
-/// The app's four destinations, with the orb sitting in the middle of them.
+/// The app's destinations, side by side.
 ///
-/// The orb is the one action the app has, so it is not a button parked on top
-/// of the bar: the bar is built around it, two destinations to its left and
-/// two to its right. Nothing here is drawn in a colour, because the orb is
-/// already the only lit thing at the foot of the screen.
+/// Nothing here is drawn in a colour: the one lit thing at the foot of the
+/// screen is the [AppFab] floating above it, and the bar stays out of its
+/// way.
 ///
 /// The bar has no border and no hard edge. It blurs what scrolls under it
 /// just enough to read as fog and darkens as it falls, so a list dims out
@@ -32,14 +31,10 @@ class AppBottomBar extends StatelessWidget {
     required this.items,
     required this.currentIndex,
     required this.onSelected,
-    required this.center,
     super.key,
-  }) : assert(
-         items.length == 4,
-         'The bar holds two destinations on each side of the orb.',
-       );
+  });
 
-  /// The four destinations, in order: two left of the orb, two right of it.
+  /// The destinations, in order.
   final List<AppBottomBarItem> items;
 
   /// Which destination is being shown.
@@ -48,26 +43,12 @@ class AppBottomBar extends StatelessWidget {
   /// Called with the index of a tapped destination.
   final ValueChanged<int> onSelected;
 
-  /// What sits in the middle. The orb, in practice.
-  final Widget center;
-
   /// How tall the row of destinations is, before the safe area.
-  ///
-  /// Taller than a glyph and a word need, so the orb has black around it
-  /// inside the bar and its glow is mostly spent before it leaves.
-  static const _height = 80.0;
-
-  /// The width reserved for [center], wide enough that the orb's glow does
-  /// not spill onto the labels beside it.
-  static const _centerWidth = 80.0;
+  static const height = 72.0;
 
   @override
   Widget build(BuildContext context) {
     return Stack(
-      // The orb is painted by this stack, not by the clipped fog behind it,
-      // so its glow carries up over the screen instead of stopping at the
-      // top edge of the bar.
-      clipBehavior: Clip.none,
       children: [
         Positioned.fill(
           child: ClipRect(
@@ -89,18 +70,10 @@ class AppBottomBar extends StatelessWidget {
         SafeArea(
           top: false,
           child: SizedBox(
-            height: _height,
+            height: height,
             child: Row(
               children: [
-                for (var index = 0; index < 2; index++)
-                  Expanded(
-                    child: _Destination(index: index, bar: this),
-                  ),
-                SizedBox(
-                  width: _centerWidth,
-                  child: Center(child: center),
-                ),
-                for (var index = 2; index < 4; index++)
+                for (var index = 0; index < items.length; index++)
                   Expanded(
                     child: _Destination(index: index, bar: this),
                   ),
@@ -125,7 +98,7 @@ class _Destination extends StatelessWidget {
     final item = bar.items[index];
     final selected = index == bar.currentIndex;
     // Selection is carried by brightness alone. A second signal here — a
-    // pill, a dot, a filled glyph — would compete with the orb.
+    // pill, a dot, a filled glyph — would compete with the button above.
     final color = selected ? AppColors.ink : AppColors.ink3;
 
     return InkWell(
