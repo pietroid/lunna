@@ -210,7 +210,7 @@ class _RemindersListenerState extends State<RemindersListener>
 ///
 /// The timeline is fetched again on every minute boundary, and a sync per
 /// minute would be a request per minute for nothing. This only changes when
-/// a block Focus booked does.
+/// a block Lunna booked does.
 String _fingerprint(TimelineState state) {
   return [
     for (final card in state.cards)
@@ -225,7 +225,7 @@ String _fingerprint(TimelineState state) {
   ].join('\n');
 }
 
-/// Whether [current] has a block Focus booked that a loaded [previous] did
+/// Whether [current] has a block Lunna booked that a loaded [previous] did
 /// not, which is someone having just put something on the day.
 bool _gainedBlock(TimelineState previous, TimelineState current) {
   if (previous.status != TimelineStatus.success) return false;
