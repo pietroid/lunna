@@ -1,0 +1,19 @@
+{
+    "@@locale": "es",
+    "counterAppBarTitle": "Contador",
+    "@counterAppBarTitle": {
+        "description": "Texto mostrado en la AppBar de la página del contador"
+    },
+    "homeAppBarTitle": "Inicio",
+    "@homeAppBarTitle": {
+        "description": "Texto mostrado en la AppBar de la página de inicio"
+    },
+    "homeLogoutButtonTooltip": "Cerrar sesión",
+    "@homeLogoutButtonTooltip": {
+        "description": "Tooltip del botón de cerrar sesión en la página de inicio"
+    },
+    "uploadButton": "Subir",
+    "@uploadButton": {
+        "description": "Texto mostrado en el botón de subida"
+    }
+}

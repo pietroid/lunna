@@ -1,0 +1,88 @@
+name: focus
+description: Focus app.
+version: 1.0.0+1
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+  flutter: ^3.44.0
+
+dependencies:
+  api_client:
+    path: packages/api_client
+  app_ui:
+    path: packages/app_ui
+  auth:
+    path: packages/auth
+  bloc: ^9.2.1
+  chat:
+    path: packages/chat
+  equatable: ^2.0.7
+  firebase_core: ^3.0.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^9.1.1
+  flutter_localizations:
+    sdk: flutter
+  go_router: ^15.1.2
+  intl: ^0.20.2
+  notifications:
+    path: packages/notifications
+  url_launcher: ^6.3.0
+  user:
+    path: packages/user
+  # 0.10 pulls workmanager_apple 0.9.6+, which uses iOS 26 background task
+  # types that Xcode 16 cannot compile. Lift once the build is on Xcode 26.
+  workmanager: 0.9.2+1
+
+dev_dependencies:
+  bloc_lint: ^0.4.1
+  bloc_test: ^10.0.0
+  bloc_tools: ^0.1.0-dev.24
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
+  flutter_test:
+    sdk: flutter
+  mocktail: ^1.0.5
+  very_good_analysis: ^10.3.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+  assets:
+    - assets/launch_icon/
+    - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/launch_icon/icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  background_color_ios: "#000000"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/launch_icon/icon.png"
+  web:
+    generate: true
+    image_path: "assets/launch_icon/icon.png"
+    background_color: "#000000"
+    theme_color: "#000000"
+
+flutter_native_splash:
+  color: "#000000"
+  image: assets/launch_icon/icon.png
+  color_dark: "#000000"
+  image_dark: assets/launch_icon/icon.png
+  android_12:
+    image: assets/launch_icon/icon.png
+    icon_background_color: "#000000"
+    image_dark: assets/launch_icon/icon.png
+    icon_background_color_dark: "#000000"
+
+dependency_overrides:
+  # The last set of workmanager packages published together before 0.9.6.
+  # Their own constraints are loose enough to resolve newer, mismatched
+  # platform packages, so all three are held here.
+  workmanager_android: 0.9.2
+  workmanager_apple: 0.9.5
+  workmanager_platform_interface: 0.9.3

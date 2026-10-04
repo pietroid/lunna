@@ -1,0 +1,66 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "App - Dev",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "dev",
+        "--dart-define-from-file",
+        "env/dev.json"
+      ]
+    },
+    {
+      "name": "App - Production",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "production",
+        "--dart-define-from-file",
+        "env/production.json"
+      ]
+    },
+    {
+      "name": "App - Production Profile",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "production",
+        "--profile",
+        "--dart-define-from-file",
+        "env/production.json"
+      ]
+    },
+    {
+      "name": "Server - Local",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:local"],
+      "cwd": "${workspaceFolder}/server",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "restart": true,
+      "autoAttachChildProcesses": true
+    },
+    {
+      "name": "Agent - Local",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:local"],
+      "cwd": "${workspaceFolder}/agent",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "restart": true,
+      "autoAttachChildProcesses": true
+    }
+  ]
+}

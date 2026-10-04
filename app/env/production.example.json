@@ -1,0 +1,7 @@
+{
+  "GOOGLE_SIGN_IN_CLIENT_ID": "YOUR_PRODUCTION_WEB_CLIENT_ID",
+  "PROJECT_ID": "focus-production",
+  "BACKEND_SERVICE_ACCOUNT": "focus-backend@focus-production.iam.gserviceaccount.com",
+  "API_BASE_URL": "https://YOUR_PI_HOSTNAME/api/",
+  "FLAVOR": "production"
+}

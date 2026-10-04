@@ -1,0 +1,19 @@
+{
+    "@@locale": "en",
+    "counterAppBarTitle": "Counter",
+    "@counterAppBarTitle": {
+        "description": "Text shown in the AppBar of the Counter Page"
+    },
+    "homeAppBarTitle": "Home",
+    "@homeAppBarTitle": {
+        "description": "Text shown in the AppBar of the Home Page"
+    },
+    "homeLogoutButtonTooltip": "Logout",
+    "@homeLogoutButtonTooltip": {
+        "description": "Tooltip for the logout button on the Home Page"
+    },
+    "uploadButton": "Upload",
+    "@uploadButton": {
+        "description": "Text shown on the upload button"
+    }
+}

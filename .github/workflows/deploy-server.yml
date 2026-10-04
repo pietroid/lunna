@@ -1,0 +1,91 @@
+name: Deploy Server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/deploy-server.yml'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build server image and deploy to Pi
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server image for ARM64
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: false
+          load: true
+          tags: focus-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image to archive
+        run: |
+          set -euo pipefail
+          docker save focus-backend:latest | gzip > focus-backend.tar.gz
+          ls -lh focus-backend.tar.gz
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PI_SSH_PRIVATE_KEY }}
+
+      - name: Install cloudflared
+        run: |
+          set -euo pipefail
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb
+          sudo dpkg -i cloudflared-linux-arm64.deb
+
+      - name: Start Cloudflare SSH proxy
+        env:
+          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.TUNNEL_SERVICE_TOKEN_ID }}
+          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.TUNNEL_SERVICE_TOKEN_SECRET }}
+        run: |
+          set -euo pipefail
+          cloudflared access tcp --hostname deploy.pietroteruya.dev --url localhost:2222 > /tmp/cloudflared.log 2>&1 &
+          sleep 5
+          echo "--- cloudflared proxy logs ---"
+          cat /tmp/cloudflared.log
+
+      - name: Deploy to Raspberry Pi
+        env:
+          PI_HOST: ${{ vars.PI_HOST }}
+          PI_USER: ${{ vars.PI_USER }}
+          PI_REPO_PATH: ${{ vars.PI_REPO_PATH }}
+        run: |
+          set -euo pipefail
+
+          repo_path="${PI_REPO_PATH:-/home/${PI_USER}/focus}"
+          remote_archive="/tmp/focus-backend.tar.gz"
+
+          echo "Pulling latest repo state on the Pi..."
+          ssh -p 2222 -o StrictHostKeyChecking=accept-new "${PI_USER}@${PI_HOST}" \
+            "cd '${repo_path}' && git pull"
+
+          echo "Copying image archive to the Pi..."
+          scp -P 2222 -o StrictHostKeyChecking=accept-new \
+            focus-backend.tar.gz \
+            "${PI_USER}@${PI_HOST}:${remote_archive}"
+
+          echo "Loading image and restarting containers on the Pi..."
+          ssh -p 2222 -o StrictHostKeyChecking=accept-new "${PI_USER}@${PI_HOST}" \
+            "docker load < '${remote_archive}' && \
+             rm -f '${remote_archive}' && \
+             cd '${repo_path}/server' && \
+             docker compose up -d focus-backend focus-web"
+
+          echo "Server deploy complete."
