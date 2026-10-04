@@ -54,8 +54,10 @@ jobs:
 
   backend:
     name: Backend image
-    # Native ARM64, so the image is built as fast as on x64 and without QEMU.
-    runs-on: ubuntu-24.04-arm
+    # A standard x64 runner, free for private repos too. The Pi is ARM64, so
+    # the image is cross-built under QEMU: slower (npm ci and tsc run
+    # emulated) but the layer cache keeps most deploys short.
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -72,6 +74,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/build-push-action@v6
@@ -80,6 +86,9 @@ jobs:
           file: ./server/Dockerfile
           platforms: linux/arm64
           push: true
+          # No provenance manifests: they show up as extra untagged versions
+          # in the registry and count against package storage.
+          provenance: false
           tags: |
             ${{ steps.image.outputs.name }}:latest
             ${{ steps.image.outputs.name }}:${{ github.sha }}
@@ -136,6 +145,7 @@ jobs:
           file: ./deploy/web.Dockerfile
           platforms: linux/arm64
           push: true
+          provenance: false
           tags: |
             ${{ steps.image.outputs.name }}:latest
             ${{ steps.image.outputs.name }}:${{ github.sha }}
@@ -192,3 +202,23 @@ jobs:
             docker image prune -f
             docker logout ghcr.io
           "
+
+  cleanup:
+    name: Prune old images
+    # Only once the Pi runs the new images, so what it runs is never pruned.
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        package: [lunna-backend, lunna-web]
+    steps:
+      # Every deploy pushes a version tagged with its commit. Keep the last
+      # few for rolling back (LUNNA_TAG=<sha> on the Pi) and drop the rest,
+      # so private package storage stays well inside the free quota.
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: container
+          min-versions-to-keep: 5

@@ -103,11 +103,18 @@ public hostname for the app:
 ## 5. GitHub
 
 `.github/workflows/deploy.yml` runs on every push to `main`: tests, builds
-`lunna-backend` (natively on an ARM runner) and `lunna-web` (Flutter on x64,
-then an ARM64 nginx image with no emulation), pushes both to
-`ghcr.io/<owner>/`, then SSHes to the Pi through the tunnel and runs
-`docker compose pull && docker compose up -d`. The Pi logs in to GHCR with
-the job's own short-lived token, so nothing long-lived is stored there.
+`lunna-backend` (ARM64 under QEMU on a standard x64 runner, which is free for
+private repos) and `lunna-web` (Flutter on x64, then an ARM64 nginx image
+with no emulation), pushes both to `ghcr.io/<owner>/`, then SSHes to the Pi
+through the tunnel and runs `docker compose pull && docker compose up -d`.
+The Pi logs in to GHCR with the job's own short-lived token, so nothing
+long-lived is stored there. Once the Pi is up, a last job prunes each image
+down to its five most recent versions.
+
+Keep the images **private**: check under your profile → Packages → each
+image → Package settings after the first run. GitHub does not let a public
+image go back to private. To roll back, set `LUNNA_TAG=<commit sha>` (one of
+the five kept) in `/opt/lunna/.env` and run `docker compose up -d`.
 
 Repository **secrets**:
 
