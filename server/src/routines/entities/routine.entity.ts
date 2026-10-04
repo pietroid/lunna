@@ -4,8 +4,8 @@ import { RoutineDays } from '../../calendar/calendar.types';
  * One routine, as the menu draws it.
  *
  * A wall-clock hour and a length rather than two instants: a routine happens
- * at noon every day, and which day Google counts as the first one is nobody's
- * business but Google's.
+ * at noon every day, and which day counts as the first one is the
+ * calendar's business.
  */
 export interface Routine {
   /** The recurring event's id. */

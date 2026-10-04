@@ -1,13 +1,5 @@
-import {
-  BadGatewayException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { CalendarReaderService } from '../calendar/calendar-reader.service';
-import {
-  CalendarWriteError,
-  CalendarWriterService,
-} from '../calendar/calendar-writer.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { CalendarService } from '../calendar/calendar.service';
 import {
   CalendarRoutine,
   CalendarUser,
@@ -22,22 +14,19 @@ import { firstOccurrence, parseTime } from './routine-dates';
 /**
  * The blocks that happen every day, or every weekday, or every weekend.
  *
- * **The repeating is Google's.** A routine is one recurring event, and Focus
- * keeps no list of them: the menu reads the recurring events back, and the
- * timeline draws their instances like any other fixed block. Changing a
- * routine changes the event, and Google carries the change to every day.
+ * A routine is one row with a rule; the calendar writes down each day of it
+ * as the timeline reaches that day, and from then on that day is a fixed
+ * block like any other. Changing a routine changes every day of it that has
+ * not begun yet.
  */
 @Injectable()
 export class RoutinesService {
-  constructor(
-    private readonly _reader: CalendarReaderService,
-    private readonly _writer: CalendarWriterService,
-  ) {}
+  constructor(private readonly _calendar: CalendarService) {}
 
   /** Every routine, earliest hour first. */
-  async list(user: CalendarUser, trace: Trace): Promise<Routine[]> {
-    const zone = await this._reader.zone(user);
-    const routines = await this._call(() => this._writer.routines(user, trace));
+  async list(user: CalendarUser): Promise<Routine[]> {
+    const zone = this._calendar.zone(user);
+    const routines = await this._calendar.routines(user);
 
     return routines
       .map((routine) => routineOf(routine, zone))
@@ -51,36 +40,23 @@ export class RoutinesService {
     trace: Trace,
     now = new Date(),
   ): Promise<Routine[]> {
-    const zone = await this._reader.zone(user, now);
+    const zone = this._calendar.zone(user);
 
     trace.log('routine.create', { days: request.days, time: request.time });
-    await this._call(() =>
-      this._writer.createRoutine(
-        user,
-        {
-          title: request.title,
-          ...spanOf(
-            request.time,
-            request.durationMinutes,
-            request.days,
-            zone,
-            now,
-          ),
-          days: request.days,
-        },
-        trace,
-      ),
-    );
-    await this._reader.invalidate(user);
+    await this._calendar.createRoutine(user, {
+      title: request.title,
+      ...spanOf(request.time, request.durationMinutes, request.days, zone, now),
+      days: request.days,
+    });
 
-    return this.list(user, trace);
+    return this.list(user);
   }
 
   /**
    * Changes a routine, and so every day it repeats on.
    *
    * A new hour, length or set of days starts the series again from today:
-   * the first instance has to fall on a day the new rule covers, and the days
+   * the first day has to fall on a day the new rule covers, and the days
    * already gone are history rather than something to rewrite.
    */
   async update(
@@ -90,7 +66,7 @@ export class RoutinesService {
     trace: Trace,
     now = new Date(),
   ): Promise<Routine[]> {
-    const current = (await this.list(user, trace)).find(
+    const current = (await this.list(user)).find(
       (routine) => routine.id === routineId,
     );
     if (current === undefined) {
@@ -102,61 +78,43 @@ export class RoutinesService {
       next.time !== current.time ||
       next.durationMinutes !== current.durationMinutes ||
       next.days !== current.days;
-    const zone = await this._reader.zone(user, now);
+    const zone = this._calendar.zone(user);
 
     trace.log('routine.update', { routineId, retimed });
-    await this._call(() =>
-      this._writer.patchRoutine(
-        user,
-        routineId,
-        {
-          title: next.title,
-          ...(retimed
-            ? {
-                ...spanOf(
-                  next.time,
-                  next.durationMinutes,
-                  next.days,
-                  zone,
-                  now,
-                ),
-                days: next.days,
-              }
-            : {}),
-        },
-        trace,
-      ),
+    await this._calendar.updateRoutine(
+      user,
+      routineId,
+      {
+        title: next.title,
+        ...(retimed
+          ? {
+              ...spanOf(next.time, next.durationMinutes, next.days, zone, now),
+              days: next.days,
+            }
+          : {}),
+      },
+      now,
     );
-    await this._reader.invalidate(user);
 
-    return this.list(user, trace);
+    return this.list(user);
   }
 
-  /** Takes a routine off every day it was on. */
+  /** Takes a routine off every day still ahead. */
   async remove(
     user: CalendarUser,
     routineId: string,
     trace: Trace,
+    now = new Date(),
   ): Promise<Routine[]> {
     trace.log('routine.remove', { routineId });
-    await this._call(() => this._writer.remove(user, routineId, trace));
-    await this._reader.invalidate(user);
+    const removed = await this._calendar.removeRoutine(user, routineId, now);
+    if (!removed) throw new NotFoundException(`No routine "${routineId}"`);
 
-    return this.list(user, trace);
-  }
-
-  /** Runs a calendar call, turning a refusal into what the app shows. */
-  private async _call<T>(call: () => Promise<T>): Promise<T> {
-    try {
-      return await call();
-    } catch (error) {
-      if (!(error instanceof CalendarWriteError)) throw error;
-      throw new BadGatewayException('Não consegui falar com a sua agenda.');
-    }
+    return this.list(user);
   }
 }
 
-/** A recurring event, read as the menu reads a routine. */
+/** A stored routine, read as the menu reads it. */
 function routineOf(routine: CalendarRoutine, zone: Zone): Routine {
   const start = new Date(routine.startTime);
 
@@ -169,7 +127,7 @@ function routineOf(routine: CalendarRoutine, zone: Zone): Routine {
   };
 }
 
-/** The first occurrence of a routine, as the two instants Google books. */
+/** The first occurrence of a routine, as the two instants it is stored as. */
 function spanOf(
   time: string,
   durationMinutes: number,

@@ -1,9 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { startNowGuard } from '../a2ui/a2ui.guards';
-import { A2uiComponent, TimingAction } from '../a2ui/a2ui.types';
 import { CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
-import { ThreadsStore } from '../threads/threads.store';
 import { moved, PlannedBlock, relayout } from '../time/scheduling';
 import {
   addMinutes,
@@ -20,12 +17,13 @@ import { CalendarEvent } from '../calendar/calendar.types';
 import { EventCard, EventEdit, EventRequest } from './entities/event.entity';
 import { awaitsStart, intervalOf, isRunning } from './event-sections';
 import { EventsService, TimeBlock, workSecondsOf } from './events.service';
+import { StartNowGuard, TimingAction } from './timing';
 
 /** What a move produced: the timeline, and a question if one is still open. */
 export interface TimingOutcome {
   cards: EventCard[];
-  /** The guard to draw. Absent means the move went through. */
-  guard?: A2uiComponent;
+  /** The question to ask. Absent means the move went through. */
+  guard?: StartNowGuard;
 }
 
 /**
@@ -43,16 +41,11 @@ export interface TimingOutcome {
  * running when something else was dragged on top of it.
  *
  * Every hour this works out is written to the calendar, because the calendar
- * is the only place an hour is kept. The write does not hold up the drop: see
- * [EventsService] for the order, and [CalendarSyncService] for what the user
- * sees on the rare occasion Google will not take it.
+ * is the only place an hour is kept.
  */
 @Injectable()
 export class EventLayoutService {
-  constructor(
-    private readonly _events: EventsService,
-    private readonly _threads: ThreadsStore,
-  ) {}
+  constructor(private readonly _events: EventsService) {}
 
   /**
    * Writes something down and puts it on the timeline.
@@ -66,9 +59,7 @@ export class EventLayoutService {
    * starts looking there rather than now, and keeps that as its floor, so
    * the next repack does not pull it back to the top of the day.
    *
-   * Nothing is said and no thread is started. It is a block of time, and a
-   * block of time that nobody has anything to say about yet is the normal
-   * case rather than a thread waiting to happen.
+   * Nothing is asked. It is a block of time, and it goes where it fits.
    */
   async create(
     user: CalendarUser,
@@ -82,7 +73,7 @@ export class EventLayoutService {
       request,
       blocks,
       floor ?? now,
-      await this._events.zone(user, now),
+      await this._events.zone(user),
     );
 
     trace.log('event.create', {
@@ -106,9 +97,8 @@ export class EventLayoutService {
    * because the sections are only the clock reading itself back: there is one
    * list, and a drop is a place in it.
    *
-   * A day of a routine moves like any fixed block. It is one instance of the
-   * recurring event, and Google keeps a moved instance as an exception to the
-   * series, so the other days stay where the routine puts them.
+   * A day of a routine moves like any fixed block. It is its own row, so
+   * the other days stay where the routine puts them.
    */
   async move(
     user: CalendarUser,
@@ -121,7 +111,7 @@ export class EventLayoutService {
       throw new BadRequestException('A meeting cannot be moved here');
     }
 
-    const zone = await this._events.zone(user, now);
+    const zone = await this._events.zone(user);
     const cards = await this._events.cards(user, now);
     // A block still waiting for the user to begin it has not displaced
     // anything, so dragging something over it is not the destructive move.
@@ -139,18 +129,17 @@ export class EventLayoutService {
     if (action.index === 0 && running !== undefined && !action.decision) {
       return {
         cards,
-        guard: startNowGuard(
-          action.eventId,
-          action.index,
-          {
+        guard: {
+          kind: 'start_now',
+          eventId: action.eventId,
+          index: action.index,
+          current: {
+            id: running.id,
             title: running.title,
-            interval: {
-              start: new Date(running.startTime),
-              end: new Date(running.endTime),
-            },
+            startTime: running.startTime,
+            endTime: running.endTime,
           },
-          zone,
-        ),
+        },
       };
     }
 
@@ -218,7 +207,7 @@ export class EventLayoutService {
     const interval = intervalOf(event);
 
     if (interval !== undefined && interval.start > now) {
-      return this.move(user, { type: 'timing', eventId, index: 0 }, trace, now);
+      return this.move(user, { eventId, index: 0 }, trace, now);
     }
 
     trace.log('event.start', { eventId });
@@ -266,10 +255,9 @@ export class EventLayoutService {
    * minutes from now, which is the break between one thing and the next. A
    * block that never started had no hour to keep, so it simply leaves.
    *
-   * A calendar that refuses does not put the block back. It is done whatever
-   * Google thinks, and having the card spring back onto the timeline because
-   * a rebooking timed out would be the app arguing with the user about
-   * something they already know.
+   * A rearrangement that cannot be written does not put the block back. It
+   * is done, and having the card spring back onto the timeline would be the
+   * app arguing with the user about something they already know.
    */
   async done(
     user: CalendarUser,
@@ -277,7 +265,7 @@ export class EventLayoutService {
     trace: Trace,
     now = new Date(),
   ): Promise<EventCard[]> {
-    const zone = await this._events.zone(user, now);
+    const zone = await this._events.zone(user);
     const cards = await this._events.cards(user, now);
     const wasRunning = await this._complete(user, eventId, trace, now);
 
@@ -305,13 +293,12 @@ export class EventLayoutService {
     trace: Trace,
     now = new Date(),
   ): Promise<EventCard[]> {
-    const zone = await this._events.zone(user, now);
+    const zone = await this._events.zone(user);
     const cards = await this._events.cards(user, now);
     const event = await this._managed(user, eventId);
 
-    trace.log('event.remove', { eventId, slug: event.threadSlug });
+    trace.log('event.remove', { eventId });
     await this._events.erase(user, event, trace);
-    await this._closeThread(user, event);
 
     await this._safeRepack(
       user,
@@ -438,7 +425,8 @@ export class EventLayoutService {
   }
 
   /**
-   * Renames a block, changes how long it takes, or pins it to an hour.
+   * Renames a block, changes its notes, changes how long it takes, or pins
+   * it to an hour.
    *
    * The duration is the work, pauses left out, so it goes through [extend]
    * as the difference from what it was. An hour can only be named for
@@ -453,13 +441,16 @@ export class EventLayoutService {
   ): Promise<EventCard[]> {
     let event = await this._managed(user, eventId);
 
-    if (edit.title !== undefined && edit.title !== event.title) {
-      event = await this._events.revise(
-        user,
-        event,
-        { title: edit.title },
-        trace,
-      );
+    const words = {
+      ...(edit.title !== undefined && edit.title !== event.title
+        ? { title: edit.title }
+        : {}),
+      ...(edit.notes !== undefined && edit.notes !== event.notes
+        ? { notes: edit.notes }
+        : {}),
+    };
+    if (Object.keys(words).length > 0) {
+      event = await this._events.revise(user, event, words, trace);
     }
 
     if (edit.startTime !== undefined) {
@@ -576,7 +567,7 @@ export class EventLayoutService {
       isRunning(now, interval) &&
       !awaitsStart(event, now);
 
-    trace.log('event.done', { eventId, running, slug: event.threadSlug });
+    trace.log('event.done', { eventId, running });
 
     // Kept on the calendar as the hour it really took. A block that started
     // this very second has no hour to keep, so it goes like one that never
@@ -596,28 +587,7 @@ export class EventLayoutService {
       await this._events.erase(user, event, trace);
     }
 
-    await this._closeThread(user, event);
-
     return running;
-  }
-
-  /**
-   * The conversation about a block, closed with it.
-   *
-   * The thread is not a mirror of the block, but it is about it: a block the
-   * user has finished with is not something they still have an open question
-   * about, and leaving the conversation in Coisas would be the app asking
-   * them to close the same thing twice.
-   */
-  private async _closeThread(
-    user: CalendarUser,
-    event: CalendarEvent,
-  ): Promise<void> {
-    if (event.threadSlug === undefined) return;
-
-    await this._threads.updateState(user.id, event.threadSlug, {
-      solved: true,
-    });
   }
 
   /** Says on [eventId] that the user began it, when it has begun. */
@@ -640,7 +610,7 @@ export class EventLayoutService {
     );
   }
 
-  /** One event Focus booked, or a refusal. */
+  /** One event Lunna booked, or a refusal. */
   private async _managed(
     user: CalendarUser,
     eventId: string,
@@ -659,7 +629,7 @@ export class EventLayoutService {
     trace: Trace,
     now: Date,
   ): Promise<EventCard[]> {
-    const zone = await this._events.zone(user, now);
+    const zone = await this._events.zone(user);
     const cards = await this._events.cards(user, now);
 
     await this._safeRepack(user, blocksOf(cards, now), trace, now, zone);

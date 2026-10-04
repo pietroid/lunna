@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { Injectable } from '@nestjs/common';
-import { CalendarReaderService } from '../calendar/calendar-reader.service';
+import { CalendarService } from '../calendar/calendar.service';
 import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { intervalOf } from '../events/event-sections';
 import { addMinutes, minutesOf, WORK_DAY_START_HOUR } from '../time/work-hours';
@@ -60,22 +60,22 @@ export const EVENING_HOUR = 21;
  * mirrors it, so the plan is rebuilt from the calendar on every ask and there
  * is no table of reminders to fall out of step with the day it describes.
  *
- * Only the blocks Focus booked get a reminder. A meeting that arrived any
- * other way already has Google Calendar to announce it, and two alerts for
- * one event is worse than one.
+ * Only the blocks Lunna booked get a reminder. A meeting that arrived from
+ * an outside calendar already has that calendar to announce it, and two
+ * alerts for one event is worse than one.
  */
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly _reader: CalendarReaderService) {}
+  constructor(private readonly _calendar: CalendarService) {}
 
   async plan(
     user: CalendarUser,
     horizonDays: number,
     now = new Date(),
   ): Promise<NotificationPlan> {
-    const zone = await this._reader.zone(user, now);
-    const events = await this._reader.events(user, now);
+    const zone = this._calendar.zone(user);
     const until = addDaysIn(now, horizonDays, zone);
+    const events = await this._calendar.between(user, now, until);
 
     const items = [
       ...events.flatMap((event) => blockItems(event, zone)),
@@ -112,7 +112,6 @@ function blockItems(event: CalendarEvent, zone: Zone): NotificationItem[] {
         ? CONFIRM_START_BODY
         : startingBody(formatTimeIn(interval.end, zone)),
       timeSensitive: true,
-      threadSlug: event.threadSlug,
       eventId: event.id,
     }),
   ];
@@ -131,7 +130,6 @@ function blockItems(event: CalendarEvent, zone: Zone): NotificationItem[] {
         title: event.title,
         body: almostFinishingBody(ALMOST_FINISHING_MINUTES),
         timeSensitive: false,
-        threadSlug: event.threadSlug,
         eventId: event.id,
       }),
     );
@@ -193,7 +191,6 @@ function itemOf(spec: {
   title: string;
   body: string;
   timeSensitive: boolean;
-  threadSlug?: string;
   eventId?: string;
 }): NotificationItem {
   const epoch = Math.floor(spec.at.getTime() / 1000);
@@ -206,7 +203,6 @@ function itemOf(spec: {
     title: spec.title,
     body: spec.body,
     timeSensitive: spec.timeSensitive,
-    ...(spec.threadSlug === undefined ? {} : { threadSlug: spec.threadSlug }),
     ...(spec.eventId === undefined ? {} : { eventId: spec.eventId }),
   };
 }

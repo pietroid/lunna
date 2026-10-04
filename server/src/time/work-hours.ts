@@ -1,5 +1,5 @@
 /**
- * The working day, and the arithmetic every hour in Focus is measured
+ * The working day, and the arithmetic every hour in Lunna is measured
  * against.
  *
  * One file owns the hours, and `scheduling.ts` is its only real caller. Two
@@ -51,7 +51,7 @@ export function minutesOf(interval: Interval): number {
  * The working window [at] is in, or the next one if it is outside them.
  *
  * Late evening and the small hours both answer "tomorrow morning", which is
- * what makes a thread created at midnight propose a time someone could
+ * what makes a block written down at midnight land at a time someone could
  * actually keep.
  */
 export function workWindowFor(at: Date, zone: Zone): Interval {

@@ -16,13 +16,10 @@ export type TimelineSection = 'agora' | 'hoje' | 'amanha';
 /**
  * One card on the timeline.
  *
- * Every card is a calendar event, because every hour of the day is. Some of
- * them have a conversation behind them and most do not; a card says which by
- * carrying the thread's slug, and that pairing is stored on the event itself
- * and nowhere else.
+ * Every card is a calendar event, because every hour of the day is.
  */
 export class EventCard {
-  /** The Google event id, and the id the API addresses it by. */
+  /** The event id, and the id the API addresses it by. */
   id: string;
   title: string;
   /** The section it falls in, worked out from the clock when it was read. */
@@ -35,19 +32,15 @@ export class EventCard {
   /** Whether the hour is the point of it, so a rearrangement leaves it be. */
   fixed: boolean;
   /**
-   * Whether Focus booked it.
+   * Whether Lunna booked it.
    *
    * A card that is not managed is somebody else's meeting: it is drawn so the
    * screen says what the calendar says, and it cannot be dragged, finished or
-   * talked to, because none of that is Focus's to do with it.
+   * talked to, because none of that is Lunna's to do with it.
    */
   managed: boolean;
-  /** The conversation about this block, when there is one. */
-  threadSlug?: string;
-  /** The last thing said in that conversation, on one line. */
-  preview: string;
-  /** How many messages it holds. Zero when nothing has been said yet. */
-  messageCount: number;
+  /** Free text the user keeps on the block. */
+  notes: string;
   /** ISO 8601, when it was paused. Absent while it runs or has not started. */
   pausedAt?: string;
   /** Seconds of work still owed, while paused. */
@@ -64,7 +57,7 @@ export class EventCard {
   /**
    * Whether its hour has come and it is waiting for the user to begin.
    *
-   * Only a flexible block Focus booked ever waits. Until the user says so it
+   * Only a flexible block Lunna booked ever waits. Until the user says so it
    * slides down the day with the clock, and the card asks rather than
    * counting down.
    */
@@ -82,6 +75,8 @@ export interface EventEdit {
   workMinutes?: number;
   /** ISO 8601. Naming an hour pins the block to it. */
   startTime?: string;
+  /** Free text kept on the block. */
+  notes?: string;
 }
 
 /** What the creation sheet said when the user wrote something down. */

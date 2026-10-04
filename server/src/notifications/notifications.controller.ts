@@ -1,15 +1,13 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import * as adminAuth from 'firebase-admin/auth';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { AuthUser } from '../auth/auth.tokens';
+import { SessionGuard } from '../auth/session.guard';
 import { NotificationPlan } from './dto/notification-plan.dto';
 import {
   DEFAULT_HORIZON_DAYS,
   MAX_HORIZON_DAYS,
   NotificationsService,
 } from './notifications.service';
-
-type DecodedIdToken = adminAuth.DecodedIdToken;
 
 /**
  * The reminders the phone should be holding.
@@ -19,19 +17,22 @@ type DecodedIdToken = adminAuth.DecodedIdToken;
  * no network and no push entitlement.
  */
 @Controller('notifications')
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(SessionGuard)
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
   @Get('schedule')
   async schedule(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Query('horizonDays') horizonDays?: string,
   ): Promise<NotificationPlan> {
-    const name = typeof user.name === 'string' ? user.name : undefined;
-
     return this.notifications.plan(
-      { id: user.uid, email: user.email, name },
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        timeZone: user.timeZone,
+      },
       horizonOf(horizonDays),
     );
   }

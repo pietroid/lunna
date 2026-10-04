@@ -1,4 +1,4 @@
-import { CalendarReaderService } from '../calendar/calendar-reader.service';
+import { CalendarService } from '../calendar/calendar.service';
 import { CalendarEvent } from '../calendar/calendar.types';
 import { NotificationItem } from './dto/notification-plan.dto';
 import { EVENING_MESSAGES, MORNING_MESSAGES } from './notification-copy';
@@ -12,12 +12,12 @@ const NOW = new Date('2026-09-21T15:04:00.000Z');
 
 /** A calendar that holds exactly [events], kept in São Paulo. */
 function serviceWith(events: CalendarEvent[]): NotificationsService {
-  const reader = {
-    events: () => Promise.resolve(events),
-    zone: () => Promise.resolve(SAO_PAULO),
-  } as unknown as CalendarReaderService;
+  const calendar = {
+    between: () => Promise.resolve(events),
+    zone: () => SAO_PAULO,
+  } as unknown as CalendarService;
 
-  return new NotificationsService(reader);
+  return new NotificationsService(calendar);
 }
 
 function block(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -29,6 +29,7 @@ function block(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     endTime: '2026-09-21T18:00:00.000Z',
     managed: true,
     fixed: false,
+    notes: '',
     ...overrides,
   };
 }
@@ -111,15 +112,13 @@ describe('a block', () => {
     expect(ofKind(await itemsFor([edge]), 'almostFinishing')).toHaveLength(1);
   });
 
-  it('carries its conversation, so a tap can open it', async () => {
-    const items = await itemsFor([block({ threadSlug: 'revisao-de-codigo' })]);
+  it('carries its block, so a tap can open it', async () => {
+    const items = await itemsFor([block()]);
 
-    expect(ofKind(items, 'confirmStart')[0].threadSlug).toBe(
-      'revisao-de-codigo',
-    );
+    expect(ofKind(items, 'confirmStart')[0].eventId).toBe('evt-1');
   });
 
-  it('that Focus did not book gets nothing', async () => {
+  it('that Lunna did not book gets nothing', async () => {
     const meeting = block({ managed: false });
     const items = await itemsFor([meeting]);
 
@@ -218,7 +217,7 @@ describe('the daily reminders', () => {
   it('are not time-sensitive and open nothing in particular', async () => {
     for (const item of await itemsFor([], 2)) {
       expect(item.timeSensitive).toBe(false);
-      expect(item.threadSlug).toBeUndefined();
+      expect(item.eventId).toBeUndefined();
     }
   });
 });

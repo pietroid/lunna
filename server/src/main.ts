@@ -1,46 +1,49 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { NextFunction, Request, Response } from 'express';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { toNodeHandler } from 'better-auth/node';
 import { AppModule } from './app.module';
+import { Auth, listOf } from './auth/auth';
+import { AUTH } from './auth/auth.tokens';
 import { LoggingInterceptor } from './common/logging.interceptor';
-import { initializeFirebaseAdmin } from './firebase/firebase-admin';
+import { Database, DB, migrateDatabase } from './db/db';
 
 async function bootstrap() {
-  // Firebase Admin uses Application Default Credentials (service account
-  // identity), not .env secrets. Initialize it before creating the NestJS
-  // app so that any provider that calls `getFirestore()`/`getAuth()` at
-  // class instantiation time finds the default app already initialized.
-  initializeFirebaseAdmin();
-
-  const app = await NestFactory.create(AppModule);
+  // Better Auth reads the raw request body itself, so Nest's parsers are off
+  // until its routes are mounted, and switched on for everything after.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
   const logger = new Logger('Bootstrap');
 
+  await migrateDatabase(app.get<Database>(DB));
+  logger.log('Database is up to date');
+
+  // In production the web app is served from the same origin as the API and
+  // needs none of this. It is for the Flutter dev server on another port.
   app.enableCors({
-    // Reflects the request's Origin header back to the browser. This is
-    // required when `credentials: true` is set because `Access-Control-Allow-Origin`
-    // cannot be `*` while credentials are enabled.
-    origin: true,
+    origin: [
+      process.env.BETTER_AUTH_URL ?? '',
+      ...listOf(process.env.TRUSTED_ORIGINS),
+    ].filter((origin) => origin !== ''),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposedHeaders: ['Authorization'],
+    exposedHeaders: ['set-auth-token'],
     maxAge: 86400,
-    preflightContinue: false,
-    optionsSuccessStatus: 204,
   });
 
-  // Log every incoming request so we can tell whether CORS preflights and
-  // API calls are actually reaching the NestJS process. This runs before
-  // guards/interceptors, so it will record OPTIONS requests as well.
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    logger.log(
-      `REQUEST ${req.method} ${req.url} - Origin: ${req.headers.origin ?? 'none'} - Content-Length: ${req.headers['content-length'] ?? 'none'}`,
-    );
-    next();
-  });
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .all('/api/auth/*splat', toNodeHandler(app.get<Auth>(AUTH)));
+
+  app.useBodyParser('json');
+  app.setGlobalPrefix('api');
 
   // Logs response status, timing, user id and errors for every handled request.
   app.useGlobalInterceptors(new LoggingInterceptor());
+  app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 3000);
   logger.log(`Server listening on port ${process.env.PORT ?? 3000}`);

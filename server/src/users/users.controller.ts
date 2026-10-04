@@ -1,46 +1,20 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import * as adminAuth from 'firebase-admin/auth';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { SignUpUserDto } from './dto/signup-user.dto';
-import { User } from './entities/user.entity';
-import { UsersService } from './users.service';
+import { SessionGuard } from '../auth/session.guard';
 
-type DecodedIdToken = adminAuth.DecodedIdToken;
-
-function toOptionalString(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
+/**
+ * The signed-in person.
+ *
+ * Better Auth owns the user table and creates the row on the first sign-in,
+ * so there is no sign-up step here: this only reads back who the session
+ * belongs to.
+ */
 @Controller('users')
+@UseGuards(SessionGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
-
-  @Post('signup')
-  @UseGuards(FirebaseAuthGuard)
-  async signUp(
-    @CurrentUser() user: DecodedIdToken,
-    @Body() dto: SignUpUserDto,
-  ): Promise<User> {
-    // Use the UID from the verified token to prevent spoofing.
-    const createdUser = await this.usersService.signUpUserIfNeeded({
-      uid: user.uid,
-      name: toOptionalString(dto.name ?? user.name),
-    });
-
-    return this.usersService.enrichFromToken(createdUser, user);
-  }
-
   @Get('me')
-  @UseGuards(FirebaseAuthGuard)
-  async getMe(@CurrentUser() user: DecodedIdToken): Promise<User> {
-    const profile = await this.usersService.getUser(user.uid);
-    if (!profile) {
-      return this.usersService.signUpUserIfNeeded({
-        uid: user.uid,
-        name: toOptionalString(user.name),
-      });
-    }
-    return this.usersService.enrichFromToken(profile, user);
+  me(@CurrentUser() user: AuthUser): AuthUser {
+    return user;
   }
 }

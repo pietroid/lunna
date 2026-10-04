@@ -1,12 +1,13 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { DecodedIdToken } from 'firebase-admin/auth';
 import { Request } from 'express';
+import { AuthUser } from './auth.tokens';
 
+/** The person [SessionGuard] let in. */
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): DecodedIdToken => {
+  (_data: unknown, ctx: ExecutionContext): AuthUser => {
     const request = ctx
       .switchToHttp()
-      .getRequest<Request & { user: DecodedIdToken }>();
+      .getRequest<Request & { user: AuthUser }>();
     return request.user;
   },
 );

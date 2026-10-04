@@ -1,23 +1,21 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { CalendarReaderService } from './calendar-reader.service';
-import { CalendarSyncService } from './calendar-sync.service';
-import { CalendarWriterService } from './calendar-writer.service';
+import { CalendarService } from './calendar.service';
+import { CalendarStore } from './calendar.store';
+import { PgCalendarStore } from './pg-calendar.store';
 
 /**
- * Everything the server knows about the calendar, which is what the agent
- * tells it when asked.
+ * The calendar: Lunna's own, in Postgres.
  *
- * No controller. Nothing calls in from outside about the calendar: the server
- * asks the agent, in the same direction as every other call between the two.
+ * No controller. The timeline and the routines are the two ways in, and both
+ * go through [CalendarService].
  */
 @Module({
   imports: [ConfigModule],
   providers: [
-    CalendarReaderService,
-    CalendarSyncService,
-    CalendarWriterService,
+    CalendarService,
+    { provide: CalendarStore, useClass: PgCalendarStore },
   ],
-  exports: [CalendarReaderService, CalendarSyncService, CalendarWriterService],
+  exports: [CalendarService],
 })
 export class CalendarModule {}

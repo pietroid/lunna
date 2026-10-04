@@ -5,4 +5,6 @@ export class EditEventDto {
   workMinutes?: number;
   /** ISO 8601. Naming an hour pins the block to it. */
   startTime?: string;
+  /** Free text kept on the block. */
+  notes?: string;
 }

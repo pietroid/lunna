@@ -61,3 +61,52 @@ export function firstOccurrence(
   // Every rule covers some day of any week, so this is never reached.
   return now;
 }
+
+/** One day of a routine: the instant the rule puts it at, and its span. */
+export interface Occurrence {
+  start: Date;
+  end: Date;
+}
+
+/**
+ * Every day of [routine] whose span touches [from, to].
+ *
+ * The routine's first occurrence fixes two things: the wall-clock hour every
+ * day starts at, in [zone], and the first day there is one. Each later day the
+ * rule covers gets the same hour on its own date, so a routine at noon is at
+ * noon whatever the offset that day.
+ */
+export function occurrencesBetween(
+  routine: { startTime: string; endTime: string; days: RoutineDays },
+  from: Date,
+  to: Date,
+  zone: Zone,
+): Occurrence[] {
+  const first = new Date(routine.startTime);
+  const durationMs = Date.parse(routine.endTime) - first.getTime();
+  const hour = wallOf(first, zone);
+  const occurrences: Occurrence[] = [];
+
+  // From the day before [from], so a day that started yesterday and is
+  // still running is not missed.
+  const startDay = addDaysIn(from > first ? from : first, -1, zone);
+  for (let offset = 0; offset < 400; offset++) {
+    const day = wallOf(addDaysIn(startDay, offset, zone), zone);
+    const start = instantOf(
+      { ...day, hour: hour.hour, minute: hour.minute, second: 0 },
+      zone,
+    );
+    if (start >= to) break;
+
+    const weekday = new Date(
+      Date.UTC(day.year, day.month - 1, day.day),
+    ).getUTCDay();
+    const end = new Date(start.getTime() + durationMs);
+
+    if (start >= first && end > from && fallsOn(routine.days, weekday)) {
+      occurrences.push({ start, end });
+    }
+  }
+
+  return occurrences;
+}

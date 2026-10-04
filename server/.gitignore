@@ -46,3 +46,6 @@ lerna-debug.log*
 
 # Local thread storage
 /data
+
+# Local Postgres (npm run db:local)
+.pglite/

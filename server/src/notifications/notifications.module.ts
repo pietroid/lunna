@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
 import { CalendarModule } from '../calendar/calendar.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
@@ -11,7 +10,7 @@ import { NotificationsService } from './notifications.service';
  * ask, so there is nothing here that can disagree with the calendar.
  */
 @Module({
-  imports: [AuthModule, CalendarModule],
+  imports: [CalendarModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
 })

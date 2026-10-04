@@ -1,7 +1,7 @@
 /**
  * Wall-clock arithmetic in a named timezone.
  *
- * Every hour in Focus is a wall-clock hour: the working day starts at seven
+ * Every hour in Lunna is a wall-clock hour: the working day starts at seven
  * in the morning where the person is, "hoje" is their day and not the
  * server's, and "19:40" on a card is what their watch says. A `Date` is an
  * instant and knows none of that, and its `getHours` and `setHours` answer in
@@ -10,9 +10,9 @@
  * the container ran in UTC, so twenty past eight in São Paulo was twenty past
  * eleven to the arithmetic, and eleven is past the end of the day.
  *
- * So the zone is a parameter, never the ambient one. It comes from the
- * calendar, which is the only thing in the system with an opinion about what
- * day it is that the user can actually see, and it is threaded down to every
+ * So the zone is a parameter, never the ambient one. It is the person's own,
+ * kept with their account, because it is the only answer to what day it is
+ * that the user can actually see, and it is threaded down to every
  * function that turns an instant into an hour or a date.
  *
  * Nothing here needs a dependency. `Intl` already holds the whole tz
@@ -20,7 +20,7 @@
  * which is why offsets are read off a formatter rather than computed.
  */
 
-/** An IANA timezone name, as Google gives it: "America/Sao_Paulo". */
+/** An IANA timezone name, as Intl names it: "America/Sao_Paulo". */
 export type Zone = string;
 
 /**

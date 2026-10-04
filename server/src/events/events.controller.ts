@@ -4,22 +4,17 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
-import * as adminAuth from 'firebase-admin/auth';
-import {
-  TimingAction,
-  TimingDecision,
-  TIMING_DECISIONS,
-} from '../a2ui/a2ui.types';
+import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { SessionGuard } from '../auth/session.guard';
 import { CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
-import { Thread } from '../threads/entities/thread.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
@@ -28,27 +23,22 @@ import { SnoozeEventDto } from './dto/snooze-event.dto';
 import { TimingDto } from './dto/timing.dto';
 import { EventCard, EventEdit, EventRequest } from './entities/event.entity';
 import { EventLayoutService, TimingOutcome } from './event-layout.service';
-import { EventsService, SyncOutcome } from './events.service';
-import { EventThreadsService } from './event-threads.service';
+import { EventsService } from './events.service';
 import { PauseTickerService } from './pause-ticker.service';
-
-type DecodedIdToken = adminAuth.DecodedIdToken;
+import { TimingAction, TimingDecision, TIMING_DECISIONS } from './timing';
 
 /**
  * The day: what is on it, and everything that changes it.
  *
- * Every route here is about a block of time, which is to say about a Google
- * event. Conversations are `/threads` and have no opinion about hours; the
- * one place the two meet is [startThread], where talking about a block
- * creates the conversation and writes its name onto the event.
+ * Every route here is about a block of time, which is to say about one event
+ * on the calendar.
  */
 @Controller('events')
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(SessionGuard)
 export class EventsController {
   constructor(
     private readonly events: EventsService,
     private readonly layout: EventLayoutService,
-    private readonly threads: EventThreadsService,
     private readonly ticker: PauseTickerService,
   ) {}
 
@@ -59,54 +49,41 @@ export class EventsController {
    * clock says rather than the one from the last tick.
    */
   @Get()
-  async findAll(@CurrentUser() user: DecodedIdToken): Promise<EventCard[]> {
+  async findAll(@CurrentUser() user: AuthUser): Promise<EventCard[]> {
     const who = owner(user);
     this.ticker.watch(who);
-    await this.layout.catchUp(who, Trace.start(user.uid));
+    await this.layout.catchUp(who, Trace.start(user.id));
 
     return this.events.cards(who);
   }
 
-  /**
-   * Waits for the calendar to catch up, and says whether it did.
-   *
-   * The app calls this after a change, off the path the finger is on. It
-   * answers `{ ok: true }` the moment the queue is empty, which is almost
-   * always and almost immediately; when something did not make it, it answers
-   * with the popup to draw instead.
-   *
-   * Declared before the `:id` routes so `sync` is read as this route and not
-   * as an event called "sync".
-   */
-  @Get('sync')
-  async sync(@CurrentUser() user: DecodedIdToken): Promise<SyncOutcome> {
-    return this.events.awaitSync(user.uid, Trace.start(user.uid));
-  }
+  /** One block, for its own screen. */
+  @Get(':id')
+  async findOne(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<EventCard> {
+    const card = (await this.events.cards(owner(user))).find(
+      (it) => it.id === id,
+    );
+    if (card === undefined) throw new NotFoundException(`No event "${id}"`);
 
-  /** Pushes everything that did not make it to Google again. */
-  @Post('sync')
-  async retrySync(@CurrentUser() user: DecodedIdToken): Promise<SyncOutcome> {
-    const trace = Trace.start(user.uid);
-    trace.log('sync.retry', {});
-
-    return this.events.retrySync(user.uid, trace);
+    return card;
   }
 
   /**
    * Answers a guard.
    *
    * Its own route rather than an action on an event, because a guard is about
-   * where a card goes and not about one event in particular. Nothing here
-   * reaches the agent: the answer is arithmetic over the calendar, and the
-   * only thing that crosses to the other container is the booking itself.
+   * where a card goes and not about one event in particular.
    */
   @Post('timing')
   async applyTiming(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Body() dto: TimingDto,
   ): Promise<TimingOutcome> {
     const action = requireTiming(dto.action ?? {});
-    const trace = Trace.start(user.uid, action.eventId);
+    const trace = Trace.start(user.id, action.eventId);
     trace.log('timing.received', {
       index: action.index,
       decision: action.decision,
@@ -118,10 +95,10 @@ export class EventsController {
   /** Writes something down on the timeline, with its hour. */
   @Post()
   async create(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Body() dto: CreateEventDto,
   ): Promise<EventCard[]> {
-    const trace = Trace.start(user.uid);
+    const trace = Trace.start(user.id);
     trace.log('turn.begin', { kind: 'event' });
 
     return this.layout.create(owner(user), requireEvent(dto), trace);
@@ -130,16 +107,15 @@ export class EventsController {
   /** Moves a card to a new place in the day's list. */
   @Post(':id/move')
   async move(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: MoveEventDto,
   ): Promise<TimingOutcome> {
-    const trace = Trace.start(user.uid, id);
+    const trace = Trace.start(user.id, id);
 
     return this.layout.move(
       owner(user),
       {
-        type: 'timing',
         eventId: id,
         index: requireIndex(dto.index),
         ...requireGap(dto),
@@ -157,16 +133,16 @@ export class EventsController {
    */
   @Post(':id/start')
   async start(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<TimingOutcome> {
-    return this.layout.start(owner(user), id, Trace.start(user.uid, id));
+    return this.layout.start(owner(user), id, Trace.start(user.id, id));
   }
 
   /** Not yet: a waiting block waits a few minutes more before asking again. */
   @Post(':id/snooze')
   async snooze(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: SnoozeEventDto,
   ): Promise<EventCard[]> {
@@ -179,7 +155,7 @@ export class EventsController {
       owner(user),
       id,
       minutes,
-      Trace.start(user.uid, id),
+      Trace.start(user.id, id),
     );
   }
 
@@ -191,46 +167,46 @@ export class EventsController {
    */
   @Post(':id/done')
   async done(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<EventCard[]> {
-    return this.layout.done(owner(user), id, Trace.start(user.uid, id));
+    return this.layout.done(owner(user), id, Trace.start(user.id, id));
   }
 
   /** Takes a block off the calendar, keeping nothing of it. */
   @Delete(':id')
   async remove(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<EventCard[]> {
-    return this.layout.remove(owner(user), id, Trace.start(user.uid, id));
+    return this.layout.remove(owner(user), id, Trace.start(user.id, id));
   }
 
   /** Pauses the running block, which then keeps its work owed. */
   @Post(':id/pause')
   async pause(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<EventCard[]> {
     const who = owner(user);
     this.ticker.watch(who);
 
-    return this.layout.pause(who, id, Trace.start(user.uid, id));
+    return this.layout.pause(who, id, Trace.start(user.id, id));
   }
 
   /** Runs a paused block again. */
   @Post(':id/resume')
   async resume(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<EventCard[]> {
-    return this.layout.resume(owner(user), id, Trace.start(user.uid, id));
+    return this.layout.resume(owner(user), id, Trace.start(user.id, id));
   }
 
   /** Gives a block more time, pushing what comes after it. */
   @Post(':id/extend')
   async extend(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: ExtendEventDto,
   ): Promise<EventCard[]> {
@@ -247,14 +223,14 @@ export class EventsController {
       owner(user),
       id,
       minutes,
-      Trace.start(user.uid, id),
+      Trace.start(user.id, id),
     );
   }
 
-  /** Renames a block, changes its duration, or pins it to an hour. */
+  /** Renames a block, edits its notes, changes its duration, or pins it. */
   @Patch(':id')
   async edit(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: EditEventDto,
   ): Promise<EventCard[]> {
@@ -262,30 +238,19 @@ export class EventsController {
       owner(user),
       id,
       requireEdit(dto),
-      Trace.start(user.uid, id),
+      Trace.start(user.id, id),
     );
-  }
-
-  /**
-   * The conversation about this block, started if there is not one yet.
-   *
-   * A block has no thread by default: most of the day is hours, not
-   * discussions. Tapping into one is the moment that changes, and the event
-   * is where the pairing is written down.
-   */
-  @Post(':id/thread')
-  async startThread(
-    @CurrentUser() user: DecodedIdToken,
-    @Param('id') id: string,
-  ): Promise<Thread> {
-    return this.threads.open(owner(user), id, Trace.start(user.uid, id));
   }
 }
 
-/** The person this request is for, and how to reach them on Google. */
-function owner(user: DecodedIdToken): CalendarUser {
-  const name = typeof user.name === 'string' ? user.name : undefined;
-  return { id: user.uid, email: user.email, name };
+/** The person this request is for, and the zone their day is in. */
+function owner(user: AuthUser): CalendarUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    timeZone: user.timeZone,
+  };
 }
 
 /** A non-negative place in the day's list. */
@@ -377,6 +342,13 @@ function requireEdit(dto: EditEventDto): EventEdit {
     edit.workMinutes = minutes;
   }
 
+  if (dto.notes !== undefined) {
+    if (typeof dto.notes !== 'string' || dto.notes.length > 20_000) {
+      throw new BadRequestException('notes must be a string of at most 20000');
+    }
+    edit.notes = dto.notes;
+  }
+
   if (dto.startTime !== undefined) {
     if (
       typeof dto.startTime !== 'string' ||
@@ -408,7 +380,6 @@ function requireTiming(action: {
   }
 
   return {
-    type: 'timing',
     eventId,
     index: requireIndex(action.index ?? 0),
     decision: decision as TimingDecision | undefined,

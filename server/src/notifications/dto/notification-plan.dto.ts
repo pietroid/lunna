@@ -26,8 +26,6 @@ export class NotificationItem {
   body: string;
   /** Whether it should break through a Focus mode. */
   timeSensitive: boolean;
-  /** The conversation a tap opens, when the block has one. */
-  threadSlug?: string;
   /** The block it is about, which a `confirmStart` tap asks about. */
   eventId?: string;
 }

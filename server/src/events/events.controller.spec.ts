@@ -1,11 +1,3 @@
-// firebase-admin pulls an ESM-only dependency that Jest cannot require on
-// Node 22. Nothing here verifies a token, so the module is stubbed and the
-// guard it backs is overridden below.
-jest.mock('firebase-admin/auth', () => ({ getAuth: jest.fn() }));
-
-import { promises as fs } from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 import {
   CanActivate,
   ExecutionContext,
@@ -15,217 +7,26 @@ import { ConfigModule } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { A2uiParserService } from '../a2ui/a2ui-parser.service';
-import { A2uiPromptService } from '../a2ui/a2ui-prompt.service';
-import { A2uiValidationService } from '../a2ui/a2ui-validation.service';
-import { A2uiComponent } from '../a2ui/a2ui.types';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
-import { CalendarReaderService } from '../calendar/calendar-reader.service';
-import { systemZone, Zone } from '../time/zone';
-import { CalendarSyncService } from '../calendar/calendar-sync.service';
-import {
-  CalendarWriteError,
-  CalendarWriterService,
-  EventPatch,
-} from '../calendar/calendar-writer.service';
-import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
-import {
-  AgentService,
-  GenerateResult,
-  ToolDescriptor,
-} from '../threads/agent.service';
-import { Thread } from '../threads/entities/thread.entity';
-import { ThreadsService } from '../threads/threads.service';
-import { ThreadsStore } from '../threads/threads.store';
+import { SessionGuard } from '../auth/session.guard';
+import { CalendarService } from '../calendar/calendar.service';
+import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
 import { EventCard } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
-import { EventThreadsService } from './event-threads.service';
 import { EventsController } from './events.controller';
-import { EventsService, SyncOutcome } from './events.service';
+import { EventsService } from './events.service';
 import { PauseTickerService } from './pause-ticker.service';
+import { StartNowGuard } from './timing';
 
-class StubAuthGuard implements CanActivate {
+/** Signs everyone in as the same person, in the zone this file runs in. */
+class StubSessionGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     context.switchToHttp().getRequest<{ user: unknown }>().user = {
-      uid: 'test-user',
+      id: 'test-user',
       email: 'test@example.com',
+      name: 'Test',
+      timeZone: ZONE,
     };
     return true;
-  }
-}
-
-/** An agent that answers with one sentence and never runs a tool. */
-class StubAgentService {
-  tools(): Promise<ToolDescriptor[]> {
-    return Promise.resolve([]);
-  }
-
-  generate(): Promise<GenerateResult> {
-    return Promise.resolve({
-      raw: JSON.stringify({ a2ui: { component: 'Text', text: 'Ok' } }),
-      toolTrace: [],
-      model: 'stub',
-      latencyMs: 0,
-      iterations: 1,
-    });
-  }
-}
-
-/** Google, standing in: it accepts everything and remembers what it holds. */
-class StubCalendarWriter {
-  created: EventPatch[] = [];
-  patched: { id: string; patch: EventPatch }[] = [];
-  removed: string[] = [];
-
-  /** Every user the writes named, so a test can check whose calendar it was. */
-  users: string[] = [];
-
-  private readonly _events = new Map<string, CalendarEvent>();
-  private _next = 1;
-
-  /** Set by a test that wants to see what a refused booking does. */
-  failCreates = false;
-
-  /** Set by a test that wants to see what a refused rebooking does. */
-  failPatches = false;
-
-  create(user: CalendarUser, patch: EventPatch): Promise<CalendarEvent> {
-    if (this.failCreates) {
-      return Promise.reject(new CalendarWriteError('ECONNREFUSED'));
-    }
-
-    this.users.push(user.id);
-    this.created.push(patch);
-
-    const event: CalendarEvent = {
-      id: `ev-${this._next++}`,
-      title: patch.title ?? '',
-      startTime: patch.startTime ?? '',
-      endTime: patch.endTime ?? '',
-      managed: true,
-      fixed: patch.fixed === true,
-      threadSlug: patch.threadSlug,
-      notBefore: patch.notBefore,
-    };
-
-    this._events.set(event.id, event);
-    return Promise.resolve(event);
-  }
-
-  patch(
-    user: CalendarUser,
-    eventId: string,
-    patch: EventPatch,
-  ): Promise<CalendarEvent> {
-    if (this.failPatches) {
-      return Promise.reject(new CalendarWriteError('ECONNREFUSED'));
-    }
-
-    this.users.push(user.id);
-    this.patched.push({ id: eventId, patch });
-
-    const current = this._events.get(eventId);
-    const next: CalendarEvent = {
-      id: eventId,
-      title: patch.title ?? current?.title ?? '',
-      startTime: patch.startTime ?? current?.startTime ?? '',
-      endTime: patch.endTime ?? current?.endTime ?? '',
-      managed: current?.managed ?? true,
-      fixed: patch.fixed ?? current?.fixed ?? false,
-      threadSlug: patch.threadSlug ?? current?.threadSlug,
-      ...pauseAfter(patch, current),
-      started: patch.started ?? current?.started,
-      notBefore:
-        patch.notBefore === undefined
-          ? current?.notBefore
-          : patch.notBefore || undefined,
-    };
-
-    this._events.set(eventId, next);
-    return Promise.resolve(next);
-  }
-
-  remove(user: CalendarUser, eventId: string): Promise<void> {
-    this.users.push(user.id);
-    this.removed.push(eventId);
-    this._events.delete(eventId);
-    return Promise.resolve();
-  }
-}
-
-/** The pause an event carries after [patch], the way the agent stores it. */
-function pauseAfter(
-  patch: EventPatch,
-  current: CalendarEvent | undefined,
-): Pick<CalendarEvent, 'pausedAt' | 'remainingSeconds' | 'pausedSeconds'> {
-  const pausedAt =
-    patch.pausedAt === undefined
-      ? current?.pausedAt
-      : patch.pausedAt || undefined;
-
-  return {
-    pausedAt,
-    remainingSeconds:
-      pausedAt === undefined
-        ? undefined
-        : (patch.remainingSeconds ?? current?.remainingSeconds),
-    pausedSeconds: patch.pausedSeconds ?? current?.pausedSeconds,
-  };
-}
-
-/**
- * The cached calendar, standing still.
- *
- * Overridden so no test reaches for the agent that is not running: the real
- * reader would spend every timeline on a connection refused and fall back to
- * the same empty list this returns outright. It is per person, like the real
- * one.
- */
-class StubCalendarReader {
-  private readonly _events = new Map<string, CalendarEvent[]>();
-
-  events(user: CalendarUser): Promise<CalendarEvent[]> {
-    return Promise.resolve(this._events.get(user.id) ?? []);
-  }
-
-  /**
-   * The zone the day is measured in.
-   *
-   * The machine's, because every date in this file is written as a local one.
-   * The real reader answers with the zone Google keeps the calendar in.
-   */
-  zone(): Promise<Zone> {
-    return Promise.resolve(systemZone());
-  }
-
-  find(
-    user: CalendarUser,
-    eventId: string,
-  ): Promise<CalendarEvent | undefined> {
-    return Promise.resolve(
-      (this._events.get(user.id) ?? []).find((it) => it.id === eventId),
-    );
-  }
-
-  replace(user: CalendarUser, events: CalendarEvent[]): Promise<void> {
-    this._events.set(user.id, events);
-    return Promise.resolve();
-  }
-
-  upsert(user: CalendarUser, event: CalendarEvent): Promise<void> {
-    const kept = (this._events.get(user.id) ?? []).filter(
-      (it) => it.id !== event.id,
-    );
-    this._events.set(user.id, [...kept, event]);
-    return Promise.resolve();
-  }
-
-  remove(user: CalendarUser, eventId: string): Promise<void> {
-    this._events.set(
-      user.id,
-      (this._events.get(user.id) ?? []).filter((it) => it.id !== eventId),
-    );
-    return Promise.resolve();
   }
 }
 
@@ -282,29 +83,19 @@ afterAll(() => {
   jest.useRealTimers();
 });
 
-/** Every button in a guard, as the pair a test cares about. */
-function buttons(
-  guard: A2uiComponent | undefined,
-): { text: string; action: Record<string, unknown> }[] {
-  return (guard?.children ?? [])
-    .filter((child) => child.component === 'AppButton')
-    .map((child) => ({
-      text: child.text as string,
-      action: (child.action ?? {}) as unknown as Record<string, unknown>,
-    }));
-}
+/** The answer a guard's button sends, for [decision]. */
+function answerOf(
+  guard: StartNowGuard | undefined,
+  decision: 'solve_current' | 'postpone_current',
+): Record<string, unknown> {
+  if (guard === undefined) throw new Error('No guard to answer');
 
-/** The first line of a guard, which is the question it is asking. */
-function question(guard: A2uiComponent | undefined): string {
-  const item = (guard?.children ?? []).find(
-    (child) => child.component === 'ListItem',
-  );
-  return (item?.title as string) ?? '';
+  return { eventId: guard.eventId, index: guard.index, decision };
 }
 
 interface Outcome {
   cards: EventCard[];
-  guard?: A2uiComponent;
+  guard?: StartNowGuard;
 }
 
 function outcome(response: { body: unknown }): Outcome {
@@ -336,51 +127,36 @@ function gapBetween(first: EventCard, second: EventCard): number {
  * arithmetic that produces hours is covered by `scheduling.spec.ts`. What is
  * checked here is what the routes do to each other — the order, the gaps,
  * the calendar, and the one question that is left.
+ *
+ * The calendar is [MemoryCalendarStore]: the same contract as Postgres,
+ * routine expansion included, with nothing to connect to.
  */
 describe('the day', () => {
   let app: INestApplication<App>;
-  let root: string;
-  let calendar: StubCalendarWriter;
-  let agenda: StubCalendarReader;
+  let store: MemoryCalendarStore;
+  let calendar: CalendarService;
 
   /** Whoever the stub guard signs in. */
-  const owner = { id: 'test-user' };
+  const owner = { id: 'test-user', timeZone: ZONE };
 
   beforeEach(async () => {
-    root = await fs.mkdtemp(path.join(os.tmpdir(), 'focus-events-'));
-    process.env.FOCUS_DATA_DIR = root;
-
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ ignoreEnvFile: true })],
       controllers: [EventsController],
       providers: [
         EventsService,
         EventLayoutService,
-        EventThreadsService,
         PauseTickerService,
-        ThreadsService,
-        ThreadsStore,
-        AgentService,
-        A2uiPromptService,
-        A2uiParserService,
-        A2uiValidationService,
-        CalendarReaderService,
-        CalendarSyncService,
-        CalendarWriterService,
+        CalendarService,
+        { provide: CalendarStore, useClass: MemoryCalendarStore },
       ],
     })
-      .overrideGuard(FirebaseAuthGuard)
-      .useClass(StubAuthGuard)
-      .overrideProvider(AgentService)
-      .useClass(StubAgentService)
-      .overrideProvider(CalendarWriterService)
-      .useClass(StubCalendarWriter)
-      .overrideProvider(CalendarReaderService)
-      .useClass(StubCalendarReader)
+      .overrideGuard(SessionGuard)
+      .useClass(StubSessionGuard)
       .compile();
 
-    calendar = moduleRef.get(CalendarWriterService);
-    agenda = moduleRef.get(CalendarReaderService);
+    store = moduleRef.get(CalendarStore);
+    calendar = moduleRef.get(CalendarService);
 
     app = moduleRef.createNestApplication();
     await app.init();
@@ -388,8 +164,6 @@ describe('the day', () => {
 
   afterEach(async () => {
     await app.close();
-    delete process.env.FOCUS_DATA_DIR;
-    await fs.rm(root, { recursive: true, force: true });
   });
 
   /** Writes something down on the timeline, the way the sheet does. */
@@ -422,15 +196,6 @@ describe('the day', () => {
     return request(app.getHttpServer()).post('/events/timing').send({ action });
   }
 
-  /** Waits for the calendar queue, the way the app does after a change. */
-  async function sync(): Promise<SyncOutcome> {
-    const response = await request(app.getHttpServer())
-      .get('/events/sync')
-      .expect(200);
-
-    return response.body as SyncOutcome;
-  }
-
   async function timeline(): Promise<EventCard[]> {
     return cards(await request(app.getHttpServer()).get('/events').expect(200));
   }
@@ -442,9 +207,15 @@ describe('the day', () => {
     return found;
   }
 
-  /** Puts one event on the calendar that Focus did not book. */
-  async function meeting(title: string, from: Date, minutes: number) {
-    await agenda.upsert(owner, {
+  /**
+   * Puts one event on the calendar that Lunna did not book.
+   *
+   * Straight into the store, the way an outside calendar would, so it has to
+   * happen before the first read of the day: the cache does not watch the
+   * store, because in production nothing writes to it behind its back.
+   */
+  function meeting(title: string, from: Date, minutes: number) {
+    store.seed(owner, {
       id: `ev-${title}`,
       title,
       startTime: from.toISOString(),
@@ -463,18 +234,16 @@ describe('the day', () => {
     expect(drawn.managed).toBe(true);
     expect(drawn.section).toBe('agora');
 
-    // A block exists because Google holds an event for it. There is nowhere
-    // else for it to be.
-    expect(calendar.created).toHaveLength(1);
-    expect(calendar.users).toEqual(['test-user']);
+    // A block exists because the calendar holds an event for it. There is
+    // nowhere else for it to be.
+    expect(store.all(owner)).toHaveLength(1);
+    expect(store.all({ id: 'someone-else' })).toEqual([]);
   });
 
-  it('has nothing to say about a conversation until there is one', async () => {
+  it('starts with no notes', async () => {
     const [drawn] = cards(await add('Revisar proposta', 30).expect(201));
 
-    expect(drawn.threadSlug).toBeUndefined();
-    expect(drawn.preview).toBe('');
-    expect(drawn.messageCount).toBe(0);
+    expect(drawn.notes).toBe('');
   });
 
   it('puts the next thing after the first, without moving it', async () => {
@@ -527,12 +296,10 @@ describe('the day', () => {
 
     const response = await drag((await card('Outra coisa')).id, 0).expect(201);
 
-    expect(question(outcome(response).guard)).toBe('Começar agora?');
-    expect(buttons(outcome(response).guard).map((b) => b.text)).toEqual([
-      'Concluir o atual',
-      'Deixar para depois',
-      'Cancelar',
-    ]);
+    const guard = outcome(response).guard;
+    expect(guard?.kind).toBe('start_now');
+    expect(guard?.current.title).toBe('Em andamento');
+    expect(guard?.eventId).toBe((await card('Outra coisa')).id);
   });
 
   it('changes nothing while it is asking', async () => {
@@ -552,13 +319,10 @@ describe('the day', () => {
     await begin('Em andamento');
 
     const guard = outcome(await drag((await card('Outra coisa')).id, 0)).guard;
-    const solve = buttons(guard).find((b) => b.text === 'Concluir o atual');
-    await answer(solve!.action).expect(201);
+    await answer(answerOf(guard, 'solve_current')).expect(201);
 
     expect((await timeline()).map((it) => it.title)).toEqual(['Outra coisa']);
-
-    await sync();
-    expect(calendar.removed).toHaveLength(1);
+    expect(store.all(owner).map((it) => it.title)).toEqual(['Outra coisa']);
   });
 
   it('pushes the running block down when told to keep it', async () => {
@@ -567,8 +331,7 @@ describe('the day', () => {
     await begin('Em andamento');
 
     const guard = outcome(await drag((await card('Outra coisa')).id, 0)).guard;
-    const later = buttons(guard).find((b) => b.text === 'Deixar para depois');
-    await answer(later!.action).expect(201);
+    await answer(answerOf(guard, 'postpone_current')).expect(201);
 
     const day = await timeline();
     expect(day.map((it) => it.title)).toEqual(['Outra coisa', 'Em andamento']);
@@ -593,7 +356,7 @@ describe('the day', () => {
   it('draws a meeting it did not book, and will not move it', async () => {
     const at = new Date();
     at.setHours(at.getHours() + 2, 0, 0, 0);
-    await meeting('Daily', at, 30);
+    meeting('Daily', at, 30);
     await add('Revisar proposta', 30).expect(201);
 
     const daily = await card('Daily');
@@ -606,7 +369,7 @@ describe('the day', () => {
   it('schedules around a meeting it did not book', async () => {
     const at = new Date();
     at.setMinutes(at.getMinutes() + 10, 0, 0);
-    await meeting('Workshop', at, 120);
+    meeting('Workshop', at, 120);
     const end = new Date(at.getTime() + 120 * 60_000);
 
     await add('Revisar proposta', 60).expect(201);
@@ -624,9 +387,7 @@ describe('the day', () => {
       .expect(201);
 
     expect(await timeline()).toEqual([]);
-
-    await sync();
-    expect(calendar.removed).toEqual([drawn.id]);
+    expect(store.all(owner)).toEqual([]);
   });
 
   it('closes the day up over something that was finished', async () => {
@@ -679,22 +440,6 @@ describe('the day', () => {
     );
   });
 
-  it('stays finished when the calendar will not take the rearrangement', async () => {
-    const [first] = cards(await add('Primeiro', 60).expect(201));
-    await add('Segundo', 30).expect(201);
-
-    calendar.failPatches = true;
-
-    await request(app.getHttpServer())
-      .post(`/events/${first.id}/done`)
-      .expect(201);
-
-    // It is done whether or not Google agrees. Springing the card back onto
-    // the timeline over a failed rebooking would be arguing with the user
-    // about something they already know.
-    expect((await timeline()).map((it) => it.title)).toEqual(['Segundo']);
-  });
-
   /**
    * Backdates a block so it is genuinely mid-hour.
    *
@@ -711,14 +456,14 @@ describe('the day', () => {
     const start = new Date(Date.now() - startedMinutesAgo * 60_000);
     start.setSeconds(0, 0);
 
-    await agenda.upsert(owner, {
+    await calendar.save(owner, {
       id: event.id,
       title: event.title,
       startTime: start.toISOString(),
       endTime: new Date(start.getTime() + minutes * 60_000).toISOString(),
       managed: true,
       fixed: false,
-      threadSlug: event.threadSlug,
+      notes: event.notes,
       // Mid-hour means the user began it; a block nobody began slides.
       started: true,
     });
@@ -780,11 +525,10 @@ describe('the day', () => {
     await backdate('Acabou', 60, 30);
 
     await timeline();
-    await sync();
 
     // Nothing sweeps the past. The hour happened, and deleting the event
     // would be rewriting the day rather than letting it end.
-    expect(calendar.removed).toEqual([]);
+    expect(store.all(owner).map((it) => it.title)).toEqual(['Acabou']);
   });
 
   it('refuses a move without a place to move to', async () => {
@@ -796,70 +540,6 @@ describe('the day', () => {
       .expect(400);
   });
 
-  it('writes nothing down when the calendar will not take it', async () => {
-    calendar.failCreates = true;
-
-    // Google is where an hour lives. A block it refused is a block that does
-    // not exist, and saying otherwise is how the two used to disagree.
-    await add('Revisar proposta', 30).expect(502);
-    expect(await timeline()).toEqual([]);
-  });
-
-  it('says so, once, when the calendar did not keep up', async () => {
-    const [drawn] = cards(await add('Primeiro', 30).expect(201));
-    await add('Segundo', 30).expect(201);
-
-    calendar.failPatches = true;
-    await drag(drawn.id, 1).expect(201);
-
-    const failed = await sync();
-    expect(failed.ok).toBe(false);
-    expect(question(failed.guard)).toBe('Sua agenda não acompanhou');
-    expect(buttons(failed.guard).map((b) => b.text)).toEqual([
-      'Tentar de novo',
-      'Agora não',
-    ]);
-
-    // Asking twice does not ask again: the popup is on screen by now, and a
-    // second one behind it would be the same failure twice.
-    expect((await sync()).ok).toBe(true);
-  });
-
-  it('pushes the day again when the retry is tapped', async () => {
-    const [drawn] = cards(await add('Primeiro', 30).expect(201));
-    await add('Segundo', 30).expect(201);
-
-    calendar.failPatches = true;
-    await drag(drawn.id, 1).expect(201);
-    await sync();
-
-    calendar.failPatches = false;
-
-    const retried = await request(app.getHttpServer())
-      .post('/events/sync')
-      .expect(201);
-
-    expect((retried.body as SyncOutcome).ok).toBe(true);
-    expect(calendar.patched.map((it) => it.id)).toContain(drawn.id);
-  });
-
-  it('keeps the drop when the calendar refuses a move', async () => {
-    const [drawn] = cards(await add('Primeiro', 30).expect(201));
-    await add('Segundo', 30).expect(201);
-
-    calendar.failPatches = true;
-
-    // Index 1 rather than 0: dropping at the top is the one move that asks a
-    // question first, and this is about the calendar refusing, not the guard.
-    await drag(drawn.id, 1).expect(201);
-
-    expect((await timeline()).map((it) => it.title)).toEqual([
-      'Segundo',
-      'Primeiro',
-    ]);
-    expect((await sync()).ok).toBe(false);
-  });
-
   it('refuses something written down with no length', async () => {
     await add('Revisar proposta', 0).expect(400);
   });
@@ -868,80 +548,49 @@ describe('the day', () => {
     await add('   ', 30).expect(400);
   });
 
-  describe('talking about a block', () => {
-    /** Opens the conversation about a block, the way tapping a card does. */
-    async function open(eventId: string): Promise<Thread> {
-      const response = await request(app.getHttpServer())
-        .post(`/events/${eventId}/thread`)
-        .expect(201);
-
-      return response.body as Thread;
-    }
-
-    it('starts a conversation named after the block', async () => {
+  describe('notes', () => {
+    it('keeps what is written on a block', async () => {
       const [drawn] = cards(await add('Revisar proposta', 30).expect(201));
 
-      const thread = await open(drawn.id);
+      const after = cards(
+        await request(app.getHttpServer())
+          .patch(`/events/${drawn.id}`)
+          .send({ notes: 'Começar pela seção 3.' })
+          .expect(200),
+      );
 
-      expect(thread).toMatchObject({
-        slug: 'revisar-proposta',
-        title: 'Revisar proposta',
-        solved: false,
-      });
-      // Nothing has been said. The agent answers when the user types, not
-      // when they open the card.
-      expect(thread.messages).toEqual([]);
+      expect(after[0].notes).toBe('Começar pela seção 3.');
+      expect(store.all(owner)[0].notes).toBe('Começar pela seção 3.');
     });
 
-    it('writes the pairing onto the event and nowhere else', async () => {
-      const [drawn] = cards(await add('Revisar proposta', 30).expect(201));
-      await open(drawn.id);
+    it('does not move anything when only the notes change', async () => {
+      const [first] = cards(await add('Primeiro', 30).expect(201));
+      const before = cards(await add('Segundo', 30).expect(201));
 
-      expect(calendar.patched).toEqual([
-        { id: drawn.id, patch: { threadSlug: 'revisar-proposta' } },
-      ]);
-      expect((await card('Revisar proposta')).threadSlug).toBe(
-        'revisar-proposta',
+      const after = cards(
+        await request(app.getHttpServer())
+          .patch(`/events/${first.id}`)
+          .send({ notes: 'x' })
+          .expect(200),
+      );
+
+      expect(after.map((it) => it.startTime)).toEqual(
+        before.map((it) => it.startTime),
       );
     });
 
-    it('opens the same conversation the second time', async () => {
+    it('reads one block back by id', async () => {
       const [drawn] = cards(await add('Revisar proposta', 30).expect(201));
 
-      const first = await open(drawn.id);
-      const again = await open(drawn.id);
+      const response = await request(app.getHttpServer())
+        .get(`/events/${drawn.id}`)
+        .expect(200);
 
-      expect(again.slug).toBe(first.slug);
-      expect(calendar.patched).toHaveLength(1);
-    });
-
-    it('lets a meeting be talked about without being moved', async () => {
-      const at = new Date();
-      at.setHours(at.getHours() + 2, 0, 0, 0);
-      await meeting('Daily', at, 30);
-
-      const thread = await open((await card('Daily')).id);
-      expect(thread.title).toBe('Daily');
-    });
-
-    it('closes the conversation when the block is finished', async () => {
-      const [drawn] = cards(await add('Revisar proposta', 30).expect(201));
-      const thread = await open(drawn.id);
-
-      await request(app.getHttpServer())
-        .post(`/events/${drawn.id}/done`)
-        .expect(201);
-
-      const store = app.get(ThreadsStore);
-      expect(await store.read('test-user', thread.slug)).toMatchObject({
-        solved: true,
-      });
+      expect((response.body as EventCard).title).toBe('Revisar proposta');
     });
 
     it('404s a block that is not on the day', async () => {
-      await request(app.getHttpServer())
-        .post('/events/nope/thread')
-        .expect(404);
+      await request(app.getHttpServer()).get('/events/nope').expect(404);
     });
   });
 
@@ -1063,12 +712,8 @@ describe('the day', () => {
       expect(after.map((it) => it.title)).toEqual(['Depois']);
       expect(hhmm(after[0].startTime)).toBe('10:17');
 
-      await sync();
-      expect(calendar.removed).toEqual([]);
-      expect(
-        calendar.patched.filter((it) => it.id === running.id).pop()?.patch
-          .endTime,
-      ).toBe(new Date(Date.now()).toISOString());
+      const kept = store.all(owner).find((it) => it.id === running.id);
+      expect(kept?.endTime).toBe(new Date(Date.now()).toISOString());
     });
 
     it('deletes a block outright and closes the day up', async () => {
@@ -1084,9 +729,7 @@ describe('the day', () => {
 
       expect(after.map((it) => it.title)).toEqual(['Primeiro', 'Terceiro']);
       expect(gapBetween(after[0], after[1])).toBe(5);
-
-      await sync();
-      expect(calendar.removed).toEqual([second.id]);
+      expect(store.all(owner).map((it) => it.id)).not.toContain(second.id);
     });
 
     it('renames, re-estimates and pins from the detail screen', async () => {
@@ -1262,31 +905,64 @@ describe('the day', () => {
     });
   });
 
-  it('moves one day of a routine and leaves it fixed', async () => {
+  it('moves one day of a routine and leaves the others where they were', async () => {
     const lunch = new Date();
     lunch.setHours(lunch.getHours() + 2, 0, 0, 0);
-    await agenda.upsert(owner, {
-      id: 'lunch_20260310',
+    await store.insertRoutine(owner, {
       title: 'Almoço',
       startTime: lunch.toISOString(),
       endTime: new Date(lunch.getTime() + 60 * 60_000).toISOString(),
-      managed: true,
-      fixed: true,
-      routine: 'daily',
+      days: 'daily',
     });
+
+    const today = await card('Almoço');
+    expect(today.routine).toBe('daily');
+    expect(today.fixed).toBe(true);
+    expect(hhmm(today.startTime)).toBe(hhmm(lunch.toISOString()));
 
     const later = new Date(lunch.getTime() + 2 * 3_600_000);
     const day = outcome(
       await request(app.getHttpServer())
-        .post('/events/lunch_20260310/move')
+        .post(`/events/${today.id}/move`)
         .send({ index: 0, after: later.toISOString() })
         .expect(201),
     ).cards;
 
-    const moved = day.find((it) => it.id === 'lunch_20260310')!;
+    const moved = day.find((it) => it.id === today.id)!;
     expect(moved.routine).toBe('daily');
     expect(moved.fixed).toBe(true);
     expect(Date.parse(moved.startTime)).toBe(later.getTime());
     expect(moved.durationMinutes).toBe(60);
+
+    // Tomorrow is its own row, still at the routine's hour.
+    const tomorrow = day.filter((it) => it.title === 'Almoço')[1];
+    expect(tomorrow.section).toBe('amanha');
+    expect(hhmm(tomorrow.startTime)).toBe(hhmm(lunch.toISOString()));
+  });
+
+  it('does not bring back a day of a routine that was taken off', async () => {
+    const lunch = new Date();
+    lunch.setHours(lunch.getHours() + 2, 0, 0, 0);
+    await store.insertRoutine(owner, {
+      title: 'Almoço',
+      startTime: lunch.toISOString(),
+      endTime: new Date(lunch.getTime() + 60 * 60_000).toISOString(),
+      days: 'daily',
+    });
+
+    const today = await card('Almoço');
+    await request(app.getHttpServer())
+      .delete(`/events/${today.id}`)
+      .expect(200);
+
+    // A fresh read expands the window again; the cancelled day stays gone.
+    const fresh = await store.window(
+      owner,
+      new Date(Date.now() - 3_600_000),
+      new Date(Date.now() + 36 * 3_600_000),
+      ZONE,
+    );
+    expect(fresh.filter((it) => it.title === 'Almoço')).toHaveLength(1);
+    expect(fresh.find((it) => it.id === today.id)).toBeUndefined();
   });
 });

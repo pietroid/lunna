@@ -9,7 +9,7 @@ import { Zone } from './zone';
 
 /** One thing on the day, as the layout sees it. */
 export interface PlannedBlock {
-  /** A thread slug, or an event id. */
+  /** The event id. */
   id: string;
   minutes: number;
   /** Whether its hour is the point of it, and so cannot be moved. */

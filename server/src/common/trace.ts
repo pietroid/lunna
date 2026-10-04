@@ -1,7 +1,7 @@
 import { randomBytes } from 'crypto';
 
-/** The header that carries a trace id to the agent. */
-export const TRACE_HEADER = 'x-focus-trace-id';
+/** The header a trace id travels under, when it leaves the process. */
+export const TRACE_HEADER = 'x-lunna-trace-id';
 
 /** One recorded step of a turn. */
 export interface TraceEvent {
@@ -19,14 +19,12 @@ export interface TraceFields {
 }
 
 /**
- * The record of one turn, from tap to rendered reply.
+ * The record of one request, from tap to answer.
  *
- * A turn crosses two processes and four transformations: prompt, model, tool,
- * parse, validate. When the result looks wrong, the useful question is almost
- * always "which of those changed it", and that is unanswerable from
- * interleaved logs of two containers. So every step writes one JSON line
- * keyed by the same id, the agent logs under it too, and the whole sequence is
- * kept so it can be read back after the fact.
+ * A drag can repack half the day. When the result looks wrong, the useful
+ * question is almost always "which step moved it", so every step writes one
+ * JSON line keyed by the same id, and the whole sequence is kept so it can be
+ * read back after the fact.
  */
 export class Trace {
   private readonly _events: TraceEvent[] = [];
@@ -51,11 +49,6 @@ export class Trace {
   /** Everything recorded so far, in order. */
   get events(): TraceEvent[] {
     return [...this._events];
-  }
-
-  /** Binds the trace to a thread once its slug is known. */
-  attachSlug(slug: string): void {
-    this._fields.slug = slug;
   }
 
   /** Headers that carry this trace to another service. */

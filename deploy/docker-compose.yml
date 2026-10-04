@@ -1,0 +1,28 @@
+# Lunna on the Raspberry Pi.
+#
+# This file and an .env next to it are all that live on the Pi, in
+# /opt/lunna. Both images come from GHCR; a deploy copies this file over,
+# pulls, and restarts. See SETUP.md.
+services:
+  lunna-backend:
+    image: ghcr.io/${LUNNA_OWNER:-pietroid}/lunna-backend:${LUNNA_TAG:-latest}
+    container_name: lunna-backend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      # The day is drawn in each person's own zone, read from their account.
+      # This only sets the clock the container logs in.
+      TZ: ${LUNNA_TIMEZONE:-America/Sao_Paulo}
+    env_file:
+      - .env
+
+  lunna-web:
+    image: ghcr.io/${LUNNA_OWNER:-pietroid}/lunna-web:${LUNNA_TAG:-latest}
+    container_name: lunna-web
+    restart: unless-stopped
+    # Cloudflare Tunnel points the public hostname at this port.
+    ports:
+      - "${LUNNA_HTTP_PORT:-8080}:80"
+    depends_on:
+      - lunna-backend

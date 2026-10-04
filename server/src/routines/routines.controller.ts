@@ -9,17 +9,15 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import * as adminAuth from 'firebase-admin/auth';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
+import { AuthUser } from '../auth/auth.tokens';
+import { SessionGuard } from '../auth/session.guard';
 import { CalendarUser, routineDaysOf } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
 import { RoutineDto } from './dto/routine.dto';
 import { Routine, RoutineRequest } from './entities/routine.entity';
 import { parseTime } from './routine-dates';
 import { RoutinesService } from './routines.service';
-
-type DecodedIdToken = adminAuth.DecodedIdToken;
 
 /** The longest a routine may be: the whole working day. */
 const MAX_ROUTINE_MINUTES = 15 * 60;
@@ -31,18 +29,18 @@ const MAX_ROUTINE_MINUTES = 15 * 60;
  * day and a routine moved at noon can change what the afternoon looks like.
  */
 @Controller('routines')
-@UseGuards(FirebaseAuthGuard)
+@UseGuards(SessionGuard)
 export class RoutinesController {
   constructor(private readonly routines: RoutinesService) {}
 
   @Get()
-  async findAll(@CurrentUser() user: DecodedIdToken): Promise<Routine[]> {
-    return this.routines.list(owner(user), Trace.start(user.uid));
+  async findAll(@CurrentUser() user: AuthUser): Promise<Routine[]> {
+    return this.routines.list(owner(user));
   }
 
   @Post()
   async create(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Body() dto: RoutineDto,
   ): Promise<Routine[]> {
     const request = readRoutine(dto);
@@ -65,13 +63,13 @@ export class RoutinesController {
         durationMinutes: request.durationMinutes,
         days: request.days,
       },
-      Trace.start(user.uid),
+      Trace.start(user.id),
     );
   }
 
   @Patch(':id')
   async update(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: RoutineDto,
   ): Promise<Routine[]> {
@@ -79,22 +77,22 @@ export class RoutinesController {
       owner(user),
       id,
       readRoutine(dto),
-      Trace.start(user.uid, id),
+      Trace.start(user.id, id),
     );
   }
 
   @Delete(':id')
   async remove(
-    @CurrentUser() user: DecodedIdToken,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<Routine[]> {
-    return this.routines.remove(owner(user), id, Trace.start(user.uid, id));
+    return this.routines.remove(owner(user), id, Trace.start(user.id, id));
   }
 }
 
-function owner(user: DecodedIdToken): CalendarUser {
+function owner(user: AuthUser): CalendarUser {
   const name = typeof user.name === 'string' ? user.name : undefined;
-  return { id: user.uid, email: user.email, name };
+  return { id: user.id, email: user.email, name };
 }
 
 /** Reads what the menu sent, refusing anything unusable. */
