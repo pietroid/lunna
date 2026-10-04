@@ -1,5 +1,10 @@
 # Time system
 
+> Written for Focus, when the calendar was Google's and blocks could be
+> "threads". Kept for the reasoning behind the sections and the guards. The
+> rules as they stand now, with an in-house calendar, are in
+> [AGENTS.md](../../AGENTS.md#the-time-system).
+
 Now that we have three timely sections, we need to be consistent with the time system.
 
 Let's describe the sections first.
