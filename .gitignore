@@ -136,3 +136,6 @@ server/.nyc_output/
 server/.pglite/
 
 .secrets
+# Xcode project backups
+**/*.pbxproj.backup*
+**/*.pbxproj.latestbackup
