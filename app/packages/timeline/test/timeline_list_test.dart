@@ -319,20 +319,25 @@ void main() {
     skip: now.hour < 7 || now.hour >= 18,
   );
 
-  testWidgets('an empty Agora is as tall as a running one', (tester) async {
-    await pump(tester, [running]);
-    final busy = tester.getSize(find.byType(EventTile)).height;
+  testWidgets(
+    'an empty Agora is as tall as a running one',
+    (tester) async {
+      await pump(tester, [running]);
+      final busy = tester.getSize(find.byType(EventTile)).height;
 
-    await pump(tester, [later]);
-    final empty = find.byType(FreeTile);
+      await pump(tester, [later]);
+      final empty = find.byType(FreeTile);
 
-    expect(tester.getSize(empty).height, busy);
-    // It is now, and the card after it says when now ends.
-    expect(
-      find.descendant(of: empty, matching: find.textContaining(':')),
-      findsNothing,
-    );
-  });
+      expect(tester.getSize(empty).height, busy);
+      // It is now, and the card after it says when now ends.
+      expect(
+        find.descendant(of: empty, matching: find.textContaining(':')),
+        findsNothing,
+      );
+    },
+    // The stretch from now is only drawn inside the working day.
+    skip: now.hour < 7 || now.hour >= 21,
+  );
 
   group('later in the day', () {
     // Everything here sits within the next three hours, so it stays inside

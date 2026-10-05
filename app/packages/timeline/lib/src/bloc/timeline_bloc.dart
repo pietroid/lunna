@@ -148,7 +148,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
       state.copyWith(
         cards: [
           for (final it in state.cards)
-            it.id == event.id ? it.copyWith(awaitingStart: false) : it,
+            if (it.id == event.id) it.copyWith(awaitingStart: false) else it,
         ],
       ),
     );
@@ -276,7 +276,8 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           ? _repository.resumeEvent(event.id)
           : _repository.pauseEvent(event.id),
       drawn: [
-        for (final it in state.cards) it.id == event.id ? toggled : it,
+        for (final it in state.cards)
+          if (it.id == event.id) toggled else it,
       ],
     );
   }

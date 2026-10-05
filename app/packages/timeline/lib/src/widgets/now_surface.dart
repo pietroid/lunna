@@ -69,7 +69,8 @@ class _NowSurfaceState extends State<NowSurface>
     if (widget.paused) {
       _controller.stop();
     } else {
-      unawaited(_controller.repeat());
+      // A repeating ticker's future never completes; nothing to wait for.
+      _controller.repeat().ignore();
     }
   }
 

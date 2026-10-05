@@ -2,7 +2,7 @@ import 'package:app_ui/app_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 
-final l10n = lookupAppLocalizations(const Locale('pt'));
+final AppLocalizations l10n = lookupAppLocalizations(const Locale('pt'));
 
 void main() {
   group('dayLabel', () {

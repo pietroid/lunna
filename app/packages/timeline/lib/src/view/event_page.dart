@@ -229,9 +229,9 @@ class _Summary extends StatelessWidget {
       // to the top of the day; the server tells the two apart.
       onStarted: () => bloc.add(EventStarted(card.id)),
       onAdjusted: (minutes) => unawaited(adjustTime(context, card, minutes)),
-      onDone: () {
+      onDone: () async {
         bloc.add(EventFinished(card.id));
-        unawaited(Navigator.of(context).maybePop());
+        await Navigator.of(context).maybePop();
       },
     );
   }

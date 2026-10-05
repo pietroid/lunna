@@ -131,7 +131,7 @@ class DemoTimelineRepository implements TimelineRepository {
   Future<TimelineOutcome> startEvent(String id) async => TimelineOutcome(
     cards: _cards = [
       for (final card in _cards)
-        card.id == id ? card.copyWith(awaitingStart: false) : card,
+        if (card.id == id) card.copyWith(awaitingStart: false) else card,
     ],
   );
 
@@ -148,13 +148,13 @@ class DemoTimelineRepository implements TimelineRepository {
   @override
   Future<List<TimelineEvent>> pauseEvent(String id) async => _cards = [
     for (final card in _cards)
-      card.id == id ? card.copyWith(pausedAt: DateTime.now()) : card,
+      if (card.id == id) card.copyWith(pausedAt: DateTime.now()) else card,
   ];
 
   @override
   Future<List<TimelineEvent>> resumeEvent(String id) async => _cards = [
     for (final card in _cards)
-      card.id == id ? card.copyWith(clearPause: true) : card,
+      if (card.id == id) card.copyWith(clearPause: true) else card,
   ];
 
   @override
