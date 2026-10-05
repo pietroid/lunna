@@ -32,9 +32,10 @@ Then:
 - `server/.env*`: `GOOGLE_CLIENT_IDS` is the web client first, then the
   iOS client(s), comma separated. `GOOGLE_CLIENT_SECRET` is the web client's.
 - `app/env/*.json`: `GOOGLE_WEB_CLIENT_ID` and `GOOGLE_IOS_CLIENT_ID`.
-- `app/ios/Flutter/GoogleSignIn.xcconfig`: the iOS client ID reversed
+- `app/ios/Flutter/GoogleSignIn.xcconfig`: each iOS client ID reversed
   (`com.googleusercontent.apps.<id>`), which is the URL scheme Google
-  returns to.
+  returns to. The plain line is production's; the `[config=*-dev]` line is
+  the dev flavor's.
 
 ## 3. Local development
 
