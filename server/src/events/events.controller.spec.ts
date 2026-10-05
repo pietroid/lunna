@@ -41,15 +41,14 @@ class StubSessionGuard implements CanActivate {
  * see it in "agora" fail for a reason that has nothing to do with the code
  * they are covering.
  *
- * Ten in the morning, with the rest of the day ahead of it. The zone is set
- * before anything reads a clock, so `systemZone`, the local `Date` methods
- * the tests do their arithmetic with and the hours the routes come back with
- * are all the same zone on every machine.
+ * Ten in the morning, with the rest of the day ahead of it. The zone is
+ * pinned for the whole run by `jest.global-setup.js` (a test file cannot set
+ * `TZ` itself), so `systemZone`, the local `Date` methods the tests do their
+ * arithmetic with and the hours the routes come back with are all the same
+ * zone on every machine.
  */
 const ZONE = 'America/Sao_Paulo';
 const NOW = new Date('2026-03-10T13:00:00Z');
-
-process.env.TZ = ZONE;
 
 /**
  * Only `Date` is frozen.
