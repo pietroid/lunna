@@ -8,9 +8,13 @@ services:
     image: ghcr.io/${LUNNA_OWNER:-pietroid}/lunna-backend:${LUNNA_TAG:-latest}
     container_name: lunna-backend
     restart: unless-stopped
-    expose:
-      - "3000"
+    # Listens on 3004 so it never meets the Pi's other services on 3000-3003.
+    # Published on loopback only, for checking it from the Pi itself;
+    # everything else reaches it through lunna-web.
+    ports:
+      - "127.0.0.1:3004:3004"
     environment:
+      PORT: "3004"
       # The day is drawn in each person's own zone, read from their account.
       # This only sets the clock the container logs in.
       TZ: ${LUNNA_TIMEZONE:-America/Sao_Paulo}

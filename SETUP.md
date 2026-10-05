@@ -69,7 +69,8 @@ points the server at it.
 
 The Pi runs two containers from GHCR:
 
-- `lunna-backend`: the API on the internal network;
+- `lunna-backend`: the API, on port 3004 (published on the Pi's loopback
+  only, so `curl localhost:3004/api` works there and nothing outside sees it);
 - `lunna-web`: nginx serving the Flutter web build and proxying `/api`.
 
 It holds only two files, in `/opt/lunna`:
@@ -92,7 +93,9 @@ chmod 600 /opt/lunna/.env
 be able to run `docker` without `sudo` (`sudo usermod -aG docker $USER`).
 
 `LUNNA_HTTP_PORT` (default `8080`) is the port `lunna-web` listens on.
-Pick one nothing else on the Pi uses (Focus's nginx already holds 80).
+Pick one nothing else on the Pi uses (Focus's nginx already holds 80, and
+other services hold 3000 to 3003). Do not set `PORT` in this `.env`: the
+compose file pins the backend to 3004.
 
 ### Cloudflare Tunnel
 
