@@ -128,7 +128,7 @@ jobs:
           }
           EOF
           flutter pub get
-          flutter build web --release --dart-define-from-file env/production.json
+          flutter build web --release --pwa-strategy=none --dart-define-from-file env/production.json
 
       - uses: docker/login-action@v3
         with:

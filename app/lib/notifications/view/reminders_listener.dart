@@ -108,7 +108,7 @@ class _RemindersListenerState extends State<RemindersListener>
   /// Asks about the block in Agora still waiting to be begun, if there is
   /// one.
   void _askIfWaiting(TimelineState day) {
-    final waiting = day.cards
+    final waiting = day.tasks
         .where(
           (card) => card.section == TimelineSection.agora && card.awaitingStart,
         )

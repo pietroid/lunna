@@ -297,6 +297,23 @@ class AppLocalizationsPt extends AppLocalizations {
   String get sectionTomorrow => 'Amanhã';
 
   @override
+  String sectionDay(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('EEEE, d \'de\' MMMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString';
+  }
+
+  @override
+  String get timelineModeList => 'Lista';
+
+  @override
+  String get timelineModeCalendar => 'Calendário';
+
+  @override
+  String get tasksEmpty => 'Nenhuma tarefa. Toque no + para anotar algo.';
+
+  @override
   String get routineDaily => 'Todo dia';
 
   @override

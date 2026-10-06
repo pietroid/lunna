@@ -1,50 +1,79 @@
 import 'package:equatable/equatable.dart';
 
-/// Which stretch of the clock a card falls in.
+/// Which heading a card falls under.
 ///
 /// A section is not a place anything is put. It is what the card's own hour
 /// works out to when the list is read, on the server, so a heading is always
-/// literally true of everything under it. There are three today and they are
-/// meant to become one per day.
+/// literally true of everything under it. What is running is Agora; the rest
+/// is under the day it falls on, [TimelineEvent.day], as far ahead as the
+/// screen was scrolled.
 enum TimelineSection {
   /// Running, or overdue and still owed.
   agora('agora'),
 
-  /// Later today.
-  hoje('hoje'),
-
-  /// The next day.
-  amanha('amanha');
+  /// Later, under its day.
+  dia('dia');
 
   const TimelineSection(this.wire);
 
   /// The name the API uses.
   final String wire;
 
-  /// The section [wire] names, defaulting to today.
+  /// The section [wire] names, defaulting to a day.
   static TimelineSection fromWire(String? wire) {
     return TimelineSection.values.firstWhere(
       (section) => section.wire == wire,
-      orElse: () => TimelineSection.hoje,
+      orElse: () => TimelineSection.dia,
+    );
+  }
+}
+
+/// What a card is.
+enum CardKind {
+  /// Something to do, with a place in the queue and an hour the queue gives
+  /// it. The only kind the list shows.
+  task('task', 'tasks'),
+
+  /// A block whose hour is the point of it: a fixed block, a day of a
+  /// routine, a meeting.
+  event('event', 'events');
+
+  const CardKind(this.wire, this.path);
+
+  /// The name the API uses.
+  final String wire;
+
+  /// Where the API keeps this kind: `/tasks` or `/events`.
+  final String path;
+
+  /// The kind [wire] names, defaulting to an event.
+  static CardKind fromWire(String? wire) {
+    return CardKind.values.firstWhere(
+      (kind) => kind.wire == wire,
+      orElse: () => CardKind.event,
     );
   }
 }
 
 /// {@template timeline_event}
-/// One card on the timeline: a block of time on the calendar.
+/// One card: a task, or an event on the calendar.
 ///
-/// Every card is an event, because every hour of the day is one. What the
-/// user wants to remember about it goes in [notes].
+/// A task has the hour the queue gives it, and keeps it once it is begun.
+/// An event has the hour that is the point of it. What the user wants to
+/// remember about either goes in [notes].
 /// {@endtemplate}
 class TimelineEvent extends Equatable {
   /// {@macro timeline_event}
-  const TimelineEvent({
+  TimelineEvent({
     required this.id,
     required this.title,
     required this.section,
     required this.startTime,
     required this.endTime,
     required this.durationMinutes,
+    this.kind = CardKind.task,
+    DateTime? day,
+    this.started = false,
     this.fixed = false,
     this.managed = true,
     this.notes = '',
@@ -55,7 +84,8 @@ class TimelineEvent extends Equatable {
     this.awaitingStart = false,
     this.notBefore,
     this.routine,
-  }) : workMinutes = workMinutes ?? durationMinutes;
+  }) : workMinutes = workMinutes ?? durationMinutes,
+       day = day ?? DateTime(startTime.year, startTime.month, startTime.day);
 
   /// Creates a [TimelineEvent] from the API's JSON.
   factory TimelineEvent.fromJson(Map<String, dynamic> json) {
@@ -63,6 +93,9 @@ class TimelineEvent extends Equatable {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       section: TimelineSection.fromWire(json['section'] as String?),
+      kind: CardKind.fromWire(json['kind'] as String?),
+      day: _day(json['day']),
+      started: json['started'] as bool? ?? false,
       startTime: _date(json['startTime']),
       endTime: _date(json['endTime']),
       durationMinutes: json['durationMinutes'] as int? ?? 0,
@@ -85,8 +118,19 @@ class TimelineEvent extends Equatable {
   /// What the block is called.
   final String title;
 
-  /// The stretch of clock it falls in.
+  /// The heading it falls under.
   final TimelineSection section;
+
+  /// Whether it is a task or an event.
+  final CardKind kind;
+
+  /// The day it starts on, at midnight, which is the heading it is drawn
+  /// under when it is not running.
+  final DateTime day;
+
+  /// Whether it is a task the user began. A begun task has its own hour on
+  /// the calendar, and is the one that pauses, runs late and finishes.
+  final bool started;
 
   /// When it starts.
   final DateTime startTime;
@@ -142,6 +186,9 @@ class TimelineEvent extends Equatable {
   /// `weekdays` or `weekend`.
   final String? routine;
 
+  /// Whether it is something to do, rather than an hour on the calendar.
+  bool get isTask => kind == CardKind.task;
+
   /// Whether it is one day of a routine.
   ///
   /// The routine as a whole changes in the menu. This card is one day of it,
@@ -153,10 +200,9 @@ class TimelineEvent extends Equatable {
   /// A meeting is somebody else's hour, so it is never moved from here.
   bool get isInteractive => managed;
 
-  /// Whether its hour is the point of it: a fixed block or a day of a
-  /// routine. Moving one names a new hour for it rather than a new place in
-  /// the queue.
-  bool get isAnchored => fixed || isRoutine;
+  /// Whether its hour is the point of it: any event. Moving one names a new
+  /// hour for it rather than a new place in the queue, which only tasks have.
+  bool get isAnchored => !isTask;
 
   /// Whether it is paused.
   bool get isPaused => pausedAt != null;
@@ -200,6 +246,9 @@ class TimelineEvent extends Equatable {
       id: id,
       title: title,
       section: section,
+      kind: kind,
+      day: day,
+      started: started,
       startTime: startTime,
       endTime: endTime,
       durationMinutes: durationMinutes,
@@ -221,6 +270,9 @@ class TimelineEvent extends Equatable {
     id,
     title,
     section,
+    kind,
+    day,
+    started,
     startTime,
     endTime,
     durationMinutes,
@@ -245,6 +297,14 @@ DateTime? _maybeDate(Object? value) {
   return DateTime.tryParse(value as String? ?? '')?.toLocal();
 }
 
+/// "2026-10-08" as that day at midnight, or null when there is none.
+DateTime? _day(Object? value) {
+  final parsed = DateTime.tryParse(value as String? ?? '');
+  return parsed == null
+      ? null
+      : DateTime(parsed.year, parsed.month, parsed.day);
+}
+
 /// What the user decided about the block that was already running.
 enum TimingDecision {
   /// Finish it and give its hour away.
@@ -260,16 +320,16 @@ enum TimingDecision {
 }
 
 /// {@template start_now_guard}
-/// The one question the timeline asks: something else is running, and a card
+/// The one question the timeline asks: something else is running, and a task
 /// was just dropped at the top of the day.
 ///
-/// Both answers start the dropped card now. They differ in what becomes of
+/// Both answers start the dropped task now. They differ in what becomes of
 /// [currentTitle]: finished, or further down the day.
 /// {@endtemplate}
 class StartNowGuard extends Equatable {
   /// {@macro start_now_guard}
   const StartNowGuard({
-    required this.eventId,
+    required this.taskId,
     required this.index,
     required this.currentId,
     required this.currentTitle,
@@ -282,7 +342,7 @@ class StartNowGuard extends Equatable {
     final current = json['current'] as Map<String, dynamic>? ?? const {};
 
     return StartNowGuard(
-      eventId: json['eventId'] as String? ?? '',
+      taskId: json['taskId'] as String? ?? '',
       index: json['index'] as int? ?? 0,
       currentId: current['id'] as String? ?? '',
       currentTitle: current['title'] as String? ?? '',
@@ -291,8 +351,8 @@ class StartNowGuard extends Equatable {
     );
   }
 
-  /// The card that was dropped.
-  final String eventId;
+  /// The task that was dropped.
+  final String taskId;
 
   /// Where it was dropped.
   final int index;
@@ -311,14 +371,14 @@ class StartNowGuard extends Equatable {
 
   /// The answer to send for [decision].
   Map<String, dynamic> answer(TimingDecision decision) => {
-    'eventId': eventId,
+    'taskId': taskId,
     'index': index,
     'decision': decision.wire,
   };
 
   @override
   List<Object?> get props => [
-    eventId,
+    taskId,
     index,
     currentId,
     currentTitle,
@@ -327,35 +387,45 @@ class StartNowGuard extends Equatable {
   ];
 }
 
-/// {@template timeline_outcome}
-/// What a move produced: the timeline, and the question still in the way.
+/// {@template timeline}
+/// The day, as the server drew it: the list and the calendar, from one read.
 ///
-/// A guard means nothing was applied. The cards that come back are the ones
-/// that were already on screen, and they become real only once the guard has
-/// been answered or dropped.
+/// Every write answers with one of these, so the two views are always the
+/// same moment. A guard means nothing was applied: the cards that come back
+/// are the ones that were already on screen, and they become real only once
+/// the guard has been answered or dropped.
 /// {@endtemplate}
-class TimelineOutcome extends Equatable {
-  /// {@macro timeline_outcome}
-  const TimelineOutcome({required this.cards, this.guard});
+class Timeline extends Equatable {
+  /// {@macro timeline}
+  const Timeline({this.tasks = const [], this.cards = const [], this.guard});
 
-  /// Creates a [TimelineOutcome] from the API's JSON.
-  factory TimelineOutcome.fromJson(Map<String, dynamic> json) {
+  /// Creates a [Timeline] from the API's JSON.
+  factory Timeline.fromJson(Map<String, dynamic> json) {
     final rawGuard = json['guard'] as Map<String, dynamic>?;
 
-    return TimelineOutcome(
-      cards: (json['cards'] as List<dynamic>? ?? <dynamic>[])
-          .map((c) => TimelineEvent.fromJson(c as Map<String, dynamic>))
-          .toList(),
+    return Timeline(
+      tasks: _cards(json['tasks']),
+      cards: _cards(json['cards']),
       guard: rawGuard == null ? null : StartNowGuard.fromJson(rawGuard),
     );
   }
 
-  /// Every card the timeline should draw.
+  /// Every task still to do, in queue order, however far ahead it lands.
+  final List<TimelineEvent> tasks;
+
+  /// Everything the calendar draws for the days that were asked for,
+  /// earliest first.
   final List<TimelineEvent> cards;
 
-  /// The question to put to the user, when the move raised one.
+  /// The question to put to the user, when a move raised one.
   final StartNowGuard? guard;
 
+  static List<TimelineEvent> _cards(Object? raw) {
+    return (raw as List<dynamic>? ?? <dynamic>[])
+        .map((c) => TimelineEvent.fromJson(c as Map<String, dynamic>))
+        .toList();
+  }
+
   @override
-  List<Object?> get props => [cards, guard];
+  List<Object?> get props => [tasks, cards, guard];
 }

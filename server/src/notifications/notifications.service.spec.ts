@@ -1,5 +1,7 @@
-import { CalendarService } from '../calendar/calendar.service';
 import { CalendarEvent } from '../calendar/calendar.types';
+import { Day, TimelineService } from '../events/timeline.service';
+import { Task } from '../tasks/task.types';
+import { Interval } from '../time/work-hours';
 import { NotificationItem } from './dto/notification-plan.dto';
 import { EVENING_MESSAGES, MORNING_MESSAGES } from './notification-copy';
 import { NotificationsService } from './notifications.service';
@@ -10,14 +12,32 @@ const USER = { id: 'test-user' };
 /** 12:04 in São Paulo on 21/09/2026. */
 const NOW = new Date('2026-09-21T15:04:00.000Z');
 
-/** A calendar that holds exactly [events], kept in São Paulo. */
-function serviceWith(events: CalendarEvent[]): NotificationsService {
-  const calendar = {
-    between: () => Promise.resolve(events),
-    zone: () => SAO_PAULO,
-  } as unknown as CalendarService;
+/** A task in the queue, and the hour the queue gives it. */
+interface Queued {
+  task: Task;
+  slot: Interval;
+}
 
-  return new NotificationsService(calendar);
+/** A day that holds exactly [events] and [queue], kept in São Paulo. */
+function serviceWith(
+  events: CalendarEvent[],
+  queue: Queued[] = [],
+): NotificationsService {
+  const day: Day = {
+    now: NOW,
+    zone: SAO_PAULO,
+    until: new Date(NOW.getTime() + 86_400_000),
+    events,
+    tasks: queue.map((it) => it.task),
+    live: new Map(),
+    placed: new Map(queue.map((it) => [it.task.id, it.slot])),
+  };
+  const timeline = {
+    day: () => Promise.resolve(day),
+    zone: () => SAO_PAULO,
+  } as unknown as TimelineService;
+
+  return new NotificationsService(timeline);
 }
 
 function block(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -28,64 +48,127 @@ function block(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     startTime: '2026-09-21T17:00:00.000Z',
     endTime: '2026-09-21T18:00:00.000Z',
     managed: true,
-    fixed: false,
+    fixed: true,
     notes: '',
     ...overrides,
+  };
+}
+
+/** A task the queue puts at [start], 14:00 in São Paulo unless told. */
+function queued(
+  id: string,
+  overrides: Partial<Task> = {},
+  start = '2026-09-21T17:00:00.000Z',
+): Queued {
+  const from = new Date(start);
+  const minutes = overrides.minutes ?? 30;
+
+  return {
+    task: {
+      id,
+      title: 'Escrever relatório',
+      notes: '',
+      minutes,
+      position: 0,
+      ...overrides,
+    },
+    slot: { start: from, end: new Date(from.getTime() + minutes * 60_000) },
   };
 }
 
 async function itemsFor(
   events: CalendarEvent[],
   horizonDays = 1,
+  queue: Queued[] = [],
 ): Promise<NotificationItem[]> {
-  return (await serviceWith(events).plan(USER, horizonDays, NOW)).items;
+  return (await serviceWith(events, queue).plan(USER, horizonDays, NOW)).items;
 }
 
 function ofKind(items: NotificationItem[], kind: string): NotificationItem[] {
   return items.filter((item) => item.kind === kind);
 }
 
-describe('a block', () => {
-  it('that is flexible asks to be begun at its start', async () => {
-    const items = await itemsFor([block()]);
+describe('the next task', () => {
+  it('asks to be begun at the hour the queue gives it', async () => {
+    const items = await itemsFor([], 1, [queued('t1')]);
     const [asking] = ofKind(items, 'confirmStart');
 
-    expect(ofKind(items, 'starting')).toHaveLength(0);
     expect(asking).toMatchObject({
       fireAt: '2026-09-21T14:00:00-03:00',
-      title: 'Revisão de código',
+      title: 'Escrever relatório',
       body: 'Está na hora. Começamos?',
       timeSensitive: true,
-      eventId: 'evt-1',
+      eventId: 't1',
     });
   });
 
-  it('that a routine repeats is announced, not asked about', async () => {
-    const items = await itemsFor([block({ fixed: true, routine: 'daily' })]);
+  it('is the only task asked about', async () => {
+    const items = await itemsFor([], 1, [
+      queued('t1'),
+      queued('t2', {}, '2026-09-21T17:35:00.000Z'),
+    ]);
 
-    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
-    expect(ofKind(items, 'starting')).toHaveLength(1);
+    expect(ofKind(items, 'confirmStart').map((item) => item.eventId)).toEqual([
+      't1',
+    ]);
   });
 
-  it('that was already begun is not asked about again', async () => {
-    const items = await itemsFor([block({ started: true })]);
+  it('is not asked about once its hour has come', async () => {
+    const items = await itemsFor([], 1, [
+      queued('t1', {}, '2026-09-21T15:04:00.000Z'),
+    ]);
 
     expect(ofKind(items, 'confirmStart')).toHaveLength(0);
   });
 
-  it('that is fixed is announced at its start, with its end', async () => {
-    const [starting] = ofKind(
-      await itemsFor([block({ fixed: true })]),
-      'starting',
+  it('gets a new id when the queue moves it', async () => {
+    const [before] = ofKind(
+      await itemsFor([], 1, [queued('t1')]),
+      'confirmStart',
+    );
+    const [after] = ofKind(
+      await itemsFor([], 1, [queued('t1', {}, '2026-09-21T17:30:00.000Z')]),
+      'confirmStart',
     );
 
+    expect(after.id).not.toBe(before.id);
+  });
+
+  it('gets a new id when it is renamed', async () => {
+    const [before] = ofKind(
+      await itemsFor([], 1, [queued('t1')]),
+      'confirmStart',
+    );
+    const [after] = ofKind(
+      await itemsFor([], 1, [queued('t1', { title: 'Outra coisa' })]),
+      'confirmStart',
+    );
+
+    expect(after.id).not.toBe(before.id);
+  });
+});
+
+describe('a block', () => {
+  it('that is fixed is announced at its start, with its end', async () => {
+    const items = await itemsFor([block()]);
+    const [starting] = ofKind(items, 'starting');
+
+    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
     expect(starting).toMatchObject({
       kind: 'starting',
       fireAt: '2026-09-21T14:00:00-03:00',
       title: 'Revisão de código',
       body: 'Começa agora, até 15:00',
       timeSensitive: true,
+      eventId: 'evt-1',
     });
+  });
+
+  it('that a routine repeats is announced, not asked about', async () => {
+    const items = await itemsFor([block({ routine: 'daily' })]);
+
+    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
+    expect(ofKind(items, 'starting')).toHaveLength(1);
   });
 
   it('is announced ten minutes before its end', async () => {
@@ -102,7 +185,7 @@ describe('a block', () => {
     const short = block({ endTime: '2026-09-21T17:19:00.000Z' });
     const items = await itemsFor([short]);
 
-    expect(ofKind(items, 'confirmStart')).toHaveLength(1);
+    expect(ofKind(items, 'starting')).toHaveLength(1);
     expect(ofKind(items, 'almostFinishing')).toHaveLength(0);
   });
 
@@ -112,33 +195,30 @@ describe('a block', () => {
     expect(ofKind(await itemsFor([edge]), 'almostFinishing')).toHaveLength(1);
   });
 
-  it('carries its block, so a tap can open it', async () => {
-    const items = await itemsFor([block()]);
-
-    expect(ofKind(items, 'confirmStart')[0].eventId).toBe('evt-1');
-  });
-
   it('that Lunna did not book gets nothing', async () => {
     const meeting = block({ managed: false });
     const items = await itemsFor([meeting]);
 
     expect(ofKind(items, 'starting')).toHaveLength(0);
-    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
     expect(ofKind(items, 'almostFinishing')).toHaveLength(0);
   });
 
-  it('already running keeps only what is still ahead', async () => {
-    // 11:30 to 13:00: started, not finished.
+  it('that is a begun task opens the task when tapped', async () => {
+    // 11:30 to 13:00: begun, not finished.
     const running = block({
+      fixed: false,
+      started: true,
+      taskId: 't1',
       startTime: '2026-09-21T14:30:00.000Z',
       endTime: '2026-09-21T16:00:00.000Z',
     });
     const items = await itemsFor([running]);
 
-    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
-    expect(ofKind(items, 'almostFinishing')[0].fireAt).toBe(
-      '2026-09-21T12:50:00-03:00',
-    );
+    expect(ofKind(items, 'starting')).toHaveLength(0);
+    expect(ofKind(items, 'almostFinishing')[0]).toMatchObject({
+      fireAt: '2026-09-21T12:50:00-03:00',
+      eventId: 't1',
+    });
   });
 
   it('that is paused gets no reminder before an end that keeps moving', async () => {
@@ -162,7 +242,7 @@ describe('reminder ids', () => {
   });
 
   it('change when the block moves', async () => {
-    const [before] = ofKind(await itemsFor([block()]), 'confirmStart');
+    const [before] = ofKind(await itemsFor([block()]), 'starting');
     const [after] = ofKind(
       await itemsFor([
         block({
@@ -170,17 +250,17 @@ describe('reminder ids', () => {
           endTime: '2026-09-21T18:30:00.000Z',
         }),
       ]),
-      'confirmStart',
+      'starting',
     );
 
     expect(after.id).not.toBe(before.id);
   });
 
   it('change when the block is renamed', async () => {
-    const [before] = ofKind(await itemsFor([block()]), 'confirmStart');
+    const [before] = ofKind(await itemsFor([block()]), 'starting');
     const [after] = ofKind(
       await itemsFor([block({ title: 'Outra coisa' })]),
-      'confirmStart',
+      'starting',
     );
 
     expect(after.id).not.toBe(before.id);

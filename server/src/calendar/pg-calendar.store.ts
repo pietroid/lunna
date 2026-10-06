@@ -77,6 +77,8 @@ export class PgCalendarStore extends CalendarStore {
         fixed: input.fixed,
         managed: input.managed ?? true,
         notBefore: dateOf(input.notBefore),
+        taskId: input.taskId ?? null,
+        started: input.started === true,
       })
       .returning();
 
@@ -261,6 +263,7 @@ function toEvent(row: EventRow, days: string | null): CalendarEvent {
     ...(row.notBefore === null
       ? {}
       : { notBefore: row.notBefore.toISOString() }),
+    ...(row.taskId === null ? {} : { taskId: row.taskId }),
     ...(row.routineId === null ? {} : { routineId: row.routineId }),
     ...(routineDays === undefined ? {} : { routine: routineDays }),
   };

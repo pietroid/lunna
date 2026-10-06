@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/src/bloc/timeline_bloc.dart';
+import 'package:timeline/src/bloc/timeline_mode_cubit.dart';
 import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
@@ -33,15 +34,19 @@ typedef _Span = ({DateTime start, DateTime end});
 /// heading it is drawn under.
 typedef _Entry = ({TimelineEvent? card, _Room? room});
 
+/// The heading a row is drawn under: null for Agora, otherwise the day, at
+/// midnight.
+typedef _Heading = DateTime?;
+
 /// A free stretch as it is drawn, under one heading.
 ///
 /// The room from now until the next block is drawn twice: as the break under
 /// Agora, and as the empty room that opens Ainda hoje. Both are the same
 /// stretch and the same place to drop.
-typedef _Room = ({FreeSlot slot, TimelineSection section});
+typedef _Room = ({FreeSlot slot, _Heading heading});
 
 /// Which drawn stretch a row is: where it starts, and under which heading.
-typedef _Row = (DateTime, TimelineSection);
+typedef _Row = (DateTime, _Heading);
 
 /// A solved card on its way off the screen, frozen as it was let go.
 typedef _Flying = ({
@@ -52,7 +57,14 @@ typedef _Flying = ({
 });
 
 /// {@template timeline_list}
-/// The day: one list in clock order, cut into sections by the clock.
+/// The day: one list in clock order, cut into days by the clock.
+///
+/// Drawn one of two ways, [mode]. The calendar is everything, events and
+/// tasks, as tall as its time, a day after another for as far as it is
+/// scrolled: reaching the end of it asks for another week. The list is the
+/// tasks alone, each as tall as it needs, in the order they are to be done,
+/// under the day the queue puts them on. Both are the same queue: a task
+/// dragged in one has moved in the other.
 ///
 /// The headings are not containers. Every card has an hour, the hour says
 /// which heading it falls under, and a drop is a place in the one list
@@ -98,7 +110,15 @@ typedef _Flying = ({
 /// {@endtemplate}
 class TimelineList extends StatefulWidget {
   /// {@macro timeline_list}
-  const TimelineList({required this.onCardTap, this.onFreeTap, super.key});
+  const TimelineList({
+    required this.onCardTap,
+    this.onFreeTap,
+    this.mode = TimelineMode.calendar,
+    super.key,
+  });
+
+  /// How the day is drawn.
+  final TimelineMode mode;
 
   /// Called with the block whose card was tapped.
   ///
@@ -197,8 +217,28 @@ class _TimelineListState extends State<TimelineList> {
 
   TimelineState get _state => context.read<TimelineBloc>().state;
 
-  /// The whole timeline, in the order it is drawn.
-  List<TimelineEvent> get _cards => _state.cards;
+  bool get _isList => widget.mode == TimelineMode.list;
+
+  /// Everything drawn, in the order it is drawn: the tasks alone in the
+  /// list, everything in the calendar.
+  List<TimelineEvent> get _cards => _isList ? _state.tasks : _state.cards;
+
+  /// Where [id] sits in what is drawn, or -1.
+  int _indexOf(String id) => _cards.indexWhere((card) => card.id == id);
+
+  /// Where a drop at [index] in what is drawn lands in the list of tasks,
+  /// which is the only order the server keeps. The list is that list; the
+  /// calendar counts the tasks above the drop and skips the events, because
+  /// those have hours of their own rather than places.
+  int _taskIndex(String id, int index) {
+    if (_isList) return index;
+
+    return _cards
+        .where((card) => card.id != id)
+        .take(index)
+        .where((card) => card.isTask)
+        .length;
+  }
 
   /// How far the card in the air has come towards being finished, 0 to 1.
   ///
@@ -269,7 +309,7 @@ class _TimelineListState extends State<TimelineList> {
     // The stretches are priced with the card lifted out, because that is the
     // day the drop lands in: a card that sat right beside a gap makes the gap
     // bigger by leaving it.
-    final lifted = TimelinePlan.freeSlots(rest);
+    final lifted = TimelinePlan.freeSlots(rest, days: _state.days);
     for (final room in _shownRooms) {
       final shown = room.slot;
       final rect = _rectOf(_freeKey(_rowOf(room)));
@@ -301,7 +341,7 @@ class _TimelineListState extends State<TimelineList> {
 
   GlobalKey _freeKey(_Row row) => _freeKeys.putIfAbsent(row, GlobalKey.new);
 
-  static _Row _rowOf(_Room room) => (room.slot.start, room.section);
+  static _Row _rowOf(_Room room) => (room.slot.start, room.heading);
 
   /// The card in the air, when there is one.
   TimelineEvent? get _draggedCard {
@@ -359,7 +399,7 @@ class _TimelineListState extends State<TimelineList> {
         shown != null &&
         area != null &&
         origin != null &&
-        anchor.row?.$2 != TimelineSection.agora) {
+        anchor.row?.$2 != null) {
       final aimed = TimelineScale.timeAt(
         shown,
         origin.top + _travel.dy - area.top,
@@ -407,7 +447,7 @@ class _TimelineListState extends State<TimelineList> {
 
   void _lift(String id) {
     final rect = _rectOf(_cardKey(id));
-    final origin = _state.indexOf(id);
+    final origin = _indexOf(id);
     if (rect == null || origin == -1) return;
 
     setState(() {
@@ -521,7 +561,11 @@ class _TimelineListState extends State<TimelineList> {
     // so its old place is just its old index.
     if (target == origin) return;
 
-    context.read<TimelineBloc>().add(EventMoved(id: id, index: target));
+    // Let go at the very top of the day is the user saying they are doing
+    // it now.
+    context.read<TimelineBloc>().add(
+      EventMoved(id: id, index: _taskIndex(id, target), start: target == 0),
+    );
   }
 
   /// Takes a block off the day, and throws its card off screen.
@@ -553,20 +597,23 @@ class _TimelineListState extends State<TimelineList> {
   ///
   /// A card that fits goes straight in. One that is longer than the stretch
   /// asks whether to cut it to the room there is, pause included, and a no
-  /// leaves the day exactly as it was. A fixed card let go on the hour it
-  /// already had has not moved.
+  /// leaves the day exactly as it was.
+  ///
+  /// A task goes into the queue where the stretch is, and keeps its start
+  /// as a floor. An event takes the hour it was let go at instead, because
+  /// an hour is all it has; one let go on the hour it already had has not
+  /// moved.
   Future<void> _dropInto(
     TimelineEvent card,
     FreeSlot slot,
     DateTime start,
   ) async {
-    final bloc = context.read<TimelineBloc>();
     final room = slot.end.difference(start).inMinutes;
 
     if (card.isAnchored && start == card.startTime) return;
 
     if (card.durationMinutes <= room) {
-      bloc.add(EventMoved(id: card.id, index: slot.index, after: start));
+      _place(card, slot, start);
       return;
     }
 
@@ -577,15 +624,26 @@ class _TimelineListState extends State<TimelineList> {
     }
 
     if (await confirmShorten(context, card, room)) {
-      bloc.add(
-        EventMoved(
-          id: card.id,
-          index: slot.index,
-          after: start,
-          minutes: room,
-        ),
-      );
+      _place(card, slot, start, room);
     }
+  }
+
+  void _place(
+    TimelineEvent card,
+    FreeSlot slot,
+    DateTime start, [
+    int? minutes,
+  ]) {
+    context.read<TimelineBloc>().add(
+      card.isTask
+          ? EventMoved(
+              id: card.id,
+              index: _taskIndex(card.id, slot.index),
+              after: start,
+              minutes: minutes,
+            )
+          : EventEdited(card.id, startTime: start, workMinutes: minutes),
+    );
   }
 
   /// Asks, and takes the block off the calendar if the answer was yes.
@@ -641,18 +699,21 @@ class _TimelineListState extends State<TimelineList> {
               // under the place the card is aiming at.
               child: AbsorbPointer(
                 absorbing: dragging != null,
-                child: ListView(
-                  physics: dragging == null
-                      ? null
-                      : const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.s6,
-                    0,
-                    AppSpacing.s6,
-                    // Room under the last card so the bar never covers it.
-                    AppSpacing.s16 + AppSpacing.s12,
+                child: NotificationListener<ScrollUpdateNotification>(
+                  onNotification: _onScrolled,
+                  child: ListView(
+                    physics: dragging == null
+                        ? null
+                        : const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.s6,
+                      0,
+                      AppSpacing.s6,
+                      // Room under the last card so the bar never covers it.
+                      AppSpacing.s16 + AppSpacing.s12,
+                    ),
+                    children: _rows(state, dragging),
                   ),
-                  children: _rows(state, dragging),
                 ),
               ),
             ),
@@ -667,7 +728,26 @@ class _TimelineListState extends State<TimelineList> {
     );
   }
 
-  /// The one list, with a heading dropped in wherever the section changes.
+  /// Asks for another week once the calendar is scrolled near its end.
+  ///
+  /// The list has every task already, however far ahead, so it never asks.
+  bool _onScrolled(ScrollUpdateNotification notification) {
+    final state = _state;
+    if (_isList || state.extending || state.isInitialLoad) return false;
+    if (state.days >= TimelineState.maxDays) return false;
+
+    if (notification.metrics.extentAfter < _extendWithin) {
+      context.read<TimelineBloc>().add(const TimelineExtended());
+    }
+
+    return false;
+  }
+
+  /// How close to the end of the calendar the next week is asked for: about
+  /// a day of empty room, so it has arrived by the time it is reached.
+  static const _extendWithin = 1600.0;
+
+  /// The one list, with a heading dropped in wherever the day changes.
   ///
   /// The headings are written out of the cards rather than wrapped around
   /// them, so nothing has to be laid out twice and a section with nothing in
@@ -694,17 +774,26 @@ class _TimelineListState extends State<TimelineList> {
         ),
     ];
 
-    final rooms = _rooms(TimelinePlan.freeSlots(state.cards, now: now), now);
+    final cards = _cards;
+    // The list is the queue and nothing else, so there is no room in it.
+    final rooms = _isList
+        ? const <_Room>[]
+        : _rooms(
+            TimelinePlan.freeSlots(cards, now: now, days: state.days),
+            now,
+          );
     _shownRooms = rooms;
-    if (state.cards.isEmpty && rooms.isEmpty) return [...rows, const _Empty()];
+    if (cards.isEmpty && rooms.isEmpty) {
+      return [...rows, _Empty(list: _isList)];
+    }
 
-    TimelineSection? section;
+    _Heading section = _unset;
 
-    for (final entry in _entries(state.cards, rooms)) {
+    for (final entry in _entries(cards, rooms)) {
       final card = entry.card;
       final room = entry.room;
-      final entrySection = card?.section ?? room!.section;
-      final before = card == null ? room!.slot.index : state.indexOf(card.id);
+      final entrySection = card == null ? room!.heading : _headingOf(card);
+      final before = card == null ? room!.slot.index : _indexOf(card.id);
 
       // A row only moves while there is a card in the air; the rest of the
       // time the offset is zero, so a dropped card cannot animate after it
@@ -716,8 +805,8 @@ class _TimelineListState extends State<TimelineList> {
         rows.add(
           _Slid(
             dy: dy,
-            child: _Heading(
-              label: context.l10n.sectionLabel(entrySection),
+            child: _HeadingRow(
+              label: _label(entrySection, now),
               first: first,
             ),
           ),
@@ -731,7 +820,7 @@ class _TimelineListState extends State<TimelineList> {
           child: _Slid(
             dy: dy,
             child: switch ((card, entrySection)) {
-              (null, TimelineSection.agora) => FreeTile(
+              (null, null) => FreeTile(
                 key: _freeKey(_rowOf(room!)),
                 slot: room.slot,
                 now: true,
@@ -753,7 +842,10 @@ class _TimelineListState extends State<TimelineList> {
                     : null,
                 onTap: widget.onFreeTap,
               ),
-              (final card?, TimelineSection.agora) => _tile(card, dragging),
+              // Agora, and the whole list, are drawn as they need rather than
+              // to scale.
+              (final card?, null) => _tile(card, dragging),
+              (final card?, _) when _isList => _tile(card, dragging),
               (final card?, _) => SizedBox(
                 height: TimelineScale.blockHeight(card),
                 child: _tile(card, dragging),
@@ -764,7 +856,32 @@ class _TimelineListState extends State<TimelineList> {
       );
     }
 
+    if (state.extending) rows.add(const _More());
+
     return rows;
+  }
+
+  /// Not a heading: what the heading being written starts as, so the first
+  /// row always writes one.
+  static final DateTime _unset = DateTime(0);
+
+  /// The heading [card] is drawn under: Agora while it is running, its day
+  /// otherwise.
+  static _Heading _headingOf(TimelineEvent card) =>
+      card.section == TimelineSection.agora ? null : card.day;
+
+  /// What the heading over [heading] says, looking from [now].
+  String _label(_Heading heading, DateTime now) {
+    final l10n = context.l10n;
+    if (heading == null) return l10n.sectionNow;
+
+    final today = DateTime(now.year, now.month, now.day);
+    final days = heading.difference(today).inDays;
+    if (days <= 0) return l10n.sectionToday;
+    if (days == 1) return l10n.sectionTomorrow;
+
+    final date = l10n.sectionDay(heading);
+    return date.isEmpty ? date : date[0].toUpperCase() + date.substring(1);
   }
 
   Widget _tile(TimelineEvent card, String? dragging) {
@@ -795,12 +912,11 @@ class _TimelineListState extends State<TimelineList> {
   static List<_Room> _rooms(List<FreeSlot> slots, DateTime now) {
     return [
       for (final slot in slots)
-        if (_sectionOf(slot, now) == TimelineSection.agora) ...[
-          (slot: slot, section: TimelineSection.agora),
-          if (TimelineScale.shows(slot))
-            (slot: slot, section: TimelineSection.hoje),
+        if (!slot.start.isAfter(now)) ...[
+          (slot: slot, heading: null),
+          if (TimelineScale.shows(slot)) (slot: slot, heading: _dayOf(slot)),
         ] else if (TimelineScale.shows(slot))
-          (slot: slot, section: _sectionOf(slot, now)),
+          (slot: slot, heading: _dayOf(slot)),
     ];
   }
 
@@ -819,16 +935,9 @@ class _TimelineListState extends State<TimelineList> {
     return entries;
   }
 
-  /// The heading a free stretch falls under, by where it starts.
-  static TimelineSection _sectionOf(FreeSlot slot, DateTime now) {
-    if (!slot.start.isAfter(now)) return TimelineSection.agora;
-
-    final today =
-        slot.start.year == now.year &&
-        slot.start.month == now.month &&
-        slot.start.day == now.day;
-    return today ? TimelineSection.hoje : TimelineSection.amanha;
-  }
+  /// The day a free stretch falls under, by where it starts.
+  static DateTime _dayOf(FreeSlot slot) =>
+      DateTime(slot.start.year, slot.start.month, slot.start.day);
 
   Widget _lifted(TimelineState state, String id) {
     final rect = _originRect;
@@ -877,9 +986,9 @@ class _TimelineListState extends State<TimelineList> {
   }
 }
 
-/// One section heading, which is a line and not a container.
-class _Heading extends StatelessWidget {
-  const _Heading({required this.label, required this.first});
+/// One heading, which is a line and not a container.
+class _HeadingRow extends StatelessWidget {
+  const _HeadingRow({required this.label, required this.first});
 
   final String label;
 
@@ -1131,16 +1240,32 @@ class _Failed extends StatelessWidget {
 
 /// What the timeline says when there is nothing on it.
 class _Empty extends StatelessWidget {
-  const _Empty();
+  const _Empty({required this.list});
+
+  /// Whether it is the list of tasks that is empty, rather than the day.
+  final bool list;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.s6),
       child: Text(
-        context.l10n.timelineEmpty,
+        list ? context.l10n.tasksEmpty : context.l10n.timelineEmpty,
         style: AppTypography.body.copyWith(color: AppColors.ink3),
       ),
+    );
+  }
+}
+
+/// The next week on its way, at the end of the calendar.
+class _More extends StatelessWidget {
+  const _More();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(top: AppSpacing.s4),
+      child: AppSkeleton(height: AppSpacing.s16, radius: AppSpacing.chipRadius),
     );
   }
 }

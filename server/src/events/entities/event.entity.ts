@@ -1,35 +1,45 @@
 import { RoutineDays } from '../../calendar/calendar.types';
+import { StartNowGuard } from '../timing';
 
 /**
- * Which of the timeline's sections a card sits in.
+ * Which heading a card sits under.
  *
  * A section is a stretch of clock, not a judgement. Nothing stores one and
- * nothing drags a card between them: a card is in "Amanhã" because it starts
- * tomorrow, and the only way to move it is to change when it happens.
- *
- * Three of them today, one per stretch of time the screen draws. They are
- * meant to become one per day, which is why they are derived from a start
- * time rather than named in the data.
+ * nothing drags a card between them. "agora" is what is running; "dia" is
+ * everything after it, under the day it falls on ([TimelineCard.day]), as
+ * far ahead as the screen asks for.
  */
-export type TimelineSection = 'agora' | 'hoje' | 'amanha';
+export type TimelineSection = 'agora' | 'dia';
 
 /**
- * One card on the timeline.
+ * What a card is.
  *
- * Every card is a calendar event, because every hour of the day is.
+ * A task is something to do, with a place in the queue and an hour the
+ * queue gives it. An event is a block of time that is the point of itself:
+ * a fixed block, a day of a routine, a meeting. The list shows only tasks;
+ * the calendar shows both.
  */
-export class EventCard {
-  /** The event id, and the id the API addresses it by. */
+export type CardKind = 'task' | 'event';
+
+/** One card, on the list or on the calendar. */
+export class TimelineCard {
+  /**
+   * The task id for a task, the event id for an event, and the id the API
+   * addresses it by under `/tasks` or `/events`.
+   */
   id: string;
+  kind: CardKind;
   title: string;
-  /** The section it falls in, worked out from the clock when it was read. */
+  /** The heading it falls under, worked out from the clock when it was read. */
   section: TimelineSection;
+  /** "2026-09-21", the day it starts on, in the person's zone. */
+  day: string;
   /** ISO 8601 start. */
   startTime: string;
   /** ISO 8601 end. */
   endTime: string;
   durationMinutes: number;
-  /** Whether the hour is the point of it, so a rearrangement leaves it be. */
+  /** Whether the hour is the point of it. Never true of a task. */
   fixed: boolean;
   /**
    * Whether Lunna booked it.
@@ -39,7 +49,7 @@ export class EventCard {
    * talked to, because none of that is Lunna's to do with it.
    */
   managed: boolean;
-  /** Free text the user keeps on the block. */
+  /** Free text the user keeps on it. */
   notes: string;
   /** ISO 8601, when it was paused. Absent while it runs or has not started. */
   pausedAt?: string;
@@ -55,11 +65,18 @@ export class EventCard {
    */
   workMinutes: number;
   /**
+   * Whether it is a task the user has begun.
+   *
+   * A begun task has an hour of its own on the calendar, and is the one
+   * that pauses, runs late and finishes.
+   */
+  started: boolean;
+  /**
    * Whether its hour has come and it is waiting for the user to begin.
    *
-   * Only a flexible block Lunna booked ever waits. Until the user says so it
-   * slides down the day with the clock, and the card asks rather than
-   * counting down.
+   * Only a task ever waits. Until the user says so it sits at the current
+   * minute, sliding with the clock, and the card asks rather than counting
+   * down.
    */
   awaitingStart: boolean;
   /** ISO 8601, the earliest a layout may start it, when there is one. */
@@ -68,41 +85,65 @@ export class EventCard {
   routine?: RoutineDays;
 }
 
-/** What the detail screen can change about a block. */
+/**
+ * The day, as the screen draws it.
+ *
+ * Both views of it at once, from one read, so the list and the calendar
+ * can never tell different stories.
+ */
+export class Timeline {
+  /**
+   * Every task still to do, in queue order: what is running first, then
+   * the queue, each at the hour the queue gives it. All of them, however
+   * far ahead the last one lands.
+   */
+  tasks: TimelineCard[];
+  /**
+   * Everything the calendar draws, earliest first, from now to the end of
+   * the last day asked for: the events and the tasks that fall in it.
+   */
+  cards: TimelineCard[];
+  /**
+   * The question a move raised, when it raised one. While it is here
+   * nothing about the move has happened.
+   */
+  guard?: StartNowGuard;
+}
+
+/** What the creation sheet said when the user wrote down a fixed block. */
+export interface EventRequest {
+  title: string;
+  durationMinutes: number;
+  /** ISO 8601, the hour that is the point of it. */
+  startTime: string;
+}
+
+/** What the detail screen can change about a fixed block. */
 export interface EventEdit {
   title?: string;
   /** The work, pauses left out. */
   workMinutes?: number;
-  /** ISO 8601. Naming an hour pins the block to it. */
+  /** ISO 8601. A new hour for it. */
   startTime?: string;
   /** Free text kept on the block. */
   notes?: string;
 }
 
-/** What the creation sheet said when the user wrote something down. */
-export interface EventRequest {
+/** What the creation sheet said when the user wrote down a task. */
+export interface TaskRequest {
   title: string;
-  durationMinutes: number;
-  /** Whether the hour is the point of it. */
-  fixed: boolean;
-  /** ISO 8601. Only a fixed block gets to name one. */
-  startTime?: string;
-  /** ISO 8601. The earliest a flexible one may start. */
+  minutes: number;
+  /**
+   * ISO 8601, the earliest it may start, when it was written down from a
+   * tap on empty room further down the day.
+   */
   notBefore?: string;
 }
 
-/** Where a drop left a card, and what the drop asked for beyond the place. */
-export interface MoveRequest {
-  /** The place in the one list, counting from the top. */
-  index: number;
-  /**
-   * ISO 8601, the start of the gap it was dropped into.
-   *
-   * Dropping into a gap is asking for that gap, so the block may not be laid
-   * out any earlier than this. A drop between two cards carries none and
-   * lifts any floor the block had.
-   */
-  after?: string;
-  /** The length it was cut to, when the gap was shorter than it. */
-  minutes?: number;
+/** What the detail screen can change about a task. */
+export interface TaskEdit {
+  title?: string;
+  /** The work, pauses left out. */
+  workMinutes?: number;
+  notes?: string;
 }

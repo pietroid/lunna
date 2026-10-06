@@ -1,5 +1,6 @@
 import {
   boolean,
+  doublePrecision,
   index,
   integer,
   pgTable,
@@ -12,11 +13,12 @@ import {
 /**
  * Everything Lunna keeps, in one Postgres database.
  *
- * Two halves. The first four tables are Better Auth's and follow its schema
- * exactly: who someone is, their sessions, the Google account behind them,
- * and the short-lived verification rows the OAuth dance needs. The rest is
- * the calendar, which is Lunna's own and the only record of when anything
- * happens.
+ * Three parts. The first four tables are Better Auth's and follow its
+ * schema exactly: who someone is, their sessions, the Google account behind
+ * them, and the short-lived verification rows the OAuth dance needs. Then the
+ * tasks: what there is to do, in the order it is to be done, with no hour of
+ * their own. Then the calendar, which is Lunna's own and the only record of
+ * when anything happens.
  */
 
 const createdAt = () =>
@@ -107,6 +109,48 @@ export const verification = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+/**
+ * Something to do, in its place in the queue.
+ *
+ * A task has no hour. Where it falls on the calendar is worked out on every
+ * read, by laying the queue out around the events, so reordering is writing
+ * one number and the calendar can never disagree with the list. It gets an
+ * [event] row of its own only when it is begun, because only then is its
+ * hour a fact.
+ */
+export const task = pgTable(
+  'task',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    /** Free text the user keeps on it. */
+    notes: text('notes').notNull().default(''),
+    /** How long the work takes, pauses left out. */
+    minutes: integer('minutes').notNull(),
+    /**
+     * Its place in the queue, smallest first.
+     *
+     * Fractional, so a drag writes one row: the new place is halfway between
+     * its new neighbours.
+     */
+    position: doublePrecision('position').notNull(),
+    /** The earliest the layout may start it. */
+    notBefore: timestamp('not_before', { withTimezone: true }),
+    /** When it was finished. Null while there is still something to do. */
+    doneAt: timestamp('done_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('task_user_position_idx').on(table.userId, table.position)],
+);
+
+// ---------------------------------------------------------------------------
 // Calendar
 // ---------------------------------------------------------------------------
 
@@ -175,6 +219,10 @@ export const event = pgTable(
     notBefore: timestamp('not_before', { withTimezone: true }),
     /** Free text the user keeps on the block. */
     notes: text('notes').notNull().default(''),
+    /** The task this is the hour of, when it is one that was begun. */
+    taskId: uuid('task_id').references(() => task.id, {
+      onDelete: 'set null',
+    }),
     /** The routine this is a day of, when it is one. */
     routineId: uuid('routine_id').references(() => routine.id, {
       onDelete: 'set null',
@@ -206,9 +254,11 @@ export const schema = {
   account,
   verification,
   routine,
+  task,
   event,
 };
 
 export type EventRow = typeof event.$inferSelect;
 export type NewEventRow = typeof event.$inferInsert;
 export type RoutineRow = typeof routine.$inferSelect;
+export type TaskRow = typeof task.$inferSelect;

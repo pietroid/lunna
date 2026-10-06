@@ -9,8 +9,8 @@ import 'package:lunna/home/view/greeting.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template home_page}
-/// The timeline: who you are and what time it is at the top, and the three
-/// lists below it.
+/// The timeline: who you are and what time it is at the top, the switch
+/// between the list and the calendar under it, and the day below.
 ///
 /// There is no field on this screen. Writing something down starts from the
 /// button at the foot of the app, which keeps this screen about what is
@@ -22,18 +22,68 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSpacing.maxContentWidth,
+    return BlocProvider<TimelineModeCubit>(
+      create: (_) {
+        final cubit = TimelineModeCubit();
+        unawaited(cubit.restore());
+        return cubit;
+      },
+      child: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: AppSpacing.maxContentWidth,
+            ),
+            child: const Column(
+              children: [
+                _Header(),
+                TimelineModeSwitch(),
+                Expanded(child: _Threads()),
+              ],
+            ),
           ),
-          child: const Column(
-            children: [
-              _Header(),
-              Expanded(child: _Threads()),
-            ],
+        ),
+      ),
+    );
+  }
+}
+
+/// {@template timeline_mode_switch}
+/// Lista or Calendário: the tasks alone, in order, or the whole day to
+/// scale. The phone remembers which.
+/// {@endtemplate}
+class TimelineModeSwitch extends StatelessWidget {
+  /// {@macro timeline_mode_switch}
+  const TimelineModeSwitch({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = context.watch<TimelineModeCubit>().state;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s6,
+        0,
+        AppSpacing.s6,
+        AppSpacing.s3,
+      ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: AppSegmented(
+          segments: [
+            AppSegment(
+              label: context.l10n.timelineModeList,
+              iconData: AppIcons.prioritize,
+            ),
+            AppSegment(
+              label: context.l10n.timelineModeCalendar,
+              iconData: AppIcons.calendar,
+            ),
+          ],
+          selected: TimelineMode.values.indexOf(mode),
+          onSelected: (index) => context.read<TimelineModeCubit>().choose(
+            TimelineMode.values[index],
           ),
         ),
       ),
@@ -142,11 +192,15 @@ class _Threads extends StatelessWidget {
     final busy = context.select<TimelineBloc, bool>(
       (bloc) => bloc.state.guardBusy,
     );
+    final mode = context.watch<TimelineModeCubit>().state;
 
     return Stack(
       children: [
         const _MinuteRefresh(),
         TimelineList(
+          // A list per mode, so each keeps its own scroll.
+          key: ValueKey(mode),
+          mode: mode,
           onCardTap: (card) => _open(context, card),
           // Tapping empty room is writing something down there.
           onFreeTap: (tap) => unawaited(writeDownOnTimeline(context, tap: tap)),
@@ -159,7 +213,7 @@ class _Threads extends StatelessWidget {
     );
   }
 
-  /// Opens the block: its header, its commands, and its notes.
+  /// Opens the card: its header, its commands, and its notes.
   Future<void> _open(BuildContext context, TimelineEvent card) async {
     await context.push<void>('/evento/${Uri.encodeComponent(card.id)}');
   }

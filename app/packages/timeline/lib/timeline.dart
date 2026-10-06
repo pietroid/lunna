@@ -3,6 +3,7 @@
 library;
 
 export 'src/bloc/timeline_bloc.dart';
+export 'src/bloc/timeline_mode_cubit.dart';
 export 'src/data/routines_repository.dart';
 export 'src/data/timeline_failure.dart';
 export 'src/data/timeline_repository.dart';

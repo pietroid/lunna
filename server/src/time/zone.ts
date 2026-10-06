@@ -183,6 +183,19 @@ export function formatDayIn(at: Date, zone: Zone): string {
   return `${pad(wall.day)}-${pad(wall.month)}-${wall.year}`;
 }
 
+/** "2026-09-21", the day [at] falls on in [zone], the way the API writes it. */
+export function isoDayIn(at: Date, zone: Zone): string {
+  const wall = wallOf(at, zone);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+
+  return `${wall.year}-${pad(wall.month)}-${pad(wall.day)}`;
+}
+
+/** The first instant of the day [at] falls on in [zone]. */
+export function startOfDayIn(at: Date, zone: Zone): Date {
+  return atHourIn(at, 0, zone);
+}
+
 /**
  * [at] as ISO 8601 with the offset [zone] has at that instant:
  * "2026-09-21T14:00:00-03:00".

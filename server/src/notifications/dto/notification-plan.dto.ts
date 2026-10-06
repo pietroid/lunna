@@ -2,8 +2,8 @@
  * What a reminder is for.
  *
  * `confirmStart`, `starting` and `almostFinishing` follow a block.
- * `confirmStart` is a flexible block's hour arriving, which asks the user to
- * begin it; `starting` is a fixed block's, which only says so. `morning` and
+ * `confirmStart` is the next task's hour arriving, which asks the user to
+ * begin it; `starting` is an event's, which only says so. `morning` and
  * `evening` follow the clock alone: one at the start of the day and one near
  * its end, every day, whatever is booked.
  */
@@ -26,7 +26,11 @@ export class NotificationItem {
   body: string;
   /** Whether it should break through a Focus mode. */
   timeSensitive: boolean;
-  /** The block it is about, which a `confirmStart` tap asks about. */
+  /**
+   * The card it is about, which a tap opens and a `confirmStart` tap asks
+   * about: the task's id for a task, begun or not, and the event's for an
+   * event. Named for the event it once always was.
+   */
   eventId?: string;
 }
 

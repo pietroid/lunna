@@ -3,7 +3,7 @@ export class EditEventDto {
   title?: string;
   /** How long the work takes, pauses left out. */
   workMinutes?: number;
-  /** ISO 8601. Naming an hour pins the block to it. */
+  /** ISO 8601. A new hour, for a fixed block. Tasks have none to name. */
   startTime?: string;
   /** Free text kept on the block. */
   notes?: string;

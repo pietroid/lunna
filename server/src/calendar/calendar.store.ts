@@ -17,6 +17,10 @@ export interface NewEvent {
   /** False only for something that arrived from an outside calendar. */
   managed?: boolean;
   notBefore?: string;
+  /** The task this is the hour of, for one that was just begun. */
+  taskId?: string;
+  /** Whether it was begun, which a task's hour always was. */
+  started?: boolean;
 }
 
 /** What a routine is booked or changed with. */
@@ -197,6 +201,8 @@ export class MemoryCalendarStore extends CalendarStore {
       notBefore: event.notBefore,
       notes: '',
       cancelled: false,
+      ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
+      ...(event.started === true ? { started: true } : {}),
     };
     this._events.set(id, stored);
 

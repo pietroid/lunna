@@ -5,7 +5,7 @@ TimelineEvent _card(String id, DateTime start, int minutes) {
   return TimelineEvent(
     id: id,
     title: id,
-    section: TimelineSection.hoje,
+    section: TimelineSection.dia,
     startTime: start,
     endTime: start.add(Duration(minutes: minutes)),
     durationMinutes: minutes,

@@ -62,6 +62,29 @@ abstract final class TimelinePlan {
   /// The breathing room left between two blocks.
   static const gap = Duration(minutes: 5);
 
+  /// Where a new task would land: the end of the queue, from [now] or after
+  /// the last of [tasks], whichever is later, in the first room that fits
+  /// among [cards].
+  ///
+  /// The queue has no gaps the next task could slip into: each task starts
+  /// looking where the one before it ended, so a new one at the end of it
+  /// starts looking where the last one ends.
+  static DateTime nextQueuedStart(
+    List<TimelineEvent> cards,
+    List<TimelineEvent> tasks,
+    Duration duration, {
+    DateTime? now,
+  }) {
+    final clock = now ?? DateTime.now();
+    final last = tasks.isEmpty ? null : tasks.last.endTime.add(gap);
+
+    return nextFreeStart(
+      cards,
+      duration,
+      now: last != null && last.isAfter(clock) ? last : clock,
+    );
+  }
+
   /// The first slot of [duration] that fits from [now], moving nothing.
   ///
   /// Walks the day forward: each card it runs into pushes the candidate to
@@ -101,7 +124,7 @@ abstract final class TimelinePlan {
   }
 
   /// Every stretch of the working day with nothing on it, today from [now]
-  /// and all of tomorrow, earliest first.
+  /// and all of the [days] after it counting today, earliest first.
   ///
   /// Everything on the day takes room, meetings included, and a stretch has
   /// to be longer than [gap] to count. The ends of the working day are edges
@@ -110,13 +133,14 @@ abstract final class TimelinePlan {
   static List<FreeSlot> freeSlots(
     List<TimelineEvent> cards, {
     DateTime? now,
+    int days = 2,
   }) {
     final clock = now ?? DateTime.now();
     final sorted = [...cards]
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
     final slots = <FreeSlot>[];
 
-    for (var offset = 0; offset < 2; offset++) {
+    for (var offset = 0; offset < days; offset++) {
       final dayStart = DateTime(
         clock.year,
         clock.month,

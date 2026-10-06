@@ -21,10 +21,17 @@ final class TimelineRequested extends TimelineBlocEvent {
   const TimelineRequested();
 }
 
-/// Writes something down and puts it on the timeline.
+/// Draws more days: the calendar was scrolled to its end.
+final class TimelineExtended extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const TimelineExtended();
+}
+
+/// Writes something down.
 ///
 /// The sheet asked how long it takes and whether the hour is the point of
-/// it, which is everything the server needs to give it one.
+/// it. A flexible one is a task, at the end of the queue; a fixed one is an
+/// event, at its hour.
 final class EventCreated extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
   const EventCreated({
@@ -61,25 +68,31 @@ final class EventCreated extends TimelineBlocEvent {
   ];
 }
 
-/// Moves one card to [index] in the day's single list.
+/// Moves one task to [index] in the list of tasks.
 ///
-/// One number, because there is one list. The server turns it into hours for
-/// everything the drop disturbed, so the app waits for the answer rather than
-/// guessing at the new times itself.
+/// One number, because the queue is one list. The server turns it into hours
+/// for everything the drop disturbed, so the app waits for the answer rather
+/// than guessing at the new times itself.
 final class EventMoved extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
   const EventMoved({
     required this.id,
     required this.index,
+    this.start = false,
     this.after,
     this.minutes,
   });
 
-  /// The card that was dragged.
+  /// The task that was dragged.
   final String id;
 
-  /// Where it was dropped, counted from the top with itself taken out.
+  /// Where it was dropped in the list of tasks, counted from the top with
+  /// itself taken out. What is running counts, at the top.
   final int index;
+
+  /// Whether it was dropped at the very top of the day, which is doing it
+  /// now.
+  final bool start;
 
   /// Where the free stretch it was dropped into starts, when it was.
   final DateTime? after;
@@ -88,12 +101,12 @@ final class EventMoved extends TimelineBlocEvent {
   final int? minutes;
 
   @override
-  List<Object?> get props => [id, index, after, minutes];
+  List<Object?> get props => [id, index, start, after, minutes];
 }
 
-/// The user began a block that was waiting for them.
+/// The user began a task that was waiting for them.
 ///
-/// Sent by the card's button and by the popup a reminder opens. A block that
+/// Sent by the card's button and by the popup a reminder opens. A task that
 /// has not reached its hour goes to the top of the day instead.
 final class EventStarted extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
@@ -201,8 +214,8 @@ final class EventExtended extends TimelineBlocEvent {
   List<Object?> get props => [id, minutes];
 }
 
-/// Changes what the detail screen edits: the name, the notes, the work, or
-/// the hour.
+/// Changes what the detail screen edits: the name, the notes, the work, or,
+/// for an event, the hour.
 final class EventEdited extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
   const EventEdited(
@@ -225,7 +238,7 @@ final class EventEdited extends TimelineBlocEvent {
   /// How long the work takes now, when it changed.
   final int? workMinutes;
 
-  /// The hour to pin it to, when one was picked.
+  /// The new hour of an event, when one was picked.
   final DateTime? startTime;
 
   @override

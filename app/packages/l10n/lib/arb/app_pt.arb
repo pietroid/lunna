@@ -259,6 +259,19 @@
   "sectionNow": "Agora",
   "sectionToday": "Ainda hoje",
   "sectionTomorrow": "Amanhã",
+  "sectionDay": "{date}",
+  "@sectionDay": {
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "EEEE, d 'de' MMMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "timelineModeList": "Lista",
+  "timelineModeCalendar": "Calendário",
+  "tasksEmpty": "Nenhuma tarefa. Toque no + para anotar algo.",
   "routineDaily": "Todo dia",
   "routineWeekdays": "Dias úteis",
   "routineWeekend": "Fim de semana",

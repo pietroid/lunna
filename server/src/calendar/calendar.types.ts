@@ -71,6 +71,13 @@ export interface CalendarEvent {
   notBefore?: string;
   /** Free text the user keeps on the block. */
   notes: string;
+  /**
+   * The task this is the hour of, when it is one.
+   *
+   * A task is written onto the calendar the moment it is begun, and not
+   * before: until then its hour is only where the queue happens to put it.
+   */
+  taskId?: string;
   /** The routine this is a day of, when it is one. */
   routineId?: string;
   /** Which days it repeats on, when it is a day of a routine. */

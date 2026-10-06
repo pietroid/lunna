@@ -16,14 +16,22 @@ const CACHE_TTL_MS = 30_000;
 /** How far back a window reaches: enough to keep a running event visible. */
 const LOOK_BACK_HOURS = 2;
 
-/** How far ahead: the rest of today and the whole of tomorrow. */
+/**
+ * How far ahead a window reaches at the least: the rest of today and the
+ * whole of tomorrow. A caller that needs further, because the queue runs on
+ * or the screen was scrolled to next week, says so.
+ */
 const LOOK_AHEAD_HOURS = 36;
 
-/** One person's cached day. */
+/** One person's cached days. */
 interface Cached {
   events: CalendarEvent[];
   readAt: number;
+  /** How far ahead [events] reaches. */
+  until: number;
   inFlight?: Promise<CalendarEvent[]>;
+  /** How far ahead the read in flight reaches. */
+  inFlightUntil?: number;
 }
 
 /**
@@ -50,18 +58,43 @@ export class CalendarService {
     this._defaultZone = config.get<string>('LUNNA_TIMEZONE') ?? systemZone();
   }
 
-  /** Every event worth knowing about now, from cache when it is fresh. */
-  async events(user: CalendarUser, now = new Date()): Promise<CalendarEvent[]> {
+  /**
+   * Every event from a little before [now] to at least [until], from cache
+   * when it is fresh and reaches that far.
+   *
+   * The days of routines are written down as far as the read reaches, so a
+   * screen scrolled a month ahead finds that month's routines on it.
+   */
+  async events(
+    user: CalendarUser,
+    until?: Date,
+    now = new Date(),
+  ): Promise<CalendarEvent[]> {
+    const reach = Math.max(
+      until?.getTime() ?? 0,
+      now.getTime() + LOOK_AHEAD_HOURS * 3_600_000,
+    );
     const cached = this._entry(user);
-    if (Date.now() - cached.readAt < CACHE_TTL_MS) return cached.events;
+    if (Date.now() - cached.readAt < CACHE_TTL_MS && cached.until >= reach) {
+      return cached.events;
+    }
 
     // One read at a time per person: a list and a drag arriving together are
     // the same question asked twice.
-    cached.inFlight ??= this._refresh(user, now).finally(() => {
-      cached.inFlight = undefined;
-    });
+    if (cached.inFlight !== undefined && (cached.inFlightUntil ?? 0) >= reach) {
+      return cached.inFlight;
+    }
 
-    return cached.inFlight;
+    const read = this._refresh(user, now, new Date(reach)).finally(() => {
+      if (cached.inFlight === read) {
+        cached.inFlight = undefined;
+        cached.inFlightUntil = undefined;
+      }
+    });
+    cached.inFlight = read;
+    cached.inFlightUntil = reach;
+
+    return read;
   }
 
   /** Every event between [from] and [to], read fresh. For reminders. */
@@ -154,14 +187,15 @@ export class CalendarService {
   private async _refresh(
     user: CalendarUser,
     now: Date,
+    until: Date,
   ): Promise<CalendarEvent[]> {
     const from = new Date(now.getTime() - LOOK_BACK_HOURS * 3_600_000);
-    const to = new Date(now.getTime() + LOOK_AHEAD_HOURS * 3_600_000);
-    const events = await this._store.window(user, from, to, this.zone(user));
+    const events = await this._store.window(user, from, until, this.zone(user));
 
     const cached = this._entry(user);
     cached.events = events;
     cached.readAt = Date.now();
+    cached.until = until.getTime();
 
     return events;
   }
@@ -183,7 +217,7 @@ export class CalendarService {
   private _entry(user: CalendarUser): Cached {
     let cached = this._cache.get(user.id);
     if (cached === undefined) {
-      cached = { events: [], readAt: 0 };
+      cached = { events: [], readAt: 0, until: 0 };
       this._cache.set(user.id, cached);
     }
 

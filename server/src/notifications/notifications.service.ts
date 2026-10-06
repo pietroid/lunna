@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 import { Injectable } from '@nestjs/common';
-import { CalendarService } from '../calendar/calendar.service';
 import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { intervalOf } from '../events/event-sections';
+import { Day, TimelineService } from '../events/timeline.service';
 import { addMinutes, minutesOf, WORK_DAY_START_HOUR } from '../time/work-hours';
 import {
   addDaysIn,
@@ -54,31 +54,36 @@ export const ALMOST_FINISHING_MIN_BLOCK_MINUTES = 20;
 export const EVENING_HOUR = 21;
 
 /**
- * Every reminder the phone should be holding, worked out from the calendar.
+ * Every reminder the phone should be holding, worked out from the day.
  *
  * Derived, never stored. The server owns the schedule and the phone only
- * mirrors it, so the plan is rebuilt from the calendar on every ask and there
- * is no table of reminders to fall out of step with the day it describes.
+ * mirrors it, so the plan is rebuilt from the day on every ask and there is
+ * no table of reminders to fall out of step with the day it describes.
  *
  * Only the blocks Lunna booked get a reminder. A meeting that arrived from
  * an outside calendar already has that calendar to announce it, and two
  * alerts for one event is worse than one.
+ *
+ * Of the tasks, only the next one gets a reminder. Every other task's hour
+ * moves each time the queue is reordered or something runs late, so a
+ * reminder for each would be a stream of wrong times.
  */
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly _calendar: CalendarService) {}
+  constructor(private readonly _timeline: TimelineService) {}
 
   async plan(
     user: CalendarUser,
     horizonDays: number,
     now = new Date(),
   ): Promise<NotificationPlan> {
-    const zone = this._calendar.zone(user);
+    const zone = this._timeline.zone(user);
     const until = addDaysIn(now, horizonDays, zone);
-    const events = await this._calendar.between(user, now, until);
+    const day = await this._timeline.day(user, horizonDays + 1, now);
 
     const items = [
-      ...events.flatMap((event) => blockItems(event, zone)),
+      ...day.events.flatMap((event) => blockItems(day, event)),
+      ...nextTaskItems(day),
       ...dailyItems(now, horizonDays, zone),
     ]
       .filter((item) => {
@@ -91,28 +96,49 @@ export class NotificationsService {
   }
 }
 
+/**
+ * The reminder the next task earns: at its hour, asking rather than
+ * announcing, because a task waits for the user to begin it.
+ */
+function nextTaskItems(day: Day): NotificationItem[] {
+  const next = day.tasks.find((task) => !day.live.has(task.id));
+  const slot = next === undefined ? undefined : day.placed.get(next.id);
+  if (next === undefined || slot === undefined) return [];
+
+  return [
+    itemOf({
+      kind: 'confirmStart',
+      source: next.id,
+      at: slot.start,
+      zone: day.zone,
+      title: next.title,
+      body: CONFIRM_START_BODY,
+      timeSensitive: true,
+      eventId: next.id,
+    }),
+  ];
+}
+
 /** The reminders one block earns, before the past is dropped. */
-function blockItems(event: CalendarEvent, zone: Zone): NotificationItem[] {
+function blockItems(day: Day, event: CalendarEvent): NotificationItem[] {
   if (!event.managed) return [];
 
   const interval = intervalOf(event);
   if (interval === undefined) return [];
 
-  // A flexible block waits for the user when its hour comes, so its reminder
-  // asks. A fixed one starts regardless, and its reminder only says so.
-  const asks = !event.fixed && event.routine === undefined && !event.started;
+  // A tap opens the card, and a begun task's card is the task.
+  const card = event.taskId ?? event.id;
+  const zone = day.zone;
   const items = [
     itemOf({
-      kind: asks ? 'confirmStart' : 'starting',
+      kind: 'starting',
       source: event.id,
       at: interval.start,
       zone,
       title: event.title,
-      body: asks
-        ? CONFIRM_START_BODY
-        : startingBody(formatTimeIn(interval.end, zone)),
+      body: startingBody(formatTimeIn(interval.end, zone)),
       timeSensitive: true,
-      eventId: event.id,
+      eventId: card,
     }),
   ];
 
@@ -130,7 +156,7 @@ function blockItems(event: CalendarEvent, zone: Zone): NotificationItem[] {
         title: event.title,
         body: almostFinishingBody(ALMOST_FINISHING_MINUTES),
         timeSensitive: false,
-        eventId: event.id,
+        eventId: card,
       }),
     );
   }

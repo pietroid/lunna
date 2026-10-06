@@ -6,9 +6,10 @@ import 'package:timeline/src/widgets/free_stretch.dart';
 
 /// Opens the creation sheet and puts what it comes back with on the day.
 ///
-/// The + button opens it with nothing chosen. A tap on empty room opens it
-/// from [tap]: fixed at the hour that was tapped, or flexible and looking for
-/// room no earlier than the room that was tapped.
+/// Flexible is a task, at the end of the queue; fixed is an event, at its
+/// hour. The + button opens the sheet with nothing chosen. A tap on empty
+/// room opens it from [tap]: fixed at the hour that was tapped, or a task
+/// that goes into the queue where the room is.
 Future<void> writeDownOnTimeline(BuildContext context, {FreeTap? tap}) async {
   final bloc = context.read<TimelineBloc>();
   // The room it was written down in, flexible or not, so switching a fixed
@@ -19,8 +20,13 @@ Future<void> writeDownOnTimeline(BuildContext context, {FreeTap? tap}) async {
     // The sheet asks where something would land while the user is still
     // typing, so the answer comes off the cards already on screen rather
     // than out of a request per keystroke.
-    previewFor: (duration) =>
-        TimelinePlan.nextFreeStart(bloc.state.cards, duration, now: floor),
+    previewFor: (duration) => floor == null
+        ? TimelinePlan.nextQueuedStart(
+            bloc.state.cards,
+            bloc.state.tasks,
+            duration,
+          )
+        : TimelinePlan.nextFreeStart(bloc.state.cards, duration, now: floor),
     initialStart: tap?.fixedAt,
   );
   if (result == null) return;

@@ -50,7 +50,8 @@ server/
     auth/               Better Auth instance + SessionGuard
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
     db/                 Drizzle schema + pool + boot-time migrations
-    events/             the timeline routes and the layout rules
+    events/             the timeline routes, the read model, the layout rules
+    tasks/              TaskStore (Postgres) over the task table
     notifications/      the reminder plan, derived from the calendar
     routines/           routine CRUD and day expansion
     time/               work hours, zones, the scheduler
@@ -124,22 +125,48 @@ days ahead and keeps the ones that happened.
 
 ### Notes
 
-Every block has free-text `notes`. The event page edits them in place and
-saves them through `PATCH /api/events/:id` a moment after typing stops, on
-blur, and when the page closes.
+Every task and every block has free-text `notes`. The event page edits them
+in place and saves them through `PATCH /api/tasks/:id` or
+`PATCH /api/events/:id` a moment after typing stops, on blur, and when the
+page closes.
+
+## Tasks and events
+
+Two kinds of card:
+
+- A **task** (`task` table) is something to do. It has a title, notes, a
+  length (`minutes`) and a `position` in the queue (fractional, so a drag
+  writes one row). **It has no hour.** Its hour is worked out on every read
+  by laying the queue out around the events (`TimelineService.day`), so the
+  list and the calendar can never disagree. A task gets an `event` row
+  (`event.task_id`) only when it is begun; that row is its real hour, and
+  pause, extend and finish work on it. Ticking a task off sets `done_at`.
+  A begun task whose hour runs out is written down as done by `catchUp`.
+- An **event** is a block whose hour is the point of it: a fixed block, a
+  day of a routine, a meeting. It never waits and is never queued.
+
+`GET /api/timeline?days=N` answers with both views at once:
+`{ tasks, cards }`. `tasks` is every task still to do, the running one
+first and then the queue, however far ahead the queue reaches. `cards` is
+everything the calendar draws from now to the end of day N. Every write
+under `/api/tasks` and `/api/events` takes the same `?days=` and answers
+with the same shape.
 
 ## The timeline
 
-**Everything on the timeline is a calendar event.** There is one list, in
-clock order, and the headings are cut out of it by the clock rather than
-stored anywhere. `sectionOf` in `events/event-sections.ts` is the whole
-filing system:
+The app draws the day two ways, switched at the top of Tempo and
+remembered on the device (`TimelineModeCubit`):
 
-| Section | What falls in it |
-|---------|------------------|
-| `agora` | the hour being lived through right now |
-| `hoje` | later today |
-| `amanha` | the next day |
+- **Lista**: the tasks alone, each as tall as it needs, under the day the
+  queue puts them on. Reordering here is reordering the queue.
+- **Calendário**: everything, to scale, day after day. Scrolling near the
+  end asks for another week (`TimelineExtended`), up to 120 days.
+
+There is one list per mode, in clock order, and the headings are cut out
+of it by the clock rather than stored anywhere. `sectionOf` in
+`events/event-sections.ts` is the whole filing system: `agora` for the hour
+being lived through, `dia` for everything after it, under its `day`
+(`YYYY-MM-DD` in the person's zone).
 
 **An hour that has run out is not a section.** A block booked 11:20 to 11:25
 is finished at 11:26 and is simply not drawn any more; the row stays,
@@ -147,12 +174,15 @@ because the hour happened. The app asks for the list again on each minute
 boundary. Only finishing something *early* removes the row, since that frees
 an hour still ahead.
 
-Between cards the app draws the **free stretches** of the working day
-(`TimelinePlan.freeSlots`). They are drop targets: a card let go over one is
+Between cards the calendar draws the **free stretches** of the working day
+(`TimelinePlan.freeSlots`). They are drop targets: a task let go over one is
 posted as a move with `after` (where the stretch starts) and, when it had to
-be cut to fit, `minutes`. Tapping empty room opens the creation sheet: in the
-first part of the room the block is flexible with a `notBefore` floor, in
-any later hour it is fixed at that hour.
+be cut to fit, `minutes`; an event let go over one gets that hour through
+`PATCH /api/events/:id`. A drop's index on the calendar is translated to a
+place in the list of tasks by counting the tasks above it. Tapping empty
+room opens the creation sheet: in the first part of the room it writes a
+task, put in the queue where the room is with a `notBefore` floor; in any
+later hour it writes a fixed event at that hour.
 
 ### The time system
 
@@ -163,50 +193,52 @@ Every rule about when things happen is on the server:
 - `time/scheduling.ts`: `relayout`, the whole scheduler.
 - `time/zone.ts`: wall-clock arithmetic in a named zone, always passed in,
   never the process's.
+- `events/timeline.service.ts`: the read model, where the queue falls.
 - `events/event-layout.service.ts`: what adding, dragging, starting,
   snoozing, pausing, extending and finishing do to the day.
 
 #### One rule
 
-The day is a queue of **flexible** blocks flowing around a handful of
-**fixed** ones, packed as close to now as they will go. `relayout` is one
-pass down the queue: each flexible block takes the first slot that fits
-after the cursor. Anchors are only obstacles. Three things anchor:
+The day is a queue of **tasks** flowing around the **events**, packed as
+close to now as they will go. `relayout` is one pass down the queue: each
+task takes the first slot that fits after the cursor, and the queue runs on
+into the following days for as long as it lasts. Every event is an
+obstacle: meetings, fixed blocks, routines, and **a begun task's hour**,
+which keeps the hour it started at. Nothing the layout works out is written
+down.
 
-- a meeting Lunna did not book (`managed: false`);
-- a fixed block, routines included;
-- **a block that has already started**, which keeps the hour it started at.
-
-**A flexible block does not start because its hour came.** It waits for the
-user (`awaitsStart`), and until they say so `catchUp` slides it to the
-current minute and repacks what follows. `POST /events/:id/start` marks it
-started; `POST /events/:id/snooze` sets a `notBefore` floor fifteen minutes
-out. Dropping a card at the top of the day counts as starting it. Fixed
-blocks and routines never wait.
+**A task does not start because its hour came.** The first one in the queue
+sits at the current minute (`awaitingStart`) until the user says so.
+`POST /tasks/:id/start` writes its hour onto the calendar from this minute;
+`POST /tasks/:id/snooze` sets a `notBefore` floor fifteen minutes out.
+Dropping a task at the very top of the day (`start: true` on the move)
+counts as starting it. Events never wait.
 
 **A paused block owes its work.** Its end is dragged along with the clock
-(by `catchUp`, on every read and on the server's minute tick) and everything
+(by `catchUp`, on every read and on the server's minute tick) and the queue
 after it follows.
 
-Adding (`POST /events`) drops a block into the first gap that fits without
-disturbing anybody, or at the hour it was given if fixed. Dragging
-(`POST /events/:id/move`) rewrites the queue order and repacks. Finishing
-(`POST /events/:id/done`) keeps a running block as the hour it really took
-and starts the rest of the day five minutes later; one that never started
-simply leaves.
+Adding a task (`POST /tasks`) puts it at the end of the queue. Adding a
+fixed block (`POST /events`) puts it at its hour. Dragging
+(`POST /tasks/:id/move`) moves the task to a place in the list of tasks,
+which counts the running task at the top; a running task dragged anywhere
+else stops running and goes back in the queue. Finishing
+(`POST /tasks/:id/done`) keeps a running task as the hour it really took
+and starts the rest of the queue five minutes later; one that never started
+simply leaves the list.
 
 #### The one guard
 
-Dragging a card to the top of the day while something else is running is
+Dragging a task to the top of the day while something else is running is
 the only move that destroys something, so it is the only one that asks. The
 server answers the move with `guard: { kind: 'start_now', … }` and changes
 nothing; the app draws `GuardSheet` and posts the answer to
-`POST /events/timing`:
+`POST /tasks/timing`:
 
 | Answer | What happens |
 |--------|--------------|
 | `solve_current` | the running block is finished and gives its hour away |
-| `postpone_current` | it is kept, further down the day |
+| `postpone_current` | a running task goes back in the queue, next after this one; a fixed block stays, and the task waits for it |
 
 ### The app shell
 
@@ -216,10 +248,12 @@ greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
 
 ### Reminders
 
-`notifications.service.ts` plans them from the calendar for the next days.
-A flexible block gets a `confirmStart` reminder at its hour that asks rather
-than announces; tapping it opens *Começar agora* / *Esperar 15 min*. Fixed
-blocks and routines get a plain `starting` reminder. The phone mirrors the
+`notifications.service.ts` plans them from the day for the next days. Only
+the **next** task gets a reminder, a `confirmStart` at its hour that asks
+rather than announces; tapping it opens *Começar agora* / *Esperar 15 min*.
+Every other task's hour moves too often to be worth one. Events get a plain
+`starting` reminder. An item's `eventId` is the id of the card a tap opens:
+the task's for a task. The phone mirrors the
 plan into local notifications, so reminders arrive without push or network.
 
 ## Commands

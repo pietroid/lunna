@@ -575,6 +575,30 @@ abstract class AppLocalizations {
   /// **'Amanhã'**
   String get sectionTomorrow;
 
+  /// No description provided for @sectionDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'{date}'**
+  String sectionDay(DateTime date);
+
+  /// No description provided for @timelineModeList.
+  ///
+  /// In pt, this message translates to:
+  /// **'Lista'**
+  String get timelineModeList;
+
+  /// No description provided for @timelineModeCalendar.
+  ///
+  /// In pt, this message translates to:
+  /// **'Calendário'**
+  String get timelineModeCalendar;
+
+  /// No description provided for @tasksEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma tarefa. Toque no + para anotar algo.'**
+  String get tasksEmpty;
+
   /// No description provided for @routineDaily.
   ///
   /// In pt, this message translates to:

@@ -1,11 +1,11 @@
 import { instantOf } from '../time/zone';
-import { intervalOf, sectionOf } from './event-sections';
+import { dayOf, intervalOf, sectionOf } from './event-sections';
 
 /**
  * The zone the day is read in.
  *
- * Not the machine's: "hoje" is the user's day in their calendar's zone, and
- * the point of these tests is that the answer does not depend on where the
+ * Not the machine's: "hoje" is the user's day in their own zone, and the
+ * point of these tests is that the answer does not depend on where the
  * server happens to be running.
  */
 const ZONE = 'America/Sao_Paulo';
@@ -28,50 +28,37 @@ function span(start: Date, end: Date) {
 
 describe('the section the clock puts a card in', () => {
   it('puts something already running in agora', () => {
-    expect(sectionOf(at(21, 10, 30), span(at(21, 10), at(21, 11)), ZONE)).toBe(
+    expect(sectionOf(at(21, 10, 30), span(at(21, 10), at(21, 11)))).toBe(
       'agora',
     );
   });
 
   it('draws nothing whose hour has run out', () => {
-    expect(
-      sectionOf(at(21, 16), span(at(21, 9), at(21, 10)), ZONE),
-    ).toBeUndefined();
+    expect(sectionOf(at(21, 16), span(at(21, 9), at(21, 10)))).toBeUndefined();
   });
 
   it('lets go of a block the moment its last minute is up', () => {
     const block = span(on21(11, 20), on21(11, 25));
 
-    expect(sectionOf(on21(11, 24), block, ZONE)).toBe('agora');
-    expect(sectionOf(on21(11, 25), block, ZONE)).toBeUndefined();
-    expect(sectionOf(on21(11, 26), block, ZONE)).toBeUndefined();
+    expect(sectionOf(on21(11, 24), block)).toBe('agora');
+    expect(sectionOf(on21(11, 25), block)).toBeUndefined();
+    expect(sectionOf(on21(11, 26), block)).toBeUndefined();
   });
 
-  it('puts the rest of today in hoje', () => {
-    expect(sectionOf(at(21, 10), span(at(21, 15), at(21, 16)), ZONE)).toBe(
-      'hoje',
-    );
+  it('puts everything still ahead under its day, however far out', () => {
+    expect(sectionOf(at(21, 10), span(at(21, 15), at(21, 16)))).toBe('dia');
+    expect(sectionOf(at(21, 10), span(at(30, 9), at(30, 10)))).toBe('dia');
   });
 
-  it('puts the next day in amanha', () => {
-    expect(sectionOf(at(21, 10), span(at(22, 9), at(22, 10)), ZONE)).toBe(
-      'amanha',
-    );
+  it('names the day a block starts on', () => {
+    expect(dayOf(span(at(22, 9), at(22, 10)), ZONE)).toBe('2026-09-22');
   });
 
-  it('draws nothing further out than tomorrow', () => {
-    expect(
-      sectionOf(at(21, 10), span(at(23, 9), at(23, 10)), ZONE),
-    ).toBeUndefined();
-  });
-
-  it('keeps an evening block on the day the calendar says', () => {
+  it('keeps an evening block on the day the person is living', () => {
     // Half past seven in the evening in São Paulo is half past ten UTC. Read
-    // against the server's clock this landed in "amanhã"; read against the
-    // calendar's, it is the rest of today.
-    expect(sectionOf(at(21, 18), span(at(21, 19, 30), at(21, 20)), ZONE)).toBe(
-      'hoje',
-    );
+    // against the server's clock this landed on tomorrow; read in the
+    // person's zone, it is the rest of today.
+    expect(dayOf(span(at(21, 19, 30), at(21, 20)), ZONE)).toBe('2026-09-21');
   });
 
   it('has no interval without an event', () => {

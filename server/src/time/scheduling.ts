@@ -7,14 +7,11 @@ import {
 } from './work-hours';
 import { Zone } from './zone';
 
-/** One thing on the day, as the layout sees it. */
-export interface PlannedBlock {
-  /** The event id. */
+/** One task in the queue, as the layout sees it. */
+export interface QueuedBlock {
+  /** The task id. */
   id: string;
   minutes: number;
-  /** Whether its hour is the point of it, and so cannot be moved. */
-  fixed: boolean;
-  interval: Interval;
   /**
    * The earliest it may start, when the user asked for later.
    *
@@ -25,21 +22,23 @@ export interface PlannedBlock {
 }
 
 /**
- * Where a flexible queue lands, laid out around whatever cannot move.
+ * Where a queue of tasks lands, laid out around whatever cannot move.
  *
- * One pass down the queue. Each flexible block takes the first slot that fits
- * after the cursor, the cursor moves past it, and the next one starts looking
- * from there. Fixed blocks and calendar events are never assigned anywhere:
- * they are only obstacles, so the flexible ones flow into the gaps between
- * them, including the gaps that come *before* a fixed block later in the day.
+ * One pass down the queue. Each block takes the first slot that fits after
+ * the cursor, the cursor moves past it, and the next one starts looking from
+ * there. The anchors are never assigned anywhere: they are the events on the
+ * calendar, and the tasks flow into the gaps between them, including the
+ * gaps that come *before* a fixed block later in the day.
  *
- * That is the whole scheduler. Adding something, dragging something, and
- * closing the hole left by something that was solved are all this function
- * with a different queue, which is why there is no second copy of the rules
- * anywhere and no guard that has to agree with them.
+ * That is the whole scheduler, and nothing it works out is written down. A
+ * task's hour is this function's answer on the read that asked, so adding,
+ * dragging and finishing something only change the queue, and the next read
+ * lays it out again. The queue has no end, and neither does the layout: a
+ * task that does not fit today goes to tomorrow, and the one after it to the
+ * day after that.
  */
 export function relayout(
-  queue: PlannedBlock[],
+  queue: QueuedBlock[],
   anchors: Interval[],
   from: Date,
   zone: Zone,
@@ -48,8 +47,6 @@ export function relayout(
   let cursor = from;
 
   for (const block of queue) {
-    if (block.fixed) continue;
-
     const floor =
       block.notBefore !== undefined && block.notBefore > cursor
         ? block.notBefore
@@ -63,12 +60,4 @@ export function relayout(
   }
 
   return placed;
-}
-
-/** Whether [interval] is somewhere other than where it already was. */
-export function moved(block: PlannedBlock, interval: Interval): boolean {
-  return (
-    block.interval.start.getTime() !== interval.start.getTime() ||
-    block.interval.end.getTime() !== interval.end.getTime()
-  );
 }

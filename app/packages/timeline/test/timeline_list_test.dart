@@ -35,7 +35,7 @@ void main() {
   final later = TimelineEvent(
     id: 'b',
     title: 'Depois',
-    section: TimelineSection.hoje,
+    section: TimelineSection.dia,
     startTime: now.add(const Duration(minutes: 25)),
     endTime: now.add(const Duration(minutes: 55)),
     durationMinutes: 30,
@@ -45,7 +45,7 @@ void main() {
     String id,
     int fromMinutes,
     int minutes, {
-    TimelineSection section = TimelineSection.hoje,
+    TimelineSection section = TimelineSection.dia,
   }) {
     return TimelineEvent(
       id: id,
@@ -78,11 +78,18 @@ void main() {
 
   Future<(TimelineBloc, List<TimelineEvent>)> pump(
     WidgetTester tester,
-    List<TimelineEvent> cards,
-  ) async {
+    List<TimelineEvent> cards, {
+    TimelineMode mode = TimelineMode.calendar,
+    TimelineState? state,
+  }) async {
     final bloc = _MockTimelineBloc();
     when(() => bloc.state).thenReturn(
-      TimelineState(status: TimelineStatus.success, cards: cards),
+      state ??
+          TimelineState(
+            status: TimelineStatus.success,
+            cards: cards,
+            tasks: cards.where((card) => card.isTask).toList(),
+          ),
     );
     final tapped = <TimelineEvent>[];
 
@@ -95,7 +102,7 @@ void main() {
         home: Scaffold(
           body: BlocProvider<TimelineBloc>.value(
             value: bloc,
-            child: TimelineList(onCardTap: tapped.add),
+            child: TimelineList(onCardTap: tapped.add, mode: mode),
           ),
         ),
       ),
@@ -178,9 +185,11 @@ void main() {
 
       expect(stretchFrom(later.endTime), findsOneWidget);
       // Tomorrow sits below a whole evening drawn to scale.
-      await tester.scrollUntilVisible(find.text('Amanhã'), 400);
       final tomorrow = DateTime(now.year, now.month, now.day + 1, 7);
-      expect(stretchFrom(tomorrow), findsOneWidget);
+      // To the room itself, not only to the heading over it: a heading at the
+      // bottom edge leaves what is under it offstage.
+      await tester.scrollUntilVisible(stretchFrom(tomorrow), 400);
+      expect(find.text('Amanhã'), findsOneWidget);
     },
     // The stretch from now is only drawn inside the working day.
     skip: now.hour < 7 || now.hour >= 21,
@@ -246,7 +255,8 @@ void main() {
     final lunch = TimelineEvent(
       id: 'lunch',
       title: 'Almoço',
-      section: TimelineSection.hoje,
+      section: TimelineSection.dia,
+      kind: CardKind.event,
       startTime: now.add(const Duration(hours: 1)),
       endTime: now.add(const Duration(hours: 2)),
       durationMinutes: 60,
@@ -269,7 +279,7 @@ void main() {
       final first = TimelineEvent(
         id: 'x',
         title: 'Primeiro',
-        section: TimelineSection.hoje,
+        section: TimelineSection.dia,
         startTime: now.add(const Duration(minutes: 20)),
         endTime: now.add(const Duration(minutes: 50)),
         durationMinutes: 30,
@@ -277,7 +287,8 @@ void main() {
       final meeting = TimelineEvent(
         id: 'f',
         title: 'Reunião',
-        section: TimelineSection.hoje,
+        section: TimelineSection.dia,
+        kind: CardKind.event,
         startTime: now.add(const Duration(minutes: 80)),
         endTime: now.add(const Duration(minutes: 110)),
         durationMinutes: 30,
@@ -286,7 +297,7 @@ void main() {
       final long = TimelineEvent(
         id: 'long',
         title: 'Longo',
-        section: TimelineSection.hoje,
+        section: TimelineSection.dia,
         startTime: now.add(const Duration(minutes: 115)),
         endTime: now.add(const Duration(minutes: 175)),
         durationMinutes: 60,
@@ -467,8 +478,11 @@ void main() {
         );
         await drag(tester, 'Bloco c', top.dy + 4);
 
-        // Index 0 is the server's cue for the guard that asks.
-        verify(() => bloc.add(const EventMoved(id: 'c', index: 0))).called(1);
+        // The very top of the day is doing it now, which is the server's cue
+        // for the guard that asks.
+        verify(
+          () => bloc.add(const EventMoved(id: 'c', index: 0, start: true)),
+        ).called(1);
       },
       skip: skip,
     );
@@ -526,7 +540,8 @@ void main() {
         final pinned = TimelineEvent(
           id: 'p',
           title: 'Fixo',
-          section: TimelineSection.hoje,
+          section: TimelineSection.dia,
+          kind: CardKind.event,
           startTime: now.add(const Duration(minutes: 200)),
           endTime: now.add(const Duration(minutes: 230)),
           durationMinutes: 30,
@@ -562,9 +577,8 @@ void main() {
         await gesture.up();
         await settle(tester);
 
-        verify(
-          () => bloc.add(EventMoved(id: 'p', index: 2, after: expected)),
-        ).called(1);
+        // An event has an hour rather than a place, so the drop names one.
+        verify(() => bloc.add(EventEdited('p', startTime: expected))).called(1);
       },
       skip: skip,
     );
@@ -575,7 +589,8 @@ void main() {
         final pinned = TimelineEvent(
           id: 'p',
           title: 'Fixo',
-          section: TimelineSection.hoje,
+          section: TimelineSection.dia,
+          kind: CardKind.event,
           startTime: now.add(const Duration(minutes: 90)),
           endTime: now.add(const Duration(minutes: 120)),
           durationMinutes: 30,
@@ -595,6 +610,204 @@ void main() {
       },
       skip: skip,
     );
+
+    testWidgets(
+      'counts only the tasks above it, not the events',
+      (tester) async {
+        final meeting = TimelineEvent(
+          id: 'm',
+          title: 'Reunião',
+          section: TimelineSection.dia,
+          kind: CardKind.event,
+          startTime: now.add(const Duration(minutes: 60)),
+          endTime: now.add(const Duration(minutes: 90)),
+          durationMinutes: 30,
+          fixed: true,
+        );
+        final (bloc, _) = await pump(tester, [
+          running,
+          later,
+          meeting,
+          block('c', 95, 25),
+          block('d', 125, 25),
+        ]);
+
+        // Between the meeting and "Bloco c": the fourth place on the
+        // calendar, and the third in the queue.
+        final above = tester.getBottomLeft(
+          find.widgetWithText(EventTile, 'Reunião'),
+        );
+        final below = tester.getTopLeft(
+          find.widgetWithText(EventTile, 'Bloco c'),
+        );
+        await drag(tester, 'Bloco d', (above.dy + below.dy) / 2);
+
+        verify(() => bloc.add(const EventMoved(id: 'd', index: 2))).called(1);
+      },
+      skip: skip,
+    );
+  });
+
+  group('the list', () {
+    final meeting = TimelineEvent(
+      id: 'm',
+      title: 'Reunião',
+      section: TimelineSection.dia,
+      kind: CardKind.event,
+      startTime: now.add(const Duration(minutes: 60)),
+      endTime: now.add(const Duration(minutes: 90)),
+      durationMinutes: 30,
+      fixed: true,
+    );
+
+    testWidgets('has the tasks and nothing else', (tester) async {
+      await pump(tester, [
+        running,
+        later,
+        meeting,
+      ], mode: TimelineMode.list);
+
+      expect(find.text('Escrever'), findsOneWidget);
+      expect(find.text('Depois'), findsOneWidget);
+      expect(find.text('Reunião'), findsNothing);
+      expect(find.byType(FreeStretch), findsNothing);
+      expect(find.byType(FreeTile), findsNothing);
+    });
+
+    testWidgets('draws every task as tall as it needs', (tester) async {
+      await pump(tester, [
+        running,
+        block('short', 30, 10),
+        block('long', 45, 120),
+      ], mode: TimelineMode.list);
+
+      double height(String id) =>
+          tester.getSize(find.widgetWithText(EventTile, 'Bloco $id')).height;
+
+      expect(height('long'), height('short'));
+    });
+
+    testWidgets('heads each task with the day the queue puts it on', (
+      tester,
+    ) async {
+      final inTwoDays = DateTime(now.year, now.month, now.day + 2, 9);
+      final far = TimelineEvent(
+        id: 'far',
+        title: 'Longe',
+        section: TimelineSection.dia,
+        startTime: inTwoDays,
+        endTime: inTwoDays.add(const Duration(minutes: 30)),
+        durationMinutes: 30,
+      );
+      await pump(tester, [running, far], mode: TimelineMode.list);
+
+      final date = lookupAppLocalizations(
+        const Locale('pt'),
+      ).sectionDay(inTwoDays);
+      expect(find.text('Agora'), findsOneWidget);
+      expect(
+        find.text(date[0].toUpperCase() + date.substring(1)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('reorders the queue by its place in the list', (tester) async {
+      final (bloc, _) = await pump(tester, [
+        running,
+        later,
+        block('c', 60, 25),
+      ], mode: TimelineMode.list);
+
+      final above = tester.getBottomLeft(
+        find.widgetWithText(EventTile, 'Escrever'),
+      );
+      final below = tester.getTopLeft(find.widgetWithText(EventTile, 'Depois'));
+      await drag(tester, 'Bloco c', (above.dy + below.dy) / 2);
+
+      verify(() => bloc.add(const EventMoved(id: 'c', index: 1))).called(1);
+    });
+
+    testWidgets('starts what is dropped above what is running', (
+      tester,
+    ) async {
+      final (bloc, _) = await pump(tester, [
+        running,
+        later,
+      ], mode: TimelineMode.list);
+
+      final top = tester.getTopLeft(find.widgetWithText(EventTile, 'Escrever'));
+      await drag(tester, 'Depois', top.dy + 4);
+
+      verify(
+        () => bloc.add(const EventMoved(id: 'b', index: 0, start: true)),
+      ).called(1);
+    });
+
+    testWidgets('says so when there is nothing to do', (tester) async {
+      await pump(tester, [meeting], mode: TimelineMode.list);
+
+      expect(
+        find.text('Nenhuma tarefa. Toque no + para anotar algo.'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('the calendar', () {
+    testWidgets('heads a day past tomorrow with its weekday and date', (
+      tester,
+    ) async {
+      final inThreeDays = DateTime(now.year, now.month, now.day + 3, 9);
+      final far = TimelineEvent(
+        id: 'far',
+        title: 'Longe',
+        section: TimelineSection.dia,
+        startTime: inThreeDays,
+        endTime: inThreeDays.add(const Duration(minutes: 30)),
+        durationMinutes: 30,
+      );
+      await pump(
+        tester,
+        const [],
+        state: TimelineState(
+          status: TimelineStatus.success,
+          cards: [far],
+          tasks: [far],
+          days: 4,
+        ),
+      );
+
+      final date = lookupAppLocalizations(
+        const Locale('pt'),
+      ).sectionDay(inThreeDays);
+      await tester.scrollUntilVisible(find.text('Longe'), 600);
+      expect(
+        find.text(date[0].toUpperCase() + date.substring(1)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('asks for another week once scrolled to its end', (
+      tester,
+    ) async {
+      final (bloc, _) = await pump(tester, [running, later]);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -20000));
+      await tester.pump();
+
+      verify(() => bloc.add(const TimelineExtended())).called(greaterThan(0));
+    });
+
+    testWidgets('never asks for more of the list', (tester) async {
+      final (bloc, _) = await pump(tester, [
+        for (var n = 0; n < 30; n++) block('$n', 30 * n, 25),
+      ], mode: TimelineMode.list);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -20000));
+      await tester.pump();
+
+      verifyNever(() => bloc.add(const TimelineExtended()));
+    });
   });
 
   group('a tap on empty room', () {
@@ -610,6 +823,7 @@ void main() {
         TimelineState(
           status: TimelineStatus.success,
           cards: [running, first, last],
+          tasks: [running, first, last],
         ),
       );
       final taps = <FreeTap>[];

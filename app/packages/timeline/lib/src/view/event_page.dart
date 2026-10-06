@@ -9,7 +9,7 @@ import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
 /// {@template event_page}
-/// One block of time, opened.
+/// One task or one block of time, opened.
 ///
 /// The top of the screen is the block: its name beside the back button,
 /// edited where it is written, then its hour and length, each a tap away from
@@ -20,7 +20,11 @@ import 'package:timeline/src/widgets/widgets.dart';
 /// Everything under that is the block's notes: free text, saved as it is
 /// written.
 ///
-/// The block is read from the timeline rather than fetched. It is the card
+/// A task's hour is the queue's to give, so only an event's hour opens a
+/// picker here; a task's length does, and its place is changed by dragging
+/// it in the list.
+///
+/// The card is read from the timeline rather than fetched. It is the card
 /// the user just tapped, and every change made here lands on the timeline
 /// first, so the two can never disagree.
 /// {@endtemplate}
@@ -28,7 +32,7 @@ class EventPage extends StatelessWidget {
   /// {@macro event_page}
   const EventPage({required this.id, super.key});
 
-  /// The event id of the block.
+  /// The card's id: the task's for a task, the event's for an event.
   final String id;
 
   @override
@@ -225,9 +229,10 @@ class _Summary extends StatelessWidget {
     return EventControls(
       card: card,
       onPauseToggled: () => bloc.add(EventPauseToggled(card.id)),
-      // Begins a waiting block, or brings one that has not reached its hour
-      // to the top of the day; the server tells the two apart.
-      onStarted: () => bloc.add(EventStarted(card.id)),
+      // Begins a waiting task, or brings one that has not reached its hour
+      // to the top of the day; the server tells the two apart. An event
+      // begins at its hour, and has nothing to ask.
+      onStarted: card.isTask ? () => bloc.add(EventStarted(card.id)) : null,
       onAdjusted: (minutes) => unawaited(adjustTime(context, card, minutes)),
       onDone: () async {
         bloc.add(EventFinished(card.id));
@@ -242,13 +247,17 @@ class _Summary extends StatelessWidget {
     if (minutes < 1) return l10n.eventStartsNow;
     if (minutes < 60) return l10n.eventStartsIn(minutes);
 
-    final today =
-        start.year == now.year &&
-        start.month == now.month &&
-        start.day == now.day;
-    return today
-        ? l10n.eventStartsAt(hhmm(start))
-        : l10n.eventStartsTomorrowAt(hhmm(start));
+    final days = DateTime(
+      start.year,
+      start.month,
+      start.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
+
+    return switch (days) {
+      <= 0 => l10n.eventStartsAt(hhmm(start)),
+      1 => l10n.eventStartsTomorrowAt(hhmm(start)),
+      _ => l10n.eventDayAt(start.day, start.month, hhmm(start)),
+    };
   }
 }
 
@@ -275,7 +284,10 @@ class _When extends StatelessWidget {
         ],
         _Tappable(
           text: _startLabel(context.l10n, card.startTime),
-          onTap: editable && !started ? () => _pickStart(context) : null,
+          // A task's hour is wherever the queue puts it.
+          onTap: editable && !started && !card.isTask
+              ? () => _pickStart(context)
+              : null,
         ),
         Text(
           ' · ',
@@ -305,8 +317,8 @@ class _When extends StatelessWidget {
     };
   }
 
-  /// Naming an hour pins the block to it, as the creation sheet does, and
-  /// the day is part of naming it.
+  /// A new hour for an event, the day part of naming it, as the creation
+  /// sheet does.
   Future<void> _pickStart(BuildContext context) async {
     final bloc = context.read<TimelineBloc>();
     final now = DateTime.now();

@@ -1,374 +1,739 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { CalendarUser } from '../calendar/calendar.types';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { CalendarService } from '../calendar/calendar.service';
+import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
-import { moved, PlannedBlock, relayout } from '../time/scheduling';
+import { TaskStore } from '../tasks/task.store';
+import { Task } from '../tasks/task.types';
 import {
   addMinutes,
-  BLOCK_GAP_MINUTES,
-  earliestStart,
   floorToMinute,
-  Interval,
-  minutesOf,
-  nextFreeSlot,
   roundUpToFiveMinutes,
 } from '../time/work-hours';
-import { Zone } from '../time/zone';
-import { CalendarEvent } from '../calendar/calendar.types';
-import { EventCard, EventEdit, EventRequest } from './entities/event.entity';
-import { awaitsStart, intervalOf, isRunning } from './event-sections';
-import { EventsService, TimeBlock, workSecondsOf } from './events.service';
+import {
+  EventEdit,
+  EventRequest,
+  TaskEdit,
+  TaskRequest,
+} from './entities/event.entity';
+import { intervalOf, isRunning } from './event-sections';
 import { StartNowGuard, TimingAction } from './timing';
+import { Day, TimelineService, workSecondsOf } from './timeline.service';
 
-/** What a move produced: the timeline, and a question if one is still open. */
-export interface TimingOutcome {
-  cards: EventCard[];
-  /** The question to ask. Absent means the move went through. */
-  guard?: StartNowGuard;
-}
+/**
+ * Something running at this minute: a task that was begun, or an event.
+ *
+ * What the guard asks about, and what its answer finishes or puts off.
+ */
+type Running =
+  | { kind: 'task'; task: Task; event: CalendarEvent }
+  | { kind: 'event'; event: CalendarEvent };
 
 /**
  * When things happen.
  *
- * Three operations, and one rule underneath all of them. The rule is that the
- * day is a queue of flexible blocks flowing around a handful of fixed ones,
- * packed as close to now as they will go. Adding drops something into the
- * first gap that fits without disturbing anybody; dragging rewrites the queue
- * order and lets the whole thing repack; finishing something takes it out and
- * closes the hole it left.
+ * The day is a queue of tasks flowing around a handful of events, packed as
+ * close to now as they will go. A task's hour is never written down: it is
+ * where the queue puts it on the read that asks. So adding a task, dragging
+ * one and finishing one only change the queue, and the next read lays it
+ * out again. An event's hour is written down, because the hour is the point
+ * of it, and so is a task's once it is begun, because by then it is a fact.
  *
  * No model is involved, and nothing is asked that arithmetic can answer. The
  * single surviving question is what to do with the thing that was already
- * running when something else was dragged on top of it.
- *
- * Every hour this works out is written to the calendar, because the calendar
- * is the only place an hour is kept.
+ * running when a task was dragged on top of it.
  */
 @Injectable()
 export class EventLayoutService {
-  constructor(private readonly _events: EventsService) {}
+  constructor(
+    private readonly _timeline: TimelineService,
+    private readonly _calendar: CalendarService,
+    private readonly _tasks: TaskStore,
+  ) {}
+
+  // -------------------------------------------------------------------------
+  // Events
+  // -------------------------------------------------------------------------
 
   /**
-   * Writes something down and puts it on the timeline.
-   *
-   * A flexible block takes the first gap that fits, which is what "as close
-   * to now as possible without moving anything" means in one line. A fixed
-   * one takes the hour it was given, whatever else is there: the user named
-   * it, so it is not the server's to negotiate.
-   *
-   * A flexible block written down from a tap on empty room later in the day
-   * starts looking there rather than now, and keeps that as its floor, so
-   * the next repack does not pull it back to the top of the day.
-   *
-   * Nothing is asked. It is a block of time, and it goes where it fits.
+   * Writes a fixed block down at the hour it was given, whatever else is
+   * there: the user named it, so it is not the server's to negotiate. The
+   * tasks around it make room on the next read.
    */
-  async create(
+  async createEvent(
     user: CalendarUser,
     request: EventRequest,
     trace: Trace,
-    now = new Date(),
-  ): Promise<EventCard[]> {
-    const blocks = await this._events.blocks(user);
-    const floor = floorOf(request, now);
-    const slot = slotFor(
-      request,
-      blocks,
-      floor ?? now,
-      await this._events.zone(user),
-    );
-
-    trace.log('event.create', {
-      fixed: request.fixed,
-      start: slot.start.toISOString(),
+  ): Promise<void> {
+    const start = roundUpToFiveMinutes(new Date(request.startTime));
+    const created = await this._calendar.create(user, {
+      title: request.title,
+      startTime: start.toISOString(),
+      endTime: addMinutes(start, request.durationMinutes).toISOString(),
+      fixed: true,
     });
 
-    await this._events.book(
-      user,
-      { title: request.title, slot, fixed: request.fixed, notBefore: floor },
-      trace,
-    );
-
-    return this._events.cards(user, now);
+    trace.log('event.create', {
+      eventId: created.id,
+      start: created.startTime,
+    });
   }
 
   /**
-   * Moves one block to [index] in the day's queue and repacks around it.
+   * Renames a block, changes its notes, changes how long it takes, or gives
+   * it another hour.
    *
-   * The index is a place in the whole timeline rather than in a section,
-   * because the sections are only the clock reading itself back: there is one
-   * list, and a drop is a place in it.
-   *
-   * A day of a routine moves like any fixed block. It is its own row, so
-   * the other days stay where the routine puts them.
+   * The duration is the work, pauses left out, so it goes through [extend]
+   * as the difference from what it was. A new hour can only be named for
+   * something that has not started: a running block's start is a fact.
    */
-  async move(
+  async editEvent(
     user: CalendarUser,
-    action: TimingAction,
+    eventId: string,
+    edit: EventEdit,
     trace: Trace,
     now = new Date(),
-  ): Promise<TimingOutcome> {
-    const event = await this._events.require(user, action.eventId);
-    if (!event.managed) {
-      throw new BadRequestException('A meeting cannot be moved here');
-    }
+  ): Promise<void> {
+    let event = await this._event(user, eventId);
+    event = await this._reword(user, event, edit, trace);
 
-    const zone = await this._events.zone(user);
-    const cards = await this._events.cards(user, now);
-    // A block still waiting for the user to begin it has not displaced
-    // anything, so dragging something over it is not the destructive move.
-    const running = cards.find(
-      (card) =>
-        card.managed &&
-        !card.awaitingStart &&
-        card.id !== action.eventId &&
-        Date.parse(card.startTime) <= now.getTime() &&
-        Date.parse(card.endTime) > now.getTime(),
-    );
+    if (edit.startTime !== undefined) {
+      const interval = intervalOf(event);
+      if (interval !== undefined && interval.start <= now) {
+        throw new BadRequestException(
+          'Não dá para mudar o início de algo que já começou.',
+        );
+      }
 
-    // The only destructive drag there is: something else is happening, and
-    // the user has just said this is what they are doing instead.
-    if (action.index === 0 && running !== undefined && !action.decision) {
-      return {
-        cards,
-        guard: {
-          kind: 'start_now',
-          eventId: action.eventId,
-          index: action.index,
-          current: {
-            id: running.id,
-            title: running.title,
-            startTime: running.startTime,
-            endTime: running.endTime,
-          },
-        },
-      };
-    }
+      const start = floorToMinute(new Date(edit.startTime));
+      const work = edit.workMinutes ?? Math.round(workSecondsOf(event) / 60);
 
-    const closed =
-      action.decision === 'solve_current' && running !== undefined
-        ? running.id
-        : undefined;
-
-    // The two blocks a drag is allowed to move out of their hour. Normally it
-    // is just the card under the finger; when the user chose to keep what was
-    // running and do it later, it is that one instead, because pushing it
-    // down the day is the whole of what they asked for.
-    const thawed =
-      action.decision === 'postpone_current' ? running?.id : action.eventId;
-
-    if (closed !== undefined) await this._complete(user, closed, trace, now);
-
-    // A drop into a gap asks for that gap, so the block is not laid out any
-    // earlier than where it starts. A drop between two cards asks for no
-    // such thing, and lifts whatever floor the block had.
-    const floor =
-      action.after === undefined
-        ? undefined
-        : laterOf(floorToMinute(new Date(action.after)), floorToMinute(now));
-    if (floor?.toISOString() !== event.notBefore) {
-      await this._events.revise(
+      trace.log('event.pin', { eventId, start: start.toISOString() });
+      await this._revise(
         user,
         event,
-        { notBefore: floor?.toISOString() },
+        {
+          startTime: start.toISOString(),
+          endTime: addMinutes(start, work).toISOString(),
+          pausedAt: undefined,
+          remainingSeconds: undefined,
+          pausedSeconds: undefined,
+        },
         trace,
       );
+      return;
     }
 
-    // The block that was just closed is out of the day, so it is out of the
-    // queue too. Laying it out again would leave a hole in the afternoon the
-    // shape of something nobody is going to do.
-    await this._repack(
-      user,
-      queueOf(cards, action, now, { closed, thawed, floor }),
-      trace,
-      now,
-      zone,
-    );
-
-    // Dropping a block at the top is the user saying they are doing it now,
-    // which is as clear a yes as the button that asks.
-    if (action.index === 0) await this._markStarted(user, event.id, trace, now);
-
-    return { cards: await this._events.cards(user, now) };
+    if (edit.workMinutes !== undefined) {
+      const delta = edit.workMinutes - Math.round(workSecondsOf(event) / 60);
+      if (delta !== 0) await this._extend(user, event, delta, trace, now);
+    }
   }
 
   /**
-   * The user began a block that was waiting for them.
-   *
-   * One that has not reached its hour yet is the same request as dragging it
-   * to the top, and goes the same way, guard and all.
+   * Marks a block done. A running one keeps the hour it really took; one
+   * that never started had no hour to keep, and leaves.
    */
-  async start(
+  async doneEvent(
     user: CalendarUser,
     eventId: string,
     trace: Trace,
     now = new Date(),
-  ): Promise<TimingOutcome> {
-    const event = await this._managed(user, eventId);
-    const interval = intervalOf(event);
-
-    if (interval !== undefined && interval.start > now) {
-      return this.move(user, { eventId, index: 0 }, trace, now);
-    }
-
-    trace.log('event.start', { eventId });
-    await this._markStarted(user, eventId, trace, now);
-
-    return { cards: await this._events.cards(user, now) };
+  ): Promise<void> {
+    await this._finish(user, await this._event(user, eventId), trace, now);
   }
 
-  /**
-   * Not yet: the block waits [minutes] more before asking again.
-   *
-   * Written as a floor rather than as an hour, so the rest of the day keeps
-   * flowing around it and the next repack does not pull it straight back.
-   */
-  async snooze(
+  /** Takes a block off the calendar entirely, as if it had never been. */
+  async removeEvent(
+    user: CalendarUser,
+    eventId: string,
+    trace: Trace,
+  ): Promise<void> {
+    const event = await this._event(user, eventId);
+    trace.log('event.remove', { eventId });
+    await this._calendar.remove(user, event);
+  }
+
+  async pauseEvent(
+    user: CalendarUser,
+    eventId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    await this._pause(user, await this._event(user, eventId), trace, now);
+  }
+
+  async resumeEvent(
+    user: CalendarUser,
+    eventId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    await this._resume(user, await this._event(user, eventId), trace, now);
+  }
+
+  async extendEvent(
     user: CalendarUser,
     eventId: string,
     minutes: number,
     trace: Trace,
     now = new Date(),
-  ): Promise<EventCard[]> {
-    const event = await this._managed(user, eventId);
-    if (event.fixed) {
-      throw new BadRequestException('Um bloco fixo começa na hora dele.');
+  ): Promise<void> {
+    const event = await this._event(user, eventId);
+    await this._extend(user, event, minutes, trace, now);
+  }
+
+  // -------------------------------------------------------------------------
+  // Tasks
+  // -------------------------------------------------------------------------
+
+  /**
+   * Writes a task down at the end of the queue.
+   *
+   * One written down from a tap on empty room further down the day goes into
+   * the queue where that room is instead, after everything the queue puts
+   * before it, and keeps the room's start as its floor so the next read does
+   * not pull it back to now.
+   */
+  async createTask(
+    user: CalendarUser,
+    request: TaskRequest,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const queue = queueOf(day);
+    const floor =
+      request.notBefore === undefined
+        ? undefined
+        : floorToMinute(new Date(request.notBefore));
+    const useful = floor !== undefined && floor > now ? floor : undefined;
+
+    const index =
+      useful === undefined
+        ? queue.length
+        : queue.filter((task) => day.placed.get(task.id)!.start < useful)
+            .length;
+
+    const created = await this._tasks.insert(user, {
+      title: request.title,
+      minutes: request.minutes,
+      position: await this._positionAt(user, queue, index),
+      notBefore: useful?.toISOString(),
+    });
+
+    trace.log('task.create', { taskId: created.id, index });
+  }
+
+  /**
+   * Renames a task, changes its notes, or how long it takes.
+   *
+   * A task that is running takes the new length on its hour as well, and
+   * whatever comes after it moves on the next read.
+   */
+  async editTask(
+    user: CalendarUser,
+    taskId: string,
+    edit: TaskEdit,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    let task = pendingOf(day, taskId);
+    const live = day.live.get(taskId);
+
+    const words = {
+      ...(edit.title !== undefined && edit.title !== task.title
+        ? { title: edit.title }
+        : {}),
+      ...(edit.notes !== undefined && edit.notes !== task.notes
+        ? { notes: edit.notes }
+        : {}),
+    };
+    if (Object.keys(words).length > 0) {
+      trace.log('task.revise', { taskId, keys: Object.keys(words) });
+      task = await this._tasks.update(user, { ...task, ...words });
+      // The hour on the calendar carries the name, so a reminder about it
+      // says the same thing the card does.
+      if (live !== undefined && words.title !== undefined) {
+        await this._revise(user, live, { title: words.title }, trace);
+      }
     }
 
+    if (edit.workMinutes === undefined) return;
+
+    if (live === undefined) {
+      if (edit.workMinutes !== task.minutes) {
+        await this._tasks.update(user, { ...task, minutes: edit.workMinutes });
+      }
+      return;
+    }
+
+    const delta = edit.workMinutes - Math.round(workSecondsOf(live) / 60);
+    if (delta !== 0) {
+      await this._extend(user, live, delta, trace, now);
+      await this._tasks.update(user, { ...task, minutes: edit.workMinutes });
+    }
+  }
+
+  /**
+   * Moves a task to [action.index] in the list and lets the queue lay itself
+   * out again.
+   *
+   * The index counts what is running at the top of the list, so dropping
+   * something just under the running task makes it the next thing, and
+   * dropping it above is doing it now. That one, while something else is
+   * running, is the only drag that destroys something, and so the only one
+   * that asks first: the answer comes back as a guard and nothing changes
+   * until the user picks one.
+   */
+  async moveTask(
+    user: CalendarUser,
+    action: TimingAction,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<StartNowGuard | undefined> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, action.taskId);
+    const running = runningOf(day, task.id);
+
+    if (action.start === true && running !== undefined && !action.decision) {
+      trace.log('task.guard', { taskId: task.id, current: running.event.id });
+
+      return {
+        kind: 'start_now',
+        taskId: task.id,
+        index: action.index,
+        current: {
+          id: running.kind === 'task' ? running.task.id : running.event.id,
+          title:
+            running.kind === 'task' ? running.task.title : running.event.title,
+          startTime: running.event.startTime,
+          endTime: running.event.endTime,
+        },
+      };
+    }
+
+    // What the guard's answer does to what was running. Postponing a fixed
+    // block does nothing: its hour is the point of it, so the task waits
+    // for it instead.
+    let postponed: Task | undefined;
+    if (action.start === true && running !== undefined) {
+      if (action.decision === 'solve_current') {
+        await this._finishRunning(user, running, trace, now);
+      } else if (running.kind === 'task') {
+        trace.log('task.postpone', { taskId: running.task.id });
+        await this._calendar.remove(user, running.event);
+        postponed = running.task;
+      }
+    }
+
+    // A running task dragged anywhere but the top stops running: it goes
+    // back in the queue, owing its whole length, and starts again when it
+    // comes round.
+    const own = day.live.get(task.id);
+    if (own !== undefined && action.start !== true) {
+      trace.log('task.unstart', { taskId: task.id });
+      await this._calendar.remove(user, own);
+    }
+
+    // A drop into a gap asks for that gap, so the task is not laid out any
+    // earlier than where it starts. A drop between two cards asks for no
+    // such thing, and lifts whatever floor it had.
+    const floor =
+      action.after === undefined
+        ? undefined
+        : laterOf(floorToMinute(new Date(action.after)), floorToMinute(now));
+
+    const still = [...day.live.keys()].filter(
+      (id) => id !== task.id && id !== postponed?.id,
+    ).length;
+    const queue = queueOf(day).filter((it) => it.id !== task.id);
+    const index = Math.max(0, Math.min(action.index - still, queue.length));
+
+    trace.log('task.move', { taskId: task.id, index });
+    const moved = await this._tasks.update(user, {
+      ...task,
+      position: await this._positionAt(user, queue, index),
+      notBefore: floor?.toISOString(),
+      minutes: action.minutes ?? task.minutes,
+    });
+
+    // What was running and was put off is the next thing after this one.
+    if (postponed !== undefined) {
+      const after = [...queue.slice(0, index), moved, ...queue.slice(index)];
+      await this._tasks.update(user, {
+        ...postponed,
+        position: await this._positionAt(user, after, index + 1),
+        notBefore: undefined,
+      });
+    }
+
+    // Dropping a task at the top is the user saying they are doing it now,
+    // which is as clear a yes as the button that asks.
+    if (action.start === true && own === undefined) {
+      await this._beginIfFree(user, moved, trace, now);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * The user began a task.
+   *
+   * One whose hour has come is begun where it is. One further down the day
+   * is the same request as dragging it to the top, and goes the same way,
+   * guard and all.
+   */
+  async startTask(
+    user: CalendarUser,
+    taskId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<StartNowGuard | undefined> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, taskId);
+    if (day.live.has(taskId)) return undefined;
+
+    const slot = day.placed.get(taskId);
+    if (slot !== undefined && slot.start <= now) {
+      await this._begin(user, task, trace, now);
+      return undefined;
+    }
+
+    return this.moveTask(user, { taskId, index: 0, start: true }, trace, now);
+  }
+
+  /**
+   * Not yet: the task waits [minutes] more before asking again.
+   *
+   * Written as a floor rather than as an hour, so the rest of the day keeps
+   * flowing around it. One that was already running stops.
+   */
+  async snoozeTask(
+    user: CalendarUser,
+    taskId: string,
+    minutes: number,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, taskId);
+    const live = day.live.get(taskId);
+    if (live !== undefined) await this._calendar.remove(user, live);
+
     const floor = floorToMinute(addMinutes(now, minutes));
-    trace.log('event.snooze', { eventId, until: floor.toISOString() });
+    trace.log('task.snooze', { taskId, until: floor.toISOString() });
 
-    await this._events.revise(
-      user,
-      event,
-      { notBefore: floor.toISOString(), started: undefined },
-      trace,
-    );
-
-    return this._relayout(user, trace, now);
+    await this._tasks.update(user, { ...task, notBefore: floor.toISOString() });
   }
 
   /**
-   * Marks a block done.
+   * Marks a task done.
    *
-   * A block that is running is cut off at this minute and stays on the
-   * calendar as what actually happened. The rest of the day then starts five
-   * minutes from now, which is the break between one thing and the next. A
-   * block that never started had no hour to keep, so it simply leaves.
-   *
-   * A rearrangement that cannot be written does not put the block back. It
-   * is done, and having the card spring back onto the timeline would be the
-   * app arguing with the user about something they already know.
+   * A running one keeps on the calendar the hour it really took, and the
+   * rest of the day starts five minutes from now, which is the break. One
+   * that never started just leaves the list.
    */
-  async done(
+  async doneTask(
     user: CalendarUser,
-    eventId: string,
+    taskId: string,
     trace: Trace,
     now = new Date(),
-  ): Promise<EventCard[]> {
-    const zone = await this._events.zone(user);
-    const cards = await this._events.cards(user, now);
-    const wasRunning = await this._complete(user, eventId, trace, now);
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, taskId);
+    const live = day.live.get(taskId);
 
-    await this._safeRepack(
+    await this._finishRunning(
       user,
-      blocksOf(cards, now, { closed: eventId }),
-      trace,
-      wasRunning ? addMinutes(now, BLOCK_GAP_MINUTES) : now,
-      zone,
-    );
-
-    return this._events.cards(user, now);
-  }
-
-  /**
-   * Takes a block off the calendar entirely, as if it had never been booked.
-   *
-   * Unlike [done] nothing of it is kept, and the day closes up over the space
-   * from now, with no break: nothing was finished, so there is nothing to
-   * rest from.
-   */
-  async remove(
-    user: CalendarUser,
-    eventId: string,
-    trace: Trace,
-    now = new Date(),
-  ): Promise<EventCard[]> {
-    const zone = await this._events.zone(user);
-    const cards = await this._events.cards(user, now);
-    const event = await this._managed(user, eventId);
-
-    trace.log('event.remove', { eventId });
-    await this._events.erase(user, event, trace);
-
-    await this._safeRepack(
-      user,
-      blocksOf(cards, now, { closed: eventId }),
+      live === undefined ? undefined : { kind: 'task', task, event: live },
       trace,
       now,
-      zone,
+      task,
     );
+  }
 
-    return this._events.cards(user, now);
+  /** Forgets a task, and the hour it was taking if it was running. */
+  async removeTask(
+    user: CalendarUser,
+    taskId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    pendingOf(day, taskId);
+
+    const live = day.live.get(taskId);
+    if (live !== undefined) await this._calendar.remove(user, live);
+
+    trace.log('task.remove', { taskId });
+    await this._tasks.remove(user, taskId);
+  }
+
+  async pauseTask(
+    user: CalendarUser,
+    taskId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const live = await this._live(user, taskId, now);
+    if (live === undefined) {
+      throw new BadRequestException('Comece o bloco antes de pausar.');
+    }
+
+    await this._pause(user, live, trace, now);
+  }
+
+  async resumeTask(
+    user: CalendarUser,
+    taskId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const live = await this._live(user, taskId, now);
+    if (live !== undefined) await this._resume(user, live, trace, now);
   }
 
   /**
-   * Pauses the block that is running.
+   * Gives a task [minutes] more. A running one takes them on its hour too,
+   * and whatever comes after it moves on the next read.
+   */
+  async extendTask(
+    user: CalendarUser,
+    taskId: string,
+    minutes: number,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, taskId);
+    const live = day.live.get(taskId);
+
+    if (live === undefined) {
+      if (task.minutes + minutes < 5) {
+        throw new BadRequestException('Essa duração é curta demais.');
+      }
+      await this._tasks.update(user, {
+        ...task,
+        minutes: task.minutes + minutes,
+      });
+      return;
+    }
+
+    const event = await this._extend(user, live, minutes, trace, now);
+    await this._tasks.update(user, {
+      ...task,
+      minutes: Math.round(workSecondsOf(event) / 60),
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // The clock
+  // -------------------------------------------------------------------------
+
+  /**
+   * Keeps the calendar true as the minutes pass.
+   *
+   * Drags every paused block's end along with the clock, and writes down as
+   * done every task whose hour ran out. Run by the minute tick and before
+   * every read of the day, and safe to run any number of times: the end of a
+   * paused block is always now plus what is still owed, so a second call in
+   * the same minute changes nothing and a call after the server was down for
+   * an hour catches the whole hour up at once.
+   */
+  async catchUp(
+    user: CalendarUser,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const events = await this._calendar.events(user, undefined, now);
+
+    for (const event of events) {
+      if (!event.managed || event.pausedAt === undefined) continue;
+
+      const end = pausedEnd(event, now);
+      if (end.getTime() === Date.parse(event.endTime)) continue;
+
+      await this._revise(user, event, { endTime: end.toISOString() }, trace);
+    }
+
+    const over = events.filter(
+      (event) =>
+        event.taskId !== undefined &&
+        Date.parse(event.endTime) <= now.getTime(),
+    );
+    if (over.length === 0) return;
+
+    const pending = new Map(
+      (await this._tasks.pending(user)).map((task) => [task.id, task]),
+    );
+    for (const event of over) {
+      const task = pending.get(event.taskId!);
+      if (task === undefined) continue;
+
+      trace.log('task.over', { taskId: task.id });
+      await this._tasks.update(user, { ...task, doneAt: event.endTime });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // The arithmetic underneath
+  // -------------------------------------------------------------------------
+
+  /**
+   * Begins [task] at this minute, when nothing else is running.
+   *
+   * Something still running here is a fixed block the user chose to wait
+   * for, and the task waits with them.
+   */
+  private async _beginIfFree(
+    user: CalendarUser,
+    task: Task,
+    trace: Trace,
+    now: Date,
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const busy = day.events.some((event) => {
+      const interval = intervalOf(event);
+      return interval !== undefined && isRunning(now, interval);
+    });
+
+    if (!busy) await this._begin(user, task, trace, now);
+  }
+
+  /** Writes [task] onto the calendar from this minute, as begun. */
+  private async _begin(
+    user: CalendarUser,
+    task: Task,
+    trace: Trace,
+    now: Date,
+  ): Promise<void> {
+    const start = floorToMinute(now);
+    const event = await this._calendar.create(user, {
+      title: task.title,
+      startTime: start.toISOString(),
+      endTime: addMinutes(start, task.minutes).toISOString(),
+      fixed: false,
+      started: true,
+      taskId: task.id,
+    });
+    trace.log('task.begin', { taskId: task.id, eventId: event.id });
+
+    if (task.notBefore !== undefined) {
+      await this._tasks.update(user, { ...task, notBefore: undefined });
+    }
+  }
+
+  /**
+   * Finishes what was running, or [task] when it was not running at all.
+   *
+   * A task is written down as done. Its hour, or an event's, is cut off at
+   * this minute and kept as what really happened, or taken off the calendar
+   * when it had not really started.
+   */
+  private async _finishRunning(
+    user: CalendarUser,
+    running: Running | undefined,
+    trace: Trace,
+    now: Date,
+    task?: Task,
+  ): Promise<void> {
+    if (running !== undefined) {
+      await this._finish(user, running.event, trace, now);
+    }
+
+    const done = running?.kind === 'task' ? running.task : task;
+    if (done !== undefined) {
+      trace.log('task.done', { taskId: done.id });
+      await this._tasks.update(user, { ...done, doneAt: now.toISOString() });
+    }
+  }
+
+  /**
+   * Off the day, as done. A block that is running is cut off at this minute
+   * and stays as the hour it took; one that started this very second, or
+   * not at all, has no hour to keep.
+   */
+  private async _finish(
+    user: CalendarUser,
+    event: CalendarEvent,
+    trace: Trace,
+    now: Date,
+  ): Promise<void> {
+    const interval = intervalOf(event);
+    const running = interval !== undefined && isRunning(now, interval);
+    trace.log('event.done', { eventId: event.id, running });
+
+    if (running && interval.start < now) {
+      await this._revise(
+        user,
+        event,
+        {
+          endTime: now.toISOString(),
+          pausedAt: undefined,
+          remainingSeconds: undefined,
+        },
+        trace,
+      );
+    } else {
+      await this._calendar.remove(user, event);
+    }
+  }
+
+  /**
+   * Pauses a running block.
    *
    * Nothing moves yet. What is written down is the moment it stopped and how
    * much work was still owed, and from then on [catchUp] drags its end along
    * with the clock so the owed work is always still ahead of it.
    */
-  async pause(
+  private async _pause(
     user: CalendarUser,
-    eventId: string,
+    event: CalendarEvent,
     trace: Trace,
-    now = new Date(),
-  ): Promise<EventCard[]> {
-    const event = await this._managed(user, eventId);
+    now: Date,
+  ): Promise<void> {
     const interval = intervalOf(event);
     if (interval === undefined || !isRunning(now, interval)) {
       throw new BadRequestException('Só dá para pausar o que está rodando.');
     }
-    if (awaitsStart(event, now)) {
-      throw new BadRequestException('Comece o bloco antes de pausar.');
-    }
+    if (event.pausedAt !== undefined) return;
 
-    if (event.pausedAt === undefined) {
-      trace.log('event.pause', { eventId });
-      await this._events.revise(
-        user,
-        event,
-        {
-          pausedAt: now.toISOString(),
-          remainingSeconds: Math.max(
-            0,
-            (interval.end.getTime() - now.getTime()) / 1000,
-          ),
-        },
-        trace,
-      );
-    }
-
-    return this._events.cards(user, now);
+    trace.log('event.pause', { eventId: event.id });
+    await this._revise(
+      user,
+      event,
+      {
+        pausedAt: now.toISOString(),
+        remainingSeconds: Math.max(
+          0,
+          (interval.end.getTime() - now.getTime()) / 1000,
+        ),
+      },
+      trace,
+    );
   }
 
   /** Runs a paused block again, owing exactly what it owed when it stopped. */
-  async resume(
+  private async _resume(
     user: CalendarUser,
-    eventId: string,
+    event: CalendarEvent,
     trace: Trace,
-    now = new Date(),
-  ): Promise<EventCard[]> {
-    const event = await this._managed(user, eventId);
-    if (event.pausedAt === undefined) return this._events.cards(user, now);
+    now: Date,
+  ): Promise<void> {
+    if (event.pausedAt === undefined) return;
 
     const pausedFor = Math.max(
       0,
       (now.getTime() - Date.parse(event.pausedAt)) / 1000,
     );
 
-    trace.log('event.resume', { eventId, pausedFor });
-    await this._events.revise(
+    trace.log('event.resume', { eventId: event.id, pausedFor });
+    await this._revise(
       user,
       event,
       {
@@ -379,32 +744,30 @@ export class EventLayoutService {
       },
       trace,
     );
-
-    return this._relayout(user, trace, now);
   }
 
   /**
-   * Gives a block [minutes] more, and pushes whatever comes after it.
+   * Gives a block [minutes] more, or fewer.
    *
    * The estimate was wrong, which is the whole of it: the end moves, and the
-   * day repacks behind it. A paused block owes the extra minutes too.
+   * tasks after it follow on the next read. A paused block owes the extra
+   * minutes too.
    */
-  async extend(
+  private async _extend(
     user: CalendarUser,
-    eventId: string,
+    event: CalendarEvent,
     minutes: number,
     trace: Trace,
-    now = new Date(),
-  ): Promise<EventCard[]> {
-    const event = await this._managed(user, eventId);
+    now: Date,
+  ): Promise<CalendarEvent> {
     const end = addMinutes(new Date(event.endTime), minutes);
 
     if (end <= now || end.getTime() <= Date.parse(event.startTime)) {
       throw new BadRequestException('Essa duração já passou.');
     }
 
-    trace.log('event.extend', { eventId, minutes });
-    await this._events.revise(
+    trace.log('event.extend', { eventId: event.id, minutes });
+    return this._revise(
       user,
       event,
       {
@@ -420,27 +783,15 @@ export class EventLayoutService {
       },
       trace,
     );
-
-    return this._relayout(user, trace, now);
   }
 
-  /**
-   * Renames a block, changes its notes, changes how long it takes, or pins
-   * it to an hour.
-   *
-   * The duration is the work, pauses left out, so it goes through [extend]
-   * as the difference from what it was. An hour can only be named for
-   * something that has not started: a running block's start is a fact.
-   */
-  async edit(
+  /** The new title and notes of [event], written when they changed. */
+  private async _reword(
     user: CalendarUser,
-    eventId: string,
+    event: CalendarEvent,
     edit: EventEdit,
     trace: Trace,
-    now = new Date(),
-  ): Promise<EventCard[]> {
-    let event = await this._managed(user, eventId);
-
+  ): Promise<CalendarEvent> {
     const words = {
       ...(edit.title !== undefined && edit.title !== event.title
         ? { title: edit.title }
@@ -449,173 +800,41 @@ export class EventLayoutService {
         ? { notes: edit.notes }
         : {}),
     };
-    if (Object.keys(words).length > 0) {
-      event = await this._events.revise(user, event, words, trace);
-    }
 
-    if (edit.startTime !== undefined) {
-      const interval = intervalOf(event);
-      if (interval !== undefined && interval.start <= now) {
-        throw new BadRequestException(
-          'Não dá para mudar o início de algo que já começou.',
-        );
-      }
-
-      const start = floorToMinute(new Date(edit.startTime));
-      const work = edit.workMinutes ?? Math.round(workSecondsOf(event) / 60);
-
-      trace.log('event.pin', { eventId, start: start.toISOString() });
-      await this._events.revise(
-        user,
-        event,
-        {
-          startTime: start.toISOString(),
-          endTime: addMinutes(start, work).toISOString(),
-          fixed: true,
-          pausedAt: undefined,
-          remainingSeconds: undefined,
-          pausedSeconds: undefined,
-          started: undefined,
-          notBefore: undefined,
-        },
-        trace,
-      );
-
-      return this._relayout(user, trace, now);
-    }
-
-    if (edit.workMinutes !== undefined) {
-      const delta = edit.workMinutes - Math.round(workSecondsOf(event) / 60);
-      if (delta !== 0) return this.extend(user, eventId, delta, trace, now);
-    }
-
-    return this._events.cards(user, now);
+    return Object.keys(words).length === 0
+      ? event
+      : this._revise(user, event, words, trace);
   }
 
   /**
-   * Drags every paused block's end along with the clock.
+   * Changes anything about one event.
    *
-   * Run by the minute tick and before every read of the day, and safe to run
-   * any number of times: the end is always now plus what is still owed, so a
-   * second call in the same minute changes nothing and a call after the
-   * server was down for an hour catches the whole hour up at once.
+   * A key named in [changes] with an undefined value clears it, which is how
+   * a pause is lifted.
    */
-  async catchUp(
+  private async _revise(
     user: CalendarUser,
+    event: CalendarEvent,
+    changes: Partial<Omit<CalendarEvent, 'id' | 'managed'>>,
     trace: Trace,
-    now = new Date(),
-  ): Promise<boolean> {
-    let changed = false;
+  ): Promise<CalendarEvent> {
+    trace.log('event.revise', {
+      eventId: event.id,
+      keys: Object.keys(changes),
+    });
 
-    for (const event of await this._events.paused(user)) {
-      const end = pausedEnd(event, now);
-      if (end.getTime() === Date.parse(event.endTime)) continue;
-
-      await this._events.revise(
-        user,
-        event,
-        { endTime: end.toISOString() },
-        trace,
-      );
-      changed = true;
-    }
-
-    // A block whose hour came and that nobody began slides with the clock,
-    // a minute at a time, until the user says so. It is moved here rather
-    // than left to the repack because one whose whole span has gone by would
-    // no longer be on the day at all, and the repack only sees the day.
-    const minute = floorToMinute(now);
-    for (const event of await this._events.waiting(user, now)) {
-      const interval = intervalOf(event);
-      if (interval === undefined || interval.start >= minute) continue;
-
-      await this._events.revise(
-        user,
-        event,
-        {
-          startTime: minute.toISOString(),
-          endTime: addMinutes(minute, minutesOf(interval)).toISOString(),
-        },
-        trace,
-      );
-      changed = true;
-    }
-
-    if (changed) await this._relayout(user, trace, now);
-
-    return changed;
-  }
-
-  /**
-   * Off the day, as done.
-   *
-   * Returns whether it was running, which is what decides whether the next
-   * thing waits five minutes for it.
-   */
-  private async _complete(
-    user: CalendarUser,
-    eventId: string,
-    trace: Trace,
-    now: Date,
-  ): Promise<boolean> {
-    const event = await this._managed(user, eventId);
-    const interval = intervalOf(event);
-    // A block still waiting to be begun never ran, so there is no hour of it
-    // to keep.
-    const running =
-      interval !== undefined &&
-      isRunning(now, interval) &&
-      !awaitsStart(event, now);
-
-    trace.log('event.done', { eventId, running });
-
-    // Kept on the calendar as the hour it really took. A block that started
-    // this very second has no hour to keep, so it goes like one that never
-    // started.
-    if (running && interval.start < now) {
-      await this._events.revise(
-        user,
-        event,
-        {
-          endTime: now.toISOString(),
-          pausedAt: undefined,
-          remainingSeconds: undefined,
-        },
-        trace,
-      );
-    } else {
-      await this._events.erase(user, event, trace);
-    }
-
-    return running;
-  }
-
-  /** Says on [eventId] that the user began it, when it has begun. */
-  private async _markStarted(
-    user: CalendarUser,
-    eventId: string,
-    trace: Trace,
-    now: Date,
-  ): Promise<void> {
-    const event = await this._events.require(user, eventId);
-    const interval = intervalOf(event);
-    if (interval === undefined || interval.start > now) return;
-    if (event.started === true && event.notBefore === undefined) return;
-
-    await this._events.revise(
-      user,
-      event,
-      { started: true, notBefore: undefined },
-      trace,
-    );
+    return this._calendar.save(user, { ...event, ...changes });
   }
 
   /** One event Lunna booked, or a refusal. */
-  private async _managed(
+  private async _event(
     user: CalendarUser,
     eventId: string,
   ): Promise<CalendarEvent> {
-    const event = await this._events.require(user, eventId);
+    const event = await this._calendar.find(user, eventId);
+    if (event === undefined) {
+      throw new NotFoundException(`No event "${eventId}"`);
+    }
     if (!event.managed) {
       throw new BadRequestException('Uma reunião não pode ser mudada aqui.');
     }
@@ -623,92 +842,84 @@ export class EventLayoutService {
     return event;
   }
 
-  /** The day as it stands, repacked from now, and then read back. */
-  private async _relayout(
+  /** The hour [taskId] is taking, when it was begun and is not over. */
+  private async _live(
     user: CalendarUser,
-    trace: Trace,
+    taskId: string,
     now: Date,
-  ): Promise<EventCard[]> {
-    const zone = await this._events.zone(user);
-    const cards = await this._events.cards(user, now);
+  ): Promise<CalendarEvent | undefined> {
+    const day = await this._timeline.day(user, 1, now);
+    pendingOf(day, taskId);
 
-    await this._safeRepack(user, blocksOf(cards, now), trace, now, zone);
-
-    return this._events.cards(user, now);
+    return day.live.get(taskId);
   }
 
   /**
-   * [_repack], with a failure logged rather than raised.
+   * The position that puts a task at [index] in [queue], which does not
+   * have it in.
    *
-   * By the time this runs the change the user asked for has landed, and a
-   * rearrangement that could not be written is not a reason to tell them it
-   * did not.
+   * Halfway between its new neighbours, so a drag writes one row. Halving
+   * runs out after fifty-odd drags into the same spot, and then the queue
+   * is numbered again from zero first.
    */
-  private async _safeRepack(
+  private async _positionAt(
     user: CalendarUser,
-    queue: PlannedBlock[],
-    trace: Trace,
-    from: Date,
-    zone: Zone,
-  ): Promise<void> {
-    try {
-      await this._repack(user, queue, trace, from, zone);
-    } catch (error) {
-      trace.warn('event.repackFailed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+    queue: Task[],
+    index: number,
+  ): Promise<number> {
+    const before = queue[index - 1]?.position;
+    const after = queue[index]?.position;
+
+    if (before === undefined && after === undefined) return 0;
+    if (before === undefined) return after - 1;
+    if (after === undefined) return before + 1;
+    if (after - before > 1e-9) return (before + after) / 2;
+
+    for (const [position, task] of queue.entries()) {
+      task.position = position;
+      await this._tasks.update(user, task);
+    }
+
+    return index - 0.5;
+  }
+}
+
+/** The tasks waiting their turn, in queue order: everything not begun. */
+function queueOf(day: Day): Task[] {
+  return day.tasks.filter((task) => !day.live.has(task.id));
+}
+
+/** The task [taskId] while it is still to do, or a 404. */
+function pendingOf(day: Day, taskId: string): Task {
+  const task = day.tasks.find((it) => it.id === taskId);
+  if (task === undefined) throw new NotFoundException(`No task "${taskId}"`);
+
+  return task;
+}
+
+/**
+ * Whatever Lunna booked that is running now, other than [taskId].
+ *
+ * A meeting is somebody else's and is never asked about. A task waiting to
+ * be begun has not displaced anything, so dragging something over it is not
+ * the destructive move: it is not on the calendar at all.
+ */
+function runningOf(day: Day, taskId: string): Running | undefined {
+  for (const event of day.events) {
+    const interval = intervalOf(event);
+    if (!event.managed || interval === undefined) continue;
+    if (!isRunning(day.now, interval)) continue;
+
+    if (event.taskId === undefined) return { kind: 'event', event };
+    if (event.taskId === taskId) continue;
+
+    const task = day.tasks.find((it) => it.id === event.taskId);
+    if (task !== undefined && day.live.get(task.id) === event) {
+      return { kind: 'task', task, event };
     }
   }
 
-  /** Lays the queue out from [from] and writes everything that moved. */
-  private async _repack(
-    user: CalendarUser,
-    queue: PlannedBlock[],
-    trace: Trace,
-    from: Date,
-    zone: Zone,
-  ): Promise<void> {
-    const anchors = queue
-      .filter((block) => block.fixed)
-      .map((block) => block.interval);
-
-    const placed = relayout(queue, anchors, earliestStart(from, zone), zone);
-
-    for (const block of queue) {
-      const slot = placed.get(block.id);
-      if (slot === undefined || !moved(block, slot)) continue;
-
-      trace.log('event.repack', {
-        eventId: block.id,
-        from: block.interval.start.toISOString(),
-        to: slot.start.toISOString(),
-      });
-
-      const event = await this._events.require(user, block.id);
-
-      // A paused block only ever moves when the user pushed it down the day,
-      // and a block that is no longer running is no longer paused: it starts
-      // again later owing what it owed. For the same reason a block that had
-      // been begun and is moved has to be begun again when its hour comes.
-      await this._events.revise(
-        user,
-        event,
-        {
-          startTime: slot.start.toISOString(),
-          endTime: slot.end.toISOString(),
-          ...(event.started === true ? { started: undefined } : {}),
-          ...(event.pausedAt === undefined
-            ? {}
-            : {
-                pausedAt: undefined,
-                remainingSeconds: undefined,
-                pausedSeconds: undefined,
-              }),
-        },
-        trace,
-      );
-    }
-  }
+  return undefined;
 }
 
 /**
@@ -726,136 +937,7 @@ function pausedEnd(event: CalendarEvent, now: Date): Date {
   return end;
 }
 
-/**
- * Where a new flexible block starts looking, when it was asked to start
- * later than now. A floor already behind the clock is no floor at all.
- */
-function floorOf(request: EventRequest, now: Date): Date | undefined {
-  if (request.fixed || request.notBefore === undefined) return undefined;
-
-  const floor = floorToMinute(new Date(request.notBefore));
-  return floor > now ? floor : undefined;
-}
-
-/** The hour a new block gets, looking from [from]. */
-function slotFor(
-  request: EventRequest,
-  blocks: TimeBlock[],
-  from: Date,
-  zone: Zone,
-): Interval {
-  if (request.fixed && request.startTime !== undefined) {
-    const start = roundUpToFiveMinutes(new Date(request.startTime));
-    return { start, end: addMinutes(start, request.durationMinutes) };
-  }
-
-  return nextFreeSlot(
-    earliestStart(from, zone),
-    request.durationMinutes,
-    blocks.map((block) => block.interval),
-    zone,
-  );
-}
-
-/**
- * The day as a queue: every card in screen order, [closed] left out.
- *
- * The order on screen is the order of the queue, which is the whole of what
- * the sections are. Nothing here decides an hour; that is the layout's job,
- * and this only says what is in the day, in what order, and which of it is
- * allowed to move.
- */
-function blocksOf(
-  cards: EventCard[],
-  now: Date,
-  options: { closed?: string; thawed?: string } = {},
-): PlannedBlock[] {
-  return cards
-    .filter((card) => card.id !== options.closed)
-    .map((card): PlannedBlock => {
-      const interval = {
-        start: new Date(card.startTime),
-        end: new Date(card.endTime),
-      };
-
-      return {
-        id: card.id,
-        minutes: card.durationMinutes,
-        fixed: anchored(card, interval, now, options.thawed),
-        interval,
-        notBefore:
-          card.notBefore === undefined ? undefined : new Date(card.notBefore),
-      };
-    });
-}
-
-/**
- * Whether a layout has to leave this block exactly where it is.
- *
- * Three reasons, and the third is the subtle one. A meeting is somebody
- * else's hour and a pinned block's hour is the point of it — neither is the
- * layout's to move. And **a block that has already started keeps the hour it
- * started at**: "Agora" says what the user is working on, not that they began
- * it this second, so rearranging the afternoon must not quietly rewrite a
- * block that has been running since eleven to say it began now. Its start is
- * a fact by then, not a plan.
- *
- * [thawed] is the one block the user has just said to move anyway: the card
- * under their finger, or the running one they chose to push down. Being asked
- * to move something beats every reason it would otherwise hold still.
- */
-function anchored(
-  card: EventCard,
-  interval: Interval,
-  now: Date,
-  thawed?: string,
-): boolean {
-  if (card.id === thawed) return card.fixed;
-
-  // A block waiting to be begun has no start to keep yet: it is the one
-  // running block the clock is allowed to push.
-  return (
-    card.fixed ||
-    !card.managed ||
-    (isRunning(now, interval) && !card.awaitingStart)
-  );
-}
-
 /** Whichever of [a] and [b] comes later. */
 function laterOf(a: Date, b: Date): Date {
   return a > b ? a : b;
-}
-
-/**
- * The day's queue after the drop: every card in screen order, with the
- * dragged one lifted out and put back at [action.index].
- *
- * Meetings stay in the queue so a drop counted past one lands where the
- * finger was, but they are anchors and so nothing ever assigns them a new
- * hour.
- */
-function queueOf(
-  cards: EventCard[],
-  action: TimingAction,
-  now: Date,
-  options: { closed?: string; thawed?: string; floor?: Date } = {},
-): PlannedBlock[] {
-  const blocks = blocksOf(cards, now, options);
-
-  const from = blocks.findIndex((block) => block.id === action.eventId);
-  if (from === -1) return blocks;
-
-  const [dragged] = blocks.splice(from, 1);
-  // Dropping a card at the top is the user saying "now", and dropping it into
-  // a gap is the user naming where it goes; either overrules the hour it was
-  // pinned to. Nothing else about the drop can.
-  const landing: PlannedBlock = {
-    ...dragged,
-    fixed: action.index === 0 || options.floor ? false : dragged.fixed,
-    notBefore: options.floor,
-    minutes: action.minutes ?? dragged.minutes,
-  };
-  blocks.splice(Math.min(action.index, blocks.length), 0, landing);
-
-  return blocks;
 }

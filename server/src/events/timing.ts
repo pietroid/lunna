@@ -4,16 +4,24 @@
  * Everything else a drag might ask about — how long is this, may I book it,
  * that hour is taken — is the screen asking the user to do arithmetic it can
  * do itself. What is left is the only drag that destroys something: putting a
- * card at the top of the day while something else is already running. That
+ * task at the top of the day while something else is already running. That
  * one has a real answer only the user has, so it is the only one asked.
  */
 
-/** A card dropped somewhere in the day, possibly with the answer to a guard. */
+/** A task dropped somewhere in the queue, possibly with a guard's answer. */
 export interface TimingAction {
-  /** The event being moved. */
-  eventId: string;
-  /** Where in the day's queue the drop left it, counting from the top. */
+  /** The task being moved. */
+  taskId: string;
+  /**
+   * Where in the list of tasks the drop left it, counting from the top with
+   * itself taken out. What is running counts: it is at the top of the list.
+   */
   index: number;
+  /**
+   * Whether it was dropped at the very top of the day, which is the user
+   * saying they are doing it now.
+   */
+  start?: boolean;
   /** What the user decided. Absent means they have not been asked yet. */
   decision?: TimingDecision;
   /** ISO 8601, the start of the gap it was dropped into, when it was. */
@@ -39,13 +47,13 @@ export const TIMING_DECISIONS: TimingDecision[] = [
 /**
  * The question, as data. The app draws it and words it.
  *
- * Both answers move the dragged card to now. They differ in what becomes of
+ * Both answers start the dragged task now. They differ in what becomes of
  * what it displaced: finished, or further down the day.
  */
 export interface StartNowGuard {
   kind: 'start_now';
-  /** The card that was dropped at the top. */
-  eventId: string;
+  /** The task that was dropped at the top. */
+  taskId: string;
   index: number;
   /** What is running now, which the answer decides the fate of. */
   current: {

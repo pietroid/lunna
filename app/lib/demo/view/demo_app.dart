@@ -30,10 +30,17 @@ class DemoApp extends StatelessWidget {
               DemoTimelineRepository(context.l10n, resting: resting),
         ),
       ],
-      child: BlocProvider<TimelineBloc>(
-        create: (context) =>
-            TimelineBloc(repository: context.read<TimelineRepository>())
-              ..add(const TimelineRequested()),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<TimelineBloc>(
+            create: (context) =>
+                TimelineBloc(repository: context.read<TimelineRepository>())
+                  ..add(const TimelineRequested()),
+          ),
+          // Not remembered: the demo opens the way the app does the first
+          // time, on the calendar.
+          BlocProvider<TimelineModeCubit>(create: (_) => TimelineModeCubit()),
+        ],
         child: ScaffoldMessenger(
           child: Navigator(
             onGenerateRoute: (_) =>
@@ -53,8 +60,11 @@ class _DemoHome extends StatelessWidget {
     final bloc = context.read<TimelineBloc>();
     final result = await AppPromptSheet.show(
       context,
-      previewFor: (duration) =>
-          TimelinePlan.nextFreeStart(bloc.state.cards, duration),
+      previewFor: (duration) => TimelinePlan.nextQueuedStart(
+        bloc.state.cards,
+        bloc.state.tasks,
+        duration,
+      ),
     );
     if (result == null) return;
 
@@ -82,8 +92,11 @@ class _DemoHome extends StatelessWidget {
             child: Column(
               children: [
                 const _Header(),
+                const TimelineModeSwitch(),
                 Expanded(
                   child: TimelineList(
+                    key: ValueKey(context.watch<TimelineModeCubit>().state),
+                    mode: context.watch<TimelineModeCubit>().state,
                     onCardTap: (card) => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => EventPage(id: card.id),

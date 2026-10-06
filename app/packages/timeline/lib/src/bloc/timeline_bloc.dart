@@ -8,18 +8,19 @@ part 'timeline_event.dart';
 part 'timeline_state.dart';
 
 /// {@template timeline_bloc}
-/// Holds the day.
+/// Holds the day: the list of tasks and the calendar.
 ///
-/// Every card is a block of time on the calendar, and everything about when
-/// things happen is worked out on the server, so this mostly forwards and
-/// redraws. There is one optimistic write left, finishing a block, because
-/// the card has already flown off the screen by the time the request goes
-/// out.
+/// Everything about when things happen is worked out on the server, so this
+/// mostly forwards and redraws. Every write answers with both views, for as
+/// many days as the calendar is drawing, so the two never disagree. The few
+/// writes drawn before the server answers are the ones whose card has
+/// already moved under the finger.
 /// {@endtemplate}
 class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
   /// {@macro timeline_bloc}
   TimelineBloc({required this._repository}) : super(const TimelineState()) {
     on<TimelineRequested>(_onRequested);
+    on<TimelineExtended>(_onExtended);
     on<EventCreated>(_onCreated);
     on<EventMoved>(_onMoved);
     on<EventStarted>(_onStarted);
@@ -27,13 +28,19 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     on<EventFinished>(_onFinished);
     on<EventDeleted>(_onDeleted);
     on<EventPauseToggled>(_onPauseToggled);
-    on<EventExtended>(_onExtended);
+    on<EventExtended>(_onAdjusted);
     on<EventEdited>(_onEdited);
     on<GuardAnswered>(_onGuardAnswered);
     on<GuardDismissed>(_onGuardDismissed);
   }
 
   final TimelineRepository _repository;
+
+  int get _days => state.days;
+
+  /// What [id] is. A card not on screen yet is a task: the only thing asked
+  /// about before the day has loaded is a task a reminder named.
+  CardKind _kindOf(String id) => state.byId(id)?.kind ?? CardKind.task;
 
   Future<void> _onRequested(
     TimelineRequested event,
@@ -42,15 +49,46 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     emit(state.copyWith(status: TimelineStatus.loading, clearFailure: true));
 
     try {
+      final timeline = await _repository.fetch(days: _days);
       emit(
         state.copyWith(
           status: TimelineStatus.success,
-          cards: await _repository.fetchEvents(),
+          cards: timeline.cards,
+          tasks: timeline.tasks,
           clearFailure: true,
         ),
       );
     } on Object catch (error) {
       emit(_failed(error));
+    }
+  }
+
+  /// Draws a week more of the calendar, once at a time and only so far.
+  Future<void> _onExtended(
+    TimelineExtended event,
+    Emitter<TimelineState> emit,
+  ) async {
+    if (state.extending || state.days >= TimelineState.maxDays) return;
+
+    final days = (state.days + TimelineState.daysPerPage).clamp(
+      1,
+      TimelineState.maxDays,
+    );
+    emit(state.copyWith(extending: true));
+
+    try {
+      final timeline = await _repository.fetch(days: days);
+      emit(
+        state.copyWith(
+          status: TimelineStatus.success,
+          days: days,
+          extending: false,
+          cards: timeline.cards,
+          tasks: timeline.tasks,
+        ),
+      );
+    } on Object catch (error) {
+      emit(_failed(error).copyWith(extending: false));
     }
   }
 
@@ -68,72 +106,74 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     );
   }
 
+  /// Draws what a write came back with, the guard included when it raised
+  /// one. A guard means the server did not move anything, so the cards that
+  /// come back are the ones that were already on screen.
+  void _land(Timeline timeline, Emitter<TimelineState> emit) {
+    emit(
+      state.copyWith(
+        status: TimelineStatus.success,
+        cards: timeline.cards,
+        tasks: timeline.tasks,
+        guard: timeline.guard,
+        clearFailure: true,
+      ),
+    );
+  }
+
   /// Writes something down, and draws the day with it already in place.
   Future<void> _onCreated(
     EventCreated event,
     Emitter<TimelineState> emit,
   ) async {
-    try {
-      final cards = await _repository.createEvent(
-        title: event.title,
-        durationMinutes: event.durationMinutes,
-        fixed: event.fixed,
-        startTime: event.startTime,
-        notBefore: event.notBefore,
-      );
+    final startTime = event.startTime;
 
-      emit(
-        state.copyWith(
-          status: TimelineStatus.success,
-          cards: cards,
-          clearFailure: true,
-        ),
-      );
-    } on Object catch (error) {
-      emit(_failed(error));
-    }
+    await _write(
+      emit,
+      () => event.fixed && startTime != null
+          ? _repository.createEvent(
+              title: event.title,
+              durationMinutes: event.durationMinutes,
+              startTime: startTime,
+              days: _days,
+            )
+          : _repository.createTask(
+              title: event.title,
+              minutes: event.durationMinutes,
+              notBefore: event.notBefore,
+              days: _days,
+            ),
+    );
   }
 
   /// Sends a drop and draws what the day became.
   ///
   /// Nothing is applied on screen first. A drop changes the hour of
-  /// everything it displaced and only the server knows what those hours are,
-  /// so guessing at them would mean drawing a day that is about to be
-  /// replaced by a different one.
+  /// everything after it and only the server knows what those hours are, so
+  /// guessing at them would mean drawing a day that is about to be replaced
+  /// by a different one.
   Future<void> _onMoved(EventMoved event, Emitter<TimelineState> emit) async {
     final card = state.byId(event.id);
-    if (card == null || !card.isInteractive) return;
+    if (card == null || !card.isTask) return;
 
     try {
-      final outcome = await _repository.moveEvent(
-        event.id,
-        event.index,
-        after: event.after,
-        minutes: event.minutes,
+      _land(
+        await _repository.moveTask(
+          event.id,
+          event.index,
+          start: event.start,
+          after: event.after,
+          minutes: event.minutes,
+          days: _days,
+        ),
+        emit,
       );
-
-      _land(outcome, emit);
     } on Object catch (error) {
       emit(_failed(error));
     }
   }
 
-  /// Draws what a move, or anything that answers like one, came back with.
-  void _land(TimelineOutcome outcome, Emitter<TimelineState> emit) {
-    // A guard means the server did not move anything, so the cards that
-    // come back are the ones that were already on screen.
-    emit(
-      outcome.guard == null
-          ? state.copyWith(cards: outcome.cards, clearFailure: true)
-          : state.copyWith(
-              cards: outcome.cards,
-              guard: outcome.guard,
-              clearFailure: true,
-            ),
-    );
-  }
-
-  /// Begins a block, drawing it as begun before the server answers.
+  /// Begins a task, drawing it as begun before the server answers.
   Future<void> _onStarted(
     EventStarted event,
     Emitter<TimelineState> emit,
@@ -141,36 +181,38 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     // A reminder tapped with the app closed answers before the day has
     // loaded, so a card that is not on screen yet is still asked about.
     final card = state.byId(event.id);
-    if (card != null && !card.isInteractive) return;
+    if (card != null && !card.isTask) return;
 
-    final before = state.cards;
+    final before = state;
     emit(
       state.copyWith(
-        cards: [
-          for (final it in state.cards)
-            if (it.id == event.id) it.copyWith(awaitingStart: false) else it,
-        ],
+        cards: _replaced(state.cards, event.id, awaitingStart: false),
+        tasks: _replaced(state.tasks, event.id, awaitingStart: false),
       ),
     );
 
     try {
-      _land(await _repository.startEvent(event.id), emit);
+      _land(await _repository.startTask(event.id, days: _days), emit);
     } on Object catch (error) {
-      emit(_failed(error).copyWith(cards: before));
+      emit(_failed(error).copyWith(cards: before.cards, tasks: before.tasks));
     }
   }
 
-  /// Lets a waiting block wait a little longer.
+  /// Lets a waiting task wait a little longer.
   Future<void> _onSnoozed(
     EventSnoozed event,
     Emitter<TimelineState> emit,
   ) async {
     final card = state.byId(event.id);
-    if (card != null && !card.isInteractive) return;
+    if (card != null && !card.isTask) return;
 
     await _write(
       emit,
-      () => _repository.snoozeEvent(event.id, minutes: event.minutes),
+      () => _repository.snoozeTask(
+        event.id,
+        minutes: event.minutes,
+        days: _days,
+      ),
     );
   }
 
@@ -185,18 +227,19 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     emit(state.copyWith(guardBusy: true));
 
     try {
-      final outcome = await _repository.applyTiming(
+      final timeline = await _repository.applyTiming(
         guard.answer(event.decision),
+        days: _days,
       );
 
       emit(
-        outcome.guard == null
-            ? state.copyWith(
-                cards: outcome.cards,
-                guardBusy: false,
-                clearGuard: true,
-              )
-            : state.copyWith(guard: outcome.guard, guardBusy: false),
+        state.copyWith(
+          cards: timeline.cards,
+          tasks: timeline.tasks,
+          guard: timeline.guard,
+          clearGuard: timeline.guard == null,
+          guardBusy: false,
+        ),
       );
     } on Object catch (error) {
       // The guard closes rather than sitting there looking live. Nothing was
@@ -210,7 +253,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     emit(state.copyWith(clearGuard: true, guardBusy: false));
   }
 
-  /// Takes a block off the day, then writes it.
+  /// Takes a card off the day, then writes it.
   ///
   /// This one lands on screen first: the card has already been thrown off by
   /// the time the request goes out, and a failure puts it back rather than
@@ -219,31 +262,17 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     EventFinished event,
     Emitter<TimelineState> emit,
   ) async {
-    final before = state.cards;
     final card = state.byId(event.id);
     if (card == null || !card.isInteractive) return;
 
-    emit(
-      state.copyWith(
-        cards: before.where((it) => it.id != event.id).toList(),
-      ),
+    await _write(
+      emit,
+      () => _repository.finish(card.kind, event.id, days: _days),
+      drawn: _without(event.id),
     );
-
-    try {
-      emit(
-        state.copyWith(
-          cards: await _repository.finishEvent(event.id),
-          clearFailure: true,
-        ),
-      );
-    } on Object catch (error) {
-      // Finishing is the one write that lands on screen first, so it is also
-      // the one that has to be put back.
-      emit(_failed(error).copyWith(cards: before));
-    }
   }
 
-  /// Takes a block off the calendar, drawn gone before the server answers.
+  /// Takes a card off entirely, drawn gone before the server answers.
   Future<void> _onDeleted(
     EventDeleted event,
     Emitter<TimelineState> emit,
@@ -253,8 +282,8 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
 
     await _write(
       emit,
-      () => _repository.deleteEvent(event.id),
-      drawn: state.cards.where((it) => it.id != event.id).toList(),
+      () => _repository.delete(card.kind, event.id, days: _days),
+      drawn: _without(event.id),
     );
   }
 
@@ -266,30 +295,34 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     final card = state.byId(event.id);
     if (card == null || !card.isInteractive) return;
 
-    final toggled = card.isPaused
-        ? card.copyWith(clearPause: true)
-        : card.copyWith(pausedAt: DateTime.now());
+    final paused = !card.isPaused;
+    final pausedAt = paused ? DateTime.now() : null;
 
     await _write(
       emit,
-      () => card.isPaused
-          ? _repository.resumeEvent(event.id)
-          : _repository.pauseEvent(event.id),
-      drawn: [
-        for (final it in state.cards)
-          if (it.id == event.id) toggled else it,
-      ],
+      () => paused
+          ? _repository.pause(card.kind, event.id, days: _days)
+          : _repository.resume(card.kind, event.id, days: _days),
+      drawn: state.copyWith(
+        cards: _replaced(state.cards, event.id, pausedAt: pausedAt),
+        tasks: _replaced(state.tasks, event.id, pausedAt: pausedAt),
+      ),
     );
   }
 
-  /// Gives a block more time. The rest of the day is the server's to move.
-  Future<void> _onExtended(
+  /// Gives a card more time. The rest of the day is the server's to move.
+  Future<void> _onAdjusted(
     EventExtended event,
     Emitter<TimelineState> emit,
   ) async {
     await _write(
       emit,
-      () => _repository.extendEvent(event.id, event.minutes),
+      () => _repository.extend(
+        _kindOf(event.id),
+        event.id,
+        event.minutes,
+        days: _days,
+      ),
     );
   }
 
@@ -297,12 +330,14 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
   Future<void> _onEdited(EventEdited event, Emitter<TimelineState> emit) async {
     await _write(
       emit,
-      () => _repository.editEvent(
+      () => _repository.edit(
+        _kindOf(event.id),
         event.id,
         title: event.title,
         notes: event.notes,
         workMinutes: event.workMinutes,
         startTime: event.startTime,
+        days: _days,
       ),
     );
   }
@@ -313,16 +348,38 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
   /// taken back if the server refuses.
   Future<void> _write(
     Emitter<TimelineState> emit,
-    Future<List<TimelineEvent>> Function() request, {
-    List<TimelineEvent>? drawn,
+    Future<Timeline> Function() request, {
+    TimelineState? drawn,
   }) async {
-    final before = state.cards;
-    if (drawn != null) emit(state.copyWith(cards: drawn));
+    final before = state;
+    if (drawn != null) emit(drawn);
 
     try {
-      emit(state.copyWith(cards: await request(), clearFailure: true));
+      _land(await request(), emit);
     } on Object catch (error) {
-      emit(_failed(error).copyWith(cards: before));
+      emit(_failed(error).copyWith(cards: before.cards, tasks: before.tasks));
     }
   }
+
+  /// The state with [id] gone from both views.
+  TimelineState _without(String id) => state.copyWith(
+    cards: state.cards.where((it) => it.id != id).toList(),
+    tasks: state.tasks.where((it) => it.id != id).toList(),
+  );
+
+  /// [cards] with the one called [id] waiting or paused as asked.
+  static List<TimelineEvent> _replaced(
+    List<TimelineEvent> cards,
+    String id, {
+    bool? awaitingStart,
+    DateTime? pausedAt,
+  }) => [
+    for (final card in cards)
+      if (card.id != id)
+        card
+      else if (awaitingStart != null)
+        card.copyWith(awaitingStart: awaitingStart)
+      else
+        card.copyWith(pausedAt: pausedAt, clearPause: pausedAt == null),
+  ];
 }
