@@ -1,4 +1,5 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/format.dart';
@@ -230,7 +231,7 @@ class EventControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final now = clock.now();
     final running = card.isRunningAt(now);
     final shortens = card.canShorten(15, now);
     final waiting = card.awaitingStart && onSnoozed != null;

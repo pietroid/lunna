@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/format.dart';
@@ -88,7 +89,7 @@ class _NowSurfaceState extends State<NowSurface>
         paused: widget.paused,
         pressed: widget.pressed,
         radius: widget.radius,
-        tint: AppDay.colorAt(DateTime.now()),
+        tint: AppDay.colorAt(clock.now()),
       ),
       child: widget.child,
     );
@@ -236,7 +237,7 @@ class _NowProgressState extends State<NowProgress> {
     final stopped = _stopped;
     // The server slides a waiting block to the current minute, so its start
     // is always a moment ago. None of that is work.
-    final progress = card.awaitingStart ? 0.0 : card.progressAt(DateTime.now());
+    final progress = card.awaitingStart ? 0.0 : card.progressAt(clock.now());
     final left = (card.workMinutes * (1 - progress)).ceil();
 
     return Column(

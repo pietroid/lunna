@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 import 'package:timeline/src/data/timeline_failure.dart';
 import 'package:timeline/src/data/timeline_repository.dart';
@@ -296,7 +297,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     if (card == null || !card.isInteractive) return;
 
     final paused = !card.isPaused;
-    final pausedAt = paused ? DateTime.now() : null;
+    final pausedAt = paused ? clock.now() : null;
 
     await _write(
       emit,

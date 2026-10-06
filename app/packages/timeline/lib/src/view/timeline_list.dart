@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -760,7 +761,7 @@ class _TimelineListState extends State<TimelineList> {
   /// its time, and room too short to be worth a drop is left out, so the next
   /// card simply follows.
   List<Widget> _rows(TimelineState state, String? dragging) {
-    final now = DateTime.now();
+    final now = clock.now();
     var first = true;
     final rows = <Widget>[
       // A write that never landed used to be entirely silent: the card the

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/src/bloc/timeline_bloc.dart';
@@ -188,7 +189,7 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final now = clock.now();
     final running = card.isRunningAt(now);
     final controls = card.isInteractive ? _controls(context) : null;
 
@@ -269,7 +270,7 @@ class _When extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final started = !card.startTime.isAfter(DateTime.now());
+    final started = !card.startTime.isAfter(clock.now());
     final editable = card.isInteractive;
 
     return Row(
@@ -303,7 +304,7 @@ class _When extends StatelessWidget {
 
   /// "14:30", or "amanhã 09:00" when it is not today.
   static String _startLabel(AppLocalizations l10n, DateTime start) {
-    final now = DateTime.now();
+    final now = clock.now();
     final days = DateTime(
       start.year,
       start.month,
@@ -321,7 +322,7 @@ class _When extends StatelessWidget {
   /// sheet does.
   Future<void> _pickStart(BuildContext context) async {
     final bloc = context.read<TimelineBloc>();
-    final now = DateTime.now();
+    final now = clock.now();
     final picked = await AppWheelPicker.dayAndTime(
       context,
       initial: card.startTime.isBefore(now) ? now : card.startTime,

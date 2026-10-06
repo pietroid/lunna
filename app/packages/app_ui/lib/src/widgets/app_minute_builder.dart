@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 
 /// {@template app_minute_builder}
 /// Rebuilds on the minute boundary, and not once in between.
@@ -29,7 +30,7 @@ class _AppMinuteBuilderState extends State<AppMinuteBuilder> {
   @override
   void initState() {
     super.initState();
-    _now = DateTime.now();
+    _now = clock.now();
     _schedule();
   }
 
@@ -43,7 +44,7 @@ class _AppMinuteBuilderState extends State<AppMinuteBuilder> {
 
     _timer = Timer(next.difference(_now), () {
       if (!mounted) return;
-      setState(() => _now = DateTime.now());
+      setState(() => _now = clock.now());
       _schedule();
     });
   }

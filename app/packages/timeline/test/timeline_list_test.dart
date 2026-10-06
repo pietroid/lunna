@@ -1,5 +1,6 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:bloc_test/bloc_test.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
@@ -23,7 +24,24 @@ String hhmm(DateTime at) =>
 void main() {
   setUpAll(() => registerFallbackValue(const TimelineRequested()));
 
-  final now = DateTime.now();
+  /// Ten in the morning, on the wall clock of whatever machine runs this.
+  ///
+  /// The screen reads the hour off [clock], and every test here runs with
+  /// it stopped at this instant. Read off the real clock, the same suite
+  /// drew a different day in every zone it ran in: in UTC on CI at six in
+  /// the evening the room to the end of the day had two hours in it rather
+  /// than three, and at three in the morning in Tokyo half of it skipped
+  /// itself. June, so no zone is changing its offset that day.
+  final now = DateTime(2026, 6, 10, 10);
+
+  /// [testWidgets], with the clock stopped at [now].
+  void testAt(String description, WidgetTesterCallback body) {
+    testWidgets(
+      description,
+      (tester) => withClock(Clock.fixed(now), () => body(tester)),
+    );
+  }
+
   final running = TimelineEvent(
     id: 'a',
     title: 'Escrever',
@@ -112,7 +130,7 @@ void main() {
     return (bloc as TimelineBloc, tapped);
   }
 
-  testWidgets('a button on the running card is not a tap on the card', (
+  testAt('a button on the running card is not a tap on the card', (
     tester,
   ) async {
     final (bloc, tapped) = await pump(tester, [running, later]);
@@ -135,7 +153,7 @@ void main() {
     verify(() => bloc.add(const EventExtended('a'))).called(1);
   });
 
-  testWidgets('takes fifteen minutes off only once it is confirmed', (
+  testAt('takes fifteen minutes off only once it is confirmed', (
     tester,
   ) async {
     final (bloc, _) = await pump(tester, [running, later]);
@@ -155,7 +173,7 @@ void main() {
     verify(() => bloc.add(const EventExtended('a', minutes: -15))).called(1);
   });
 
-  testWidgets('a tap on the card itself still opens it', (tester) async {
+  testAt('a tap on the card itself still opens it', (tester) async {
     final (_, tapped) = await pump(tester, [running, later]);
 
     await tester.tap(find.text('Depois'));
@@ -164,7 +182,7 @@ void main() {
     expect(tapped.map((card) => card.id), ['b']);
   });
 
-  testWidgets(
+  testAt(
     'the break between two blocks is a free stretch, not an empty Agora',
     (tester) async {
       await pump(tester, [later]);
@@ -191,11 +209,9 @@ void main() {
       await tester.scrollUntilVisible(stretchFrom(tomorrow), 400);
       expect(find.text('Amanhã'), findsOneWidget);
     },
-    // The stretch from now is only drawn inside the working day.
-    skip: now.hour < 7 || now.hour >= 21,
   );
 
-  testWidgets('every card says when it starts and when it ends', (
+  testAt('every card says when it starts and when it ends', (
     tester,
   ) async {
     await pump(tester, [running, later]);
@@ -214,7 +230,7 @@ void main() {
     }
   });
 
-  testWidgets('a block whose hour came is the running card, paused at zero', (
+  testAt('a block whose hour came is the running card, paused at zero', (
     tester,
   ) async {
     final waiting = TimelineEvent(
@@ -249,7 +265,7 @@ void main() {
     expect(tapped, isEmpty);
   });
 
-  testWidgets('a routine is drawn with its mark and opens like any block', (
+  testAt('a routine is drawn with its mark and opens like any block', (
     tester,
   ) async {
     final lunch = TimelineEvent(
@@ -273,7 +289,7 @@ void main() {
     expect(tapped, [lunch]);
   });
 
-  testWidgets(
+  testAt(
     'a card too long for the gap it is dropped in asks to be cut to fit',
     (tester) async {
       final first = TimelineEvent(
@@ -327,10 +343,9 @@ void main() {
         ),
       ).called(1);
     },
-    skip: now.hour < 7 || now.hour >= 18,
   );
 
-  testWidgets(
+  testAt(
     'an empty Agora is as tall as a running one',
     (tester) async {
       await pump(tester, [running]);
@@ -341,21 +356,19 @@ void main() {
 
       expect(tester.getSize(empty).height, busy);
       // It is now, and the card after it says when now ends.
+      // An hour, not any colon: some of the break's lines have one.
       expect(
-        find.descendant(of: empty, matching: find.textContaining(':')),
+        find.descendant(
+          of: empty,
+          matching: find.textContaining(RegExp(r'\d{1,2}:\d{2}')),
+        ),
         findsNothing,
       );
     },
-    // The stretch from now is only drawn inside the working day.
-    skip: now.hour < 7 || now.hour >= 21,
   );
 
   group('later in the day', () {
-    // Everything here sits within the next three hours, so it stays inside
-    // today's working day.
-    final skip = now.hour < 7 || now.hour >= 19;
-
-    testWidgets(
+    testAt(
       'a card is as tall as its time, and never shorter than half an hour',
       (tester) async {
         await pump(tester, [
@@ -373,10 +386,9 @@ void main() {
         expect(height('hour'), 2 * TimelineScale.halfHour - AppSpacing.s1);
         expect(height('short'), height('half'));
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'empty room is drawn only past ten minutes, and the pause never',
       (tester) async {
         final next = block('next', 25, 30);
@@ -407,10 +419,9 @@ void main() {
           closeTo(37 * TimelineScale.perMinute - AppSpacing.s1, 0.01),
         );
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'with nothing running, the room from now opens Hoje too',
       (tester) async {
         final next = block('next', 60, 30);
@@ -442,10 +453,9 @@ void main() {
           () => bloc.add(EventMoved(id: 'next', index: 0, after: from)),
         ).called(1);
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'room between the running block and the next opens Hoje',
       (tester) async {
         await pump(tester, [running, block('next', 60, 30)]);
@@ -457,14 +467,11 @@ void main() {
           lessThan(tester.getTopLeft(find.text('Bloco next')).dy),
         );
       },
-      skip: skip,
     );
   });
 
   group('a drop', () {
-    final skip = now.hour < 7 || now.hour >= 19;
-
-    testWidgets(
+    testAt(
       'on the running block asks to start it now',
       (tester) async {
         final (bloc, _) = await pump(tester, [
@@ -484,10 +491,9 @@ void main() {
           () => bloc.add(const EventMoved(id: 'c', index: 0, start: true)),
         ).called(1);
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'between the running block and the next one reorders',
       (tester) async {
         final (bloc, _) = await pump(tester, [
@@ -506,10 +512,9 @@ void main() {
 
         verify(() => bloc.add(const EventMoved(id: 'c', index: 1))).called(1);
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'anywhere in empty room lands at the start of it',
       (tester) async {
         final first = block('x', 25, 25);
@@ -530,10 +535,9 @@ void main() {
           ),
         ).called(1);
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'a fixed card lands on the quarter it is let go on, drawn there first',
       (tester) async {
         final first = block('x', 25, 25);
@@ -580,10 +584,9 @@ void main() {
         // An event has an hour rather than a place, so the drop names one.
         verify(() => bloc.add(EventEdited('p', startTime: expected))).called(1);
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'a fixed card let go between two cards stays where it was',
       (tester) async {
         final pinned = TimelineEvent(
@@ -608,10 +611,9 @@ void main() {
 
         verifyNever(() => bloc.add(any(that: isA<EventMoved>())));
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'counts only the tasks above it, not the events',
       (tester) async {
         final meeting = TimelineEvent(
@@ -644,7 +646,6 @@ void main() {
 
         verify(() => bloc.add(const EventMoved(id: 'd', index: 2))).called(1);
       },
-      skip: skip,
     );
   });
 
@@ -660,7 +661,7 @@ void main() {
       fixed: true,
     );
 
-    testWidgets('has the tasks and nothing else', (tester) async {
+    testAt('has the tasks and nothing else', (tester) async {
       await pump(tester, [
         running,
         later,
@@ -674,7 +675,7 @@ void main() {
       expect(find.byType(FreeTile), findsNothing);
     });
 
-    testWidgets('draws every task as tall as it needs', (tester) async {
+    testAt('draws every task as tall as it needs', (tester) async {
       await pump(tester, [
         running,
         block('short', 30, 10),
@@ -687,7 +688,7 @@ void main() {
       expect(height('long'), height('short'));
     });
 
-    testWidgets('heads each task with the day the queue puts it on', (
+    testAt('heads each task with the day the queue puts it on', (
       tester,
     ) async {
       final inTwoDays = DateTime(now.year, now.month, now.day + 2, 9);
@@ -711,7 +712,7 @@ void main() {
       );
     });
 
-    testWidgets('reorders the queue by its place in the list', (tester) async {
+    testAt('reorders the queue by its place in the list', (tester) async {
       final (bloc, _) = await pump(tester, [
         running,
         later,
@@ -727,7 +728,7 @@ void main() {
       verify(() => bloc.add(const EventMoved(id: 'c', index: 1))).called(1);
     });
 
-    testWidgets('starts what is dropped above what is running', (
+    testAt('starts what is dropped above what is running', (
       tester,
     ) async {
       final (bloc, _) = await pump(tester, [
@@ -743,7 +744,7 @@ void main() {
       ).called(1);
     });
 
-    testWidgets('says so when there is nothing to do', (tester) async {
+    testAt('says so when there is nothing to do', (tester) async {
       await pump(tester, [meeting], mode: TimelineMode.list);
 
       expect(
@@ -754,7 +755,7 @@ void main() {
   });
 
   group('the calendar', () {
-    testWidgets('heads a day past tomorrow with its weekday and date', (
+    testAt('heads a day past tomorrow with its weekday and date', (
       tester,
     ) async {
       final inThreeDays = DateTime(now.year, now.month, now.day + 3, 9);
@@ -780,14 +781,15 @@ void main() {
       final date = lookupAppLocalizations(
         const Locale('pt'),
       ).sectionDay(inThreeDays);
-      await tester.scrollUntilVisible(find.text('Longe'), 600);
-      expect(
-        find.text(date[0].toUpperCase() + date.substring(1)),
-        findsOneWidget,
-      );
+      final heading = find.text(date[0].toUpperCase() + date.substring(1));
+
+      // To the heading, not to the card: two hours of empty room sit between
+      // them, and a card at the bottom edge leaves its heading offstage.
+      await tester.scrollUntilVisible(heading, 600);
+      expect(heading, findsOneWidget);
     });
 
-    testWidgets('asks for another week once scrolled to its end', (
+    testAt('asks for another week once scrolled to its end', (
       tester,
     ) async {
       final (bloc, _) = await pump(tester, [running, later]);
@@ -798,7 +800,7 @@ void main() {
       verify(() => bloc.add(const TimelineExtended())).called(greaterThan(0));
     });
 
-    testWidgets('never asks for more of the list', (tester) async {
+    testAt('never asks for more of the list', (tester) async {
       final (bloc, _) = await pump(tester, [
         for (var n = 0; n < 30; n++) block('$n', 30 * n, 25),
       ], mode: TimelineMode.list);
@@ -811,8 +813,6 @@ void main() {
   });
 
   group('a tap on empty room', () {
-    final skip = now.hour < 7 || now.hour >= 19;
-
     Future<(Finder, FreeSlot, List<FreeTap>)> pumpRoom(
       WidgetTester tester,
     ) async {
@@ -848,7 +848,7 @@ void main() {
       return (gap, tester.widget<FreeStretch>(gap).slot, taps);
     }
 
-    testWidgets(
+    testAt(
       'on the room is something flexible from where the room starts',
       (tester) async {
         final (gap, room, taps) = await pumpRoom(tester);
@@ -870,10 +870,9 @@ void main() {
 
         expect(taps, [(from: room.earliest, fixedAt: null)]);
       },
-      skip: skip,
     );
 
-    testWidgets(
+    testAt(
       'on a later hour is something fixed at that hour',
       (tester) async {
         final (gap, room, taps) = await pumpRoom(tester);
@@ -892,7 +891,6 @@ void main() {
         // to flexible.
         expect(taps, [(from: room.earliest, fixedAt: hour)]);
       },
-      skip: skip,
     );
   });
 }

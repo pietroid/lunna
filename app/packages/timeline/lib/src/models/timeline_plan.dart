@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 import 'package:timeline/src/models/timeline_event.dart';
 
@@ -75,13 +76,13 @@ abstract final class TimelinePlan {
     Duration duration, {
     DateTime? now,
   }) {
-    final clock = now ?? DateTime.now();
+    final present = now ?? clock.now();
     final last = tasks.isEmpty ? null : tasks.last.endTime.add(gap);
 
     return nextFreeStart(
       cards,
       duration,
-      now: last != null && last.isAfter(clock) ? last : clock,
+      now: last != null && last.isAfter(present) ? last : present,
     );
   }
 
@@ -97,7 +98,7 @@ abstract final class TimelinePlan {
   }) {
     final booked = [...cards]
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    var start = _earliest(now ?? DateTime.now());
+    var start = _earliest(now ?? clock.now());
 
     // One pass per block it steps over, plus one per day it spills out of.
     for (var attempt = 0; attempt < 500; attempt++) {
@@ -135,26 +136,26 @@ abstract final class TimelinePlan {
     DateTime? now,
     int days = 2,
   }) {
-    final clock = now ?? DateTime.now();
+    final present = now ?? clock.now();
     final sorted = [...cards]
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
     final slots = <FreeSlot>[];
 
     for (var offset = 0; offset < days; offset++) {
       final dayStart = DateTime(
-        clock.year,
-        clock.month,
-        clock.day + offset,
+        present.year,
+        present.month,
+        present.day + offset,
         startHour,
       );
       final dayEnd = DateTime(
-        clock.year,
-        clock.month,
-        clock.day + offset,
+        present.year,
+        present.month,
+        present.day + offset,
         endHour,
       );
-      var cursor = offset == 0 && clock.isAfter(dayStart)
-          ? _toMinute(clock)
+      var cursor = offset == 0 && present.isAfter(dayStart)
+          ? _toMinute(present)
           : dayStart;
       if (!cursor.isBefore(dayEnd)) continue;
 

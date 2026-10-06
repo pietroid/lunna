@@ -1,4 +1,5 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:l10n/l10n.dart';
 
@@ -99,7 +100,7 @@ abstract final class AppWheelPicker {
     DateTime day, {
     DateTime? now,
   }) {
-    final today = now ?? DateTime.now();
+    final today = now ?? clock.now();
     final offset = DateTime.utc(
       day.year,
       day.month,
@@ -216,7 +217,7 @@ class _DayAndTime extends StatefulWidget {
 class _DayAndTimeState extends State<_DayAndTime> {
   static const _itemExtent = 36.0;
 
-  late final DateTime _today = _dateOf(DateTime.now());
+  late final DateTime _today = _dateOf(clock.now());
   late int _offset = _dayOffset(widget.initial).clamp(0, widget.days - 1);
   late DateTime _picked = widget.initial;
   late final _days = FixedExtentScrollController(initialItem: _offset);

@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 
 /// Which heading a card falls under.
@@ -290,7 +291,7 @@ class TimelineEvent extends Equatable {
 }
 
 DateTime _date(Object? value) {
-  return DateTime.tryParse(value as String? ?? '')?.toLocal() ?? DateTime.now();
+  return DateTime.tryParse(value as String? ?? '')?.toLocal() ?? clock.now();
 }
 
 DateTime? _maybeDate(Object? value) {

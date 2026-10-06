@@ -13,6 +13,7 @@ dependencies:
   app_ui:
     path: ../app_ui
   bloc: ^9.2.1
+  clock: ^1.1.2
   equatable: ^2.0.7
   flutter:
     sdk: flutter

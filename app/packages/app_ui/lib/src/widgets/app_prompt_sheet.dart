@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 
 /// What the creation sheet came back with.
@@ -184,7 +185,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
     final picked = await AppWheelPicker.dayAndTime(
       context,
       initial: _span.start,
-      earliest: DateTime.now(),
+      earliest: clock.now(),
     );
     if (picked == null) return;
 
@@ -193,7 +194,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
 
   /// The hour on the day already picked.
   Future<void> _pickTime() async {
-    final now = DateTime.now();
+    final now = clock.now();
     final start = _span.start;
     final today =
         start.year == now.year &&
@@ -436,7 +437,7 @@ class _Preview extends StatelessWidget {
 
   /// "14:30", or "14:30, amanhã" when the hour has run past midnight.
   static String _when(AppLocalizations l10n, DateTime start) {
-    final now = DateTime.now();
+    final now = clock.now();
     final today =
         start.year == now.year &&
         start.month == now.month &&
