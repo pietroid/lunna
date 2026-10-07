@@ -142,6 +142,12 @@ export const task = pgTable(
     position: doublePrecision('position').notNull(),
     /** The earliest the layout may start it. */
     notBefore: timestamp('not_before', { withTimezone: true }),
+    /**
+     * Whether it waits in the backlog ("Depois eu priorizo") rather than in
+     * the queue. A task in the backlog has an order and a length but no
+     * hour: the layout never sees it until it is dragged into the queue.
+     */
+    backlog: boolean('backlog').notNull().default(false),
     /** When it was finished. Null while there is still something to do. */
     doneAt: timestamp('done_at', { withTimezone: true }),
     createdAt: createdAt(),

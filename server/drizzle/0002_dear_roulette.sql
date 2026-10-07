@@ -1,0 +1,1 @@
+ALTER TABLE "task" ADD COLUMN "backlog" boolean DEFAULT false NOT NULL;

@@ -1,9 +1,15 @@
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
-/// One task in the demo's queue.
+/// One task in the demo's queue, or in its backlog.
 class _Task {
-  _Task(this.id, this.title, this.minutes, {this.startedAt});
+  _Task(
+    this.id,
+    this.title,
+    this.minutes, {
+    this.startedAt,
+    this.backlog = false,
+  });
 
   final String id;
   String title;
@@ -13,6 +19,9 @@ class _Task {
   /// When it was begun, or null while it waits its turn.
   DateTime? startedAt;
   DateTime? pausedAt;
+
+  /// Whether it waits in the backlog, with no hour.
+  bool backlog;
 }
 
 /// {@template demo_timeline_repository}
@@ -41,6 +50,7 @@ class DemoTimelineRepository implements TimelineRepository {
           startedAt: now.subtract(const Duration(minutes: 12)),
         ),
       _Task('mercado', l10n.demoGroceries, 30),
+      _Task('fotos', l10n.demoBacklog, 60, backlog: true),
     ]);
     _events.addAll([
       _event(
@@ -65,10 +75,9 @@ class DemoTimelineRepository implements TimelineRepository {
   Future<Timeline> createTask({
     required String title,
     required int minutes,
-    DateTime? notBefore,
     int days = TimelineRepository.defaultDays,
   }) async {
-    _tasks.add(_Task('demo-task-${_next++}', title, minutes));
+    _tasks.add(_Task('demo-task-${_next++}', title, minutes, backlog: true));
     return _timeline(days);
   }
 
@@ -89,6 +98,7 @@ class DemoTimelineRepository implements TimelineRepository {
   Future<Timeline> moveTask(
     String id,
     int index, {
+    bool backlog = false,
     bool start = false,
     DateTime? after,
     int? minutes,
@@ -96,9 +106,17 @@ class DemoTimelineRepository implements TimelineRepository {
   }) async {
     final task = _task(id);
     if (task != null) {
-      _tasks
-        ..remove(task)
-        ..insert(index.clamp(0, _tasks.length), task);
+      _tasks.remove(task);
+      // The index counts only the list it was dropped in, so it is turned
+      // into a place among all of them by finding that list's neighbour.
+      final list = _tasks.where((it) => it.backlog == backlog).toList();
+      final at = index.clamp(0, list.length);
+      _tasks.insert(
+        at < list.length ? _tasks.indexOf(list[at]) : _tasks.length,
+        task,
+      );
+      task.backlog = backlog;
+      if (backlog) task.startedAt = null;
       if (minutes != null) task.minutes = minutes;
       if (start) _begin(task);
     }
@@ -115,6 +133,7 @@ class DemoTimelineRepository implements TimelineRepository {
       _tasks
         ..remove(task)
         ..insert(0, task);
+      task.backlog = false;
       _begin(task);
     }
     return _timeline(days);
@@ -228,9 +247,10 @@ class DemoTimelineRepository implements TimelineRepository {
     final tasks = <TimelineEvent>[];
     var cursor = now;
 
+    final queue = _tasks.where((it) => !it.backlog);
     for (final task in [
-      ..._tasks.where((it) => it.startedAt != null),
-      ..._tasks.where((it) => it.startedAt == null),
+      ...queue.where((it) => it.startedAt != null),
+      ...queue.where((it) => it.startedAt == null),
     ]) {
       final duration = Duration(minutes: task.minutes);
       final start =
@@ -263,7 +283,22 @@ class DemoTimelineRepository implements TimelineRepository {
           ].where((card) => card.startTime.isBefore(until)).toList()
           ..sort((a, b) => a.startTime.compareTo(b.startTime));
 
-    return Timeline(tasks: tasks, cards: cards);
+    return Timeline(
+      tasks: tasks,
+      backlog: [
+        for (final task in _tasks.where((it) => it.backlog))
+          TimelineEvent(
+            id: task.id,
+            title: task.title,
+            section: TimelineSection.backlog,
+            startTime: now,
+            endTime: now,
+            durationMinutes: task.minutes,
+            notes: task.notes,
+          ),
+      ],
+      cards: cards,
+    );
   }
 }
 

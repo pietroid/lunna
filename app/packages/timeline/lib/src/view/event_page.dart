@@ -205,14 +205,16 @@ class _Summary extends StatelessWidget {
         children: [
           _When(card: card),
           const SizedBox(height: AppSpacing.s2),
-          if (running)
+          if (running && !card.isBacklog)
             NowProgress(card: card, trailing: controls)
           else
             Row(
               children: [
                 Expanded(
                   child: Text(
-                    _startsIn(context.l10n, card.startTime, now),
+                    card.isBacklog
+                        ? context.l10n.eventInBacklog
+                        : _startsIn(context.l10n, card.startTime, now),
                     style: AppTypography.label.copyWith(color: AppColors.ink2),
                   ),
                 ),
@@ -283,17 +285,20 @@ class _When extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.s1),
         ],
-        _Tappable(
-          text: _startLabel(context.l10n, card.startTime),
-          // A task's hour is wherever the queue puts it.
-          onTap: editable && !started && !card.isTask
-              ? () => _pickStart(context)
-              : null,
-        ),
-        Text(
-          ' · ',
-          style: AppTypography.label.copyWith(color: AppColors.ink3),
-        ),
+        // Nothing in the backlog has an hour to show.
+        if (!card.isBacklog) ...[
+          _Tappable(
+            text: _startLabel(context.l10n, card.startTime),
+            // A task's hour is wherever the queue puts it.
+            onTap: editable && !started && !card.isTask
+                ? () => _pickStart(context)
+                : null,
+          ),
+          Text(
+            ' · ',
+            style: AppTypography.label.copyWith(color: AppColors.ink3),
+          ),
+        ],
         _Tappable(
           text: durationLabel(context.l10n, card.workMinutes),
           onTap: editable ? () => _pickDuration(context) : null,

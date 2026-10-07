@@ -10,7 +10,7 @@ import { NewTask, Task } from './task.types';
  * timeline end to end ([MemoryTaskStore]).
  */
 export abstract class TaskStore {
-  /** Every task still to do, in queue order. */
+  /** Every task still to do, the backlog's included, in position order. */
   abstract pending(user: CalendarUser): Promise<Task[]>;
 
   /** One task by id, done or not. */
@@ -55,6 +55,7 @@ export class MemoryTaskStore extends TaskStore {
       notes: '',
       minutes: task.minutes,
       position: task.position,
+      backlog: task.backlog ?? false,
       ...(task.notBefore === undefined ? {} : { notBefore: task.notBefore }),
     };
     this._tasks.set(stored.id, stored);

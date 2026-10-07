@@ -56,6 +56,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           status: TimelineStatus.success,
           cards: timeline.cards,
           tasks: timeline.tasks,
+          backlog: timeline.backlog,
           clearFailure: true,
         ),
       );
@@ -86,6 +87,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           extending: false,
           cards: timeline.cards,
           tasks: timeline.tasks,
+          backlog: timeline.backlog,
         ),
       );
     } on Object catch (error) {
@@ -116,6 +118,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         status: TimelineStatus.success,
         cards: timeline.cards,
         tasks: timeline.tasks,
+        backlog: timeline.backlog,
         guard: timeline.guard,
         clearFailure: true,
       ),
@@ -141,7 +144,6 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           : _repository.createTask(
               title: event.title,
               minutes: event.durationMinutes,
-              notBefore: event.notBefore,
               days: _days,
             ),
     );
@@ -162,6 +164,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         await _repository.moveTask(
           event.id,
           event.index,
+          backlog: event.backlog,
           start: event.start,
           after: event.after,
           minutes: event.minutes,
@@ -237,6 +240,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         state.copyWith(
           cards: timeline.cards,
           tasks: timeline.tasks,
+          backlog: timeline.backlog,
           guard: timeline.guard,
           clearGuard: timeline.guard == null,
           guardBusy: false,
@@ -358,14 +362,21 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     try {
       _land(await request(), emit);
     } on Object catch (error) {
-      emit(_failed(error).copyWith(cards: before.cards, tasks: before.tasks));
+      emit(
+        _failed(error).copyWith(
+          cards: before.cards,
+          tasks: before.tasks,
+          backlog: before.backlog,
+        ),
+      );
     }
   }
 
-  /// The state with [id] gone from both views.
+  /// The state with [id] gone from every view.
   TimelineState _without(String id) => state.copyWith(
     cards: state.cards.where((it) => it.id != id).toList(),
     tasks: state.tasks.where((it) => it.id != id).toList(),
+    backlog: state.backlog.where((it) => it.id != id).toList(),
   );
 
   /// [cards] with the one called [id] waiting or paused as asked.

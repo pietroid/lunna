@@ -311,7 +311,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get timelineModeCalendar => 'Calendário';
 
   @override
-  String get tasksEmpty => 'Nenhuma tarefa. Toque no + para anotar algo.';
+  String get stageSoon => 'Fazer em breve';
+
+  @override
+  String get stageBacklog => 'Depois eu priorizo';
+
+  @override
+  String get stageSoonEmpty => 'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.';
+
+  @override
+  String get stageBacklogEmpty => 'Nada esperando. O que você anotar fica aqui até ganhar um lugar na fila.';
+
+  @override
+  String get promptToBacklog => 'Vai para Depois eu priorizo';
+
+  @override
+  String get eventInBacklog => 'Em Depois eu priorizo, ainda sem hora';
 
   @override
   String get routineDaily => 'Todo dia';
@@ -518,6 +533,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get demoGroceries => 'Comprar leite e ovos';
+
+  @override
+  String get demoBacklog => 'Organizar as fotos da viagem';
 
   @override
   String get demoStandup => 'Standup';

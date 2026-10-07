@@ -55,6 +55,7 @@ class AppPromptSheet extends StatefulWidget {
   /// {@macro app_prompt_sheet}
   const AppPromptSheet({
     this.previewFor,
+    this.flexibleLabel,
     this.initialText,
     this.initialDuration,
     this.initialStart,
@@ -67,6 +68,12 @@ class AppPromptSheet extends StatefulWidget {
   /// question and nothing at all about what is already on the day. Null asks
   /// without the clock at all, which is how Coisas writes something down.
   final DateTime Function(Duration duration)? previewFor;
+
+  /// What the line under the field says of a flexible block, in place of the
+  /// hour it would land on, when a flexible block gets no hour at all.
+  ///
+  /// [previewFor] is still what a fixed one starts at.
+  final String? flexibleLabel;
 
   /// What the field starts with, when something is being edited.
   final String? initialText;
@@ -105,6 +112,7 @@ class AppPromptSheet extends StatefulWidget {
   static Future<AppPromptResult?> show(
     BuildContext context, {
     DateTime Function(Duration duration)? previewFor,
+    String? flexibleLabel,
     String? initialText,
     Duration? initialDuration,
     DateTime? initialStart,
@@ -116,6 +124,7 @@ class AppPromptSheet extends StatefulWidget {
       barrierColor: AppColors.bg.withValues(alpha: 0.72),
       builder: (_) => AppPromptSheet(
         previewFor: previewFor,
+        flexibleLabel: flexibleLabel,
         initialText: initialText,
         initialDuration: initialDuration,
         initialStart: initialStart,
@@ -272,6 +281,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
                   _Preview(
                     span: _span,
                     editable: _fixed,
+                    flexibleLabel: widget.flexibleLabel,
                     onDay: _pickDay,
                     onTime: _pickTime,
                     send: _Send(
@@ -392,12 +402,16 @@ class _Preview extends StatelessWidget {
     required this.onDay,
     required this.onTime,
     required this.send,
+    this.flexibleLabel,
   });
 
   final ({DateTime start, DateTime end}) span;
 
   /// Whether the hour is the user's to choose, which only a fixed block is.
   final bool editable;
+
+  /// What a flexible block reads instead of its hour, when it has none.
+  final String? flexibleLabel;
 
   final VoidCallback onDay;
   final VoidCallback onTime;
@@ -426,7 +440,7 @@ class _Preview extends StatelessWidget {
                   ],
                 )
               : Text(
-                  _when(context.l10n, span.start),
+                  flexibleLabel ?? _when(context.l10n, span.start),
                   style: AppTypography.body.copyWith(color: AppColors.ink3),
                 ),
         ),

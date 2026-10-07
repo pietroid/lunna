@@ -3,17 +3,23 @@ import 'package:equatable/equatable.dart';
 
 /// Which heading a card falls under.
 ///
-/// A section is not a place anything is put. It is what the card's own hour
-/// works out to when the list is read, on the server, so a heading is always
-/// literally true of everything under it. What is running is Agora; the rest
-/// is under the day it falls on, [TimelineEvent.day], as far ahead as the
-/// screen was scrolled.
+/// For a card with an hour, a section is not a place anything is put. It is
+/// what the card's own hour works out to when the list is read, on the
+/// server, so a heading is always literally true of everything under it.
+/// What is running is Agora; the rest is under the day it falls on,
+/// [TimelineEvent.day], as far ahead as the screen was scrolled.
+///
+/// The backlog is the one section that is a place: a task is there because
+/// it was put there, and it has no hour until it is dragged out.
 enum TimelineSection {
   /// Running, or overdue and still owed.
   agora('agora'),
 
   /// Later, under its day.
-  dia('dia');
+  dia('dia'),
+
+  /// Depois eu priorizo: a task with an order and a length, and no hour.
+  backlog('backlog');
 
   const TimelineSection(this.wire);
 
@@ -190,6 +196,12 @@ class TimelineEvent extends Equatable {
   /// Whether it is something to do, rather than an hour on the calendar.
   bool get isTask => kind == CardKind.task;
 
+  /// Whether it waits in the backlog, where it has no hour.
+  ///
+  /// Its [startTime] and [endTime] mean nothing there: the server sends
+  /// none, and nothing should read them.
+  bool get isBacklog => section == TimelineSection.backlog;
+
   /// Whether it is one day of a routine.
   ///
   /// The routine as a whole changes in the menu. This card is one day of it,
@@ -232,6 +244,9 @@ class TimelineEvent extends Equatable {
   /// shortened into the past is a block that is done, and that is a
   /// different button.
   bool canShorten(int minutes, DateTime now) {
+    // The backlog has no hours, so no end that could fall into the past.
+    if (isBacklog) return workMinutes - minutes >= 5;
+
     return workMinutes - minutes >= 5 &&
         endTime.subtract(Duration(minutes: minutes)).isAfter(now);
   }
@@ -398,7 +413,12 @@ class StartNowGuard extends Equatable {
 /// {@endtemplate}
 class Timeline extends Equatable {
   /// {@macro timeline}
-  const Timeline({this.tasks = const [], this.cards = const [], this.guard});
+  const Timeline({
+    this.tasks = const [],
+    this.backlog = const [],
+    this.cards = const [],
+    this.guard,
+  });
 
   /// Creates a [Timeline] from the API's JSON.
   factory Timeline.fromJson(Map<String, dynamic> json) {
@@ -406,6 +426,7 @@ class Timeline extends Equatable {
 
     return Timeline(
       tasks: _cards(json['tasks']),
+      backlog: _cards(json['backlog']),
       cards: _cards(json['cards']),
       guard: rawGuard == null ? null : StartNowGuard.fromJson(rawGuard),
     );
@@ -413,6 +434,9 @@ class Timeline extends Equatable {
 
   /// Every task still to do, in queue order, however far ahead it lands.
   final List<TimelineEvent> tasks;
+
+  /// Every task in the backlog, in its order, none of them with an hour.
+  final List<TimelineEvent> backlog;
 
   /// Everything the calendar draws for the days that were asked for,
   /// earliest first.
@@ -428,5 +452,5 @@ class Timeline extends Equatable {
   }
 
   @override
-  List<Object?> get props => [tasks, cards, guard];
+  List<Object?> get props => [tasks, backlog, cards, guard];
 }

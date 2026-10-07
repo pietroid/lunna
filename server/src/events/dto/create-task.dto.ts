@@ -4,8 +4,13 @@ export class CreateTaskDto {
   /** How long the work takes. */
   minutes?: number;
   /**
-   * ISO 8601. The earliest it may start, when it was written down from a tap
-   * on empty room further down the day.
+   * Whether it goes into the backlog. True when not said: everything written
+   * down waits there until it is dragged into the queue.
+   */
+  backlog?: boolean;
+  /**
+   * ISO 8601. The earliest it may start, when it goes straight into the
+   * queue (`backlog: false`).
    */
   notBefore?: string;
 }

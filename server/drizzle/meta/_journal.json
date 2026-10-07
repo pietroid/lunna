@@ -15,6 +15,13 @@
       "when": 1791307338685,
       "tag": "0001_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791335395777,
+      "tag": "0002_dear_roulette",
+      "breakpoints": true
     }
   ]
 }

@@ -65,6 +65,7 @@ class _DemoHome extends StatelessWidget {
         bloc.state.tasks,
         duration,
       ),
+      flexibleLabel: context.l10n.promptToBacklog,
     );
     if (result == null) return;
 

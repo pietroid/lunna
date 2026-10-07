@@ -29,6 +29,7 @@ function serviceWith(
     until: new Date(NOW.getTime() + 86_400_000),
     events,
     tasks: queue.map((it) => it.task),
+    backlog: [],
     live: new Map(),
     placed: new Map(queue.map((it) => [it.task.id, it.slot])),
   };
@@ -70,6 +71,7 @@ function queued(
       notes: '',
       minutes,
       position: 0,
+      backlog: false,
       ...overrides,
     },
     slot: { start: from, end: new Date(from.getTime() + minutes * 60_000) },

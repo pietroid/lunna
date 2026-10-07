@@ -44,6 +44,7 @@ export class PgTaskStore extends TaskStore {
         minutes: input.minutes,
         position: input.position,
         notBefore: dateOf(input.notBefore),
+        backlog: input.backlog ?? false,
       })
       .returning();
 
@@ -59,6 +60,7 @@ export class PgTaskStore extends TaskStore {
         minutes: next.minutes,
         position: next.position,
         notBefore: dateOf(next.notBefore),
+        backlog: next.backlog,
         doneAt: dateOf(next.doneAt),
       })
       .where(and(eq(task.id, next.id), eq(task.userId, user.id)))
@@ -85,6 +87,7 @@ function toTask(row: TaskRow): Task {
     notes: row.notes,
     minutes: row.minutes,
     position: row.position,
+    backlog: row.backlog,
     ...(row.notBefore === null
       ? {}
       : { notBefore: row.notBefore.toISOString() }),

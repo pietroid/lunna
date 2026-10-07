@@ -61,6 +61,17 @@ final TimelineEvent _meeting = _card(
 /// The day as the server sends it: the queue, and the calendar.
 final _day = Timeline(tasks: _tasks, cards: [..._tasks, _meeting]);
 
+/// A task in the backlog, as the server sends one: no hours.
+TimelineEvent _shelved(String id) => TimelineEvent.fromJson({
+  'id': id,
+  'kind': 'task',
+  'title': id,
+  'section': 'backlog',
+  'durationMinutes': 45,
+  'workMinutes': 45,
+  'notes': '',
+});
+
 /// The queue with [id] lifted out and put back at [index].
 ///
 /// The real server also rewrites every hour the move disturbed. The order is
@@ -179,6 +190,73 @@ void main() {
         verify(
           () => repository.moveTask('c', 1, days: TimelineState.initialDays),
         ).called(1);
+      },
+    );
+
+    blocTest<TimelineBloc, TimelineState>(
+      'sends a drop into the backlog as a place in the backlog',
+      build: () {
+        when(
+          () => repository.moveTask(
+            any(),
+            any(),
+            backlog: any(named: 'backlog'),
+            days: any(named: 'days'),
+          ),
+        ).thenAnswer(
+          (_) async => Timeline(
+            tasks: _tasks.where((c) => c.id != 'c').toList(),
+            backlog: [_shelved('c'), _shelved('z')],
+          ),
+        );
+        return build();
+      },
+      seed: loaded,
+      act: (bloc) =>
+          bloc.add(const EventMoved(id: 'c', index: 0, backlog: true)),
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        expect(order(bloc.state), ['a', 'b', 'd']);
+        expect(bloc.state.backlog.map((c) => c.id), ['c', 'z']);
+        verify(
+          () => repository.moveTask(
+            'c',
+            0,
+            backlog: true,
+            days: TimelineState.initialDays,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<TimelineBloc, TimelineState>(
+      'moves a task out of the backlog like any other task',
+      build: build,
+      seed: () => loaded().copyWith(backlog: [_shelved('z')]),
+      act: (bloc) => bloc.add(const EventMoved(id: 'z', index: 2)),
+      wait: const Duration(milliseconds: 10),
+      verify: (_) {
+        verify(
+          () => repository.moveTask('z', 2, days: TimelineState.initialDays),
+        ).called(1);
+      },
+    );
+
+    blocTest<TimelineBloc, TimelineState>(
+      'takes a finished task off the backlog before the server answers',
+      build: build,
+      seed: () => loaded().copyWith(backlog: [_shelved('z')]),
+      act: (bloc) => bloc.add(const EventFinished('z')),
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        verify(
+          () => repository.finish(
+            CardKind.task,
+            'z',
+            days: TimelineState.initialDays,
+          ),
+        ).called(1);
+        expect(bloc.state.backlog, isEmpty);
       },
     );
 
@@ -344,7 +422,6 @@ void main() {
           () => repository.createTask(
             title: any(named: 'title'),
             minutes: any(named: 'minutes'),
-            notBefore: any(named: 'notBefore'),
             days: any(named: 'days'),
           ),
         ).thenThrow(const TimelineFailure('A agenda não respondeu.'));
@@ -372,7 +449,6 @@ void main() {
           () => repository.createTask(
             title: any(named: 'title'),
             minutes: any(named: 'minutes'),
-            notBefore: any(named: 'notBefore'),
             days: any(named: 'days'),
           ),
         ).thenAnswer((_) async => _day);

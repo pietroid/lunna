@@ -24,6 +24,7 @@ final class TimelineState extends Equatable {
     this.status = TimelineStatus.initial,
     this.cards = const [],
     this.tasks = const [],
+    this.backlog = const [],
     this.days = initialDays,
     this.extending = false,
     this.guard,
@@ -55,6 +56,10 @@ final class TimelineState extends Equatable {
   /// the queue. All of them, however far ahead the calendar would put them.
   final List<TimelineEvent> tasks;
 
+  /// Every task in the backlog, in its order. None of them has an hour, so
+  /// the calendar never draws them.
+  final List<TimelineEvent> backlog;
+
   /// How many days the calendar draws, counting today.
   final int days;
 
@@ -77,10 +82,13 @@ final class TimelineState extends Equatable {
 
   /// The card with [id], or null if the day does not have it.
   ///
-  /// The list first, because it has every task and the calendar only the
-  /// ones that fall in the days it draws.
+  /// The lists first, because between them they have every task and the
+  /// calendar only the ones that fall in the days it draws.
   TimelineEvent? byId(String id) {
     for (final card in tasks) {
+      if (card.id == id) return card;
+    }
+    for (final card in backlog) {
       if (card.id == id) return card;
     }
     for (final card in cards) {
@@ -96,7 +104,10 @@ final class TimelineState extends Equatable {
   /// the list with a spinner every time the user comes back to it would
   /// flash the screen for no reason.
   bool get isInitialLoad =>
-      status == TimelineStatus.loading && cards.isEmpty && tasks.isEmpty;
+      status == TimelineStatus.loading &&
+      cards.isEmpty &&
+      tasks.isEmpty &&
+      backlog.isEmpty;
 
   /// Returns a copy with the given fields replaced.
   ///
@@ -106,6 +117,7 @@ final class TimelineState extends Equatable {
     TimelineStatus? status,
     List<TimelineEvent>? cards,
     List<TimelineEvent>? tasks,
+    List<TimelineEvent>? backlog,
     int? days,
     bool? extending,
     StartNowGuard? guard,
@@ -118,6 +130,7 @@ final class TimelineState extends Equatable {
       status: status ?? this.status,
       cards: cards ?? this.cards,
       tasks: tasks ?? this.tasks,
+      backlog: backlog ?? this.backlog,
       days: days ?? this.days,
       extending: extending ?? this.extending,
       guard: clearGuard ? null : guard ?? this.guard,
@@ -131,6 +144,7 @@ final class TimelineState extends Equatable {
     status,
     cards,
     tasks,
+    backlog,
     days,
     extending,
     guard,

@@ -50,11 +50,17 @@ export function requireIndex(index: number | undefined): number {
 
 /** A drop, refusing anything unusable. */
 export function requireMove(taskId: string, dto: MoveEventDto): TimingAction {
+  const backlog = dto.backlog === true;
   const action: TimingAction = {
     taskId,
     index: requireIndex(dto.index),
     start: dto.start === true,
+    backlog,
   };
+
+  if (backlog && (action.start || dto.after !== undefined)) {
+    throw new BadRequestException('the backlog has no hours to drop into');
+  }
 
   if (dto.after !== undefined) {
     if (typeof dto.after !== 'string' || Number.isNaN(Date.parse(dto.after))) {
@@ -120,12 +126,22 @@ export function requireTask(dto: CreateTaskDto): TaskRequest {
   const title = requireTitle(dto.title);
   const minutes = requireMinutes(dto.minutes, 'minutes');
 
+  if (dto.backlog !== undefined && typeof dto.backlog !== 'boolean') {
+    throw new BadRequestException('backlog must be a boolean');
+  }
+  const backlog = dto.backlog ?? true;
+
   const notBefore = dto.notBefore;
   if (notBefore !== undefined && Number.isNaN(Date.parse(notBefore))) {
     throw new BadRequestException('notBefore must be an ISO 8601 date-time');
   }
 
-  return { title, minutes, notBefore };
+  return {
+    title,
+    minutes,
+    backlog,
+    notBefore: backlog ? undefined : notBefore,
+  };
 }
 
 /** Reads what the detail screen changed about a fixed block. */

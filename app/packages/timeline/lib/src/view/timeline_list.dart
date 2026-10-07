@@ -63,9 +63,14 @@ typedef _Flying = ({
 /// Drawn one of two ways, [mode]. The calendar is everything, events and
 /// tasks, as tall as its time, a day after another for as far as it is
 /// scrolled: reaching the end of it asks for another week. The list is the
-/// tasks alone, each as tall as it needs, in the order they are to be done,
-/// under the day the queue puts them on. Both are the same queue: a task
-/// dragged in one has moved in the other.
+/// tasks alone, each as tall as it needs, in two stages that are always
+/// drawn, empty or not. Fazer em breve is the queue, in the order it is to
+/// be done, under the day the queue puts each task on. Depois eu priorizo
+/// is the backlog: an order and a length, no hours, and nothing the
+/// calendar draws. Both stages are the same list to a drag, so a task goes
+/// from one to the other the way it goes up or down either. The queue is
+/// the same queue in both modes: a task dragged in one has moved in the
+/// other.
 ///
 /// The headings are not containers. Every card has an hour, the hour says
 /// which heading it falls under, and a drop is a place in the one list
@@ -160,6 +165,10 @@ class _TimelineListState extends State<TimelineList> {
   /// it is drawn under.
   final _freeKeys = <_Row, GlobalKey>{};
 
+  /// The line between the two stages of the list, which is where the queue
+  /// ends and the backlog begins.
+  final GlobalKey _dividerKey = GlobalKey();
+
   /// The free stretches drawn in the last build.
   List<_Room> _shownRooms = const [];
 
@@ -220,25 +229,39 @@ class _TimelineListState extends State<TimelineList> {
 
   bool get _isList => widget.mode == TimelineMode.list;
 
-  /// Everything drawn, in the order it is drawn: the tasks alone in the
-  /// list, everything in the calendar.
-  List<TimelineEvent> get _cards => _isList ? _state.tasks : _state.cards;
+  /// Everything drawn, in the order it is drawn: everything in the
+  /// calendar; in the list, the queue, then the line between the stages as
+  /// a null, then the backlog.
+  ///
+  /// The line takes a place of its own so that the end of the queue and the
+  /// top of the backlog are two different places to drop, even though no
+  /// card sits between them.
+  List<TimelineEvent?> get _slots =>
+      _isList ? [..._state.tasks, null, ..._state.backlog] : _state.cards;
 
   /// Where [id] sits in what is drawn, or -1.
-  int _indexOf(String id) => _cards.indexWhere((card) => card.id == id);
+  int _indexOf(String id) => _slots.indexWhere((card) => card?.id == id);
 
-  /// Where a drop at [index] in what is drawn lands in the list of tasks,
-  /// which is the only order the server keeps. The list is that list; the
-  /// calendar counts the tasks above the drop and skips the events, because
-  /// those have hours of their own rather than places.
-  int _taskIndex(String id, int index) {
-    if (_isList) return index;
+  /// Where a drop at [index] in what is drawn lands: a place in the list of
+  /// tasks, or in the backlog, which are the only orders the server keeps.
+  ///
+  /// In the list, everything above the line is the queue and everything
+  /// below it the backlog. The calendar counts the tasks above the drop and
+  /// skips the events, because those have hours of their own rather than
+  /// places.
+  ({int index, bool backlog}) _placeOf(String id, int index) {
+    final rest = _slots.where((card) => card?.id != id).toList();
+    if (_isList) {
+      final line = rest.indexOf(null);
+      return index <= line
+          ? (index: index, backlog: false)
+          : (index: index - line - 1, backlog: true);
+    }
 
-    return _cards
-        .where((card) => card.id != id)
-        .take(index)
-        .where((card) => card.isTask)
-        .length;
+    return (
+      index: rest.take(index).where((card) => card?.isTask ?? false).length,
+      backlog: false,
+    );
   }
 
   /// How far the card in the air has come towards being finished, 0 to 1.
@@ -294,11 +317,15 @@ class _TimelineListState extends State<TimelineList> {
   /// A card scrolled out of the list's reach has no rect and no edges, but
   /// still counts, so the places on either side of it keep their numbers.
   List<_Anchor> _measure(String id) {
-    final rest = _cards.where((card) => card.id != id).toList();
+    final rest = _slots.where((card) => card?.id != id).toList();
     final anchors = <_Anchor>[];
 
     for (var index = 0; index < rest.length; index++) {
-      final rect = _rectOf(_cardKey(rest[index].id));
+      // The line between the stages is measured like a card, so dropping
+      // just above it ends the queue and just below it heads the backlog,
+      // whichever of the two is empty.
+      final card = rest[index];
+      final rect = _rectOf(card == null ? _dividerKey : _cardKey(card.id));
       if (rect == null) continue;
 
       anchors
@@ -306,11 +333,15 @@ class _TimelineListState extends State<TimelineList> {
         ..add(_edge(index + 1, rect.bottom));
     }
     if (anchors.isEmpty) anchors.addAll([?_centerOf(id)]);
+    if (_isList) return anchors;
 
     // The stretches are priced with the card lifted out, because that is the
     // day the drop lands in: a card that sat right beside a gap makes the gap
     // bigger by leaving it.
-    final lifted = TimelinePlan.freeSlots(rest, days: _state.days);
+    final lifted = TimelinePlan.freeSlots(
+      rest.nonNulls.toList(),
+      days: _state.days,
+    );
     for (final room in _shownRooms) {
       final shown = room.slot;
       final rect = _rectOf(_freeKey(_rowOf(room)));
@@ -562,10 +593,18 @@ class _TimelineListState extends State<TimelineList> {
     // so its old place is just its old index.
     if (target == origin) return;
 
-    // Let go at the very top of the day is the user saying they are doing
-    // it now.
+    // Let go at the very top of the day, above whatever was first, is the
+    // user saying they are doing it now. Let go in an empty queue it is only
+    // next, and waits to be begun like any first task.
+    final place = _placeOf(id, target);
+    final ahead = !_isList || _state.tasks.any((it) => it.id != id);
     context.read<TimelineBloc>().add(
-      EventMoved(id: id, index: _taskIndex(id, target), start: target == 0),
+      EventMoved(
+        id: id,
+        index: place.index,
+        backlog: place.backlog,
+        start: target == 0 && !place.backlog && ahead,
+      ),
     );
   }
 
@@ -639,7 +678,7 @@ class _TimelineListState extends State<TimelineList> {
       card.isTask
           ? EventMoved(
               id: card.id,
-              index: _taskIndex(card.id, slot.index),
+              index: _placeOf(card.id, slot.index).index,
               after: start,
               minutes: minutes,
             )
@@ -762,7 +801,6 @@ class _TimelineListState extends State<TimelineList> {
   /// card simply follows.
   List<Widget> _rows(TimelineState state, String? dragging) {
     final now = clock.now();
-    var first = true;
     final rows = <Widget>[
       // A write that never landed used to be entirely silent: the card the
       // user had just typed simply did not appear, which reads as the button
@@ -775,18 +813,16 @@ class _TimelineListState extends State<TimelineList> {
         ),
     ];
 
-    final cards = _cards;
-    // The list is the queue and nothing else, so there is no room in it.
-    final rooms = _isList
-        ? const <_Room>[]
-        : _rooms(
-            TimelinePlan.freeSlots(cards, now: now, days: state.days),
-            now,
-          );
+    if (_isList) return [...rows, ..._listRows(state, dragging, now)];
+
+    var first = true;
+    final cards = state.cards;
+    final rooms = _rooms(
+      TimelinePlan.freeSlots(cards, now: now, days: state.days),
+      now,
+    );
     _shownRooms = rooms;
-    if (cards.isEmpty && rooms.isEmpty) {
-      return [...rows, _Empty(list: _isList)];
-    }
+    if (cards.isEmpty && rooms.isEmpty) return [...rows, const _Empty()];
 
     _Heading section = _unset;
 
@@ -843,10 +879,8 @@ class _TimelineListState extends State<TimelineList> {
                     : null,
                 onTap: widget.onFreeTap,
               ),
-              // Agora, and the whole list, are drawn as they need rather than
-              // to scale.
+              // Agora is drawn as it needs rather than to scale.
               (final card?, null) => _tile(card, dragging),
-              (final card?, _) when _isList => _tile(card, dragging),
               (final card?, _) => SizedBox(
                 height: TimelineScale.blockHeight(card),
                 child: _tile(card, dragging),
@@ -860,6 +894,83 @@ class _TimelineListState extends State<TimelineList> {
     if (state.extending) rows.add(const _More());
 
     return rows;
+  }
+
+  /// The list's two stages, both always drawn: the queue under the days it
+  /// falls on, then the line, then the backlog.
+  ///
+  /// Every row is as tall as it needs; there is no room in either stage.
+  /// The line is a row like any card to a drag, keyed so it can be measured,
+  /// and slides out of the way like one.
+  List<Widget> _listRows(
+    TimelineState state,
+    String? dragging,
+    DateTime now,
+  ) {
+    _shownRooms = const [];
+    final l10n = context.l10n;
+    double shift(int before) => dragging == null ? 0.0 : _shift(before);
+
+    final rows = <Widget>[
+      _StageHeading(label: l10n.stageSoon, first: true),
+      if (state.tasks.isEmpty)
+        _Slid(
+          dy: shift(0),
+          child: _StageEmpty(text: l10n.stageSoonEmpty),
+        ),
+    ];
+
+    _Heading section = _unset;
+    for (final card in state.tasks) {
+      final before = _indexOf(card.id);
+      final heading = _headingOf(card);
+
+      if (heading != section) {
+        rows.add(
+          _Slid(
+            dy: shift(before),
+            child: _HeadingRow(
+              label: _label(heading, now),
+              first: section == _unset,
+            ),
+          ),
+        );
+        section = heading;
+      }
+      rows.add(_listTile(card, dragging, shift(before)));
+    }
+
+    rows.add(
+      _Slid(
+        dy: shift(state.tasks.length),
+        child: Column(
+          key: _dividerKey,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: AppSpacing.s6),
+              child: Divider(height: 1, color: AppColors.line),
+            ),
+            _StageHeading(label: l10n.stageBacklog),
+            if (state.backlog.isEmpty)
+              _StageEmpty(text: l10n.stageBacklogEmpty),
+          ],
+        ),
+      ),
+    );
+
+    for (final card in state.backlog) {
+      rows.add(_listTile(card, dragging, shift(_indexOf(card.id))));
+    }
+
+    return rows;
+  }
+
+  Widget _listTile(TimelineEvent card, String? dragging, double dy) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s1),
+      child: _Slid(dy: dy, child: _tile(card, dragging)),
+    );
   }
 
   /// Not a heading: what the heading being written starts as, so the first
@@ -1004,6 +1115,50 @@ class _HeadingRow extends StatelessWidget {
         bottom: AppSpacing.s1,
       ),
       child: Text(label, style: AppTypography.title),
+    );
+  }
+}
+
+/// The name of one of the list's two stages: a quiet line over the headings
+/// of the days, rather than another of them.
+class _StageHeading extends StatelessWidget {
+  const _StageHeading({required this.label, this.first = false});
+
+  final String label;
+
+  /// Whether it is the first thing on the screen, and so needs less room
+  /// above.
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: first ? AppSpacing.s2 : AppSpacing.s4,
+        bottom: AppSpacing.s1,
+      ),
+      child: Text(
+        label,
+        style: AppTypography.labelStrong.copyWith(color: AppColors.ink3),
+      ),
+    );
+  }
+}
+
+/// What an empty stage says, which is also where a drop into it goes.
+class _StageEmpty extends StatelessWidget {
+  const _StageEmpty({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
+      child: Text(
+        text,
+        style: AppTypography.label.copyWith(color: AppColors.ink3),
+      ),
     );
   }
 }
@@ -1239,19 +1394,16 @@ class _Failed extends StatelessWidget {
   }
 }
 
-/// What the timeline says when there is nothing on it.
+/// What the calendar says when there is nothing on it.
 class _Empty extends StatelessWidget {
-  const _Empty({required this.list});
-
-  /// Whether it is the list of tasks that is empty, rather than the day.
-  final bool list;
+  const _Empty();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.s6),
       child: Text(
-        list ? context.l10n.tasksEmpty : context.l10n.timelineEmpty,
+        context.l10n.timelineEmpty,
         style: AppTypography.body.copyWith(color: AppColors.ink3),
       ),
     );

@@ -191,12 +191,13 @@ export class EventLayoutService {
   // -------------------------------------------------------------------------
 
   /**
-   * Writes a task down at the end of the queue.
+   * Writes a task down at the end of the backlog, which is where everything
+   * waits until it is dragged into the queue.
    *
-   * One written down from a tap on empty room further down the day goes into
-   * the queue where that room is instead, after everything the queue puts
-   * before it, and keeps the room's start as its floor so the next read does
-   * not pull it back to now.
+   * One asked for straight in the queue goes at its end. With a floor it
+   * goes into the queue where that floor falls instead, after everything the
+   * queue puts before it, and keeps the floor so the next read does not pull
+   * it back to now.
    */
   async createTask(
     user: CalendarUser,
@@ -205,6 +206,18 @@ export class EventLayoutService {
     now = new Date(),
   ): Promise<void> {
     const day = await this._timeline.day(user, 1, now);
+
+    if (request.backlog) {
+      const created = await this._tasks.insert(user, {
+        title: request.title,
+        minutes: request.minutes,
+        position: await this._positionAt(user, day.backlog, day.backlog.length),
+        backlog: true,
+      });
+      trace.log('task.create', { taskId: created.id, backlog: true });
+      return;
+    }
+
     const queue = queueOf(day);
     const floor =
       request.notBefore === undefined
@@ -298,6 +311,12 @@ export class EventLayoutService {
   ): Promise<StartNowGuard | undefined> {
     const day = await this._timeline.day(user, 1, now);
     const task = pendingOf(day, action.taskId);
+
+    if (action.backlog === true) {
+      await this._shelve(user, day, task, action.index, trace);
+      return undefined;
+    }
+
     const running = runningOf(day, task.id);
 
     if (action.start === true && running !== undefined && !action.decision) {
@@ -360,6 +379,7 @@ export class EventLayoutService {
       position: await this._positionAt(user, queue, index),
       notBefore: floor?.toISOString(),
       minutes: action.minutes ?? task.minutes,
+      backlog: false,
     });
 
     // What was running and was put off is the next thing after this one.
@@ -528,6 +548,39 @@ export class EventLayoutService {
     await this._tasks.update(user, {
       ...task,
       minutes: Math.round(workSecondsOf(event) / 60),
+    });
+  }
+
+  /**
+   * Puts [task] at [index] in the backlog.
+   *
+   * It leaves the queue, and the queue closes up over it on the next read.
+   * A running one stops running and gives back the rest of its hour; the
+   * work it owes is its whole length again, as when it is dragged back down
+   * the queue.
+   */
+  private async _shelve(
+    user: CalendarUser,
+    day: Day,
+    task: Task,
+    index: number,
+    trace: Trace,
+  ): Promise<void> {
+    const live = day.live.get(task.id);
+    if (live !== undefined) {
+      trace.log('task.unstart', { taskId: task.id });
+      await this._calendar.remove(user, live);
+    }
+
+    const backlog = day.backlog.filter((it) => it.id !== task.id);
+    const at = Math.max(0, Math.min(index, backlog.length));
+
+    trace.log('task.shelve', { taskId: task.id, index: at });
+    await this._tasks.update(user, {
+      ...task,
+      position: await this._positionAt(user, backlog, at),
+      notBefore: undefined,
+      backlog: true,
     });
   }
 
@@ -889,9 +942,9 @@ function queueOf(day: Day): Task[] {
   return day.tasks.filter((task) => !day.live.has(task.id));
 }
 
-/** The task [taskId] while it is still to do, or a 404. */
+/** The task [taskId] while it is still to do, in the backlog or not, or a 404. */
 function pendingOf(day: Day, taskId: string): Task {
-  const task = day.tasks.find((it) => it.id === taskId);
+  const task = [...day.tasks, ...day.backlog].find((it) => it.id === taskId);
   if (task === undefined) throw new NotFoundException(`No task "${taskId}"`);
 
   return task;

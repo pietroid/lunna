@@ -11,7 +11,7 @@ import { SessionGuard } from '../auth/session.guard';
 import { CalendarService } from '../calendar/calendar.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
-import { Timeline, TimelineCard } from './entities/event.entity';
+import { BacklogCard, Timeline, TimelineCard } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
 import { EventsController } from './events.controller';
 import { PauseTickerService } from './pause-ticker.service';
@@ -194,9 +194,24 @@ describe('the day', () => {
     return request(app.getHttpServer()).post(pathname).send(payload);
   }
 
-  /** Writes a task down, the way the sheet does. */
+  /**
+   * Writes a task straight into the queue.
+   *
+   * The sheet writes into the backlog ([shelve]); most of what is tested
+   * here is the queue, so this skips the drag that would bring it over.
+   */
   function add(title: string, minutes: number, extra: object = {}) {
-    return post('/tasks', { title, minutes, ...extra });
+    return post('/tasks', { title, minutes, backlog: false, ...extra });
+  }
+
+  /** Writes a task down the way the sheet does: into the backlog. */
+  function shelve(title: string, minutes: number) {
+    return post('/tasks', { title, minutes });
+  }
+
+  /** The backlog, from any answer. */
+  function backlog(response: { body: unknown }): BacklogCard[] {
+    return body(response).backlog;
   }
 
   /** Writes a fixed block down at [at], the way the sheet does. */
@@ -259,6 +274,146 @@ describe('the day', () => {
       fixed: true,
     });
   }
+
+  describe('the backlog', () => {
+    it('is where a task written down goes, with no hour', async () => {
+      const response = await shelve('Arrumar armário', 45).expect(201);
+
+      expect(tasks(response)).toEqual([]);
+      expect(cards(response)).toEqual([]);
+      const [shelved] = backlog(response);
+      expect(typeof shelved.id).toBe('string');
+      expect(backlog(response)).toEqual([
+        {
+          id: shelved.id,
+          kind: 'task',
+          title: 'Arrumar armário',
+          section: 'backlog',
+          durationMinutes: 45,
+          workMinutes: 45,
+          notes: '',
+        },
+      ]);
+    });
+
+    it('keeps the order things were written down in', async () => {
+      await shelve('Primeiro', 30);
+      await shelve('Segundo', 30);
+      const after = await shelve('Terceiro', 30).expect(201);
+
+      expect(backlog(after).map((it) => it.title)).toEqual([
+        'Primeiro',
+        'Segundo',
+        'Terceiro',
+      ]);
+    });
+
+    it('reorders within itself without touching the queue', async () => {
+      await add('Na fila', 30);
+      await shelve('A', 30);
+      const [, b] = backlog(await shelve('B', 30));
+
+      const after = await drag(b.id, 0, { backlog: true }).expect(201);
+
+      expect(backlog(after).map((it) => it.title)).toEqual(['B', 'A']);
+      expect(titles(tasks(after))).toEqual(['Na fila']);
+    });
+
+    it('sends a task to the queue, where it gets an hour', async () => {
+      await add('Primeiro', 30);
+      const [shelved] = backlog(await shelve('Depois', 45));
+
+      const after = await drag(shelved.id, 1).expect(201);
+
+      expect(backlog(after)).toEqual([]);
+      expect(titles(tasks(after))).toEqual(['Primeiro', 'Depois']);
+      expect(gapBetween(tasks(after)[0], tasks(after)[1])).toBe(5);
+      expect(titles(cards(after))).toEqual(['Primeiro', 'Depois']);
+    });
+
+    it('takes a task out of the queue, which closes up over it', async () => {
+      await add('Primeiro', 30);
+      await add('Segundo', 30);
+      const [first, second] = tasks(await add('Terceiro', 30));
+
+      const after = await drag(second.id, 0, { backlog: true }).expect(201);
+
+      expect(titles(tasks(after))).toEqual(['Primeiro', 'Terceiro']);
+      expect(tasks(after)[1].startTime).toBe(second.startTime);
+      expect(tasks(after)[0]).toEqual(first);
+      expect(backlog(after).map((it) => it.title)).toEqual(['Segundo']);
+    });
+
+    it('stops a running task that is put back in it', async () => {
+      await add('Rodando', 30);
+      await begin('Rodando');
+      const running = await task('Rodando');
+      expect(running.started).toBe(true);
+
+      const after = await drag(running.id, 0, { backlog: true }).expect(201);
+
+      expect(tasks(after)).toEqual([]);
+      expect(backlog(after).map((it) => it.title)).toEqual(['Rodando']);
+      expect(store.all(owner)).toEqual([]);
+    });
+
+    it('starts a task straight from the backlog', async () => {
+      const [shelved] = backlog(await shelve('Agora mesmo', 30));
+
+      const after = await post(`/tasks/${shelved.id}/start`).expect(201);
+
+      expect(backlog(after)).toEqual([]);
+      expect(tasks(after)[0]).toMatchObject({
+        title: 'Agora mesmo',
+        started: true,
+        section: 'agora',
+      });
+    });
+
+    it('edits, finishes and forgets a task in it', async () => {
+      const [shelved] = backlog(await shelve('Ler', 30));
+
+      const edited = await request(app.getHttpServer())
+        .patch(`/tasks/${shelved.id}`)
+        .send({ title: 'Ler livro', workMinutes: 60, notes: 'cap. 3' })
+        .expect(200);
+      expect(backlog(edited)[0]).toMatchObject({
+        title: 'Ler livro',
+        durationMinutes: 60,
+        notes: 'cap. 3',
+      });
+
+      const done = await post(`/tasks/${shelved.id}/done`).expect(201);
+      expect(backlog(done)).toEqual([]);
+
+      const [other] = backlog(await shelve('Outro', 15));
+      const removed = await request(app.getHttpServer())
+        .delete(`/tasks/${other.id}`)
+        .expect(200);
+      expect(backlog(removed)).toEqual([]);
+    });
+
+    it('refuses an hour for something dropped into it', async () => {
+      const [shelved] = backlog(await shelve('Ler', 30));
+
+      await drag(shelved.id, 0, { backlog: true, start: true }).expect(400);
+      await drag(shelved.id, 0, {
+        backlog: true,
+        after: inHours(2).toISOString(),
+      }).expect(400);
+    });
+
+    it('drops a floor it was given, since it has no hours', async () => {
+      const response = await post('/tasks', {
+        title: 'Ler',
+        minutes: 30,
+        notBefore: inHours(3).toISOString(),
+      }).expect(201);
+
+      expect(backlog(response)).toHaveLength(1);
+      expect(tasks(response)).toEqual([]);
+    });
+  });
 
   describe('writing a task down', () => {
     it('gives it an hour without putting anything on the calendar', async () => {

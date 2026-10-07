@@ -142,12 +142,18 @@ Two kinds of card:
   (`event.task_id`) only when it is begun; that row is its real hour, and
   pause, extend and finish work on it. Ticking a task off sets `done_at`.
   A begun task whose hour runs out is written down as done by `catchUp`.
+  A task with `backlog` set waits in the **backlog** ("Depois eu priorizo")
+  instead of the queue: it keeps its order and its length, has no hour, and
+  the layout never sees it. **Every task written down goes to the end of the
+  backlog** (`POST /tasks`; `backlog: false` writes straight into the queue,
+  which only the tests use).
 - An **event** is a block whose hour is the point of it: a fixed block, a
   day of a routine, a meeting. It never waits and is never queued.
 
-`GET /api/timeline?days=N` answers with both views at once:
-`{ tasks, cards }`. `tasks` is every task still to do, the running one
-first and then the queue, however far ahead the queue reaches. `cards` is
+`GET /api/timeline?days=N` answers with every view at once:
+`{ tasks, backlog, cards }`. `tasks` is every queued task, the running one
+first and then the queue, however far ahead the queue reaches. `backlog` is
+the backlog in its order, with no hours (`section: 'backlog'`). `cards` is
 everything the calendar draws from now to the end of day N. Every write
 under `/api/tasks` and `/api/events` takes the same `?days=` and answers
 with the same shape.
@@ -157,8 +163,11 @@ with the same shape.
 The app draws the day two ways, switched at the top of Tempo and
 remembered on the device (`TimelineModeCubit`):
 
-- **Lista**: the tasks alone, each as tall as it needs, under the day the
-  queue puts them on. Reordering here is reordering the queue.
+- **Lista**: the tasks alone, each as tall as it needs, in two stages that
+  are always drawn: **Fazer em breve** (the queue, under the day it puts
+  each task on) and **Depois eu priorizo** (the backlog). A drag moves a
+  task within either or across the line; the move carries `backlog: true`
+  when it lands below it. A running task dropped in the backlog stops.
 - **Calendário**: everything, to scale, day after day. Scrolling near the
   end asks for another week (`TimelineExtended`), up to 120 days.
 
@@ -181,8 +190,8 @@ be cut to fit, `minutes`; an event let go over one gets that hour through
 `PATCH /api/events/:id`. A drop's index on the calendar is translated to a
 place in the list of tasks by counting the tasks above it. Tapping empty
 room opens the creation sheet: in the first part of the room it writes a
-task, put in the queue where the room is with a `notBefore` floor; in any
-later hour it writes a fixed event at that hour.
+task, which goes to the backlog like any other; in any later hour it
+writes a fixed event at that hour.
 
 ### The time system
 
@@ -218,7 +227,7 @@ counts as starting it. Events never wait.
 (by `catchUp`, on every read and on the server's minute tick) and the queue
 after it follows.
 
-Adding a task (`POST /tasks`) puts it at the end of the queue. Adding a
+Adding a task (`POST /tasks`) puts it at the end of the backlog. Adding a
 fixed block (`POST /events`) puts it at its hour. Dragging
 (`POST /tasks/:id/move`) moves the task to a place in the list of tasks,
 which counts the running task at the top; a running task dragged anywhere

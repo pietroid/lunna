@@ -123,8 +123,12 @@ class EventTile extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.s3),
               Text(
-                '${hhmm(landing?.start ?? card.startTime)}–'
-                '${hhmm(landing?.end ?? card.endTime)}',
+                // Nothing in the backlog has an hour, only a length, until
+                // it is aimed at the queue.
+                card.isBacklog && landing == null
+                    ? durationLabel(context.l10n, card.workMinutes)
+                    : '${hhmm(landing?.start ?? card.startTime)}–'
+                          '${hhmm(landing?.end ?? card.endTime)}',
                 style: AppTypography.label.copyWith(color: AppColors.ink3),
               ),
             ],

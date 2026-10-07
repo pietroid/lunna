@@ -271,7 +271,12 @@
   },
   "timelineModeList": "Lista",
   "timelineModeCalendar": "Calendário",
-  "tasksEmpty": "Nenhuma tarefa. Toque no + para anotar algo.",
+  "stageSoon": "Fazer em breve",
+  "stageBacklog": "Depois eu priorizo",
+  "stageSoonEmpty": "Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.",
+  "stageBacklogEmpty": "Nada esperando. O que você anotar fica aqui até ganhar um lugar na fila.",
+  "promptToBacklog": "Vai para Depois eu priorizo",
+  "eventInBacklog": "Em Depois eu priorizo, ainda sem hora",
   "routineDaily": "Todo dia",
   "routineWeekdays": "Dias úteis",
   "routineWeekend": "Fim de semana",
@@ -397,6 +402,7 @@
   "landingFooter": "Lunna · Organização pessoal",
   "demoBuilding": "Fazendo o Lunna",
   "demoGroceries": "Comprar leite e ovos",
+  "demoBacklog": "Organizar as fotos da viagem",
   "demoStandup": "Standup",
   "demoDentist": "Marcar dentista"
 }

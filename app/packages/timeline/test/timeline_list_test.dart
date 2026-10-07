@@ -744,13 +744,137 @@ void main() {
       ).called(1);
     });
 
-    testAt('says so when there is nothing to do', (tester) async {
+    testAt('always draws both stages, saying when each is empty', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
       await pump(tester, [meeting], mode: TimelineMode.list);
 
-      expect(
-        find.text('Nenhuma tarefa. Toque no + para anotar algo.'),
-        findsOneWidget,
+      expect(find.text(l10n.stageSoon), findsOneWidget);
+      expect(find.text(l10n.stageSoonEmpty), findsOneWidget);
+      expect(find.text(l10n.stageBacklog), findsOneWidget);
+      expect(find.text(l10n.stageBacklogEmpty), findsOneWidget);
+    });
+
+    /// A task in the backlog, as the server sends one: a length, no hours.
+    TimelineEvent shelved(String id, String title) => TimelineEvent.fromJson({
+      'id': id,
+      'kind': 'task',
+      'title': title,
+      'section': 'backlog',
+      'durationMinutes': 45,
+      'workMinutes': 45,
+    });
+
+    /// The list with [tasks] in the queue and [backlog] below it.
+    Future<TimelineBloc> pumpStages(
+      WidgetTester tester,
+      List<TimelineEvent> tasks,
+      List<TimelineEvent> backlog,
+    ) async {
+      final (bloc, _) = await pump(
+        tester,
+        tasks,
+        mode: TimelineMode.list,
+        state: TimelineState(
+          status: TimelineStatus.success,
+          cards: tasks,
+          tasks: tasks,
+          backlog: backlog,
+        ),
       );
+      return bloc;
+    }
+
+    testAt('draws the backlog under the queue, with lengths for hours', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      await pumpStages(tester, [running], [shelved('x', 'Armário')]);
+
+      final line = tester.getTopLeft(find.text(l10n.stageBacklog)).dy;
+      expect(tester.getTopLeft(find.text('Escrever')).dy, lessThan(line));
+      expect(tester.getTopLeft(find.text('Armário')).dy, greaterThan(line));
+      expect(find.text(l10n.durationMinutes(45)), findsOneWidget);
+    });
+
+    testAt('drags a task from the queue into the backlog', (tester) async {
+      final bloc = await pumpStages(
+        tester,
+        [running, later],
+        [shelved('x', 'Armário'), shelved('y', 'Gaveta')],
+      );
+
+      final above = tester.getBottomLeft(
+        find.widgetWithText(EventTile, 'Armário'),
+      );
+      final below = tester.getTopLeft(find.widgetWithText(EventTile, 'Gaveta'));
+      await drag(tester, 'Depois', (above.dy + below.dy) / 2);
+
+      verify(
+        () => bloc.add(const EventMoved(id: 'b', index: 1, backlog: true)),
+      ).called(1);
+    });
+
+    testAt('drags a task from the backlog into the queue', (tester) async {
+      final bloc = await pumpStages(
+        tester,
+        [running, later],
+        [shelved('x', 'Armário')],
+      );
+
+      final above = tester.getBottomLeft(
+        find.widgetWithText(EventTile, 'Escrever'),
+      );
+      final below = tester.getTopLeft(find.widgetWithText(EventTile, 'Depois'));
+      await drag(tester, 'Armário', (above.dy + below.dy) / 2);
+
+      verify(() => bloc.add(const EventMoved(id: 'x', index: 1))).called(1);
+    });
+
+    testAt('tells the end of the queue from the top of the backlog', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final bloc = await pumpStages(
+        tester,
+        [running, later],
+        [shelved('x', 'Armário')],
+      );
+
+      final line = tester.getRect(find.text(l10n.stageBacklog));
+      await drag(tester, 'Escrever', line.top - 24);
+      verify(() => bloc.add(const EventMoved(id: 'a', index: 1))).called(1);
+
+      final card = tester.getRect(find.widgetWithText(EventTile, 'Armário'));
+      await drag(tester, 'Escrever', card.top + 2);
+      verify(
+        () => bloc.add(const EventMoved(id: 'a', index: 0, backlog: true)),
+      ).called(1);
+    });
+
+    testAt('puts a task into an empty queue without starting it', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final bloc = await pumpStages(tester, [], [shelved('x', 'Armário')]);
+
+      final empty = tester.getCenter(find.text(l10n.stageSoonEmpty));
+      await drag(tester, 'Armário', empty.dy);
+
+      verify(() => bloc.add(const EventMoved(id: 'x', index: 0))).called(1);
+    });
+
+    testAt('drops into an empty backlog', (tester) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final bloc = await pumpStages(tester, [running, later], []);
+
+      final empty = tester.getCenter(find.text(l10n.stageBacklogEmpty));
+      await drag(tester, 'Depois', empty.dy + 8);
+
+      verify(
+        () => bloc.add(const EventMoved(id: 'b', index: 0, backlog: true)),
+      ).called(1);
     });
   });
 

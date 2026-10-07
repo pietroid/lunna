@@ -21,23 +21,16 @@ class TimelineRepository {
   Future<Timeline> fetch({int days = defaultDays}) =>
       _day(() => apiClient.get<Map<String, dynamic>>('/timeline?days=$days'));
 
-  /// Writes a task down at the end of the queue.
-  ///
-  /// One written down in empty room further down the day says where the room
-  /// starts as [notBefore], and goes into the queue there instead.
+  /// Writes a task down at the end of the backlog, where it waits without
+  /// an hour until it is dragged into the queue.
   Future<Timeline> createTask({
     required String title,
     required int minutes,
-    DateTime? notBefore,
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(
       '/tasks?days=$days',
-      data: {
-        'title': title,
-        'minutes': minutes,
-        if (notBefore != null) 'notBefore': notBefore.toUtc().toIso8601String(),
-      },
+      data: {'title': title, 'minutes': minutes},
     ),
   );
 
@@ -71,9 +64,14 @@ class TimelineRepository {
   /// A drop into a free stretch also says where that stretch starts, as
   /// [after], so the task is not laid out any earlier than the gap it was
   /// dropped into, and [minutes] when the user agreed to cut it to fit.
+  ///
+  /// [backlog] says it was dropped into the backlog instead, and then
+  /// [index] counts the backlog. Nothing there has an hour, so a drop there
+  /// never starts anything and never asks.
   Future<Timeline> moveTask(
     String id,
     int index, {
+    bool backlog = false,
     bool start = false,
     DateTime? after,
     int? minutes,
@@ -83,6 +81,7 @@ class TimelineRepository {
       '/tasks/$id/move?days=$days',
       data: {
         'index': index,
+        if (backlog) 'backlog': true,
         if (start) 'start': true,
         if (after != null) 'after': after.toUtc().toIso8601String(),
         'minutes': ?minutes,

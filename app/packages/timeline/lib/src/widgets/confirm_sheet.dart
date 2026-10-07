@@ -73,14 +73,15 @@ Future<bool> confirmAdjust(
 /// Asks, then gives [card] [minutes] more, or fewer when negative.
 ///
 /// The one path both the timeline and the detail screen take, so the
-/// question is the same wherever the button was.
+/// question is the same wherever the button was. A card in the backlog is
+/// not asked about: it has no end to move and nothing after it to push.
 Future<void> adjustTime(
   BuildContext context,
   TimelineEvent card,
   int minutes,
 ) async {
   final bloc = context.read<TimelineBloc>();
-  if (await confirmAdjust(context, card, minutes)) {
+  if (card.isBacklog || await confirmAdjust(context, card, minutes)) {
     bloc.add(EventExtended(card.id, minutes: minutes));
   }
 }

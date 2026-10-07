@@ -30,8 +30,8 @@ final class TimelineExtended extends TimelineBlocEvent {
 /// Writes something down.
 ///
 /// The sheet asked how long it takes and whether the hour is the point of
-/// it. A flexible one is a task, at the end of the queue; a fixed one is an
-/// event, at its hour.
+/// it. A flexible one is a task, at the end of the backlog; a fixed one is
+/// an event, at its hour.
 final class EventCreated extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
   const EventCreated({
@@ -39,7 +39,6 @@ final class EventCreated extends TimelineBlocEvent {
     required this.durationMinutes,
     required this.fixed,
     this.startTime,
-    this.notBefore,
   });
 
   /// What the user wrote, which is what the block is called.
@@ -54,30 +53,21 @@ final class EventCreated extends TimelineBlocEvent {
   /// The hour, when the user picked one. Only a fixed block does.
   final DateTime? startTime;
 
-  /// The earliest a flexible block may start, when it was written down from
-  /// empty room further down the day.
-  final DateTime? notBefore;
-
   @override
-  List<Object?> get props => [
-    title,
-    durationMinutes,
-    fixed,
-    startTime,
-    notBefore,
-  ];
+  List<Object?> get props => [title, durationMinutes, fixed, startTime];
 }
 
-/// Moves one task to [index] in the list of tasks.
+/// Moves one task to [index] in the list of tasks, or in the backlog.
 ///
-/// One number, because the queue is one list. The server turns it into hours
-/// for everything the drop disturbed, so the app waits for the answer rather
-/// than guessing at the new times itself.
+/// One number and which of the two lists it counts. The server turns it into
+/// hours for everything the drop disturbed, so the app waits for the answer
+/// rather than guessing at the new times itself.
 final class EventMoved extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
   const EventMoved({
     required this.id,
     required this.index,
+    this.backlog = false,
     this.start = false,
     this.after,
     this.minutes,
@@ -87,8 +77,12 @@ final class EventMoved extends TimelineBlocEvent {
   final String id;
 
   /// Where it was dropped in the list of tasks, counted from the top with
-  /// itself taken out. What is running counts, at the top.
+  /// itself taken out. What is running counts, at the top. In the backlog,
+  /// counted from the top of the backlog.
   final int index;
+
+  /// Whether it was dropped into the backlog rather than the queue.
+  final bool backlog;
 
   /// Whether it was dropped at the very top of the day, which is doing it
   /// now.
@@ -101,7 +95,7 @@ final class EventMoved extends TimelineBlocEvent {
   final int? minutes;
 
   @override
-  List<Object?> get props => [id, index, start, after, minutes];
+  List<Object?> get props => [id, index, backlog, start, after, minutes];
 }
 
 /// The user began a task that was waiting for them.

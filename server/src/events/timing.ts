@@ -13,6 +13,11 @@ export interface TimingAction {
   /** The task being moved. */
   taskId: string;
   /**
+   * Whether it was dropped into the backlog. Then [index] counts the
+   * backlog, and nothing about the queue is asked.
+   */
+  backlog?: boolean;
+  /**
    * Where in the list of tasks the drop left it, counting from the top with
    * itself taken out. What is running counts: it is at the top of the list.
    */

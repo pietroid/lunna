@@ -12,7 +12,7 @@ import {
   minutesOf,
 } from '../time/work-hours';
 import { addDaysIn, startOfDayIn, Zone } from '../time/zone';
-import { Timeline, TimelineCard } from './entities/event.entity';
+import { BacklogCard, Timeline, TimelineCard } from './entities/event.entity';
 import { dayOf, intervalOf, sectionOf } from './event-sections';
 
 /** How many days the calendar draws when the screen does not say. */
@@ -46,6 +46,11 @@ export interface Day {
   events: CalendarEvent[];
   /** Every task still to do, in queue order, the ones begun included. */
   tasks: Task[];
+  /**
+   * Every task waiting in the backlog, in its order. None of them has an
+   * hour, and the layout never saw them.
+   */
+  backlog: Task[];
   /** The hour of each task that was begun and is not over, by task id. */
   live: Map<string, CalendarEvent>;
   /** Where the queue puts each task that has not been begun, by task id. */
@@ -85,7 +90,9 @@ export class TimelineService {
   ): Promise<Day> {
     const zone = this.zone(user);
     const until = startOfDayIn(addDaysIn(now, days, zone), zone);
-    const tasks = await this._tasks.pending(user);
+    const stored = await this._tasks.pending(user);
+    const tasks = stored.filter((task) => !task.backlog);
+    const backlog = stored.filter((task) => task.backlog);
     const pending = new Set(tasks.map((task) => task.id));
 
     let reach = until;
@@ -140,6 +147,7 @@ export class TimelineService {
       until,
       events,
       tasks: tasks.filter((task) => live.has(task.id) || placed.has(task.id)),
+      backlog,
       live,
       placed,
     };
@@ -174,7 +182,7 @@ export class TimelineService {
           (a.kind === b.kind ? 0 : a.kind === 'event' ? -1 : 1),
       );
 
-    return { tasks, cards };
+    return { tasks, backlog: day.backlog.map(backlogCard), cards };
   }
 }
 
@@ -231,6 +239,18 @@ function taskCard(day: Day, task: Task): TimelineCard | undefined {
     started: live !== undefined,
     awaitingStart: awaiting,
     notBefore: task.notBefore,
+  };
+}
+
+function backlogCard(task: Task): BacklogCard {
+  return {
+    id: task.id,
+    kind: 'task',
+    title: task.title,
+    section: 'backlog',
+    durationMinutes: task.minutes,
+    workMinutes: task.minutes,
+    notes: task.notes,
   };
 }
 

@@ -17,6 +17,11 @@ export interface Task {
   position: number;
   /** ISO 8601, the earliest the layout may start it, when there is one. */
   notBefore?: string;
+  /**
+   * Whether it waits in the backlog rather than in the queue. A task in the
+   * backlog keeps its order and its length and has no hour at all.
+   */
+  backlog: boolean;
   /** ISO 8601, when it was finished. Absent while there is still work. */
   doneAt?: string;
 }
@@ -27,4 +32,6 @@ export interface NewTask {
   minutes: number;
   position: number;
   notBefore?: string;
+  /** Whether it goes into the backlog. The queue when not said. */
+  backlog?: boolean;
 }

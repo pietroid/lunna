@@ -593,11 +593,41 @@ abstract class AppLocalizations {
   /// **'Calendário'**
   String get timelineModeCalendar;
 
-  /// No description provided for @tasksEmpty.
+  /// No description provided for @stageSoon.
   ///
   /// In pt, this message translates to:
-  /// **'Nenhuma tarefa. Toque no + para anotar algo.'**
-  String get tasksEmpty;
+  /// **'Fazer em breve'**
+  String get stageSoon;
+
+  /// No description provided for @stageBacklog.
+  ///
+  /// In pt, this message translates to:
+  /// **'Depois eu priorizo'**
+  String get stageBacklog;
+
+  /// No description provided for @stageSoonEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.'**
+  String get stageSoonEmpty;
+
+  /// No description provided for @stageBacklogEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada esperando. O que você anotar fica aqui até ganhar um lugar na fila.'**
+  String get stageBacklogEmpty;
+
+  /// No description provided for @promptToBacklog.
+  ///
+  /// In pt, this message translates to:
+  /// **'Vai para Depois eu priorizo'**
+  String get promptToBacklog;
+
+  /// No description provided for @eventInBacklog.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em Depois eu priorizo, ainda sem hora'**
+  String get eventInBacklog;
 
   /// No description provided for @routineDaily.
   ///
@@ -982,6 +1012,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Comprar leite e ovos'**
   String get demoGroceries;
+
+  /// No description provided for @demoBacklog.
+  ///
+  /// In pt, this message translates to:
+  /// **'Organizar as fotos da viagem'**
+  String get demoBacklog;
 
   /// No description provided for @demoStandup.
   ///

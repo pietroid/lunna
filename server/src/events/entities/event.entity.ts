@@ -86,6 +86,24 @@ export class TimelineCard {
 }
 
 /**
+ * A task waiting in the backlog: "Depois eu priorizo".
+ *
+ * It has an order and a length and no hour, so it carries none of a card's
+ * hours. It reaches the calendar only once it is dragged into the queue.
+ */
+export class BacklogCard {
+  id: string;
+  kind: 'task';
+  title: string;
+  section: 'backlog';
+  /** How long the work takes. */
+  durationMinutes: number;
+  /** The same as [durationMinutes]: nothing in the backlog was begun. */
+  workMinutes: number;
+  notes: string;
+}
+
+/**
  * The day, as the screen draws it.
  *
  * Both views of it at once, from one read, so the list and the calendar
@@ -98,6 +116,8 @@ export class Timeline {
    * far ahead the last one lands.
    */
   tasks: TimelineCard[];
+  /** Every task in the backlog, in its order, with no hours. */
+  backlog: BacklogCard[];
   /**
    * Everything the calendar draws, earliest first, from now to the end of
    * the last day asked for: the events and the tasks that fall in it.
@@ -134,8 +154,13 @@ export interface TaskRequest {
   title: string;
   minutes: number;
   /**
-   * ISO 8601, the earliest it may start, when it was written down from a
-   * tap on empty room further down the day.
+   * Whether it goes into the backlog, which is where a task goes unless the
+   * request says otherwise.
+   */
+  backlog: boolean;
+  /**
+   * ISO 8601, the earliest it may start, when it goes straight into the
+   * queue. Meaningless in the backlog, which has no hours.
    */
   notBefore?: string;
 }
