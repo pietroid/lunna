@@ -61,15 +61,18 @@ class AppBottomBar extends StatelessWidget {
           child: ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: const DecoratedBox(
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0x99000000), Color(0xE6000000)],
+                    colors: [
+                      AppColors.bg.withValues(alpha: 0.6),
+                      AppColors.bg.withValues(alpha: 0.9),
+                    ],
                   ),
                 ),
-                child: SizedBox.expand(),
+                child: const SizedBox.expand(),
               ),
             ),
           ),

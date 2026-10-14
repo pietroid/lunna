@@ -2,31 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "App - Dev",
+      "name": "Lunna - Dev",
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main.dart",
       "args": [
         "--flavor",
-        "dev",
+        "lunnaDev",
         "--dart-define-from-file",
-        "env/dev.json"
+        "env/lunna.dev.json"
       ]
     },
     {
-      "name": "App - Production",
-      "request": "launch",
-      "type": "dart",
-      "program": "app/lib/main.dart",
-      "args": [
-        "--flavor",
-        "production",
-        "--dart-define-from-file",
-        "env/production.json"
-      ]
-    },
-    {
-      "name": "App - Dev (web)",
+      "name": "Lunna - Dev (web)",
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main.dart",
@@ -35,20 +23,82 @@
         "--web-port",
         "5173",
         "--dart-define-from-file",
-        "env/dev.json"
+        "env/lunna.dev.json"
       ]
     },
     {
-      "name": "App - Production Profile",
+      "name": "Lunna - Production",
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main.dart",
       "args": [
         "--flavor",
-        "production",
+        "lunnaProduction",
+        "--dart-define-from-file",
+        "env/lunna.production.json"
+      ]
+    },
+    {
+      "name": "Lunna - Production Profile",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "lunnaProduction",
         "--profile",
         "--dart-define-from-file",
-        "env/production.json"
+        "env/lunna.production.json"
+      ]
+    },
+    {
+      "name": "Focus - Dev",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "focusDev",
+        "--dart-define-from-file",
+        "env/focus.dev.json"
+      ]
+    },
+    {
+      "name": "Focus - Dev (web)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "deviceId": "chrome",
+      "args": [
+        "--web-port",
+        "5173",
+        "--dart-define-from-file",
+        "env/focus.dev.json"
+      ]
+    },
+    {
+      "name": "Focus - Production",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "focusProduction",
+        "--dart-define-from-file",
+        "env/focus.production.json"
+      ]
+    },
+    {
+      "name": "Focus - Production Profile",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main.dart",
+      "args": [
+        "--flavor",
+        "focusProduction",
+        "--profile",
+        "--dart-define-from-file",
+        "env/focus.production.json"
       ]
     },
     {

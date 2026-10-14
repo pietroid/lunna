@@ -1,6 +1,14 @@
 {
   "@@locale": "pt",
-  "appName": "Lunna",
+  "appName": "{brand, select, lunna{Lunna} other{Focus}}",
+  "@appName": {
+    "placeholders": {
+      "brand": {
+        "type": "String",
+        "description": "AppBrand.id: lunna or focus."
+      }
+    }
+  },
   "authSignIn": "Entrar",
   "authSignInWithGoogle": "Entrar com Google",
   "authSignInFailed": "Não foi possível entrar",
@@ -395,7 +403,15 @@
   "commonSave": "Salvar",
   "routinesDelete": "Excluir rotina",
   "landingHeadline": "Seu dia, no lugar.",
-  "landingPitch": "Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e o Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.",
+  "landingPitch": "{brand, select, lunna{A Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e a Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.} other{O Focus é um sistema pessoal de organização. Anote o que precisa ser feito e o Focus dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.}}",
+  "@landingPitch": {
+    "placeholders": {
+      "brand": {
+        "type": "String",
+        "description": "AppBrand.id: lunna or focus."
+      }
+    }
+  },
   "landingDemoHint": "O celular ao lado é o app de verdade. Toque no + para anotar algo, ou num bloco para abri-lo.",
   "landingHowTitle": "Como funciona",
   "landingPartTimelineTitle": "Tempo",
@@ -409,8 +425,24 @@
   "landingUseHour": "Dê a cada coisa a sua hora.",
   "landingUsePause": "Pause, estenda ou adie, e o resto do dia anda junto.",
   "landingUseRoutine": "Deixe a rotina se repetir sozinha.",
-  "landingFooter": "Lunna · Organização pessoal",
-  "demoBuilding": "Fazendo o Lunna",
+  "landingFooter": "{brand, select, lunna{Lunna} other{Focus}} · Organização pessoal",
+  "@landingFooter": {
+    "placeholders": {
+      "brand": {
+        "type": "String",
+        "description": "AppBrand.id: lunna or focus."
+      }
+    }
+  },
+  "demoBuilding": "{brand, select, lunna{Fazendo a Lunna} other{Fazendo o Focus}}",
+  "@demoBuilding": {
+    "placeholders": {
+      "brand": {
+        "type": "String",
+        "description": "AppBrand.id: lunna or focus."
+      }
+    }
+  },
   "demoGroceries": "Comprar leite e ovos",
   "demoBacklog": "Organizar as fotos da viagem",
   "demoStandup": "Standup",

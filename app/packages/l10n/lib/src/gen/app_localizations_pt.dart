@@ -12,7 +12,16 @@ class AppLocalizationsPt extends AppLocalizations {
   AppLocalizationsPt([String locale = 'pt']) : super(locale);
 
   @override
-  String get appName => 'Lunna';
+  String appName(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Lunna',
+        'other': 'Focus',
+      },
+    );
+    return '$_temp0';
+  }
 
   @override
   String get authSignIn => 'Entrar';
@@ -514,7 +523,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingHeadline => 'Seu dia, no lugar.';
 
   @override
-  String get landingPitch => 'Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e o Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.';
+  String landingPitch(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'A Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e a Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.',
+        'other': 'O Focus é um sistema pessoal de organização. Anote o que precisa ser feito e o Focus dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.',
+      },
+    );
+    return '$_temp0';
+  }
 
   @override
   String get landingDemoHint => 'O celular ao lado é o app de verdade. Toque no + para anotar algo, ou num bloco para abri-lo.';
@@ -556,10 +574,28 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingUseRoutine => 'Deixe a rotina se repetir sozinha.';
 
   @override
-  String get landingFooter => 'Lunna · Organização pessoal';
+  String landingFooter(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Lunna',
+        'other': 'Focus',
+      },
+    );
+    return '$_temp0 · Organização pessoal';
+  }
 
   @override
-  String get demoBuilding => 'Fazendo o Lunna';
+  String demoBuilding(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Fazendo a Lunna',
+        'other': 'Fazendo o Focus',
+      },
+    );
+    return '$_temp0';
+  }
 
   @override
   String get demoGroceries => 'Comprar leite e ovos';

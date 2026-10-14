@@ -1,11 +1,11 @@
 {
-    "name": "Lunna",
-    "short_name": "Lunna",
+    "name": "__APP_NAME__",
+    "short_name": "__APP_NAME__",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#000000",
-    "description": "Lunna: seu dia, no lugar.",
+    "background_color": "__APP_BG__",
+    "theme_color": "__APP_BG__",
+    "description": "__APP_NAME__: seu dia, no lugar.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

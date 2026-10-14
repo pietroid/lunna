@@ -112,10 +112,10 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.s5),
       child: Row(
         children: [
-          Image.asset('assets/images/icon.png', height: 38),
+          Image.asset(AppBrand.markAsset, package: 'app_ui', height: 38),
           const SizedBox(width: AppSpacing.s3),
           Text(
-            context.l10n.appName,
+            context.l10n.appName(AppBrand.id),
             style: AppTypography.onest(
               size: 32,
               weight: FontWeight.w500,
@@ -186,7 +186,11 @@ class _Glow extends StatelessWidget {
           opacity: 0.35,
           child: ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-            child: Image.asset('assets/images/icon.png', width: 620),
+            child: Image.asset(
+              AppBrand.markAsset,
+              package: 'app_ui',
+              width: 620,
+            ),
           ),
         ),
       ),
@@ -216,7 +220,7 @@ class _Pitch extends StatelessWidget {
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Text(
-            context.l10n.landingPitch,
+            context.l10n.landingPitch(AppBrand.id),
             style: AppTypography.onest(
               size: wide ? 19 : 17,
               weight: FontWeight.w400,
@@ -352,11 +356,15 @@ class _Footer extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.s8),
       child: Row(
         children: [
-          Image.asset('assets/images/icon.png', height: AppSpacing.s4),
+          Image.asset(
+            AppBrand.markAsset,
+            package: 'app_ui',
+            height: AppSpacing.s4,
+          ),
           const SizedBox(width: AppSpacing.s2),
           Expanded(
             child: Text(
-              context.l10n.landingFooter,
+              context.l10n.landingFooter(AppBrand.id),
               style: AppTypography.caption.copyWith(color: AppColors.ink3),
             ),
           ),

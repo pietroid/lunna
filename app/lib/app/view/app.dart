@@ -67,8 +67,8 @@ class App extends StatelessWidget {
       },
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
-        onGenerateTitle: (context) => context.l10n.appName,
-        theme: AppTheme.dark,
+        onGenerateTitle: (context) => context.l10n.appName(AppBrand.id),
+        theme: AppTheme.current,
         locale: const Locale('pt', 'BR'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

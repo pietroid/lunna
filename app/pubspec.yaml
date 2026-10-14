@@ -46,35 +46,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  assets:
-    - assets/launch_icon/
-    - assets/images/
 
-flutter_launcher_icons:
-  android: true
-  ios: true
-  image_path: "assets/launch_icon/icon.png"
-  min_sdk_android: 21
-  remove_alpha_ios: true
-  background_color_ios: "#000000"
-  adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/launch_icon/icon.png"
-  web:
-    generate: true
-    image_path: "assets/launch_icon/icon.png"
-    background_color: "#000000"
-    theme_color: "#000000"
-
-flutter_native_splash:
-  color: "#000000"
-  image: assets/launch_icon/icon.png
-  color_dark: "#000000"
-  image_dark: assets/launch_icon/icon.png
-  android_12:
-    image: assets/launch_icon/icon.png
-    icon_background_color: "#000000"
-    image_dark: assets/launch_icon/icon.png
-    icon_background_color_dark: "#000000"
+# The launcher icons and the splash are per brand: see
+# flutter_launcher_icons-<brand>.yaml and flutter_native_splash-<brand>.yaml,
+# and brands/README.md for how to regenerate them.
 
 dependency_overrides:
   # The last set of workmanager packages published together before 0.9.6.

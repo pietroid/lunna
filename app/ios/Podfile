@@ -4,10 +4,20 @@
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# One configuration per brand x env x build mode (see brands/README.md).
 project 'Runner', {
-  'Debug' => :debug,
-  'Profile' => :release,
-  'Release' => :release,
+  'Debug-focusDev' => :debug,
+  'Debug-focusProduction' => :debug,
+  'Debug-lunnaDev' => :debug,
+  'Debug-lunnaProduction' => :debug,
+  'Profile-focusDev' => :release,
+  'Profile-focusProduction' => :release,
+  'Profile-lunnaDev' => :release,
+  'Profile-lunnaProduction' => :release,
+  'Release-focusDev' => :release,
+  'Release-focusProduction' => :release,
+  'Release-lunnaDev' => :release,
+  'Release-lunnaProduction' => :release,
 }
 
 def flutter_root

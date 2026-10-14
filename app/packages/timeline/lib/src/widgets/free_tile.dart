@@ -84,6 +84,7 @@ class FreeTile extends StatelessWidget {
       constraints: BoxConstraints(minHeight: now ? nowHeight : 0),
       decoration: BoxDecoration(
         color: targeted ? AppColors.fillStrong : AppColors.freeFill,
+        border: Border.all(color: AppColors.freeEdge),
         borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
       ),
       child: Material(

@@ -92,10 +92,10 @@ class _DefaultAuthBody extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Image.asset('assets/images/icon.png', height: 160),
+            Image.asset(AppBrand.markAsset, package: 'app_ui', height: 160),
             const SizedBox(height: AppSpacing.s6),
             Text(
-              context.l10n.appName,
+              context.l10n.appName(AppBrand.id),
               textAlign: TextAlign.center,
               style: AppTypography.headline,
             ),

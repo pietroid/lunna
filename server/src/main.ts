@@ -23,9 +23,9 @@ async function bootstrap() {
   // needs none of this. It is for the Flutter dev server on another port.
   app.enableCors({
     origin: [
-      process.env.BETTER_AUTH_URL ?? '',
+      ...listOf(process.env.BETTER_AUTH_URL),
       ...listOf(process.env.TRUSTED_ORIGINS),
-    ].filter((origin) => origin !== ''),
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

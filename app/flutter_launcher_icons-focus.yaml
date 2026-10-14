@@ -1,0 +1,10 @@
+# Focus's launcher icons: `dart run flutter_launcher_icons` (all brands).
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "brands/focus/icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true
+  background_color_ios: "#000000"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "brands/focus/icon.png"

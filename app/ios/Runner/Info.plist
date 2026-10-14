@@ -29,7 +29,7 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>UILaunchStoryboardName</key>
-		<string>LaunchScreen</string>
+		<string>$(LAUNCH_SCREEN_STORYBOARD)</string>
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
 		<key>UISupportedInterfaceOrientations</key>
@@ -94,7 +94,7 @@
 			<string>fetch</string>
 		</array>
 		<key>NSLocalNetworkUsageDescription</key>
-		<string>Lunna needs to connect to the development server on your local network.</string>
+		<string>The app needs to connect to the development server on your local network.</string>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>

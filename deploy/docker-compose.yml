@@ -1,7 +1,8 @@
-# Lunna on the Raspberry Pi.
+# Lunna and Focus on the Raspberry Pi: one backend, and one web container
+# per brand, each with its own public hostname.
 #
 # This file and an .env next to it are all that live on the Pi, in
-# /opt/lunna. Both images come from GHCR; a deploy copies this file over,
+# /opt/lunna. The images come from GHCR; a deploy copies this file over,
 # pulls, and restarts. See SETUP.md.
 services:
   lunna-backend:
@@ -10,7 +11,7 @@ services:
     restart: unless-stopped
     # Listens on 3004 so it never meets the Pi's other services on 3000-3003.
     # Published on loopback only, for checking it from the Pi itself;
-    # everything else reaches it through lunna-web.
+    # everything else reaches it through the web containers.
     ports:
       - "127.0.0.1:3004:3004"
     environment:
@@ -25,8 +26,19 @@ services:
     image: ghcr.io/${LUNNA_OWNER:-pietroid}/lunna-web:${LUNNA_TAG:-latest}
     container_name: lunna-web
     restart: unless-stopped
-    # Cloudflare Tunnel points the public hostname at this port.
+    # Cloudflare Tunnel points lunna.<domain> at this port.
     ports:
       - "${LUNNA_HTTP_PORT:-8080}:80"
+    depends_on:
+      - lunna-backend
+
+  focus-web:
+    image: ghcr.io/${LUNNA_OWNER:-pietroid}/focus-web:${LUNNA_TAG:-latest}
+    container_name: focus-web
+    restart: unless-stopped
+    # Cloudflare Tunnel points focus.<domain> at this port. The same nginx
+    # config as lunna-web, so it proxies /api to the same backend.
+    ports:
+      - "${FOCUS_HTTP_PORT:-8081}:80"
     depends_on:
       - lunna-backend

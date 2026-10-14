@@ -98,8 +98,8 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In pt, this message translates to:
-  /// **'Lunna'**
-  String get appName;
+  /// **'{brand, select, lunna{Lunna} other{Focus}}'**
+  String appName(String brand);
 
   /// No description provided for @authSignIn.
   ///
@@ -974,8 +974,8 @@ abstract class AppLocalizations {
   /// No description provided for @landingPitch.
   ///
   /// In pt, this message translates to:
-  /// **'Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e o Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.'**
-  String get landingPitch;
+  /// **'{brand, select, lunna{A Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e a Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.} other{O Focus é um sistema pessoal de organização. Anote o que precisa ser feito e o Focus dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.}}'**
+  String landingPitch(String brand);
 
   /// No description provided for @landingDemoHint.
   ///
@@ -1058,14 +1058,14 @@ abstract class AppLocalizations {
   /// No description provided for @landingFooter.
   ///
   /// In pt, this message translates to:
-  /// **'Lunna · Organização pessoal'**
-  String get landingFooter;
+  /// **'{brand, select, lunna{Lunna} other{Focus}} · Organização pessoal'**
+  String landingFooter(String brand);
 
   /// No description provided for @demoBuilding.
   ///
   /// In pt, this message translates to:
-  /// **'Fazendo o Lunna'**
-  String get demoBuilding;
+  /// **'{brand, select, lunna{Fazendo a Lunna} other{Fazendo o Focus}}'**
+  String demoBuilding(String brand);
 
   /// No description provided for @demoGroceries.
   ///

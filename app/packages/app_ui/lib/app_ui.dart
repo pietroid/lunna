@@ -6,6 +6,7 @@ export 'src/app_icons/app_icon_data.dart';
 export 'src/app_icons/app_icon_widget.dart';
 export 'src/app_icons/app_icons.dart';
 export 'src/extensions/build_context_extensions.dart';
+export 'src/theme/app_brand.dart';
 export 'src/theme/app_colors.dart';
 export 'src/theme/app_day.dart';
 export 'src/theme/app_spacing.dart';

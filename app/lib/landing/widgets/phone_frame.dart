@@ -40,7 +40,7 @@ class PhoneFrame extends StatelessWidget {
           border: Border.all(color: AppColors.fillStrong, width: 1.5),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x99000000),
+              color: AppColors.shadow,
               blurRadius: 80,
               offset: Offset(0, 40),
             ),

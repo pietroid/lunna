@@ -1,5 +1,7 @@
-// The iOS OAuth clients of the Lunna Google Cloud project, reversed: the URL
-// scheme Google Sign-In returns to. One per flavor, since each client is tied
-// to one bundle ID. Not secrets. See SETUP.md.
-GOOGLE_IOS_REVERSED_CLIENT_ID = com.googleusercontent.apps.1053837510772-egqbupar2376ic16ti771nom5ks6v38t
-GOOGLE_IOS_REVERSED_CLIENT_ID[config=*-dev] = com.googleusercontent.apps.861100732758-vsk1kg94c9s9bmek1ooa2uofce04ndes
+// The iOS OAuth clients, reversed: the URL scheme Google Sign-In returns
+// to. One per brand and env, since each client is tied to one bundle ID.
+// Not secrets. See SETUP.md and MIGRATION.md.
+GOOGLE_IOS_REVERSED_CLIENT_ID[config=*-lunnaProduction] = com.googleusercontent.apps.1053837510772-egqbupar2376ic16ti771nom5ks6v38t
+GOOGLE_IOS_REVERSED_CLIENT_ID[config=*-lunnaDev] = com.googleusercontent.apps.861100732758-vsk1kg94c9s9bmek1ooa2uofce04ndes
+GOOGLE_IOS_REVERSED_CLIENT_ID[config=*-focusProduction] = com.googleusercontent.apps.YOUR_FOCUS_PRODUCTION_IOS_CLIENT
+GOOGLE_IOS_REVERSED_CLIENT_ID[config=*-focusDev] = com.googleusercontent.apps.YOUR_FOCUS_DEV_IOS_CLIENT

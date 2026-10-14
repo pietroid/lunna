@@ -114,9 +114,8 @@ app.*.map.json
 !.idea/runConfigurations/
 
 # Environment files
-app/env/dev.json
-app/env/production.json
-app/env/*.local.json
+app/env/*.json
+!app/env/*.example.json
 
 # Server (NestJS/Node.js)
 server/node_modules/

@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.pietroid.lunna"
+        // Each brand flavor sets its own applicationId.
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -56,17 +56,31 @@ android {
         }
     }
 
-    flavorDimensions += "default"
+    // Two apps from one codebase: the brand picks the package and the
+    // name (and, through src/<brand>/res, the launcher icon and the splash);
+    // the env picks dev or production. Flutter names the pair, e.g.
+    // `flutter run --flavor lunnaDev`.
+    flavorDimensions += listOf("brand", "env")
     productFlavors {
+        create("focus") {
+            dimension = "brand"
+            applicationId = "com.pietroid.focus"
+            manifestPlaceholders["brandName"] = "Focus"
+        }
+        create("lunna") {
+            dimension = "brand"
+            applicationId = "com.pietroid.lunna"
+            manifestPlaceholders["brandName"] = "Lunna"
+        }
         create("production") {
-            dimension = "default"
+            dimension = "env"
             applicationIdSuffix = ""
-            manifestPlaceholders["appName"] = "Lunna"
+            manifestPlaceholders["envPrefix"] = ""
         }
         create("dev") {
-            dimension = "default"
+            dimension = "env"
             applicationIdSuffix = ".dev"
-            manifestPlaceholders["appName"] = "[DEV] Lunna"
+            manifestPlaceholders["envPrefix"] = "[DEV] "
         }
     }
 

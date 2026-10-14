@@ -1,0 +1,8 @@
+# Focus's splash: `dart run flutter_native_splash:create --flavors focus,lunna`.
+flutter_native_splash:
+  color: "#000000"
+  image: brands/focus/icon.png
+  android_12:
+    image: brands/focus/icon.png
+    icon_background_color: "#000000"
+  web: false

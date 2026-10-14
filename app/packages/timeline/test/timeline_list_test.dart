@@ -116,7 +116,7 @@ void main() {
         locale: const Locale('pt', 'BR'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        theme: AppTheme.dark,
+        theme: AppTheme.current,
         home: Scaffold(
           body: BlocProvider<TimelineBloc>.value(
             value: bloc,
@@ -967,7 +967,7 @@ void main() {
           locale: const Locale('pt', 'BR'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          theme: AppTheme.dark,
+          theme: AppTheme.current,
           home: Scaffold(
             body: BlocProvider<TimelineBloc>.value(
               value: bloc,
@@ -1044,7 +1044,7 @@ void main() {
           locale: const Locale('pt', 'BR'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          theme: AppTheme.dark,
+          theme: AppTheme.current,
           home: Scaffold(
             body: BlocProvider<TimelineBloc>.value(
               value: bloc,

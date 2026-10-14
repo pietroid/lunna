@@ -1,0 +1,8 @@
+{
+  "BRAND": "lunna",
+  "API_BASE_URL": "https://lunna.pietroteruya.dev/api",
+  "GOOGLE_WEB_CLIENT_ID": "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+  "GOOGLE_WEB_PROVIDER": "google",
+  "GOOGLE_IOS_CLIENT_ID": "YOUR_LUNNA_PRODUCTION_IOS_CLIENT_ID.apps.googleusercontent.com",
+  "FLAVOR": "lunnaProduction"
+}

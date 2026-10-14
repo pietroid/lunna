@@ -1,21 +1,23 @@
+import 'package:app_ui/src/theme/app_brand.dart';
 import 'package:app_ui/src/theme/app_colors.dart';
 import 'package:app_ui/src/theme/app_spacing.dart';
 import 'package:app_ui/src/theme/app_typography.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// The Focus theme.
+/// The app's theme.
 ///
-/// The app is dark-only by design, so [dark] is the single entry point. Every
-/// component theme below pulls from [AppColors], [AppSpacing], and
-/// [AppTypography], so a screen never has to restate a token.
+/// Each brand ships one theme, dark for Focus and light for Lunna, so
+/// [current] is the single entry point. Every component theme below pulls
+/// from [AppColors], [AppSpacing], and [AppTypography], so a screen never has
+/// to restate a token.
 abstract final class AppTheme {
-  /// The dark theme, and the only theme the app ships.
-  static ThemeData get dark {
+  /// The theme this build ships.
+  static ThemeData get current {
     final colorScheme =
         ColorScheme.fromSeed(
           seedColor: AppColors.accent,
-          brightness: Brightness.dark,
+          brightness: AppBrand.brightness,
         ).copyWith(
           primary: AppColors.accent,
           onPrimary: AppColors.onAccent,
@@ -34,7 +36,7 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: AppBrand.brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.bg,
       canvasColor: AppColors.bg,
@@ -49,7 +51,7 @@ abstract final class AppTheme {
         centerTitle: false,
         titleTextStyle: AppTypography.title,
         toolbarHeight: AppSpacing.s16,
-        systemOverlayStyle: SystemUiOverlayStyle.light.copyWith(
+        systemOverlayStyle: overlayStyle.copyWith(
           statusBarColor: Colors.transparent,
         ),
       ),
@@ -184,6 +186,11 @@ abstract final class AppTheme {
       ),
     );
   }
+
+  /// The status bar's icons: light on Focus's black, dark on Lunna's white.
+  static const SystemUiOverlayStyle overlayStyle = AppBrand.isLunna
+      ? SystemUiOverlayStyle.dark
+      : SystemUiOverlayStyle.light;
 
   static OutlineInputBorder _fieldBorder({
     Color color = Colors.transparent,

@@ -1,5 +1,9 @@
 <!DOCTYPE html><html><head>
   <!--
+    A template: tool/brand_web.sh fills in the __PLACEHOLDERS__ and copies
+    brands/<brand>/web/ (icons, favicon, splash) over the build.
+  -->
+  <!--
     If you are serving your web app in a path other than the root, change the
     href value below to reflect the base path you are serving from.
 
@@ -16,18 +20,18 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Lunna: seu dia, no lugar.">
+  <meta name="description" content="__APP_NAME__: seu dia, no lugar.">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Lunna">
+  <meta name="apple-mobile-web-app-status-bar-style" content="__STATUS_BAR__">
+  <meta name="apple-mobile-web-app-title" content="__APP_NAME__">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png">
 
-  <title>Lunna</title>
+  <title>__APP_NAME__</title>
   <link rel="manifest" href="manifest.json">
 
   <!-- pdf.js is used by pdfrx to render PDFs on web -->
@@ -49,7 +53,7 @@
     body {
       margin: 0;
       min-height: 100%;
-      background-color: #000000;
+      background-color: __APP_BG__;
           background-size: 100% 100%;
     }
 
@@ -101,7 +105,7 @@
 
     @media (prefers-color-scheme: dark) {
       body {
-        background-color: #000000;
+        background-color: __APP_BG__;
           }
     }
   </style>

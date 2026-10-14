@@ -72,8 +72,10 @@ class BetterAuthRepository implements AuthRepository {
     GoogleSignIn? googleSignIn,
     String? googleClientId,
     String? googleServerClientId,
+    String googleWebProvider = 'google',
     Dio? dio,
-  }) : _tokens = tokenStore ?? TokenStore(),
+  }) : _webProvider = googleWebProvider,
+       _tokens = tokenStore ?? TokenStore(),
        _google =
            googleSignIn ??
            GoogleSignIn(
@@ -92,6 +94,10 @@ class BetterAuthRepository implements AuthRepository {
              ),
            );
 
+  /// The provider the web redirect goes through. Each brand's web build has
+  /// its own Google client; the phones all use `google`, whose ID tokens the
+  /// server accepts from every client.
+  final String _webProvider;
   final TokenStore _tokens;
   final GoogleSignIn _google;
   final Dio _dio;
@@ -167,7 +173,7 @@ class BetterAuthRepository implements AuthRepository {
       final response = await _dio.post<Map<String, dynamic>>(
         '/auth/sign-in/social',
         data: {
-          'provider': 'google',
+          'provider': _webProvider,
           'callbackURL': Uri.base.origin,
         },
       );

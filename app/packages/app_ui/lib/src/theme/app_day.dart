@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:app_ui/src/theme/app_brand.dart';
 import 'package:app_ui/src/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
@@ -29,7 +30,9 @@ abstract final class AppDay {
     (9, Color(0xFFFFD98A)),
     (12, Color(0xFFF88A33)),
     (15, Color(0xFFFFC08A)),
-    (18, Color(0xFFF5F5F5)),
+    // Late-afternoon white, which on Lunna's white page has to be a grey to
+    // be seen at all.
+    (18, AppBrand.isLunna ? Color(0xFFE8E2E4) : Color(0xFFF5F5F5)),
     (20, Color(0xFF4E6BD6)),
     (22, Color(0xFF101B4A)),
   ];

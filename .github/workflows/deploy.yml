@@ -1,7 +1,8 @@
 name: Deploy
 
-# Every push to main: test, build both images for the Pi, push them to GHCR,
-# and have the Pi pull them. Nothing is built on the Pi and nothing is cloned
+# Every push to main: test, build the backend and one web image per brand
+# (Focus and Lunna, both talking to the one backend), push them to GHCR, and
+# have the Pi pull them. Nothing is built on the Pi and nothing is cloned
 # there; it holds a compose file, an .env, and the images.
 on:
   push:
@@ -46,10 +47,13 @@ jobs:
         run: |
           flutter pub get
           flutter analyze lib packages/*/lib
-          for package in packages/*; do
-            if [ -d "$package/test" ]; then
-              (cd "$package" && flutter test)
-            fi
+          # Each brand compiles its own tokens, so both are tested.
+          for brand in focus lunna; do
+            for package in packages/*; do
+              if [ -d "$package/test" ]; then
+                (cd "$package" && flutter test --dart-define=BRAND=$brand)
+              fi
+            done
           done
 
   backend:
@@ -96,17 +100,26 @@ jobs:
           cache-to: type=gha,scope=backend,mode=max
 
   web:
-    name: Web image
+    name: Web image (${{ matrix.brand }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        # Each brand's web build signs in with its own Google client, from
+        # its own Google Cloud project (see server/src/auth/auth.ts).
+        include:
+          - brand: focus
+            google_provider: google-focus
+          - brand: lunna
+            google_provider: google
     steps:
       - uses: actions/checkout@v4
 
       - name: Image name
         id: image
-        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/lunna-web" >> "$GITHUB_OUTPUT"
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${{ matrix.brand }}-web" >> "$GITHUB_OUTPUT"
 
       - uses: subosito/flutter-action@v2
         with:
@@ -116,19 +129,22 @@ jobs:
       - name: Build Flutter web
         working-directory: app
         env:
-          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+          BRAND: ${{ matrix.brand }}
+          GOOGLE_WEB_PROVIDER: ${{ matrix.google_provider }}
         run: |
           set -euo pipefail
           # The web app shares an origin with the API, so it calls /api.
-          cat > env/production.json <<EOF
+          cat > env/web.json <<EOF
           {
+            "BRAND": "${BRAND}",
             "API_BASE_URL": "/api",
-            "GOOGLE_WEB_CLIENT_ID": "${GOOGLE_WEB_CLIENT_ID}",
-            "FLAVOR": "production"
+            "GOOGLE_WEB_PROVIDER": "${GOOGLE_WEB_PROVIDER}",
+            "FLAVOR": "${BRAND}Production"
           }
           EOF
           flutter pub get
-          flutter build web --release --pwa-strategy=none --dart-define-from-file env/production.json
+          flutter build web --release --pwa-strategy=none --dart-define-from-file env/web.json
+          tool/brand_web.sh "$BRAND"
 
       - uses: docker/login-action@v3
         with:
@@ -212,7 +228,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        package: [lunna-backend, lunna-web]
+        package: [lunna-backend, lunna-web, focus-web]
     steps:
       # Every deploy pushes a version tagged with its commit. Keep the last
       # few for rolling back (LUNNA_TAG=<sha> on the Pi) and drop the rest,

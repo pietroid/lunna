@@ -12,6 +12,14 @@ const kApiBaseUrl = String.fromEnvironment(
 /// it, which is how the server knows to accept them.
 const kGoogleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
 
+/// The Better Auth provider the web build signs in through: `google`, or
+/// `google-focus` for Focus's web build in production, whose Google client
+/// lives in Focus's own Google Cloud project.
+const kGoogleWebProvider = String.fromEnvironment(
+  'GOOGLE_WEB_PROVIDER',
+  defaultValue: 'google',
+);
+
 /// The Google OAuth iOS client.
 const kGoogleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 
