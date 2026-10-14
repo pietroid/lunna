@@ -111,6 +111,22 @@ abstract final class AppColors {
       ? Color(0xFF4B5AA6)
       : Color(0xFF9AABEF);
 
+  /// The fill behind a fixed block: a meeting, a day of a fixed routine,
+  /// anything whose hour is the point of it.
+  ///
+  /// Nothing moves these, and everything else flows around them, so the
+  /// calendar shows them as the walls of the day: a warm sand, apart from
+  /// the routines' blue and the accent's red, washed pale on Lunna and
+  /// deepened to a dark umber on Focus.
+  static const fixedFill = AppBrand.isLunna
+      ? Color(0xFFFBF1E6)
+      : Color(0xFF2A1D10);
+
+  /// Marks and hours on [fixedFill].
+  static const fixedInk = AppBrand.isLunna
+      ? Color(0xFFA0602A)
+      : Color(0xFFE5B27F);
+
   /// The fill behind a stretch of the day with nothing on it.
   ///
   /// The other one, quieter than any card, so free time reads as room to

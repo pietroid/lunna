@@ -220,7 +220,9 @@ remembered on the device (`TimelineModeCubit`):
 
 - **Lista**: the tasks alone, each as tall as it needs, in two stages that
   are always drawn: **Fazer em breve** (every task with an hour, in one run
-  with no day headings) and **Depois eu priorizo** (the backlog), each
+  with no day headings, except the days of routines: those are drawn on the
+  calendar only, and come into the list once their hour has come or they
+  are running; `inList`, which is also what a drop's `index` counts) and **Depois eu priorizo** (the backlog), each
   headed like a day of the calendar. A drag moves a
   task within either or across the line; the move carries `backlog: true`
   when it lands below it. A running task dropped in the backlog stops. Each
@@ -328,6 +330,18 @@ and goes back in the queue. Finishing
 (`POST /tasks/:id/done`) keeps a running task as the hour it really took
 and starts the rest of the queue five minutes later; one that never started
 simply leaves the list.
+
+So a card behaves one of three ways, never stored as such and never drawn
+differently except that events have their own colour (`fixedFill`):
+**fixed** (an event: nothing moves it), **liquid** (a queued task: wherever
+the queue packs it) and **flexible** (an anchored task: it keeps its hour,
+waits to be begun, and is pushed later by whatever runs into it). A
+flexible task **snapped** to what finishes early comes along: finishing a
+block, or ticking off a task before it began (`doneTask`, `doneEvent`),
+re-anchors every anchored task in the run right after it (each block
+starting within ten minutes of the one before, `snappedAfter`) as much
+earlier as the run now starts. The run stops at the first real gap and at
+any event, so an isolated anchor keeps its hour.
 
 #### The one guard
 

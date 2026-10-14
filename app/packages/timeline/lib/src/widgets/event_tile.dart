@@ -149,6 +149,8 @@ class EventTile extends StatelessWidget {
             ? null
             : pressed || lifted
             ? AppColors.fillStrong
+            : _isFixed
+            ? AppColors.fixedFill
             : card.isRoutine
             ? AppColors.routineFill
             : AppColors.fill,
@@ -183,11 +185,18 @@ class EventTile extends StatelessWidget {
     );
   }
 
-  /// The colour of the mark and the hours: lifted off the navy on a
-  /// routine's day, where grey would sink into it.
-  Color get _quiet => card.isRoutine && !_isNow && !lifted && !pressed
-      ? AppColors.routineInk
-      : AppColors.ink3;
+  /// Whether the card is drawn as a fixed block, which wins over a
+  /// routine's colour: a fixed routine's day is a wall of the day first.
+  bool get _isFixed => !card.isTask && card.fixed;
+
+  /// The colour of the mark and the hours: lifted off the fill on a fixed
+  /// block or a routine's day, where grey would sink into it.
+  Color get _quiet {
+    if (_isNow || lifted || pressed) return AppColors.ink3;
+    if (_isFixed) return AppColors.fixedInk;
+    if (card.isRoutine) return AppColors.routineInk;
+    return AppColors.ink3;
+  }
 
   /// The small icon in front of the title, when the card has earned one.
   AppIconData? get _mark {

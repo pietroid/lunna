@@ -192,6 +192,7 @@ export class TimelineService {
   /** The day as the screen draws it: the list, and the calendar. */
   view(day: Day): Timeline {
     const tasks = inOrder(day).flatMap((task) => taskCard(day, task) ?? []);
+    const listed = new Set(inList(day).map((task) => task.id));
 
     const events = day.events.flatMap((event) => {
       // A begun task is drawn as its task, and a finished one's hour is
@@ -210,7 +211,7 @@ export class TimelineService {
       );
 
     return {
-      tasks,
+      tasks: tasks.filter((card) => listed.has(card.id)),
       backlog: day.backlog.map((task) => backlogCard(day, task)),
       cards,
       workDay: {
@@ -240,6 +241,24 @@ export function inOrder(day: Day): Task[] {
       .filter((task) => !day.live.has(task.id))
       .sort((a, b) => startOf(a) - startOf(b)),
   ];
+}
+
+/**
+ * The tasks Lista draws under Fazer em breve, in [inOrder]'s order.
+ *
+ * Every task, but not the days of a routine: those are the same thing over
+ * and over, one for each day the queue reaches, and the calendar already
+ * draws them where they fall. The one whose hour has come, or that is
+ * running, is today's to do, and stays.
+ *
+ * A place in the list is counted on this, here and in the app.
+ */
+export function inList(day: Day): Task[] {
+  return inOrder(day).filter((task) => {
+    if (task.routineId === undefined || day.live.has(task.id)) return true;
+    const start = day.placed.get(task.id)?.start;
+    return start !== undefined && start <= day.now;
+  });
 }
 
 /** Whether [task] keeps an hour of its own rather than taking its turn. */

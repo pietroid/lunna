@@ -338,9 +338,9 @@ class _TimelineListState extends State<TimelineList> {
   /// tasks, or in the backlog, which are the only orders the server keeps.
   ///
   /// In the list, everything above the line is the tasks and everything
-  /// below it the backlog. The calendar counts the tasks above the drop and
-  /// skips the events, because those have hours of their own rather than
-  /// places.
+  /// below it the backlog. The calendar counts the tasks above the drop that
+  /// the list draws too, and skips the events and the days of routines the
+  /// list leaves out, because a place is counted on the list.
   ({int index, bool backlog}) _placeOf(String id, int index) {
     final rest = _slots.where((card) => card?.id != id).toList();
     if (_isList) {
@@ -350,8 +350,9 @@ class _TimelineListState extends State<TimelineList> {
           : (index: index - line - 1, backlog: true);
     }
 
+    final listed = {for (final card in _state.tasks) card.id};
     return (
-      index: rest.take(index).where((card) => card?.isTask ?? false).length,
+      index: rest.take(index).where((card) => listed.contains(card?.id)).length,
       backlog: false,
     );
   }

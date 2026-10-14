@@ -10,8 +10,10 @@ import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
 import {
   addMinutes,
+  BLOCK_GAP_MINUTES,
   DEFAULT_WORK_DAY,
   floorToMinute,
+  Interval,
   roundUpToFiveMinutes,
 } from '../time/work-hours';
 import {
@@ -24,7 +26,9 @@ import { intervalOf, isRunning } from './event-sections';
 import { StartNowGuard, TimingAction } from './timing';
 import {
   Day,
-  inOrder,
+  inList,
+  intervalOfTask,
+  isAnchored,
   isMissed,
   TimelineService,
   workSecondsOf,
@@ -150,7 +154,15 @@ export class EventLayoutService {
     trace: Trace,
     now = new Date(),
   ): Promise<void> {
-    await this._finish(user, await this._event(user, eventId), trace, now);
+    const day = await this._timeline.day(user, 1, now);
+    const event = await this._event(user, eventId);
+    const interval = intervalOf(event);
+
+    await this._finish(user, event, trace, now);
+    if (interval !== undefined) {
+      const cut = isRunning(now, interval);
+      await this._pullSnapped(user, day, event.id, interval, cut, trace, now);
+    }
   }
 
   /** Takes a block off the calendar entirely, as if it had never been. */
@@ -504,6 +516,7 @@ export class EventLayoutService {
     const day = await this._timeline.day(user, 1, now);
     const task = pendingOf(day, taskId);
     const live = day.live.get(taskId);
+    const interval = intervalOfTask(day, taskId);
 
     await this._finishRunning(
       user,
@@ -512,6 +525,10 @@ export class EventLayoutService {
       now,
       task,
     );
+    if (interval !== undefined) {
+      const cut = live !== undefined && isRunning(now, interval);
+      await this._pullSnapped(user, day, task.id, interval, cut, trace, now);
+    }
   }
 
   /** Forgets a task, and the hour it was taking if it was running. */
@@ -739,6 +756,55 @@ export class EventLayoutService {
 
     if (task.notBefore !== undefined) {
       await this._tasks.update(user, { ...task, notBefore: undefined });
+    }
+  }
+
+  /**
+   * Brings the tasks that keep an hour and were snapped to [finished] along
+   * with it, now that it is over before its time: [cut] short at this
+   * minute, or ticked off before it ever began.
+   *
+   * The queue closes up by itself, since its hours are worked out on every
+   * read. An anchored task keeps its hour, so one that sat right behind what
+   * just finished, or behind a run of tasks right behind it, would be left
+   * stranded after a gap nobody asked for. Each one in that run is
+   * anchored again as much earlier as the run now starts. One that was
+   * isolated, with real room before it, keeps its hour: its hour is the
+   * point of it. An event in the run ends it, since nothing moves an event.
+   *
+   * Nothing marks a task as snapped; it is read off the day as it was laid
+   * out before the finish, which is what the user was looking at.
+   */
+  private async _pullSnapped(
+    user: CalendarUser,
+    day: Day,
+    finished: string,
+    interval: Interval,
+    cut: boolean,
+    trace: Trace,
+    now: Date,
+  ): Promise<void> {
+    // Where what came next started, and where it can start now: the break
+    // after a block cut short at this minute, or the hour a block that never
+    // began was holding.
+    const before = addMinutes(interval.end, BLOCK_GAP_MINUTES);
+    const after = cut
+      ? floorToMinute(addMinutes(now, BLOCK_GAP_MINUTES))
+      : laterOf(interval.start, floorToMinute(now));
+    const shift = before.getTime() - after.getTime();
+    if (shift < 60_000) return;
+
+    for (const { task, start } of snappedAfter(day, finished, interval.end)) {
+      const anchor = floorToMinute(new Date(start.getTime() - shift));
+      trace.log('task.snap', {
+        taskId: task.id,
+        from: task.notBefore,
+        to: anchor.toISOString(),
+      });
+      await this._tasks.update(user, {
+        ...task,
+        notBefore: anchor.toISOString(),
+      });
     }
   }
 
@@ -1009,6 +1075,57 @@ function turnTaking(day: Day): Task[] {
 }
 
 /**
+ * How close one block has to start after another to count as snapped to
+ * it: the break between them, and five minutes of slack, which is how near
+ * a drop sticks to the end of the room it lands in.
+ */
+const SNAP_MINUTES = BLOCK_GAP_MINUTES + 5;
+
+/**
+ * The anchored tasks in the run of blocks right after [end], each starting
+ * within [SNAP_MINUTES] of the one before, with the hour each was laid out
+ * at. The run stops at the first gap and at the first event.
+ */
+export function snappedAfter(
+  day: Day,
+  finished: string,
+  end: Date,
+): { task: Task; start: Date }[] {
+  const blocks = [
+    ...day.tasks.flatMap((task) => {
+      const interval = intervalOfTask(day, task.id);
+      return task.id === finished || interval === undefined
+        ? []
+        : [{ task, interval }];
+    }),
+    ...day.events.flatMap((event) => {
+      const interval = intervalOf(event);
+      return event.id === finished ||
+        event.taskId !== undefined ||
+        interval === undefined
+        ? []
+        : [{ task: undefined, interval }];
+    }),
+  ].sort((a, b) => a.interval.start.getTime() - b.interval.start.getTime());
+
+  const snapped: { task: Task; start: Date }[] = [];
+  let cursor = end;
+  for (;;) {
+    const reach = addMinutes(cursor, SNAP_MINUTES);
+    const next = blocks.find(
+      (block) =>
+        block.interval.start >= cursor && block.interval.start <= reach,
+    );
+    if (next === undefined || next.task === undefined) return snapped;
+
+    if (isAnchored(day, next.task)) {
+      snapped.push({ task: next.task, start: next.interval.start });
+    }
+    cursor = next.interval.end;
+  }
+}
+
+/**
  * Where a place in the list lands in the queue.
  *
  * The list is in the order of the hours, which counts what is running and
@@ -1017,7 +1134,7 @@ function turnTaking(day: Day): Task[] {
  * in [without] taken out first, as the list was when the drop was made.
  */
 function queueIndexOf(day: Day, index: number, without: Set<string>): number {
-  return inOrder(day)
+  return inList(day)
     .filter((task) => !without.has(task.id))
     .slice(0, index)
     .filter((task) => !day.live.has(task.id) && task.notBefore === undefined)

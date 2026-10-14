@@ -1038,6 +1038,93 @@ describe('the day', () => {
 
       expect(hhmm(store.all(owner)[0].endTime)).toBe('10:20');
     });
+
+    describe('early, with something keeping an hour right behind it', () => {
+      /** Today at [hour]:[minute], local. */
+      function at(hour: number, minute: number): string {
+        const it = new Date();
+        it.setHours(hour, minute, 0, 0);
+        return it.toISOString();
+      }
+
+      it('brings a task snapped to it along', async () => {
+        const [running] = tasks(await add('Escrever', 60).expect(201));
+        await begin('Escrever');
+        await add('Revisar', 30, { notBefore: at(11, 5) }).expect(201);
+
+        later(20);
+        const after = tasks(
+          await post(`/tasks/${running.id}/done`).expect(201),
+        );
+
+        expect(titles(after)).toEqual(['Revisar']);
+        expect(hhmm(after[0].startTime)).toBe('10:25');
+      });
+
+      it('brings it along behind a run of queued tasks', async () => {
+        const [running] = tasks(await add('Escrever', 60).expect(201));
+        await begin('Escrever');
+        await add('Meio', 30).expect(201);
+        await add('Lanche', 15, { notBefore: at(11, 40) }).expect(201);
+
+        later(20);
+        const after = tasks(
+          await post(`/tasks/${running.id}/done`).expect(201),
+        );
+
+        expect(titles(after)).toEqual(['Meio', 'Lanche']);
+        expect(hhmm(after[0].startTime)).toBe('10:25');
+        expect(hhmm(after[1].startTime)).toBe('11:00');
+      });
+
+      it('brings it along when a task that never began is ticked off', async () => {
+        const [first] = tasks(await add('Primeiro', 30).expect(201));
+        await add('Depois', 30, { notBefore: at(10, 35) }).expect(201);
+
+        const after = tasks(await post(`/tasks/${first.id}/done`).expect(201));
+
+        expect(hhmm(after[0].startTime)).toBe('10:00');
+      });
+
+      it('leaves one with real room before it at its hour', async () => {
+        const [running] = tasks(await add('Escrever', 60).expect(201));
+        await begin('Escrever');
+        await add('Almoço', 60, { notBefore: at(12, 0) }).expect(201);
+
+        later(20);
+        const after = tasks(
+          await post(`/tasks/${running.id}/done`).expect(201),
+        );
+
+        expect(hhmm(after[0].startTime)).toBe('12:00');
+      });
+
+      it('leaves one snapped to a fixed block, which does not move', async () => {
+        const [running] = tasks(await add('Escrever', 60).expect(201));
+        await begin('Escrever');
+        await fix('Reunião', 30, new Date(at(11, 5))).expect(201);
+        await add('Notas', 15, { notBefore: at(11, 40) }).expect(201);
+
+        later(20);
+        const after = tasks(
+          await post(`/tasks/${running.id}/done`).expect(201),
+        );
+
+        expect(hhmm(after[0].startTime)).toBe('11:40');
+      });
+
+      it('brings one along behind a fixed block cut short', async () => {
+        const [block] = cards(
+          await fix('Reunião', 60, new Date(at(10, 0))).expect(201),
+        );
+        await add('Notas', 15, { notBefore: at(11, 5) }).expect(201);
+
+        later(20);
+        const after = tasks(await post(`/events/${block.id}/done`).expect(201));
+
+        expect(hhmm(after[0].startTime)).toBe('10:25');
+      });
+    });
   });
 
   describe('the detail screen', () => {
@@ -1185,7 +1272,7 @@ describe('the day', () => {
       await lunchAt(inHours(2));
 
       const day = await read(3);
-      const lunches = day.tasks.filter((it) => it.title === 'Almoço');
+      const lunches = day.cards.filter((it) => it.title === 'Almoço');
 
       expect(lunches.map((it) => it.day)).toEqual([
         '2026-03-10',
@@ -1195,17 +1282,17 @@ describe('the day', () => {
       expect(lunches.every((it) => hhmm(it.startTime) === '12:00')).toBe(true);
       expect(lunches[0]).toMatchObject({ kind: 'task', routine: 'daily' });
       expect(lunches[0].notBefore).toBeDefined();
-      // The calendar draws it too, and never as an event.
-      expect(
-        day.cards.filter((it) => it.title === 'Almoço' && it.kind === 'event'),
-      ).toHaveLength(0);
+      // Never as an event, and never on the list, where it would be the
+      // same thing over and over, once for every day ahead.
+      expect(lunches.every((it) => it.kind === 'task')).toBe(true);
+      expect(titles(day.tasks)).not.toContain('Almoço');
     });
 
     it('lets a task nobody began hop over it', async () => {
       await lunchAt(inHours(2));
       await add('Longa', 150).expect(201);
 
-      const day = (await read()).tasks;
+      const day = (await read()).cards;
       const lunch = day.find((it) => it.title === 'Almoço')!;
       const long = day.find((it) => it.title === 'Longa')!;
 
@@ -1218,7 +1305,7 @@ describe('the day', () => {
       await add('Longa', 150).expect(201);
       await begin('Longa');
 
-      const lunch = await task('Almoço');
+      const lunch = await card('Almoço');
 
       expect(hhmm(lunch.startTime)).toBe('12:35');
     });
@@ -1240,7 +1327,7 @@ describe('the day', () => {
       await read();
 
       later(13 * 60);
-      const lunches = (await read()).tasks.filter(
+      const lunches = (await read()).cards.filter(
         (it) => it.title === 'Almoço',
       );
 
@@ -1249,13 +1336,13 @@ describe('the day', () => {
 
     it('does not bring back a flexible day that was taken off', async () => {
       await lunchAt(inHours(2));
-      const today = await task('Almoço');
+      const today = await card('Almoço');
 
       await request(app.getHttpServer())
         .delete(`/tasks/${today.id}`)
         .expect(200);
 
-      const lunches = (await read(2)).tasks.filter(
+      const lunches = (await read(2)).cards.filter(
         (it) => it.title === 'Almoço',
       );
       expect(lunches.map((it) => it.day)).toEqual(['2026-03-11']);
@@ -1263,9 +1350,9 @@ describe('the day', () => {
 
     it('gives a flexible day another hour from the detail screen', async () => {
       await lunchAt(inHours(2));
-      const today = await task('Almoço');
+      const today = await card('Almoço');
 
-      const moved = tasks(
+      const moved = cards(
         await request(app.getHttpServer())
           .patch(`/tasks/${today.id}`)
           .send({ startTime: inHours(3).toISOString() })
