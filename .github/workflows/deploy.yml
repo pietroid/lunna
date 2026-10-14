@@ -40,6 +40,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned to the version used locally, so the analyzer CI runs is
+          # the one the code was written against. Bump both together.
+          flutter-version: 3.44.1
           cache: true
 
       - name: App analysis and tests
@@ -124,6 +127,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          # Pinned to the version used locally, so the analyzer CI runs is
+          # the one the code was written against. Bump both together.
+          flutter-version: 3.44.1
           cache: true
 
       - name: Build Flutter web
