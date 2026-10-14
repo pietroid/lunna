@@ -33,6 +33,9 @@ services:
       - lunna-backend
 
   focus-web:
+    # Off for now: the old Focus deployment still owns the "focus-web"
+    # container name on the Pi. Drop this line once it is retired.
+    profiles: [focus]
     image: ghcr.io/${LUNNA_OWNER:-pietroid}/focus-web:${LUNNA_TAG:-latest}
     container_name: focus-web
     restart: unless-stopped
