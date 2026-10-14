@@ -13,13 +13,46 @@
  * evening in São Paulo half past ten and push the block to tomorrow. See
  * `zone.ts` for the arithmetic.
  */
-import { addDaysIn, atHourIn, formatTimeIn, Zone } from './zone';
+import { addDaysIn, atMinuteIn, formatTimeIn, Zone } from './zone';
 
-/** The first hour of the working day. Nothing is proposed before it. */
-export const WORK_DAY_START_HOUR = 7;
+/**
+ * When someone's working day runs, as minutes after midnight in their zone.
+ *
+ * Each person sets their own, and nothing is proposed outside it. [end] may
+ * be 1440, the midnight that closes the day.
+ */
+export interface WorkDay {
+  start: number;
+  end: number;
+}
 
-/** The hour the working day ends. Nothing is proposed to start after it. */
-export const WORK_DAY_END_HOUR = 22;
+/** The working day nobody has changed: seven in the morning to ten at night. */
+export const DEFAULT_WORK_DAY: WorkDay = { start: 7 * 60, end: 22 * 60 };
+
+/** The shortest working day anyone can set. */
+export const MIN_WORK_DAY_MINUTES = 60;
+
+/** "07:00", the way a working day's edge is written on the wire. */
+export function formatMinuteOfDay(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+
+  return `${String(hours).padStart(2, '0')}:${String(rest).padStart(2, '0')}`;
+}
+
+/** The minutes after midnight that "07:30" names, or undefined. */
+export function parseMinuteOfDay(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (match === null) return undefined;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (minutes > 59) return undefined;
+
+  const total = hours * 60 + minutes;
+  return total <= 24 * 60 ? total : undefined;
+}
 
 /**
  * The breathing room between two blocks.
@@ -54,29 +87,35 @@ export function minutesOf(interval: Interval): number {
  * what makes a block written down at midnight land at a time someone could
  * actually keep.
  */
-export function workWindowFor(at: Date, zone: Zone): Interval {
-  const start = atHourIn(at, WORK_DAY_START_HOUR, zone);
-  const end = atHourIn(at, WORK_DAY_END_HOUR, zone);
+export function workWindowFor(
+  at: Date,
+  zone: Zone,
+  day: WorkDay = DEFAULT_WORK_DAY,
+): Interval {
+  const start = atMinuteIn(at, day.start, zone);
+  const end = atMinuteIn(at, day.end, zone);
 
-  if (at < start) return { start, end };
   if (at < end) return { start, end };
 
   const tomorrow = addDaysIn(at, 1, zone);
   return {
-    start: atHourIn(tomorrow, WORK_DAY_START_HOUR, zone),
-    end: atHourIn(tomorrow, WORK_DAY_END_HOUR, zone),
+    start: atMinuteIn(tomorrow, day.start, zone),
+    end: atMinuteIn(tomorrow, day.end, zone),
   };
 }
 
 /**
  * The start of the working day after [window].
  *
- * Written out rather than asked of [workWindowFor], because the end of a
- * window and the start of the next one are a day and nine hours apart, and
- * feeding one into the other lands on the morning after the one meant.
+ * Counted from the window's start rather than its end: a day that runs to
+ * midnight ends on the next date, and a day after that would skip one.
  */
-export function nextWorkWindowStart(window: Interval, zone: Zone): Date {
-  return atHourIn(addDaysIn(window.end, 1, zone), WORK_DAY_START_HOUR, zone);
+export function nextWorkWindowStart(
+  window: Interval,
+  zone: Zone,
+  day: WorkDay = DEFAULT_WORK_DAY,
+): Date {
+  return atMinuteIn(addDaysIn(window.start, 1, zone), day.start, zone);
 }
 
 /**
@@ -86,8 +125,12 @@ export function nextWorkWindowStart(window: Interval, zone: Zone): Date {
  * seconds off the result, and handing back the caller's own clock would let
  * that trim travel backwards into whatever else is reading it.
  */
-export function earliestStart(now: Date, zone: Zone): Date {
-  const window = workWindowFor(now, zone);
+export function earliestStart(
+  now: Date,
+  zone: Zone,
+  day: WorkDay = DEFAULT_WORK_DAY,
+): Date {
+  const window = workWindowFor(now, zone, day);
   return new Date(now < window.start ? window.start : now);
 }
 
@@ -133,12 +176,13 @@ export function nextFreeSlot(
   durationMinutes: number,
   busy: Interval[],
   zone: Zone,
+  day: WorkDay = DEFAULT_WORK_DAY,
 ): Interval {
   // [from] is used as given rather than rounded up, so the first thing on a
   // day can start at this minute. That is what makes "Agora" ever contain
   // anything: a block nudged to the next multiple of five would be a block
   // the clock says has not started.
-  const start0 = earliestStart(from, zone);
+  const start0 = earliestStart(from, zone, day);
   start0.setSeconds(0, 0);
   let start = start0;
 
@@ -146,11 +190,14 @@ export function nextFreeSlot(
   // spills out of. The bound is what keeps a pathological calendar from
   // turning this into a hang.
   for (let attempt = 0; attempt < 500; attempt++) {
+    // Stepping past a block can land outside the day: after one that ran
+    // past its end, or past midnight into the hours before the next opens.
+    start = earliestStart(start, zone, day);
     const candidate = { start, end: addMinutes(start, durationMinutes) };
-    const window = workWindowFor(start, zone);
+    const window = workWindowFor(start, zone, day);
 
     if (candidate.end > window.end) {
-      start = nextWorkWindowStart(window, zone);
+      start = nextWorkWindowStart(window, zone, day);
       continue;
     }
 

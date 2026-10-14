@@ -2,11 +2,12 @@ import { createHash } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { intervalOf } from '../events/event-sections';
-import { Day, TimelineService } from '../events/timeline.service';
-import { addMinutes, minutesOf, WORK_DAY_START_HOUR } from '../time/work-hours';
+import { Day, inOrder, TimelineService } from '../events/timeline.service';
+import { addMinutes, minutesOf, WorkDay } from '../time/work-hours';
 import {
   addDaysIn,
   atHourIn,
+  atMinuteIn,
   formatDayIn,
   formatTimeIn,
   isoIn,
@@ -84,7 +85,7 @@ export class NotificationsService {
     const items = [
       ...day.events.flatMap((event) => blockItems(day, event)),
       ...nextTaskItems(day),
-      ...dailyItems(now, horizonDays, zone),
+      ...dailyItems(now, horizonDays, zone, day.workDay),
     ]
       .filter((item) => {
         const at = Date.parse(item.fireAt);
@@ -101,7 +102,9 @@ export class NotificationsService {
  * announcing, because a task waits for the user to begin it.
  */
 function nextTaskItems(day: Day): NotificationItem[] {
-  const next = day.tasks.find((task) => !day.live.has(task.id));
+  // The earliest, not the first in the queue: a lunch anchored at noon comes
+  // before the queue's next task when the queue's runs past it.
+  const next = inOrder(day).find((task) => !day.live.has(task.id));
   const slot = next === undefined ? undefined : day.placed.get(next.id);
   if (next === undefined || slot === undefined) return [];
 
@@ -169,6 +172,7 @@ function dailyItems(
   now: Date,
   horizonDays: number,
   zone: Zone,
+  workDay: WorkDay,
 ): NotificationItem[] {
   const items: NotificationItem[] = [];
 
@@ -180,7 +184,7 @@ function dailyItems(
       itemOf({
         kind: 'morning',
         source: date,
-        at: atHourIn(day, WORK_DAY_START_HOUR, zone),
+        at: atMinuteIn(day, workDay.start, zone),
         zone,
         title: MORNING_TITLE,
         body: pick(MORNING_MESSAGES, `morning:${date}`),

@@ -15,6 +15,12 @@ export interface Routine {
   time: string;
   durationMinutes: number;
   days: RoutineDays;
+  /**
+   * Whether its hour is the point of it. A fixed routine's days never move;
+   * a flexible one's slide when something runs into them, and wait for the
+   * user to begin them.
+   */
+  fixed: boolean;
 }
 
 /** What the menu sends to write a routine down or change one. */
@@ -23,4 +29,5 @@ export interface RoutineRequest {
   time?: string;
   durationMinutes?: number;
   days?: RoutineDays;
+  fixed?: boolean;
 }

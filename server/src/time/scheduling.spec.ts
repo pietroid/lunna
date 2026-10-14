@@ -28,19 +28,62 @@ function reads(placed: Map<string, Interval>, id: string): string {
 }
 
 describe('laying the queue out', () => {
-  it('starts a block no earlier than the floor the user gave it', () => {
+  it('keeps an anchored block at its hour and flows the queue around it', () => {
     const queue = [
       task('a', 30),
-      { ...task('b', 30), notBefore: at(13) },
+      { ...task('b', 30), anchor: at(13) },
       task('c', 30),
     ];
 
     const placed = relayout(queue, [], at(9), ZONE);
 
     expect(reads(placed, 'a')).toBe('09:00-09:30');
-    // The gap before it is left alone, and what follows it follows it.
     expect(reads(placed, 'b')).toBe('13:00-13:30');
-    expect(reads(placed, 'c')).toBe('13:35-14:05');
+    // Its place in the queue means nothing: the next one fills the morning.
+    expect(reads(placed, 'c')).toBe('09:35-10:05');
+  });
+
+  it('hops a queued block over an anchored one it does not fit before', () => {
+    const queue = [
+      task('a', 90),
+      { ...task('lunch', 60), anchor: at(12) },
+      task('b', 60),
+    ];
+
+    const placed = relayout(queue, [], at(11), ZONE);
+
+    expect(reads(placed, 'lunch')).toBe('12:00-13:00');
+    expect(reads(placed, 'a')).toBe('13:05-14:35');
+    expect(reads(placed, 'b')).toBe('14:40-15:40');
+  });
+
+  it('pushes an anchored block that something already there runs into', () => {
+    const queue = [{ ...task('lunch', 60), anchor: at(12) }];
+
+    const placed = relayout(queue, [meeting(at(11, 30), 60)], at(9), ZONE);
+
+    expect(reads(placed, 'lunch')).toBe('12:35-13:35');
+  });
+
+  it('pushes an anchored block along with the one before it', () => {
+    const queue = [
+      { ...task('second', 30), anchor: at(12, 15) },
+      { ...task('first', 60), anchor: at(11, 30) },
+    ];
+
+    const placed = relayout(queue, [meeting(at(11), 60)], at(9), ZONE);
+
+    expect(reads(placed, 'first')).toBe('12:05-13:05');
+    expect(reads(placed, 'second')).toBe('13:10-13:40');
+  });
+
+  it('waits at now with an anchored block whose hour has passed', () => {
+    const queue = [task('a', 30), { ...task('lunch', 60), anchor: at(12) }];
+
+    const placed = relayout(queue, [], at(12, 20), ZONE);
+
+    expect(reads(placed, 'lunch')).toBe('12:20-13:20');
+    expect(reads(placed, 'a')).toBe('13:25-13:55');
   });
 
   it('packs the queue from now, with a gap between blocks', () => {

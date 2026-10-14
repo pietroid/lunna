@@ -24,6 +24,10 @@ class AppBottomBarItem {
 /// The bar has no border and no hard edge. It blurs what scrolls under it
 /// just enough to read as fog and darkens as it falls, so a list dims out
 /// under the labels rather than stopping against a panel.
+///
+/// The fog spans the screen, but the destinations keep to a narrow row in
+/// the middle of it, so on a wide screen they stay close together instead
+/// of spreading to its edges.
 /// {@endtemplate}
 class AppBottomBar extends StatelessWidget {
   /// {@macro app_bottom_bar}
@@ -45,6 +49,9 @@ class AppBottomBar extends StatelessWidget {
 
   /// How tall the row of destinations is, before the safe area.
   static const height = 72.0;
+
+  /// The widest the row of destinations gets.
+  static const maxWidth = 360.0;
 
   @override
   Widget build(BuildContext context) {
@@ -69,15 +76,21 @@ class AppBottomBar extends StatelessWidget {
         ),
         SafeArea(
           top: false,
-          child: SizedBox(
-            height: height,
-            child: Row(
-              children: [
-                for (var index = 0; index < items.length; index++)
-                  Expanded(
-                    child: _Destination(index: index, bar: this),
-                  ),
-              ],
+          child: Center(
+            heightFactor: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: maxWidth),
+              child: SizedBox(
+                height: height,
+                child: Row(
+                  children: [
+                    for (var index = 0; index < items.length; index++)
+                      Expanded(
+                        child: _Destination(index: index, bar: this),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

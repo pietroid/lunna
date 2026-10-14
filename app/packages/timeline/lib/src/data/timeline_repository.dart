@@ -21,16 +21,25 @@ class TimelineRepository {
   Future<Timeline> fetch({int days = defaultDays}) =>
       _day(() => apiClient.get<Map<String, dynamic>>('/timeline?days=$days'));
 
-  /// Writes a task down at the end of the backlog, where it waits without
-  /// an hour until it is dragged into the queue.
+  /// Writes a task down where [placement] says: at the end of the backlog,
+  /// where it waits without an hour, at a place in the queue, or anchored
+  /// at an hour the queue then flows around.
   Future<Timeline> createTask({
     required String title,
     required int minutes,
+    Placement placement = const Placement.backlog(),
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(
       '/tasks?days=$days',
-      data: {'title': title, 'minutes': minutes},
+      data: {
+        'title': title,
+        'minutes': minutes,
+        if (!placement.backlog) 'backlog': false,
+        'index': ?placement.index,
+        if (placement.at case final at?)
+          'notBefore': at.toUtc().toIso8601String(),
+      },
     ),
   );
 
@@ -206,6 +215,23 @@ class TimelineRepository {
       },
     ),
   );
+
+  /// Sets when the working day runs, and answers with what the server kept.
+  ///
+  /// The day itself is not answered: the next fetch lays the queue out in
+  /// the new hours.
+  Future<WorkDay> setWorkDay(WorkDay workDay) async {
+    try {
+      final response = await apiClient.patch<Map<String, dynamic>>(
+        '/users/me',
+        data: {'workDay': workDay.toJson()},
+      );
+
+      return WorkDay.fromJson(response.data?['workDay']);
+    } on Object catch (error) {
+      throw TimelineFailure.from(error);
+    }
+  }
 
   /// How many days are drawn when nobody says.
   static const defaultDays = 2;

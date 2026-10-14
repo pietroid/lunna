@@ -11,14 +11,16 @@ import 'package:flutter/material.dart';
 /// midday, washes back to white in the late afternoon, and falls through blue
 /// into near-black as ten at night approaches.
 ///
-/// The waking day is the only part drawn. Before [startHour] the ring is
-/// empty and after [endHour] it is full, so the clock never claims progress
-/// through hours the user was not going to spend anyway.
+/// The waking day is the only part drawn. Before its start the ring is empty
+/// and after its end it is full, so the clock never claims progress through
+/// hours the user was not going to spend anyway. Each person's day has its
+/// own hours, and the ramp is stretched over them: dawn is wherever their
+/// day opens and night wherever it closes.
 abstract final class AppDay {
-  /// When the ring starts filling. 07:00.
+  /// When the ring starts filling, unless told otherwise. 07:00.
   static const startHour = 7.0;
 
-  /// When the ring is full. 22:00.
+  /// When the ring is full, unless told otherwise. 22:00.
   static const endHour = 22.0;
 
   /// The ramp, as (hour, colour) stops in ascending order.
@@ -32,11 +34,16 @@ abstract final class AppDay {
     (22, Color(0xFF101B4A)),
   ];
 
-  /// How far through the waking day [at] is, from 0 to 1.
-  static double progressAt(DateTime at) {
+  /// How far through the waking day [at] is, from 0 to 1, for a day that
+  /// runs from [start] to [end] o'clock.
+  static double progressAt(
+    DateTime at, {
+    double start = startHour,
+    double end = endHour,
+  }) {
     final hour = at.hour + at.minute / 60 + at.second / 3600;
 
-    return ((hour - startHour) / (endHour - startHour)).clamp(0.0, 1.0);
+    return ((hour - start) / (end - start)).clamp(0.0, 1.0);
   }
 
   /// The light at [at].

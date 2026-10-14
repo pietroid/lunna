@@ -22,6 +22,20 @@
       "when": 1791335395777,
       "tag": "0002_dear_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791941022474,
+      "tag": "0003_lonely_sandman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791942718933,
+      "tag": "0004_flexible",
+      "breakpoints": true
     }
   ]
 }

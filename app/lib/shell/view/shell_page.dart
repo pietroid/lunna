@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/home/home.dart';
+import 'package:lunna/menu/menu.dart';
 import 'package:lunna/notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
@@ -13,12 +15,14 @@ import 'package:timeline/timeline.dart';
 /// rebuilt on every tap: moving between them is not navigation, it is looking
 /// somewhere else, and a list should be where it was left.
 ///
-/// Only Tempo is built so far. The other two are placeholders that hold
-/// their places in the bar.
+/// Tempo and Menu are built. Projetos is a placeholder that holds its place
+/// in the bar.
 ///
-/// The [AppFab] writes something down on the timeline from anywhere. From a
-/// tab other than Tempo it brings Tempo forward first, so the new block is on
-/// screen when the sheet closes.
+/// The [AppFab] writes something down on the timeline from anywhere, on the
+/// day Tempo is showing: at the first free hour in sight on the calendar, at
+/// the end of the day at the top of the list. From a tab other than Tempo it
+/// brings Tempo forward first, so the new block is on screen when the sheet
+/// closes.
 /// {@endtemplate}
 class ShellPage extends StatefulWidget {
   /// {@macro shell_page}
@@ -34,48 +38,58 @@ class _ShellPageState extends State<ShellPage> {
 
   int _index = _timelineIndex;
 
+  /// Where Tempo is looking, which is where the button writes.
+  final _aim = TimelineAim();
+
   Future<void> _onFabPressed() async {
     if (_index != _timelineIndex) setState(() => _index = _timelineIndex);
-    await writeDownOnTimeline(context);
+    await writeDownOnTimeline(
+      context,
+      placement: _aim.value ?? const Placement.backlog(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return RemindersListener(
-      child: Scaffold(
-        // The bar fogs whatever runs under it, so the body runs under it.
-        extendBody: true,
-        body: IndexedStack(
-          index: _index,
-          children: [
-            const HomePage(),
-            _Placeholder(title: l10n.shellSecondTab),
-            _Placeholder(title: l10n.shellThirdTab),
-          ],
-        ),
-        floatingActionButton: AppFab(
-          tooltip: l10n.shellWriteDown,
-          onPressed: () => unawaited(_onFabPressed()),
-        ),
-        bottomNavigationBar: AppBottomBar(
-          currentIndex: _index,
-          onSelected: (index) => setState(() => _index = index),
-          items: [
-            AppBottomBarItem(
-              iconData: AppIcons.time,
-              label: l10n.shellTimelineTab,
-            ),
-            AppBottomBarItem(
-              iconData: AppIcons.things,
-              label: l10n.shellSecondTab,
-            ),
-            AppBottomBarItem(
-              iconData: AppIcons.menu,
-              label: l10n.shellThirdTab,
-            ),
-          ],
+    return RepositoryProvider<TimelineAim>.value(
+      value: _aim,
+      child: RemindersListener(
+        child: Scaffold(
+          // The bar fogs whatever runs under it, so the body runs under it.
+          extendBody: true,
+          body: IndexedStack(
+            index: _index,
+            children: [
+              const HomePage(),
+              _Placeholder(title: l10n.shellProjectsTab),
+              const MenuPage(),
+            ],
+          ),
+          floatingActionButton: AppFab(
+            tooltip: l10n.shellWriteDown,
+            onPressed: () => unawaited(_onFabPressed()),
+          ),
+          floatingActionButtonLocation: AppFab.location,
+          bottomNavigationBar: AppBottomBar(
+            currentIndex: _index,
+            onSelected: (index) => setState(() => _index = index),
+            items: [
+              AppBottomBarItem(
+                iconData: AppIcons.time,
+                label: l10n.shellTimelineTab,
+              ),
+              AppBottomBarItem(
+                iconData: AppIcons.things,
+                label: l10n.shellProjectsTab,
+              ),
+              AppBottomBarItem(
+                iconData: AppIcons.menu,
+                label: l10n.shellMenuTab,
+              ),
+            ],
+          ),
         ),
       ),
     );

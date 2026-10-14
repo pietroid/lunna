@@ -9,8 +9,13 @@ export class CreateTaskDto {
    */
   backlog?: boolean;
   /**
-   * ISO 8601. The earliest it may start, when it goes straight into the
-   * queue (`backlog: false`).
+   * ISO 8601. The hour it is anchored at, when it goes straight onto the day
+   * (`backlog: false`).
    */
   notBefore?: string;
+  /**
+   * Where in the list of tasks it goes, when it goes straight into the queue
+   * at a place rather than at its end.
+   */
+  index?: number;
 }

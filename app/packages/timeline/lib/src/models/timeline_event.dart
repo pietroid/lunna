@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
+import 'package:timeline/src/models/work_day.dart';
 
 /// Which heading a card falls under.
 ///
@@ -217,6 +218,12 @@ class TimelineEvent extends Equatable {
   /// hour for it rather than a new place in the queue, which only tasks have.
   bool get isAnchored => !isTask;
 
+  /// Whether it is a task not yet begun that keeps an hour of its own.
+  ///
+  /// The queue flows around it, and it only slides when something really
+  /// happening runs into it. A drop just below it lands right after it.
+  bool get keepsHour => isTask && !started && notBefore != null;
+
   /// Whether it is paused.
   bool get isPaused => pausedAt != null;
 
@@ -417,6 +424,7 @@ class Timeline extends Equatable {
     this.tasks = const [],
     this.backlog = const [],
     this.cards = const [],
+    this.workDay = WorkDay.standard,
     this.guard,
   });
 
@@ -428,6 +436,7 @@ class Timeline extends Equatable {
       tasks: _cards(json['tasks']),
       backlog: _cards(json['backlog']),
       cards: _cards(json['cards']),
+      workDay: WorkDay.fromJson(json['workDay']),
       guard: rawGuard == null ? null : StartNowGuard.fromJson(rawGuard),
     );
   }
@@ -442,6 +451,9 @@ class Timeline extends Equatable {
   /// earliest first.
   final List<TimelineEvent> cards;
 
+  /// The hours the day is laid out in.
+  final WorkDay workDay;
+
   /// The question to put to the user, when a move raised one.
   final StartNowGuard? guard;
 
@@ -452,5 +464,5 @@ class Timeline extends Equatable {
   }
 
   @override
-  List<Object?> get props => [tasks, backlog, cards, guard];
+  List<Object?> get props => [tasks, backlog, cards, workDay, guard];
 }

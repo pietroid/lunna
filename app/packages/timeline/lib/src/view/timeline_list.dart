@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -43,7 +44,8 @@ typedef _Heading = DateTime?;
 ///
 /// The room from now until the next block is drawn twice: as the break under
 /// Agora, and as the empty room that opens Ainda hoje. Both are the same
-/// stretch and the same place to drop.
+/// stretch, and two places to drop: the break is now, and the room is its
+/// hours.
 typedef _Room = ({FreeSlot slot, _Heading heading});
 
 /// Which drawn stretch a row is: where it starts, and under which heading.
@@ -57,6 +59,35 @@ typedef _Flying = ({
   double dx,
 });
 
+/// One row as it was drawn, in the order it was drawn: the key it is
+/// measured by, the section it belongs to, and what it is.
+///
+/// What the screen reads after every scroll to know which day is at the
+/// top, where the + goes and where the button at the foot of the app
+/// writes. `room` is set for a free stretch, `card` for a card, and
+/// `heading` for the line that opens its section.
+typedef _Drawn = ({
+  GlobalKey key,
+  Object? section,
+  bool heading,
+  _Room? room,
+  TimelineEvent? card,
+});
+
+/// The heading pinned over the top of the list, and how far the next one
+/// has pushed it up.
+typedef _Pin = ({String label, double dy});
+
+/// The section of the backlog, in the list.
+const Object _backlog = #backlog;
+
+/// The section of every task with an hour, in the list: one stage, not cut
+/// into days.
+const Object _soon = #soon;
+
+/// The section of a row that is not under any heading: the failure line.
+const Object _loose = #loose;
+
 /// {@template timeline_list}
 /// The day: one list in clock order, cut into days by the clock.
 ///
@@ -64,43 +95,48 @@ typedef _Flying = ({
 /// tasks, as tall as its time, a day after another for as far as it is
 /// scrolled: reaching the end of it asks for another week. The list is the
 /// tasks alone, each as tall as it needs, in two stages that are always
-/// drawn, empty or not. Fazer em breve is the queue, in the order it is to
-/// be done, under the day the queue puts each task on. Depois eu priorizo
-/// is the backlog: an order and a length, no hours, and nothing the
-/// calendar draws. Both stages are the same list to a drag, so a task goes
-/// from one to the other the way it goes up or down either. The queue is
-/// the same queue in both modes: a task dragged in one has moved in the
-/// other.
+/// drawn, empty or not. Fazer em breve is the queue and the tasks that keep
+/// an hour, in the order of their hours, in one run that is not cut into
+/// days. Depois
+/// eu priorizo is the backlog: an order and a length, no hours, and nothing
+/// the calendar draws. Both stages are the same list to a drag, so a task
+/// goes from one to the other the way it goes up or down either. Each stage
+/// ends in a +, which writes something down at its end.
 ///
 /// The headings are not containers. Every card has an hour, the hour says
 /// which heading it falls under, and a drop is a place in the one list
-/// underneath all of them. That is what took the arithmetic out of this
-/// screen: there is no list a card can be in the wrong one of, and no index
-/// that means something different depending on which heading it is near.
+/// underneath all of them. The heading of whatever is at the top of the
+/// screen stays pinned there while it scrolls, so the day being looked at is
+/// always named, and once Agora is out of sight a chip brings it back.
 ///
 /// One [Listener] over the whole thing owns every gesture: a tap opens a
 /// block, a press held for a moment picks its card up, and the card then
 /// follows the finger while the rest of the list opens a place for it. The
 /// place is whichever one is nearest, so the card lands wherever it is let go
-/// rather than only on something it managed to hit.
+/// rather than only on something it managed to hit. Held near the top or
+/// the bottom of the list, the card carries the list with it, so a task
+/// goes to another day by being taken there.
 ///
-/// Agora is drawn as it always was. Below it the day reads like a calendar:
-/// every card is as tall as its time, near enough, and the free stretches
-/// between them, from the end of what is running or seven in the morning to
-/// ten at night, are drawn as empty room just as tall. Room of ten minutes
-/// or less is not drawn, and neither is the pause between two blocks. A card
-/// let go over a stretch lands at the start of it, and one too long for it
-/// asks whether to cut it to fit, and stays where it was on a no.
+/// Agora is always drawn, as it always was: what is running, or the break
+/// with its line. Let go there, a task is begun now. Below it the day reads
+/// like a calendar: every card is as tall as its time, near enough, and the
+/// free stretches between them are drawn as empty room just as tall. Room of
+/// ten minutes or less is not drawn, and neither is the pause between two
+/// blocks.
 ///
-/// A fixed card, a routine's day included, is different, because its hour is
-/// the point of it. It only lands in empty room, and wherever in the room it
-/// is let go, on the nearest quarter of an hour that leaves it whole. The
-/// room draws it there while it is aimed at, hours and all, so the drop is
-/// read before it happens.
+/// A card let go over a stretch lands where it was let go, on the five
+/// minutes nearest, sticking to the block above or below when it is close.
+/// The room draws it there while it is aimed at, hours and all, so the drop
+/// is read before it happens. A task that lands so keeps that hour, and the
+/// queue flows around it. One too long for the room asks whether to cut it
+/// to fit, and stays where it was on a no. A card let go between two cards
+/// takes that place in the queue, or, when the card above it keeps an hour
+/// of its own, the hour right after it. A fixed card only lands in empty
+/// room, because its hour is the point of it.
 ///
-/// A tap on empty room writes something down there. In the first part of the
-/// room, up to its first full hour, it is flexible and starts no earlier than
-/// the room does. In any hour after that it is fixed at that hour.
+/// A tap on empty room writes something down at that hour, flexible like
+/// everything: at the start of the room in its first part, and on the full
+/// hour in any hour after it.
 ///
 /// A drag picks an axis as soon as it starts moving and keeps it. Up and down
 /// reorders; right carries the card out of the day and marks it done, and
@@ -110,15 +146,16 @@ typedef _Flying = ({
 /// finger has already said.
 ///
 /// The list does not re-lay-out while a card is up. The cards that move are
-/// moved by a transform over a layout that was measured once, when the card
-/// came up, so the place being aimed at cannot shift out from under the
-/// finger that is aiming at it.
+/// moved by a transform over a layout that is measured at rest, so the place
+/// being aimed at cannot shift out from under the finger that is aiming at
+/// it. When the list scrolls under the card, it is measured again.
 /// {@endtemplate}
 class TimelineList extends StatefulWidget {
   /// {@macro timeline_list}
   const TimelineList({
     required this.onCardTap,
-    this.onFreeTap,
+    this.onWriteDown,
+    this.aim,
     this.mode = TimelineMode.calendar,
     super.key,
   });
@@ -132,9 +169,13 @@ class TimelineList extends StatefulWidget {
   /// block to draw before it has asked for anything.
   final ValueChanged<TimelineEvent> onCardTap;
 
-  /// Called with what a tap on empty room asked for: where the room starts,
-  /// flexible, or a later hour in it, fixed.
-  final ValueChanged<FreeTap>? onFreeTap;
+  /// Called with where something is to be written down: an hour of empty
+  /// room that was tapped, the hour a + is on, or the section a + ends.
+  final ValueChanged<Placement>? onWriteDown;
+
+  /// Where the button at the foot of the app writes, which this keeps
+  /// pointed at the day on screen.
+  final TimelineAim? aim;
 
   @override
   State<TimelineList> createState() => _TimelineListState();
@@ -155,8 +196,34 @@ class _TimelineListState extends State<TimelineList> {
   /// the block rather than dropping it back into the list.
   static const _solveTravel = 96.0;
 
+  /// How close to the top of the list a card has to be held for the list
+  /// to scroll up under it.
+  static const _edgeTop = 72.0;
+
+  /// The same at the bottom, which is taller: the bar at the foot of the
+  /// app is drawn over the list.
+  static const _edgeBottom = 160.0;
+
+  /// How far a card has to be carried towards an edge before that edge
+  /// scrolls the list.
+  static const _edgeLead = 24.0;
+
+  /// How often the list scrolls under a held card: once a frame.
+  static const _frame = Duration(milliseconds: 16);
+
+  /// The furthest the list scrolls under a held card in one frame.
+  static const _edgeSpeed = 16.0;
+
+  /// The height of the heading pinned over the top of the list.
+  static const _pinHeight = 40.0;
+
   /// The section itself, for turning the pointer into local coordinates.
   final GlobalKey _sectionKey = GlobalKey();
+
+  /// The scrolling list, for where its top and bottom are on screen.
+  final GlobalKey _listKey = GlobalKey();
+
+  final ScrollController _scroll = ScrollController();
 
   /// One key per card, so the laid-out list can be measured.
   final _cardKeys = <String, GlobalKey>{};
@@ -165,12 +232,25 @@ class _TimelineListState extends State<TimelineList> {
   /// it is drawn under.
   final _freeKeys = <_Row, GlobalKey>{};
 
+  /// One key per heading, and per + that ends a section of the list.
+  final _headingKeys = <Object?, GlobalKey>{};
+  final _addKeys = <Object?, GlobalKey>{};
+
   /// The line between the two stages of the list, which is where the queue
   /// ends and the backlog begins.
   final GlobalKey _dividerKey = GlobalKey();
 
   /// The free stretches drawn in the last build.
   List<_Room> _shownRooms = const [];
+
+  /// Every row drawn in the last build, in order.
+  List<_Drawn> _drawn = const [];
+
+  /// The heading pinned over the top of the list, when one is.
+  final _pinned = ValueNotifier<_Pin?>(null);
+
+  /// Whether Agora is out of sight, which shows the chip that brings it back.
+  final _away = ValueNotifier<bool>(false);
 
   /// The free stretch the card in the air is over, when it is over one.
   ///
@@ -192,6 +272,13 @@ class _TimelineListState extends State<TimelineList> {
   Timer? _hold;
   Offset? _down;
 
+  /// Where the finger is, while a card is up.
+  Offset? _finger;
+
+  /// The list scrolling under a card held near its edge.
+  Timer? _edgeTimer;
+  double _edgeVelocity = 0;
+
   /// The card the finger is on, whether or not it has been picked up yet.
   String? _pressed;
 
@@ -205,7 +292,8 @@ class _TimelineListState extends State<TimelineList> {
   /// The dragged card's place in the list, taken once at pick-up.
   int _originIndex = 0;
 
-  /// Every place the card could land, measured once at pick-up.
+  /// Every place the card could land, measured at pick-up and again
+  /// whenever the list scrolls under it.
   List<_Anchor> _anchors = const [];
 
   /// The place it would land, and how far the finger has come since pick-up.
@@ -222,6 +310,10 @@ class _TimelineListState extends State<TimelineList> {
   @override
   void dispose() {
     _hold?.cancel();
+    _edgeTimer?.cancel();
+    _scroll.dispose();
+    _pinned.dispose();
+    _away.dispose();
     super.dispose();
   }
 
@@ -245,7 +337,7 @@ class _TimelineListState extends State<TimelineList> {
   /// Where a drop at [index] in what is drawn lands: a place in the list of
   /// tasks, or in the backlog, which are the only orders the server keeps.
   ///
-  /// In the list, everything above the line is the queue and everything
+  /// In the list, everything above the line is the tasks and everything
   /// below it the backlog. The calendar counts the tasks above the drop and
   /// skips the events, because those have hours of their own rather than
   /// places.
@@ -262,6 +354,20 @@ class _TimelineListState extends State<TimelineList> {
       index: rest.take(index).where((card) => card?.isTask ?? false).length,
       backlog: false,
     );
+  }
+
+  /// The card right above a drop at [index], with [id] lifted out, when it
+  /// is one whose hour a drop below it should follow: an event, or a task
+  /// that keeps an hour of its own. Its place in the queue says nothing about
+  /// where it is, so the drop lands on the hour after it instead.
+  TimelineEvent? _hourAbove(String id, int index) {
+    if (index == 0) return null;
+
+    final rest = _slots.where((card) => card?.id != id).toList();
+    final above = rest[index - 1];
+    if (above == null || above.isBacklog) return null;
+
+    return above.isAnchored || above.keepsHour ? above : null;
   }
 
   /// How far the card in the air has come towards being finished, 0 to 1.
@@ -282,7 +388,7 @@ class _TimelineListState extends State<TimelineList> {
   /// The global rect a key has been laid out into, if it is on screen.
   Rect? _rectOf(GlobalKey key) {
     final box = key.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return null;
+    if (box == null || !box.hasSize || !box.attached) return null;
 
     return box.localToGlobal(Offset.zero) & box.size;
   }
@@ -311,8 +417,8 @@ class _TimelineListState extends State<TimelineList> {
   /// and the bottom of the card before it, because an empty stretch can sit
   /// between the two and push them far apart. They are measured with [id]
   /// taken out, because that is the list a drop is applied to, and from the
-  /// resting layout, because the cards that move out of the way are moved by
-  /// a transform and never change where they were laid out.
+  /// resting layout: the keys sit outside the transforms that move cards out
+  /// of the way, so where a card was laid out is where it is measured.
   ///
   /// A card scrolled out of the list's reach has no rect and no edges, but
   /// still counts, so the places on either side of it keep their numbers.
@@ -337,17 +443,21 @@ class _TimelineListState extends State<TimelineList> {
 
     // The stretches are priced with the card lifted out, because that is the
     // day the drop lands in: a card that sat right beside a gap makes the gap
-    // bigger by leaving it.
+    // bigger by leaving it. The break under Agora is now, whatever was
+    // lifted, so it is taken as drawn.
     final lifted = TimelinePlan.freeSlots(
       rest.nonNulls.toList(),
       days: _state.days,
+      workDay: _state.workDay,
     );
     for (final room in _shownRooms) {
       final shown = room.slot;
       final rect = _rectOf(_freeKey(_rowOf(room)));
       if (rect == null) continue;
 
-      final slot = lifted.where((it) => it.contains(shown.start)).firstOrNull;
+      final slot = room.heading == null
+          ? shown
+          : lifted.where((it) => it.contains(shown.start)).firstOrNull;
       if (slot == null) continue;
 
       anchors.add((
@@ -372,6 +482,12 @@ class _TimelineListState extends State<TimelineList> {
   }
 
   GlobalKey _freeKey(_Row row) => _freeKeys.putIfAbsent(row, GlobalKey.new);
+
+  GlobalKey _headingKey(Object? section) =>
+      _headingKeys.putIfAbsent(section, GlobalKey.new);
+
+  GlobalKey _addKey(Object? section) =>
+      _addKeys.putIfAbsent(section, GlobalKey.new);
 
   static _Row _rowOf(_Room room) => (room.slot.start, room.heading);
 
@@ -413,11 +529,11 @@ class _TimelineListState extends State<TimelineList> {
 
   /// Where the card in the air would sit if it were let go over [anchor].
   ///
-  /// A flexible card goes to the start of the room. A fixed one goes where
-  /// its top edge is, on the nearest quarter of an hour that keeps it whole.
-  /// Under Agora the room is not drawn to scale, so there is no height to
-  /// read an hour from, and it goes to the start too. A card too long for
-  /// the room is shown cut to what fits, which is what the drop will offer.
+  /// Where its top edge is, on the five minutes nearest, sticking to either
+  /// end of the room when it is close. Under Agora the room is not drawn to
+  /// scale, and it is now anyway, so it goes to the start. A card too long
+  /// for the room is shown cut to what fits, which is what the drop will
+  /// offer.
   _Span? _landingFor(_Anchor anchor) {
     final slot = anchor.slot;
     final card = _draggedCard;
@@ -427,8 +543,7 @@ class _TimelineListState extends State<TimelineList> {
     final shown = anchor.shown;
     final area = anchor.area;
     final origin = _originRect;
-    if (card.isAnchored &&
-        shown != null &&
+    if (shown != null &&
         area != null &&
         origin != null &&
         anchor.row?.$2 != null) {
@@ -482,6 +597,7 @@ class _TimelineListState extends State<TimelineList> {
     final origin = _indexOf(id);
     if (rect == null || origin == -1) return;
 
+    unawaited(HapticFeedback.selectionClick());
     setState(() {
       _dragging = id;
       _axis = null;
@@ -490,6 +606,7 @@ class _TimelineListState extends State<TimelineList> {
       _slotHeight = rect.height + AppSpacing.s1;
       _anchors = _measure(id);
       _travel = Offset.zero;
+      _finger = _down;
       _aim(_nearest(_down!));
     });
   }
@@ -499,36 +616,110 @@ class _TimelineListState extends State<TimelineList> {
     if (down == null) return;
 
     if (_dragging != null) {
-      final wasArmed = _armedSolve;
-      final wasLanding = _landing?.start;
-      final travel = event.position - down;
-
-      setState(() {
-        _axis = _axisFor(travel);
-        // The card moves along the axis the drag chose and not a pixel along
-        // the other one, so a reorder cannot drift sideways into finishing
-        // the block and a card being carried out cannot drift into the list.
-        _travel = _axis == Axis.horizontal
-            ? Offset(travel.dx, 0)
-            : Offset(0, travel.dy);
-        // A card on its way out of the timeline is not aiming at a place, so
-        // nothing opens one for it: the list stays where it is and the only
-        // thing left to read is the check.
-        _aim(_axis == Axis.horizontal ? null : _nearest(event.position));
-      });
-
-      // One tick as the gesture changes what letting go will do, and only on
-      // the change. A fixed card crossing a quarter of an hour is one.
-      if (_armedSolve != wasArmed ||
-          (_landing != null && _landing?.start != wasLanding)) {
-        unawaited(HapticFeedback.selectionClick());
-      }
+      _finger = event.position;
+      _follow(event.position - down);
+      _edgeScrollFor(event.position);
       return;
     }
 
     // Past the slop the gesture belongs to the list, which scrolls: the hold
     // is called off and the card under the finger stops looking pressed.
     if ((event.position - down).distance > _slop) _cancel();
+  }
+
+  /// Moves the card in the air by [travel] since pick-up, and aims it.
+  void _follow(Offset travel) {
+    final wasArmed = _armedSolve;
+    final wasLanding = _landing?.start;
+    final wasTarget = _target;
+    final finger = _finger;
+
+    setState(() {
+      _axis = _axisFor(travel);
+      // The card moves along the axis the drag chose and not a pixel along
+      // the other one, so a reorder cannot drift sideways into finishing
+      // the block and a card being carried out cannot drift into the list.
+      _travel = _axis == Axis.horizontal
+          ? Offset(travel.dx, 0)
+          : Offset(0, travel.dy);
+      // A card on its way out of the timeline is not aiming at a place, so
+      // nothing opens one for it: the list stays where it is and the only
+      // thing left to read is the check.
+      _aim(
+        _axis == Axis.horizontal || finger == null ? null : _nearest(finger),
+      );
+    });
+
+    // One tick as the gesture changes what letting go will do, and only on
+    // the change: arming the check, a new place, a new five minutes.
+    if (_armedSolve != wasArmed ||
+        _target != wasTarget ||
+        (_landing != null && _landing?.start != wasLanding)) {
+      unawaited(HapticFeedback.selectionClick());
+    }
+  }
+
+  /// Scrolls the list under a card held near its top or bottom.
+  ///
+  /// The nearer the edge, the faster, so a card can be eased into the next
+  /// hour or carried across a week. Every step measures the list again,
+  /// because the places the card can land have moved under it.
+  void _edgeScrollFor(Offset finger) {
+    final view = _rectOf(_listKey);
+    if (view == null || _axis == Axis.horizontal) {
+      _stopEdge();
+      return;
+    }
+
+    // Only once the card has been carried towards the edge: one picked up
+    // near the bottom does not set the list off before it has moved.
+    final travel = finger.dy - (_down?.dy ?? finger.dy);
+    final top = travel < -_edgeLead ? view.top + _edgeTop - finger.dy : 0.0;
+    final bottom = travel > _edgeLead
+        ? finger.dy - (view.bottom - _edgeBottom)
+        : 0.0;
+    _edgeVelocity = top > 0
+        ? -_edgeSpeed * (top / _edgeTop).clamp(0.0, 1.0)
+        : bottom > 0
+        ? _edgeSpeed * (bottom / _edgeTop).clamp(0.0, 1.0)
+        : 0;
+
+    if (_edgeVelocity == 0) {
+      _stopEdge();
+    } else {
+      _edgeTimer ??= Timer.periodic(_frame, _edgeStep);
+    }
+  }
+
+  void _edgeStep(Timer timer) {
+    final id = _dragging;
+    final down = _down;
+    if (!mounted || id == null || down == null || !_scroll.hasClients) {
+      _stopEdge();
+      return;
+    }
+
+    final position = _scroll.position;
+    final next = (position.pixels + _edgeVelocity).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (next == position.pixels) return;
+
+    _scroll.jumpTo(next);
+    // The rows that scrolled in are only laid out on the next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _dragging != id) return;
+
+      _anchors = _measure(id);
+      _follow((_finger ?? down) - down);
+    });
+  }
+
+  void _stopEdge() {
+    _edgeTimer?.cancel();
+    _edgeTimer = null;
+    _edgeVelocity = 0;
   }
 
   /// The axis this drag is on: whichever way it went first, and then that one
@@ -549,6 +740,7 @@ class _TimelineListState extends State<TimelineList> {
     final id = _dragging;
     final target = _target;
     final slot = _aimedSlot;
+    final row = _aimedRow;
     final landing = _landing;
     final pressed = _pressed;
     final solving = _armedSolve;
@@ -580,12 +772,18 @@ class _TimelineListState extends State<TimelineList> {
       return;
     }
 
+    // Let go on the break under Agora, it is now.
+    if (slot != null && card != null && row != null && row.$2 == null) {
+      _now(card);
+      return;
+    }
+
     if (slot != null && card != null) {
       unawaited(_dropInto(card, slot, landing?.start ?? slot.earliest));
       return;
     }
 
-    if (target == null) return;
+    if (target == null || card == null) return;
 
     // A card put back exactly where it came from is not a move, and does not
     // need to be written anywhere. The target counts the list with the card
@@ -598,12 +796,34 @@ class _TimelineListState extends State<TimelineList> {
     // next, and waits to be begun like any first task.
     final place = _placeOf(id, target);
     final ahead = !_isList || _state.tasks.any((it) => it.id != id);
+    final above = place.backlog ? null : _hourAbove(id, target);
     context.read<TimelineBloc>().add(
       EventMoved(
         id: id,
         index: place.index,
         backlog: place.backlog,
         start: target == 0 && !place.backlog && ahead,
+        // Below something that keeps an hour, the hour after it.
+        after: above?.endTime.add(TimelinePlan.gap),
+      ),
+    );
+  }
+
+  /// Puts [card] at the top of the day: a task is begun, which asks first
+  /// when something else is running, and a fixed block moves to this minute.
+  void _now(TimelineEvent card) {
+    final bloc = context.read<TimelineBloc>();
+    if (card.isTask) {
+      if (card.section == TimelineSection.agora && card.started) return;
+      bloc.add(EventMoved(id: card.id, index: 0, start: true));
+      return;
+    }
+
+    final now = clock.now();
+    bloc.add(
+      EventEdited(
+        card.id,
+        startTime: DateTime(now.year, now.month, now.day, now.hour, now.minute),
       ),
     );
   }
@@ -637,12 +857,11 @@ class _TimelineListState extends State<TimelineList> {
   ///
   /// A card that fits goes straight in. One that is longer than the stretch
   /// asks whether to cut it to the room there is, pause included, and a no
-  /// leaves the day exactly as it was.
+  /// leaves the day exactly as it was. One let go on the hour it already had
+  /// has not moved.
   ///
-  /// A task goes into the queue where the stretch is, and keeps its start
-  /// as a floor. An event takes the hour it was let go at instead, because
-  /// an hour is all it has; one let go on the hour it already had has not
-  /// moved.
+  /// A task keeps the hour it was let go at, and the queue flows around it.
+  /// An event takes that hour, because an hour is all it has.
   Future<void> _dropInto(
     TimelineEvent card,
     FreeSlot slot,
@@ -650,7 +869,7 @@ class _TimelineListState extends State<TimelineList> {
   ) async {
     final room = slot.end.difference(start).inMinutes;
 
-    if (card.isAnchored && start == card.startTime) return;
+    if (start == card.startTime) return;
 
     if (card.durationMinutes <= room) {
       _place(card, slot, start);
@@ -700,6 +919,8 @@ class _TimelineListState extends State<TimelineList> {
     _hold?.cancel();
     _hold = null;
     _down = null;
+    _finger = null;
+    _stopEdge();
     setState(() {
       _pressed = null;
       _dragging = null;
@@ -721,6 +942,8 @@ class _TimelineListState extends State<TimelineList> {
         if (state.isInitialLoad) return const _Loading();
 
         final dragging = _dragging;
+        // What is on screen is only known once it is laid out.
+        _surveySoon();
 
         return Stack(
           key: _sectionKey,
@@ -733,15 +956,18 @@ class _TimelineListState extends State<TimelineList> {
               onPointerMove: _onMove,
               onPointerUp: _onUp,
               onPointerCancel: (_) => _cancel(),
-              // The list is frozen for as long as a card is up. The pointer
-              // that picked the card up is one the scrollable is still
-              // watching, and without this it would drag the list out from
-              // under the place the card is aiming at.
+              // The list is frozen to the finger for as long as a card is up.
+              // The pointer that picked the card up is one the scrollable is
+              // still watching, and without this it would drag the list out
+              // from under the place the card is aiming at. Only the card's
+              // own edges scroll it then.
               child: AbsorbPointer(
                 absorbing: dragging != null,
-                child: NotificationListener<ScrollUpdateNotification>(
+                child: NotificationListener<ScrollNotification>(
                   onNotification: _onScrolled,
                   child: ListView(
+                    key: _listKey,
+                    controller: _scroll,
                     physics: dragging == null
                         ? null
                         : const NeverScrollableScrollPhysics(),
@@ -757,6 +983,17 @@ class _TimelineListState extends State<TimelineList> {
                 ),
               ),
             ),
+            Positioned(
+              top: 0,
+              left: AppSpacing.s6,
+              right: AppSpacing.s6,
+              child: _PinnedHeading(
+                pin: _pinned,
+                away: _away,
+                height: _pinHeight,
+                onBackToNow: _backToNow,
+              ),
+            ),
             // The card in the air is drawn over the list rather than in it,
             // so it passes over the cards it is moving between instead of
             // sliding under them.
@@ -768,10 +1005,27 @@ class _TimelineListState extends State<TimelineList> {
     );
   }
 
-  /// Asks for another week once the calendar is scrolled near its end.
+  /// Scrolls back to the top of the day, where Agora is.
+  void _backToNow() {
+    if (!_scroll.hasClients) return;
+
+    unawaited(
+      _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
+
+  /// Keeps up with the scroll: what is pinned, where the + goes, and asks
+  /// for another week once the calendar is scrolled near its end.
   ///
   /// The list has every task already, however far ahead, so it never asks.
-  bool _onScrolled(ScrollUpdateNotification notification) {
+  bool _onScrolled(ScrollNotification notification) {
+    _surveySoon();
+    if (notification is! ScrollUpdateNotification) return false;
+
     final state = _state;
     if (_isList || state.extending || state.isInitialLoad) return false;
     if (state.days >= TimelineState.maxDays) return false;
@@ -787,6 +1041,131 @@ class _TimelineListState extends State<TimelineList> {
   /// a day of empty room, so it has arrived by the time it is reached.
   static const _extendWithin = 1600.0;
 
+  /// Whether a [_survey] is waiting for the end of this frame.
+  bool _surveying = false;
+
+  /// Reads what is on screen once this frame is laid out, once however many
+  /// times it is asked for. A scroll can be told about in the middle of
+  /// laying out, when nothing can be measured yet.
+  void _surveySoon() {
+    if (_surveying) return;
+    _surveying = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _surveying = false;
+      _survey();
+    });
+  }
+
+  /// Reads what is on screen, after a scroll or a build.
+  ///
+  /// The heading of whatever is at the top is pinned there, pushed up by the
+  /// next heading as it arrives. And the button at the foot of the app is
+  /// pointed at what is in sight: the first free hour of the first stretch
+  /// in sight, or, in the list, the end of the day at the top.
+  void _survey() {
+    if (!mounted) return;
+    final view = _rectOf(_listKey);
+    if (view == null) return;
+
+    final top = view.top;
+    final seen = top + _pinHeight;
+    final now = clock.now();
+
+    _Drawn? first;
+    double? next;
+    var nowInSight = false;
+    // The list has no Agora of its own: now is the top of Fazer em breve.
+    final nowSection = _isList ? _soon : null;
+    for (final row in _drawn) {
+      final rect = _rectOf(row.key);
+      if (rect == null) continue;
+      if (row.section == nowSection &&
+          rect.bottom > top &&
+          rect.top < view.bottom) {
+        nowInSight = true;
+      }
+      if (first == null) {
+        if (rect.bottom > top + 0.5) first = row;
+      } else if (next == null && row.heading && rect.top > top) {
+        next = rect.top;
+      }
+    }
+
+    // The heading of the section at the top, unless that heading is itself
+    // still in sight where it was drawn.
+    final section = first?.section;
+    final heading = first == null ? null : _headingKeys[section];
+    final headingRect = heading == null ? null : _rectOf(heading);
+    final pinned =
+        first != null &&
+        section != _loose &&
+        (headingRect == null || headingRect.top < top - 0.5);
+    _pinned.value = pinned
+        ? (
+            label: _labelOf(section, now),
+            dy: next == null
+                ? 0.0
+                : (next - top - _pinHeight).clamp(
+                    -_pinHeight,
+                    0.0,
+                  ),
+          )
+        : null;
+    _away.value =
+        _scroll.hasClients && _scroll.offset > _pinHeight && !nowInSight;
+
+    widget.aim?.value = _aimFor(first, _firstFreeHour(view, seen));
+  }
+
+  /// The first free hour in sight: the first of the hours of the first
+  /// stretch in sight that is not under the pinned heading.
+  DateTime? _firstFreeHour(Rect view, double seen) {
+    for (final row in _drawn) {
+      final room = row.room;
+      if (room == null || room.heading == null) continue;
+      final rect = _rectOf(row.key);
+      if (rect == null || rect.bottom <= seen + AppSpacing.tapTarget) continue;
+      if (rect.top >= view.bottom) continue;
+
+      final dy = (seen - rect.top).clamp(0.0, rect.height);
+      final at = dy <= 0
+          ? room.slot.earliest
+          : _upToStep(TimelineScale.timeAt(room.slot, dy, rect.height));
+      if (!at.isBefore(room.slot.end.subtract(TimelinePlan.gap))) continue;
+
+      return at;
+    }
+
+    return null;
+  }
+
+  /// Where the button at the foot of the app writes, for what is on screen.
+  Placement? _aimFor(_Drawn? first, DateTime? free) {
+    if (!_isList) {
+      if (free != null) return Placement.at(free);
+
+      // No room in sight: from the first thing in sight, wherever the day
+      // has room after it.
+      final card = first?.card;
+      if (card == null) return null;
+      final now = clock.now();
+      return Placement.at(card.startTime.isAfter(now) ? card.startTime : now);
+    }
+
+    // The end of the stage at the top.
+    if (first?.section == _backlog) return const Placement.backlog();
+
+    return Placement.queue(_state.tasks.length);
+  }
+
+  /// [at] moved on to the next five minutes on the clock, if it is not on
+  /// one.
+  static DateTime _upToStep(DateTime at) {
+    final minutes =
+        (at.minute / TimelineScale.step).ceil() * TimelineScale.step;
+    return DateTime(at.year, at.month, at.day, at.hour, minutes);
+  }
+
   /// The one list, with a heading dropped in wherever the day changes.
   ///
   /// The headings are written out of the cards rather than wrapped around
@@ -796,11 +1175,14 @@ class _TimelineListState extends State<TimelineList> {
   /// any card.
   ///
   /// Under Agora nothing changed: the cards take the height they need and the
-  /// break is its own quiet card. Later in the day every row is as tall as
-  /// its time, and room too short to be worth a drop is left out, so the next
+  /// break is its own quiet card, there whenever nothing is running, even
+  /// with the working day over. Later in the day every row is as tall as its
+  /// time, and room too short to be worth a drop is left out, so the next
   /// card simply follows.
   List<Widget> _rows(TimelineState state, String? dragging) {
     final now = clock.now();
+    final drawn = <_Drawn>[];
+    _drawn = drawn;
     final rows = <Widget>[
       // A write that never landed used to be entirely silent: the card the
       // user had just typed simply did not appear, which reads as the button
@@ -813,17 +1195,22 @@ class _TimelineListState extends State<TimelineList> {
         ),
     ];
 
-    if (_isList) return [...rows, ..._listRows(state, dragging, now)];
+    if (_isList) return [...rows, ..._listRows(state, dragging, now, drawn)];
 
-    var first = true;
     final cards = state.cards;
     final rooms = _rooms(
-      TimelinePlan.freeSlots(cards, now: now, days: state.days),
+      TimelinePlan.freeSlots(
+        cards,
+        now: now,
+        days: state.days,
+        workDay: state.workDay,
+      ),
+      cards,
       now,
     );
     _shownRooms = rooms;
-    if (cards.isEmpty && rooms.isEmpty) return [...rows, const _Empty()];
 
+    var first = true;
     _Heading section = _unset;
 
     for (final entry in _entries(cards, rooms)) {
@@ -839,8 +1226,17 @@ class _TimelineListState extends State<TimelineList> {
 
       if (entrySection != section) {
         section = entrySection;
+        final key = _headingKey(entrySection);
+        drawn.add((
+          key: key,
+          section: entrySection,
+          heading: true,
+          room: null,
+          card: null,
+        ));
         rows.add(
           _Slid(
+            key: key,
             dy: dy,
             child: _HeadingRow(
               label: _label(entrySection, now),
@@ -851,33 +1247,42 @@ class _TimelineListState extends State<TimelineList> {
         first = false;
       }
 
+      final key = card == null ? _freeKey(_rowOf(room!)) : _cardKey(card.id);
+      drawn.add((
+        key: key,
+        section: entrySection,
+        heading: false,
+        room: room,
+        card: card,
+      ));
+      final aimed =
+          dragging != null && room != null && _aimedRow == _rowOf(room);
+
       rows.add(
         Padding(
           padding: const EdgeInsets.only(top: AppSpacing.s1),
           child: _Slid(
+            key: key,
             dy: dy,
             child: switch ((card, entrySection)) {
               (null, null) => FreeTile(
-                key: _freeKey(_rowOf(room!)),
-                slot: room.slot,
+                slot: room!.slot,
                 now: true,
-                targeted: dragging != null && _aimedRow == _rowOf(room),
+                targeted: aimed,
                 // The break is not cut into hours, so a tap on it is always
-                // the room itself.
-                onTap: widget.onFreeTap == null
+                // now.
+                onTap: widget.onWriteDown == null
                     ? null
-                    : () => widget.onFreeTap!(
-                        (from: room.slot.earliest, fixedAt: null),
+                    : () => widget.onWriteDown!(
+                        Placement.at(room.slot.earliest),
                       ),
               ),
               (null, _) => FreeStretch(
-                key: _freeKey(_rowOf(room!)),
-                slot: room.slot,
-                targeted: dragging != null && _aimedRow == _rowOf(room),
-                preview: dragging != null && _aimedRow == _rowOf(room)
-                    ? _landing
-                    : null,
-                onTap: widget.onFreeTap,
+                slot: room!.slot,
+                targeted: aimed,
+                preview: aimed ? _landing : null,
+                onTap: widget.onWriteDown,
+                stickBelow: _pinHeight,
               ),
               // Agora is drawn as it needs rather than to scale.
               (final card?, null) => _tile(card, dragging),
@@ -896,23 +1301,33 @@ class _TimelineListState extends State<TimelineList> {
     return rows;
   }
 
-  /// The list's two stages, both always drawn: the queue under the days it
-  /// falls on, then the line, then the backlog.
+  /// The list's two stages, both always drawn: every task with an hour in
+  /// one run, in the order of their hours and not cut into days, ending in
+  /// a +, then the backlog and its +.
   ///
   /// Every row is as tall as it needs; there is no room in either stage.
-  /// The line is a row like any card to a drag, keyed so it can be measured,
-  /// and slides out of the way like one.
+  /// The backlog's heading is a row like any card to a drag, keyed so it can
+  /// be measured, and slides out of the way like one.
   List<Widget> _listRows(
     TimelineState state,
     String? dragging,
     DateTime now,
+    List<_Drawn> drawn,
   ) {
     _shownRooms = const [];
     final l10n = context.l10n;
     double shift(int before) => dragging == null ? 0.0 : _shift(before);
 
+    final soonKey = _headingKey(_soon);
+    drawn.add((
+      key: soonKey,
+      section: _soon,
+      heading: true,
+      room: null,
+      card: null,
+    ));
     final rows = <Widget>[
-      _StageHeading(label: l10n.stageSoon, first: true),
+      _HeadingRow(key: soonKey, label: l10n.stageSoon, first: true),
       if (state.tasks.isEmpty)
         _Slid(
           dy: shift(0),
@@ -920,38 +1335,41 @@ class _TimelineListState extends State<TimelineList> {
         ),
     ];
 
-    _Heading section = _unset;
-    for (final card in state.tasks) {
-      final before = _indexOf(card.id);
-      final heading = _headingOf(card);
-
-      if (heading != section) {
-        rows.add(
-          _Slid(
-            dy: shift(before),
-            child: _HeadingRow(
-              label: _label(heading, now),
-              first: section == _unset,
-            ),
-          ),
-        );
-        section = heading;
-      }
-      rows.add(_listTile(card, dragging, shift(before)));
+    final tasks = state.tasks;
+    for (final card in tasks) {
+      drawn.add((
+        key: _cardKey(card.id),
+        section: _soon,
+        heading: false,
+        room: null,
+        card: card,
+      ));
+      rows.add(_listTile(card, dragging, shift(_indexOf(card.id))));
     }
+    rows.add(
+      _addRow(
+        _soon,
+        Placement.queue(tasks.length),
+        shift(tasks.length),
+        drawn,
+      ),
+    );
 
+    drawn.add((
+      key: _dividerKey,
+      section: _backlog,
+      heading: true,
+      room: null,
+      card: null,
+    ));
     rows.add(
       _Slid(
+        key: _dividerKey,
         dy: shift(state.tasks.length),
         child: Column(
-          key: _dividerKey,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Padding(
-              padding: EdgeInsets.only(top: AppSpacing.s6),
-              child: Divider(height: 1, color: AppColors.line),
-            ),
-            _StageHeading(label: l10n.stageBacklog),
+            _HeadingRow(label: l10n.stageBacklog, first: false),
             if (state.backlog.isEmpty)
               _StageEmpty(text: l10n.stageBacklogEmpty),
           ],
@@ -960,16 +1378,63 @@ class _TimelineListState extends State<TimelineList> {
     );
 
     for (final card in state.backlog) {
+      drawn.add((
+        key: _cardKey(card.id),
+        section: _backlog,
+        heading: false,
+        room: null,
+        card: card,
+      ));
       rows.add(_listTile(card, dragging, shift(_indexOf(card.id))));
     }
+    rows.add(
+      _addRow(
+        _backlog,
+        const Placement.backlog(),
+        shift(_slots.length),
+        drawn,
+      ),
+    );
 
     return rows;
+  }
+
+  /// The + that ends [section] of the list, writing something down at
+  /// [placement].
+  Widget _addRow(
+    Object? section,
+    Placement placement,
+    double dy,
+    List<_Drawn> drawn,
+  ) {
+    final key = _addKey(section);
+    drawn.add((
+      key: key,
+      section: section,
+      heading: false,
+      room: null,
+      card: null,
+    ));
+
+    return _Slid(
+      key: key,
+      dy: dy,
+      child: _AddRow(
+        onTap: widget.onWriteDown == null
+            ? null
+            : () => widget.onWriteDown!(placement),
+      ),
+    );
   }
 
   Widget _listTile(TimelineEvent card, String? dragging, double dy) {
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.s1),
-      child: _Slid(dy: dy, child: _tile(card, dragging)),
+      child: _Slid(
+        key: _cardKey(card.id),
+        dy: dy,
+        child: _tile(card, dragging),
+      ),
     );
   }
 
@@ -996,11 +1461,18 @@ class _TimelineListState extends State<TimelineList> {
     return date.isEmpty ? date : date[0].toUpperCase() + date.substring(1);
   }
 
+  /// What a pinned heading over [section] says.
+  String _labelOf(Object? section, DateTime now) {
+    if (section == _backlog) return context.l10n.stageBacklog;
+    if (section == _soon) return context.l10n.stageSoon;
+
+    return _label(section as _Heading, now);
+  }
+
   Widget _tile(TimelineEvent card, String? dragging) {
     final bloc = context.read<TimelineBloc>();
 
     return EventTile(
-      key: _cardKey(card.id),
       card: card,
       pressed: card.id == _pressed,
       // The card in the air is drawn over the list, so the one left behind
@@ -1017,18 +1489,49 @@ class _TimelineListState extends State<TimelineList> {
 
   /// The free stretches as they are drawn, each under its heading.
   ///
-  /// Under Agora the break is drawn whatever its length, as it always was.
-  /// Later in the day only room worth a drop is drawn. The break is also the
-  /// start of the rest of today, so when it is long enough it opens Ainda
-  /// hoje as well, the way any empty room there would.
-  static List<_Room> _rooms(List<FreeSlot> slots, DateTime now) {
-    return [
+  /// Under Agora the break is drawn whatever its length, as it always was,
+  /// and whenever nothing is running at all, even outside the working day:
+  /// now is always somewhere to look and to drop. Later in the day only room
+  /// worth a drop is drawn. The break is also the start of the rest of
+  /// today, so when it is long enough it opens Ainda hoje as well, the way
+  /// any empty room there would.
+  static List<_Room> _rooms(
+    List<FreeSlot> slots,
+    List<TimelineEvent> cards,
+    DateTime now,
+  ) {
+    final rooms = <_Room>[
       for (final slot in slots)
         if (!slot.start.isAfter(now)) ...[
           (slot: slot, heading: null),
           if (TimelineScale.shows(slot)) (slot: slot, heading: _dayOf(slot)),
         ] else if (TimelineScale.shows(slot))
           (slot: slot, heading: _dayOf(slot)),
+    ];
+
+    final busy = cards.any((card) => card.section == TimelineSection.agora);
+    if (busy || rooms.any((room) => room.heading == null)) return rooms;
+
+    // Nothing running and no room at this minute: the day is over, or the
+    // next block is moments away. Agora is drawn anyway, up to whatever is
+    // next.
+    final minute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final next = cards
+        .where((card) => card.startTime.isAfter(now))
+        .map((card) => card.startTime)
+        .firstOrNull;
+
+    return [
+      (
+        slot: FreeSlot(
+          start: minute,
+          end: next ?? minute.add(const Duration(hours: 1)),
+          earliest: minute,
+          index: 0,
+        ),
+        heading: null,
+      ),
+      ...rooms,
     ];
   }
 
@@ -1098,9 +1601,198 @@ class _TimelineListState extends State<TimelineList> {
   }
 }
 
-/// One heading, which is a line and not a container.
+/// The heading of whatever is at the top of the list, pinned there while it
+/// scrolls, and the chip back to Agora once Agora is out of sight.
+///
+/// Drawn over the list and let through, so a press on it lands on whatever
+/// card is under it. Built off two listenables rather than with the list, so
+/// a scroll redraws a line of text and not the day.
+class _PinnedHeading extends StatelessWidget {
+  const _PinnedHeading({
+    required this.pin,
+    required this.away,
+    required this.height,
+    required this.onBackToNow,
+  });
+
+  final ValueListenable<_Pin?> pin;
+  final ValueListenable<bool> away;
+  final double height;
+
+  final VoidCallback onBackToNow;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ValueListenableBuilder<_Pin?>(
+                valueListenable: pin,
+                builder: (context, pinned, _) => pinned == null
+                    ? const SizedBox.shrink()
+                    : Transform.translate(
+                        offset: Offset(0, pinned.dy),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Positioned.fill(
+                              child: ColoredBox(
+                                color: AppColors.bg,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    pinned.label,
+                                    style: AppTypography.title,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // What scrolls under it fades in rather than
+                            // being cut by a hard edge.
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              top: height,
+                              height: AppSpacing.s3,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      AppColors.bg,
+                                      AppColors.bg.withValues(alpha: 0),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: away,
+              builder: (context, show, _) => AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                child: show
+                    ? _BackToNow(onTap: onBackToNow)
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The chip that takes the list back to Agora.
+class _BackToNow extends StatelessWidget {
+  const _BackToNow({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Semantics(
+        button: true,
+        label: context.l10n.timelineBackToNow,
+        child: Material(
+          color: AppColors.fillStrong,
+          borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.s3,
+                vertical: AppSpacing.s1 + 2,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppIcon(
+                    iconData: AppIcons.arrowUp,
+                    size: AppSpacing.s4,
+                    color: AppColors.ink,
+                  ),
+                  const SizedBox(width: AppSpacing.s1),
+                  Text(
+                    context.l10n.sectionNow,
+                    style: AppTypography.labelStrong.copyWith(
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The + that ends a section of the list.
+class _AddRow extends StatelessWidget {
+  const _AddRow({required this.onTap});
+
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onTap == null) return const SizedBox(height: AppSpacing.s2);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s1),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.s3,
+              vertical: AppSpacing.s3,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AppIcon(
+                  iconData: AppIcons.plus,
+                  size: AppSpacing.s4,
+                  color: AppColors.ink3,
+                ),
+                const SizedBox(width: AppSpacing.s2),
+                Text(
+                  context.l10n.timelineAdd,
+                  style: AppTypography.label.copyWith(color: AppColors.ink3),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One heading, which is a line and not a container: a day of the
+/// calendar, or one of the list's two stages, set alike.
 class _HeadingRow extends StatelessWidget {
-  const _HeadingRow({required this.label, required this.first});
+  const _HeadingRow({required this.label, required this.first, super.key});
 
   final String label;
 
@@ -1115,32 +1807,6 @@ class _HeadingRow extends StatelessWidget {
         bottom: AppSpacing.s1,
       ),
       child: Text(label, style: AppTypography.title),
-    );
-  }
-}
-
-/// The name of one of the list's two stages: a quiet line over the headings
-/// of the days, rather than another of them.
-class _StageHeading extends StatelessWidget {
-  const _StageHeading({required this.label, this.first = false});
-
-  final String label;
-
-  /// Whether it is the first thing on the screen, and so needs less room
-  /// above.
-  final bool first;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: first ? AppSpacing.s2 : AppSpacing.s4,
-        bottom: AppSpacing.s1,
-      ),
-      child: Text(
-        label,
-        style: AppTypography.labelStrong.copyWith(color: AppColors.ink3),
-      ),
     );
   }
 }
@@ -1334,8 +2000,11 @@ class _FlightState extends State<_Flight> with SingleTickerProviderStateMixin {
 }
 
 /// A card moved out of the way, without being laid out anywhere else.
+///
+/// Keyed from outside the move, so what is measured is where it was laid
+/// out, not where it has been moved to.
 class _Slid extends StatelessWidget {
-  const _Slid({required this.dy, required this.child});
+  const _Slid({required this.dy, required this.child, super.key});
 
   final double dy;
   final Widget child;
@@ -1389,22 +2058,6 @@ class _Failed extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// What the calendar says when there is nothing on it.
-class _Empty extends StatelessWidget {
-  const _Empty();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.s6),
-      child: Text(
-        context.l10n.timelineEmpty,
-        style: AppTypography.body.copyWith(color: AppColors.ink3),
       ),
     );
   }

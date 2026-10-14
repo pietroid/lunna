@@ -30,8 +30,8 @@ final class TimelineExtended extends TimelineBlocEvent {
 /// Writes something down.
 ///
 /// The sheet asked how long it takes and whether the hour is the point of
-/// it. A flexible one is a task, at the end of the backlog; a fixed one is
-/// an event, at its hour.
+/// it. A flexible one is a task, anchored at [startTime] when it has one and
+/// otherwise wherever [placement] says; a fixed one is an event, at its hour.
 final class EventCreated extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
   const EventCreated({
@@ -39,6 +39,7 @@ final class EventCreated extends TimelineBlocEvent {
     required this.durationMinutes,
     required this.fixed,
     this.startTime,
+    this.placement = const Placement.backlog(),
   });
 
   /// What the user wrote, which is what the block is called.
@@ -50,11 +51,20 @@ final class EventCreated extends TimelineBlocEvent {
   /// Whether the hour is the point of it.
   final bool fixed;
 
-  /// The hour, when the user picked one. Only a fixed block does.
+  /// The hour, when it has one. A fixed block always does.
   final DateTime? startTime;
 
+  /// Where a flexible one without an hour goes.
+  final Placement placement;
+
   @override
-  List<Object?> get props => [title, durationMinutes, fixed, startTime];
+  List<Object?> get props => [
+    title,
+    durationMinutes,
+    fixed,
+    startTime,
+    placement,
+  ];
 }
 
 /// Moves one task to [index] in the list of tasks, or in the backlog.

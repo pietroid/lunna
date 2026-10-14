@@ -79,7 +79,13 @@ export class TimelineCard {
    * down.
    */
   awaitingStart: boolean;
-  /** ISO 8601, the earliest a layout may start it, when there is one. */
+  /**
+   * ISO 8601, the hour a task not yet begun is anchored at, when it is.
+   *
+   * An anchored task keeps that hour and the queue flows around it; it only
+   * slides when something really happening runs into it. Absent for a task
+   * that takes its turn in the queue.
+   */
   notBefore?: string;
   /** Which days it repeats on, when it is an instance of a routine. */
   routine?: RoutineDays;
@@ -101,6 +107,8 @@ export class BacklogCard {
   /** The same as [durationMinutes]: nothing in the backlog was begun. */
   workMinutes: number;
   notes: string;
+  /** Which days it repeats on, when it is a day of a routine. */
+  routine?: RoutineDays;
 }
 
 /**
@@ -111,9 +119,9 @@ export class BacklogCard {
  */
 export class Timeline {
   /**
-   * Every task still to do, in queue order: what is running first, then
-   * the queue, each at the hour the queue gives it. All of them, however
-   * far ahead the last one lands.
+   * Every task still to do, in the order of their hours: what is running
+   * first, then the rest, each at the hour the layout gives it. All of them,
+   * however far ahead the last one lands.
    */
   tasks: TimelineCard[];
   /** Every task in the backlog, in its order, with no hours. */
@@ -123,6 +131,12 @@ export class Timeline {
    * the last day asked for: the events and the tasks that fall in it.
    */
   cards: TimelineCard[];
+  /**
+   * When this person's working day runs, "07:00" to "22:00", so the
+   * calendar draws its free stretches inside the same hours the queue is
+   * laid out in.
+   */
+  workDay: { start: string; end: string };
   /**
    * The question a move raised, when it raised one. While it is here
    * nothing about the move has happened.
@@ -159,14 +173,25 @@ export interface TaskRequest {
    */
   backlog: boolean;
   /**
-   * ISO 8601, the earliest it may start, when it goes straight into the
-   * queue. Meaningless in the backlog, which has no hours.
+   * ISO 8601, the hour it is anchored at, when it goes straight onto the
+   * day at one. Meaningless in the backlog, which has no hours.
    */
   notBefore?: string;
+  /**
+   * Where in the list of tasks it goes, counted as [TimingAction.index]
+   * counts, when it goes straight into the queue at a place rather than at
+   * its end.
+   */
+  index?: number;
 }
 
 /** What the detail screen can change about a task. */
 export interface TaskEdit {
+  /**
+   * ISO 8601, a new hour to anchor a task not yet begun at. The queue then
+   * flows around it.
+   */
+  startTime?: string;
   title?: string;
   /** The work, pauses left out. */
   workMinutes?: number;

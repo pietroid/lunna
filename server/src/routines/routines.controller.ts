@@ -12,8 +12,9 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthUser } from '../auth/auth.tokens';
 import { SessionGuard } from '../auth/session.guard';
-import { CalendarUser, routineDaysOf } from '../calendar/calendar.types';
+import { routineDaysOf } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
+import { owner } from '../events/request';
 import { RoutineDto } from './dto/routine.dto';
 import { Routine, RoutineRequest } from './entities/routine.entity';
 import { parseTime } from './routine-dates';
@@ -62,6 +63,7 @@ export class RoutinesController {
         time: request.time,
         durationMinutes: request.durationMinutes,
         days: request.days,
+        fixed: request.fixed ?? false,
       },
       Trace.start(user.id),
     );
@@ -88,11 +90,6 @@ export class RoutinesController {
   ): Promise<Routine[]> {
     return this.routines.remove(owner(user), id, Trace.start(user.id, id));
   }
-}
-
-function owner(user: AuthUser): CalendarUser {
-  const name = typeof user.name === 'string' ? user.name : undefined;
-  return { id: user.id, email: user.email, name };
 }
 
 /** Reads what the menu sent, refusing anything unusable. */
@@ -129,6 +126,13 @@ function readRoutine(dto: RoutineDto): RoutineRequest {
       throw new BadRequestException('days must be daily, weekdays or weekend');
     }
     request.days = days;
+  }
+
+  if (dto.fixed !== undefined) {
+    if (typeof dto.fixed !== 'boolean') {
+      throw new BadRequestException('fixed must be a boolean');
+    }
+    request.fixed = dto.fixed;
   }
 
   return request;

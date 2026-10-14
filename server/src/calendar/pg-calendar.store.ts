@@ -5,7 +5,12 @@ import type { Database } from '../db/db';
 import { event, EventRow, routine, RoutineRow } from '../db/schema';
 import { occurrencesBetween } from '../routines/routine-dates';
 import { Zone } from '../time/zone';
-import { CalendarStore, NewEvent, RoutinePatch } from './calendar.store';
+import {
+  CalendarStore,
+  NewEvent,
+  NewRoutine,
+  RoutinePatch,
+} from './calendar.store';
 import {
   CalendarEvent,
   CalendarRoutine,
@@ -135,7 +140,7 @@ export class PgCalendarStore extends CalendarStore {
 
   async insertRoutine(
     user: CalendarUser,
-    input: Required<RoutinePatch> & { title: string },
+    input: NewRoutine,
   ): Promise<CalendarRoutine> {
     const [row] = await this._db
       .insert(routine)
@@ -145,6 +150,7 @@ export class PgCalendarStore extends CalendarStore {
         startTime: new Date(input.startTime),
         endTime: new Date(input.endTime),
         days: input.days,
+        fixed: input.fixed ?? false,
       })
       .returning();
 
@@ -171,6 +177,7 @@ export class PgCalendarStore extends CalendarStore {
             ? {}
             : { endTime: new Date(patch.endTime) }),
           ...(patch.days === undefined ? {} : { days: patch.days }),
+          ...(patch.fixed === undefined ? {} : { fixed: patch.fixed }),
         })
         .where(and(eq(routine.id, routineId), eq(routine.userId, user.id)))
         .returning();
@@ -220,7 +227,7 @@ export class PgCalendarStore extends CalendarStore {
     to: Date,
     zone: Zone,
   ): Promise<void> {
-    const routines = await this.routines(user);
+    const routines = (await this.routines(user)).filter((it) => it.fixed);
     const rows = routines.flatMap((it) =>
       occurrencesBetween(it, from, to, zone).map((day) => ({
         userId: user.id,
@@ -279,6 +286,7 @@ function toRoutine(row: RoutineRow): CalendarRoutine | undefined {
     startTime: row.startTime.toISOString(),
     endTime: row.endTime.toISOString(),
     days,
+    fixed: row.fixed,
   };
 }
 

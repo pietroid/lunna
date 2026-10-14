@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, notInArray } from 'drizzle-orm';
 import { CalendarUser } from '../calendar/calendar.types';
 import { DB } from '../db/db';
 import type { Database } from '../db/db';
 import { task, TaskRow } from '../db/schema';
 import { TaskStore } from './task.store';
-import { NewTask, Task } from './task.types';
+import { NewTask, RoutineTask, Task } from './task.types';
 
 /** The tasks, in Postgres. */
 @Injectable()
@@ -18,10 +18,61 @@ export class PgTaskStore extends TaskStore {
     const rows = await this._db
       .select()
       .from(task)
-      .where(and(eq(task.userId, user.id), isNull(task.doneAt)))
-      .orderBy(asc(task.position));
+      .where(
+        and(
+          eq(task.userId, user.id),
+          isNull(task.doneAt),
+          eq(task.cancelled, false),
+        ),
+      )
+      // The days of a routine all sit at position zero, which only means
+      // something to the queue: their hours order them.
+      .orderBy(asc(task.position), asc(task.notBefore), asc(task.createdAt));
 
     return rows.map(toTask);
+  }
+
+  async materialize(user: CalendarUser, days: RoutineTask[]): Promise<number> {
+    if (days.length === 0) return 0;
+
+    const rows = await this._db
+      .insert(task)
+      .values(
+        days.map((day) => ({
+          userId: user.id,
+          title: day.title,
+          minutes: day.minutes,
+          position: 0,
+          notBefore: new Date(day.occurrence),
+          routineId: day.routineId,
+          occurrence: new Date(day.occurrence),
+        })),
+      )
+      .onConflictDoNothing({ target: [task.routineId, task.occurrence] })
+      .returning({ id: task.id });
+
+    return rows.length;
+  }
+
+  async dropRoutineAhead(
+    user: CalendarUser,
+    routineId: string,
+    now: Date,
+    keep: Set<string>,
+  ): Promise<void> {
+    if (!isUuid(routineId)) return;
+
+    await this._db
+      .delete(task)
+      .where(
+        and(
+          eq(task.userId, user.id),
+          eq(task.routineId, routineId),
+          isNull(task.doneAt),
+          gt(task.occurrence, now),
+          ...(keep.size === 0 ? [] : [notInArray(task.id, [...keep])]),
+        ),
+      );
   }
 
   async get(user: CalendarUser, taskId: string): Promise<Task | undefined> {
@@ -62,6 +113,7 @@ export class PgTaskStore extends TaskStore {
         notBefore: dateOf(next.notBefore),
         backlog: next.backlog,
         doneAt: dateOf(next.doneAt),
+        cancelled: next.cancelled === true,
       })
       .where(and(eq(task.id, next.id), eq(task.userId, user.id)))
       .returning();
@@ -92,6 +144,11 @@ function toTask(row: TaskRow): Task {
       ? {}
       : { notBefore: row.notBefore.toISOString() }),
     ...(row.doneAt === null ? {} : { doneAt: row.doneAt.toISOString() }),
+    ...(row.routineId === null ? {} : { routineId: row.routineId }),
+    ...(row.occurrence === null
+      ? {}
+      : { occurrence: row.occurrence.toISOString() }),
+    ...(row.cancelled ? { cancelled: true } : {}),
   };
 }
 

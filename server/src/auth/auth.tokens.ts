@@ -9,4 +9,8 @@ export class AuthUser {
   declare image?: string;
   /** The IANA zone their day is measured in. */
   declare timeZone: string;
+  /** When their working day starts, in minutes after midnight. */
+  declare dayStart: number;
+  /** When it ends, in minutes after midnight; 1440 is midnight. */
+  declare dayEnd: number;
 }

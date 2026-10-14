@@ -5,14 +5,27 @@ import 'package:app_ui/app_ui.dart';
 /// {@template app_day_clock}
 /// The time, inside a ring that fills as the day does.
 ///
-/// The ring runs from [AppDay.startHour] to [AppDay.endHour] clockwise from
-/// twelve o'clock, painted in the light of the hour it passes through. What is
+/// The ring runs from [startHour] to [endHour], the person's own day,
+/// clockwise from twelve o'clock, painted in the light of the part of the day
+/// it passes through. What is
 /// left of the day stays as a faint track, so a glance says how much of it is
 /// gone without reading the number in the middle.
 /// {@endtemplate}
 class AppDayClock extends StatelessWidget {
   /// {@macro app_day_clock}
-  const AppDayClock({this.diameter = 80, this.strokeWidth = 1.5, super.key});
+  const AppDayClock({
+    this.diameter = 80,
+    this.strokeWidth = 1.5,
+    this.startHour = AppDay.startHour,
+    this.endHour = AppDay.endHour,
+    super.key,
+  });
+
+  /// When the day starts, 7.5 for half past seven.
+  final double startHour;
+
+  /// When it ends; 24 is midnight.
+  final double endHour;
 
   /// The outer size of the ring.
   final double diameter;
@@ -28,7 +41,11 @@ class AppDayClock extends StatelessWidget {
           dimension: diameter,
           child: CustomPaint(
             painter: _RingPainter(
-              progress: AppDay.progressAt(now),
+              progress: AppDay.progressAt(
+                now,
+                start: startHour,
+                end: endHour,
+              ),
               strokeWidth: strokeWidth,
             ),
             child: Center(

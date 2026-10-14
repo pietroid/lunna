@@ -75,9 +75,24 @@ class DemoTimelineRepository implements TimelineRepository {
   Future<Timeline> createTask({
     required String title,
     required int minutes,
+    Placement placement = const Placement.backlog(),
     int days = TimelineRepository.defaultDays,
   }) async {
-    _tasks.add(_Task('demo-task-${_next++}', title, minutes, backlog: true));
+    final task = _Task(
+      'demo-task-${_next++}',
+      title,
+      minutes,
+      backlog: placement.backlog,
+    );
+    // The demo keeps no hours of its own: something written down at one
+    // takes its turn at the end of the queue instead.
+    final queue = _tasks.where((it) => !it.backlog).toList();
+    final index = placement.index;
+    if (index != null && index < queue.length) {
+      _tasks.insert(_tasks.indexOf(queue[index]), task);
+    } else {
+      _tasks.add(task);
+    }
     return _timeline(days);
   }
 

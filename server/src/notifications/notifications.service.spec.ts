@@ -1,7 +1,7 @@
 import { CalendarEvent } from '../calendar/calendar.types';
 import { Day, TimelineService } from '../events/timeline.service';
 import { Task } from '../tasks/task.types';
-import { Interval } from '../time/work-hours';
+import { DEFAULT_WORK_DAY, Interval } from '../time/work-hours';
 import { NotificationItem } from './dto/notification-plan.dto';
 import { EVENING_MESSAGES, MORNING_MESSAGES } from './notification-copy';
 import { NotificationsService } from './notifications.service';
@@ -26,12 +26,14 @@ function serviceWith(
   const day: Day = {
     now: NOW,
     zone: SAO_PAULO,
+    workDay: DEFAULT_WORK_DAY,
     until: new Date(NOW.getTime() + 86_400_000),
     events,
     tasks: queue.map((it) => it.task),
     backlog: [],
     live: new Map(),
     placed: new Map(queue.map((it) => [it.task.id, it.slot])),
+    routines: new Map(),
   };
   const timeline = {
     day: () => Promise.resolve(day),

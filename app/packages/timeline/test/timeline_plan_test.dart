@@ -83,4 +83,70 @@ void main() {
       expect(slots.single.start, at(7, 0, 24));
     });
   });
+
+  group('a day of their own', () {
+    const workDay = WorkDay(start: 9 * 60 + 30, end: 18 * 60);
+
+    test('the free stretches run in its hours', () {
+      final slots = TimelinePlan.freeSlots(
+        const [],
+        now: DateTime(2026, 9, 23, 8),
+        workDay: workDay,
+      );
+
+      expect(slots.first.start, at(9, 30));
+      expect(slots.first.end, at(18));
+      expect(slots.last.start, at(9, 30, 24));
+    });
+
+    test('nothing is proposed after it ends', () {
+      final start = TimelinePlan.nextFreeStart(
+        const [],
+        const Duration(hours: 1),
+        now: at(17, 30),
+        workDay: workDay,
+      );
+
+      expect(start, at(9, 30, 24));
+    });
+
+    test('a day that runs to midnight does not skip the next one', () {
+      const late = WorkDay(start: 8 * 60, end: 24 * 60);
+
+      expect(
+        TimelinePlan.nextFreeStart(
+          const [],
+          const Duration(minutes: 30),
+          now: at(23),
+          workDay: late,
+        ),
+        at(23),
+      );
+      expect(
+        TimelinePlan.nextFreeStart(
+          [_card('late', at(23, 30), 60)],
+          const Duration(minutes: 20),
+          now: at(23, 30),
+          workDay: late,
+        ),
+        at(8, 0, 24),
+      );
+    });
+
+    test('is read off the wire, and falls back when it cannot be', () {
+      expect(
+        WorkDay.fromJson(const {'start': '06:15', 'end': '24:00'}),
+        const WorkDay(start: 375, end: 1440),
+      );
+      expect(WorkDay.fromJson(null), WorkDay.standard);
+      expect(
+        WorkDay.fromJson(const {'start': '22:00', 'end': '07:00'}),
+        WorkDay.standard,
+      );
+      expect(const WorkDay(start: 375, end: 1440).toJson(), {
+        'start': '06:15',
+        'end': '24:00',
+      });
+    });
+  });
 }

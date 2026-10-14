@@ -54,8 +54,12 @@ abstract final class TimelineScale {
     return lines;
   }
 
-  /// The step a fixed block moves by inside empty room.
-  static const step = 15;
+  /// The step anything dropped in empty room moves by: the minutes the day
+  /// is spaced in.
+  static const step = 5;
+
+  /// How close to either end of a room a drop has to be to stick to it.
+  static const magnet = 10;
 
   /// The moment [dy] points at, measured down from the top of [slot] drawn
   /// [height] tall.
@@ -80,37 +84,29 @@ abstract final class TimelineScale {
 
   /// Where a block of [minutes] let go near [aimed] would start in [slot].
   ///
-  /// The start of the room, or any quarter of an hour after it that still
-  /// leaves the whole block inside, whichever is nearest. A block too long
-  /// for the room goes to its start, which is where cutting it to fit
-  /// begins.
+  /// Wherever it was let go, on the five minutes nearest, as long as the
+  /// whole block still fits. Near either end it sticks to it: to the start
+  /// of the room, five minutes after the block above, or to the latest start
+  /// that ends five minutes before the block below. A block too long for the
+  /// room goes to its start, which is where cutting it to fit begins.
   static DateTime landingIn(FreeSlot slot, DateTime aimed, int minutes) {
-    final latest = slot.end.subtract(Duration(minutes: minutes));
-    var best = slot.earliest;
+    final earliest = slot.earliest;
+    final latest = slot.latestStart(minutes);
+    if (!latest.isAfter(earliest)) return earliest;
 
-    for (
-      var quarter = _nextQuarter(slot.earliest);
-      !quarter.isAfter(latest);
-      quarter = quarter.add(const Duration(minutes: step))
-    ) {
-      final gap = quarter.difference(aimed).abs();
-      if (gap < best.difference(aimed).abs()) best = quarter;
-    }
+    final snapped = _nearestStep(aimed);
+    if (snapped.difference(earliest).inMinutes <= magnet) return earliest;
+    if (latest.difference(snapped).inMinutes <= magnet) return latest;
 
-    return best;
+    return snapped;
   }
 
-  /// The first quarter of an hour strictly after [at].
-  static DateTime _nextQuarter(DateTime at) {
-    final floored = DateTime(
-      at.year,
-      at.month,
-      at.day,
-      at.hour,
-      at.minute - at.minute % step,
-    );
+  /// The wall-clock minute divisible by [step] nearest to [at].
+  static DateTime _nearestStep(DateTime at) {
+    final minutes = at.minute + at.second / 60;
+    final rounded = (minutes / step).round() * step;
 
-    return floored.add(const Duration(minutes: step));
+    return DateTime(at.year, at.month, at.day, at.hour, rounded);
   }
 
   static double _height(int minutes) =>

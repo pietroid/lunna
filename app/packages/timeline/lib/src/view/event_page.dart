@@ -289,8 +289,9 @@ class _When extends StatelessWidget {
         if (!card.isBacklog) ...[
           _Tappable(
             text: _startLabel(context.l10n, card.startTime),
-            // A task's hour is wherever the queue puts it.
-            onTap: editable && !started && !card.isTask
+            // Anything not begun can be given an hour. A task then keeps
+            // it, and the queue flows around it.
+            onTap: editable && !started && !card.started
                 ? () => _pickStart(context)
                 : null,
           ),

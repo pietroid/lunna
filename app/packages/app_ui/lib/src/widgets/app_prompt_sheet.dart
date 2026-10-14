@@ -6,9 +6,10 @@ import 'package:l10n/l10n.dart';
 
 /// What the creation sheet came back with.
 ///
-/// Everything needed to give something an hour, and nothing else. A flexible
-/// block leaves [startTime] null and takes whatever slot the day has going;
-/// a fixed one carries the hour the user picked.
+/// Everything needed to give something an hour, and nothing else. A
+/// flexible block with no [startTime] takes whatever place it was written
+/// down at; with one, it keeps that hour unless something runs into it. A
+/// fixed one always carries the hour the user picked, and nothing moves it.
 class AppPromptResult {
   /// Creates a result.
   const AppPromptResult({
@@ -40,13 +41,15 @@ class AppPromptResult {
 /// conversation, no proposal and nothing to accept, because there is nothing
 /// left to decide by the time the sheet closes.
 ///
-/// Flexible is the default and means "in that order, whenever it fits". Fixed
-/// means the hour is the point of it, and is the only case where the user is
-/// asked to name one. The day and the hour are each their own pill, so a
-/// block next week is as easy to write down as one this afternoon.
+/// Flexible is the default, always. It may have an hour, which it keeps
+/// unless something already happening runs into it, or none, and then it
+/// takes its place in the queue. Fixed means the hour is the point of it and
+/// nothing moves it, so it always has one. The day and the hour are each
+/// their own pill, so a block next week is as easy to write down as one this
+/// afternoon.
 ///
-/// Opened from a tap on a full hour of empty room, it starts fixed at that
-/// hour, which is what tapping an hour means.
+/// Opened on an hour, from a tap on empty room or from wherever the day on
+/// screen is, it starts flexible at that hour.
 ///
 /// On Coisas the same sheet asks without the clock: no flexible or fixed, no
 /// hour, only what it is and how long it will take once it is on the day.
@@ -81,7 +84,8 @@ class AppPromptSheet extends StatefulWidget {
   /// The length it starts with, when something is being edited.
   final Duration? initialDuration;
 
-  /// The hour it starts fixed at, when the sheet was opened on one.
+  /// The hour it starts at, when the sheet was opened on one. Flexible, like
+  /// everything, until the user says fixed.
   ///
   /// Only read when [previewFor] is given: without the clock there is no
   /// hour to start at.
@@ -148,10 +152,11 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
 
   /// Whether the sheet is asking about the clock at all.
   bool get _timed => widget.previewFor != null;
-  late bool _fixed = _timed && widget.initialStart != null;
+  bool _fixed = false;
 
-  /// The hour a fixed block was given. Null while it is still flexible.
-  late DateTime? _startTime = _fixed ? widget.initialStart : null;
+  /// The hour it was given. Null for a flexible block that takes its place
+  /// instead.
+  late DateTime? _startTime = _timed ? widget.initialStart : null;
 
   @override
   void dispose() {
@@ -170,11 +175,12 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
     return (start: start, end: start.add(_duration));
   }
 
-  /// Turning "fixo" on has to name an hour, because that is what fixed means.
+  /// Turning "fixo" on has to name an hour, because that is what fixed
+  /// means. Turning it off keeps the hour, as one the block may slide from.
   void _setFixed({required bool fixed}) {
     setState(() {
       _fixed = fixed;
-      _startTime = fixed ? widget.previewFor!(_duration) : null;
+      if (fixed) _startTime ??= widget.previewFor!(_duration);
     });
   }
 
@@ -238,7 +244,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
         text: text,
         duration: _duration,
         fixed: _timed && _fixed,
-        startTime: _timed && _fixed ? _span.start : null,
+        startTime: _timed ? _startTime : null,
       ),
     );
   }
@@ -280,7 +286,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
                   const SizedBox(height: AppSpacing.s3),
                   _Preview(
                     span: _span,
-                    editable: _fixed,
+                    editable: _startTime != null,
                     flexibleLabel: widget.flexibleLabel,
                     onDay: _pickDay,
                     onTime: _pickTime,
@@ -392,9 +398,9 @@ class _Controls extends StatelessWidget {
 
 /// The line that says when this will happen, and the check that makes it so.
 ///
-/// A flexible block reads back where it would land, quietly, because the app
-/// worked it out and it cannot be changed here. A fixed one is the user's own
-/// answer: the day and the hour, each a pill that opens its picker.
+/// A block with an hour reads it as the day and the hour, each a pill that
+/// opens its picker. A flexible one without reads back where it goes,
+/// quietly, with a pill to give it an hour after all.
 class _Preview extends StatelessWidget {
   const _Preview({
     required this.span,
@@ -407,7 +413,7 @@ class _Preview extends StatelessWidget {
 
   final ({DateTime start, DateTime end}) span;
 
-  /// Whether the hour is the user's to choose, which only a fixed block is.
+  /// Whether it has an hour, which the user can change.
   final bool editable;
 
   /// What a flexible block reads instead of its hour, when it has none.
@@ -439,9 +445,25 @@ class _Preview extends StatelessWidget {
                     ),
                   ],
                 )
-              : Text(
-                  flexibleLabel ?? _when(context.l10n, span.start),
-                  style: AppTypography.body.copyWith(color: AppColors.ink3),
+              : Wrap(
+                  spacing: AppSpacing.s2,
+                  runSpacing: AppSpacing.s2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      flexibleLabel ?? _when(context.l10n, span.start),
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.ink3,
+                      ),
+                    ),
+                    // A flexible block can be given an hour too, which it
+                    // keeps unless something runs into it.
+                    AppPillButton(
+                      iconData: AppIcons.time,
+                      label: context.l10n.promptPickTime,
+                      onPressed: onDay,
+                    ),
+                  ],
                 ),
         ),
         send,

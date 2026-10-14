@@ -28,6 +28,7 @@ export function owner(user: AuthUser): CalendarUser {
     email: user.email,
     name: user.name,
     timeZone: user.timeZone,
+    workDay: { start: user.dayStart, end: user.dayEnd },
   };
 }
 
@@ -136,17 +137,30 @@ export function requireTask(dto: CreateTaskDto): TaskRequest {
     throw new BadRequestException('notBefore must be an ISO 8601 date-time');
   }
 
+  if (backlog && dto.index !== undefined) {
+    throw new BadRequestException('the backlog takes a task at its end');
+  }
+
   return {
     title,
     minutes,
     backlog,
     notBefore: backlog ? undefined : notBefore,
+    index: dto.index === undefined ? undefined : requireIndex(dto.index),
   };
 }
 
 /** Reads what the detail screen changed about a fixed block. */
 export function requireEventEdit(dto: EditEventDto): EventEdit {
-  const edit: EventEdit = requireTaskEdit(dto);
+  return requireTaskEdit(dto);
+}
+
+/**
+ * Reads what the detail screen, or a drop on the calendar, changed about a
+ * task or a block: its words, its length, or its hour.
+ */
+export function requireTaskEdit(dto: EditEventDto): TaskEdit {
+  const edit: TaskEdit = {};
 
   if (dto.startTime !== undefined) {
     if (
@@ -157,13 +171,6 @@ export function requireEventEdit(dto: EditEventDto): EventEdit {
     }
     edit.startTime = dto.startTime;
   }
-
-  return edit;
-}
-
-/** Reads what the detail screen changed about a task. */
-export function requireTaskEdit(dto: EditEventDto): TaskEdit {
-  const edit: TaskEdit = {};
 
   if (dto.title !== undefined) {
     const title = typeof dto.title === 'string' ? dto.title.trim() : '';

@@ -6,6 +6,7 @@ import {
   RoutineDays,
 } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
+import { TaskStore } from '../tasks/task.store';
 import { addMinutes, minutesOf } from '../time/work-hours';
 import { formatTimeIn, Zone } from '../time/zone';
 import { Routine, RoutineRequest } from './entities/routine.entity';
@@ -14,14 +15,18 @@ import { firstOccurrence, parseTime } from './routine-dates';
 /**
  * The blocks that happen every day, or every weekday, or every weekend.
  *
- * A routine is one row with a rule; the calendar writes down each day of it
- * as the timeline reaches that day, and from then on that day is a fixed
- * block like any other. Changing a routine changes every day of it that has
- * not begun yet.
+ * A routine is one row with a rule, and each day of it is written down as
+ * the timeline reaches that day: a fixed routine's as an event nothing
+ * moves, a flexible one's as a task anchored at the routine's hour. From
+ * then on that day is a block like any other. Changing a routine changes
+ * every day of it that has not begun yet.
  */
 @Injectable()
 export class RoutinesService {
-  constructor(private readonly _calendar: CalendarService) {}
+  constructor(
+    private readonly _calendar: CalendarService,
+    private readonly _tasks: TaskStore,
+  ) {}
 
   /** Every routine, earliest hour first. */
   async list(user: CalendarUser): Promise<Routine[]> {
@@ -36,7 +41,7 @@ export class RoutinesService {
   /** Writes a routine down, and answers with every routine. */
   async create(
     user: CalendarUser,
-    request: Required<RoutineRequest>,
+    request: Required<Omit<RoutineRequest, 'fixed'>> & { fixed?: boolean },
     trace: Trace,
     now = new Date(),
   ): Promise<Routine[]> {
@@ -47,6 +52,7 @@ export class RoutinesService {
       title: request.title,
       ...spanOf(request.time, request.durationMinutes, request.days, zone, now),
       days: request.days,
+      fixed: request.fixed ?? false,
     });
 
     return this.list(user);
@@ -77,7 +83,8 @@ export class RoutinesService {
     const retimed =
       next.time !== current.time ||
       next.durationMinutes !== current.durationMinutes ||
-      next.days !== current.days;
+      next.days !== current.days ||
+      next.fixed !== current.fixed;
     const zone = this._calendar.zone(user);
 
     trace.log('routine.update', { routineId, retimed });
@@ -90,11 +97,13 @@ export class RoutinesService {
           ? {
               ...spanOf(next.time, next.durationMinutes, next.days, zone, now),
               days: next.days,
+              fixed: next.fixed,
             }
           : {}),
       },
       now,
     );
+    await this._dropAhead(user, routineId, now);
 
     return this.list(user);
   }
@@ -107,10 +116,29 @@ export class RoutinesService {
     now = new Date(),
   ): Promise<Routine[]> {
     trace.log('routine.remove', { routineId });
+    await this._dropAhead(user, routineId, now);
     const removed = await this._calendar.removeRoutine(user, routineId, now);
     if (!removed) throw new NotFoundException(`No routine "${routineId}"`);
 
     return this.list(user);
+  }
+
+  /**
+   * Forgets the days of [routineId] still ahead that were written down as
+   * tasks, apart from one already begun. The calendar does the same for the
+   * days it wrote as events.
+   */
+  private async _dropAhead(
+    user: CalendarUser,
+    routineId: string,
+    now: Date,
+  ): Promise<void> {
+    const begun = new Set(
+      (await this._calendar.events(user, undefined, now)).flatMap(
+        (event) => event.taskId ?? [],
+      ),
+    );
+    await this._tasks.dropRoutineAhead(user, routineId, now, begun);
   }
 }
 
@@ -124,6 +152,7 @@ function routineOf(routine: CalendarRoutine, zone: Zone): Routine {
     time: formatTimeIn(start, zone),
     durationMinutes: minutesOf({ start, end: new Date(routine.endTime) }),
     days: routine.days,
+    fixed: routine.fixed,
   };
 }
 

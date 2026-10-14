@@ -26,6 +26,7 @@ class RoutinesRepository {
     required String time,
     required int durationMinutes,
     required RoutineDays days,
+    bool fixed = false,
   }) => _list(
     () => apiClient.post<List<dynamic>>(
       '/routines',
@@ -34,6 +35,7 @@ class RoutinesRepository {
         'time': time,
         'durationMinutes': durationMinutes,
         'days': days.wire,
+        'fixed': fixed,
       },
     ),
   );
@@ -45,6 +47,7 @@ class RoutinesRepository {
     String? time,
     int? durationMinutes,
     RoutineDays? days,
+    bool? fixed,
   }) => _list(
     () => apiClient.patch<List<dynamic>>(
       '/routines/$id',
@@ -53,6 +56,7 @@ class RoutinesRepository {
         'time': ?time,
         'durationMinutes': ?durationMinutes,
         'days': ?days?.wire,
+        'fixed': ?fixed,
       },
     ),
   );

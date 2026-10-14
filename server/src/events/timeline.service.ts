@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { CalendarService } from '../calendar/calendar.service';
-import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
+import {
+  CalendarEvent,
+  CalendarUser,
+  RoutineDays,
+} from '../calendar/calendar.types';
 import { relayout } from '../time/scheduling';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
@@ -9,9 +13,12 @@ import {
   BLOCK_GAP_MINUTES,
   floorToMinute,
   Interval,
+  DEFAULT_WORK_DAY,
+  formatMinuteOfDay,
   minutesOf,
+  WorkDay,
 } from '../time/work-hours';
-import { addDaysIn, startOfDayIn, Zone } from '../time/zone';
+import { addDaysIn, atMinuteIn, startOfDayIn, Zone } from '../time/zone';
 import { BacklogCard, Timeline, TimelineCard } from './entities/event.entity';
 import { dayOf, intervalOf, sectionOf } from './event-sections';
 
@@ -40,11 +47,17 @@ const MAX_PASSES = 5;
 export interface Day {
   now: Date;
   zone: Zone;
+  /** The hours of the day the queue is laid out in. */
+  workDay: WorkDay;
   /** The first instant the calendar no longer draws. */
   until: Date;
   /** Every event from a little before now to past the end of the queue. */
   events: CalendarEvent[];
-  /** Every task still to do, in queue order, the ones begun included. */
+  /**
+   * Every task still to do, in queue order, the ones begun and the anchored
+   * ones included. The order only means something for the tasks that are
+   * neither: an anchored task is where its hour is.
+   */
   tasks: Task[];
   /**
    * Every task waiting in the backlog, in its order. None of them has an
@@ -53,8 +66,10 @@ export interface Day {
   backlog: Task[];
   /** The hour of each task that was begun and is not over, by task id. */
   live: Map<string, CalendarEvent>;
-  /** Where the queue puts each task that has not been begun, by task id. */
+  /** Where the layout puts each task that has not been begun, by task id. */
   placed: Map<string, Interval>;
+  /** Which days each routine repeats on, by routine id. */
+  routines: Map<string, RoutineDays>;
 }
 
 /**
@@ -89,23 +104,34 @@ export class TimelineService {
     now = new Date(),
   ): Promise<Day> {
     const zone = this.zone(user);
+    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
     const until = startOfDayIn(addDaysIn(now, days, zone), zone);
-    const stored = await this._tasks.pending(user);
-    const tasks = stored.filter((task) => !task.backlog);
-    const backlog = stored.filter((task) => task.backlog);
-    const pending = new Set(tasks.map((task) => task.id));
+    const routines = new Map(
+      (await this._calendar.routines(user)).map((it) => [it.id, it.days]),
+    );
 
     let reach = until;
     let events: CalendarEvent[] = [];
     let live = new Map<string, CalendarEvent>();
     let placed = new Map<string, Interval>();
+    let tasks: Task[] = [];
+    let backlog: Task[] = [];
+    let stored: Task[] | undefined;
 
     for (let pass = 0; pass < MAX_PASSES; pass++) {
+      // The days of flexible routines are tasks, written down as the read
+      // reaches them, like a fixed routine's days are written as events.
+      const days = await this._calendar.routineDays(user, reach, now);
+      const written = await this._tasks.materialize(user, days);
+      if (stored === undefined || written > 0) {
+        stored = await this._tasks.pending(user);
+      }
       events = await this._calendar.events(user, reach, now);
 
       // A task whose hour ran out is over, and the minute tick writes it
       // down as done. Until it does, it is neither running nor queued.
       const over = new Set<string>();
+      const pending = new Set(stored.map((task) => task.id));
       live = new Map();
       for (const event of events) {
         if (event.taskId === undefined || !pending.has(event.taskId)) continue;
@@ -116,6 +142,13 @@ export class TimelineService {
         }
       }
 
+      // A day of a routine nobody began by the end of its day is gone, as a
+      // fixed one's hour would be. The minute tick writes it down as such.
+      const missed = (task: Task) =>
+        !live.has(task.id) && isMissed(task, now, zone, workDay);
+      tasks = stored.filter((task) => !task.backlog && !missed(task));
+      backlog = stored.filter((task) => task.backlog && !missed(task));
+
       const queue = tasks.filter(
         (task) => !live.has(task.id) && !over.has(task.id),
       );
@@ -123,12 +156,13 @@ export class TimelineService {
         queue.map((task) => ({
           id: task.id,
           minutes: task.minutes,
-          notBefore:
+          anchor:
             task.notBefore === undefined ? undefined : new Date(task.notBefore),
         })),
         events.flatMap((event) => intervalOf(event) ?? []),
         cursorOf(events, now),
         zone,
+        workDay,
       );
 
       const last = Math.max(
@@ -144,27 +178,20 @@ export class TimelineService {
     return {
       now,
       zone,
+      workDay,
       until,
       events,
       tasks: tasks.filter((task) => live.has(task.id) || placed.has(task.id)),
       backlog,
       live,
       placed,
+      routines,
     };
   }
 
   /** The day as the screen draws it: the list, and the calendar. */
   view(day: Day): Timeline {
-    const tasks = [
-      ...day.tasks
-        .filter((task) => day.live.has(task.id))
-        .sort(
-          (a, b) =>
-            Date.parse(day.live.get(a.id)!.startTime) -
-            Date.parse(day.live.get(b.id)!.startTime),
-        ),
-      ...day.tasks.filter((task) => !day.live.has(task.id)),
-    ].flatMap((task) => taskCard(day, task) ?? []);
+    const tasks = inOrder(day).flatMap((task) => taskCard(day, task) ?? []);
 
     const events = day.events.flatMap((event) => {
       // A begun task is drawn as its task, and a finished one's hour is
@@ -182,8 +209,59 @@ export class TimelineService {
           (a.kind === b.kind ? 0 : a.kind === 'event' ? -1 : 1),
       );
 
-    return { tasks, backlog: day.backlog.map(backlogCard), cards };
+    return {
+      tasks,
+      backlog: day.backlog.map((task) => backlogCard(day, task)),
+      cards,
+      workDay: {
+        start: formatMinuteOfDay(day.workDay.start),
+        end: formatMinuteOfDay(day.workDay.end),
+      },
+    };
   }
+}
+
+/**
+ * Every task on the day in the order the list draws it: what is running,
+ * then everything else by the hour the layout gave it.
+ *
+ * The same as the queue's order wherever only the queue decides, and the
+ * only order that is true once an anchored task sits among the rest.
+ */
+export function inOrder(day: Day): Task[] {
+  const startOf = (task: Task) =>
+    intervalOfTask(day, task.id)?.start.getTime() ?? Infinity;
+
+  return [
+    ...day.tasks
+      .filter((task) => day.live.has(task.id))
+      .sort((a, b) => startOf(a) - startOf(b)),
+    ...day.tasks
+      .filter((task) => !day.live.has(task.id))
+      .sort((a, b) => startOf(a) - startOf(b)),
+  ];
+}
+
+/** Whether [task] keeps an hour of its own rather than taking its turn. */
+export function isAnchored(day: Day, task: Task): boolean {
+  return task.notBefore !== undefined && !day.live.has(task.id);
+}
+
+/**
+ * Whether [task] is a day of a routine whose working day ended before
+ * anybody began it.
+ */
+export function isMissed(
+  task: Task,
+  now: Date,
+  zone: Zone,
+  workDay: WorkDay,
+): boolean {
+  if (task.routineId === undefined || task.occurrence === undefined) {
+    return false;
+  }
+
+  return atMinuteIn(new Date(task.occurrence), workDay.end, zone) <= now;
 }
 
 /** Where a task's hour is: the one it is taking, or the one it is given. */
@@ -238,11 +316,12 @@ function taskCard(day: Day, task: Task): TimelineCard | undefined {
       live === undefined ? task.minutes : Math.round(workSecondsOf(live) / 60),
     started: live !== undefined,
     awaitingStart: awaiting,
-    notBefore: task.notBefore,
+    notBefore: live === undefined ? task.notBefore : undefined,
+    routine: routineOf(day, task),
   };
 }
 
-function backlogCard(task: Task): BacklogCard {
+function backlogCard(day: Day, task: Task): BacklogCard {
   return {
     id: task.id,
     kind: 'task',
@@ -251,7 +330,14 @@ function backlogCard(task: Task): BacklogCard {
     durationMinutes: task.minutes,
     workMinutes: task.minutes,
     notes: task.notes,
+    routine: routineOf(day, task),
   };
+}
+
+function routineOf(day: Day, task: Task): RoutineDays | undefined {
+  return task.routineId === undefined
+    ? undefined
+    : day.routines.get(task.routineId);
 }
 
 function eventCard(day: Day, event: CalendarEvent): TimelineCard | undefined {

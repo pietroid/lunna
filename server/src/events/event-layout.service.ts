@@ -10,6 +10,7 @@ import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
 import {
   addMinutes,
+  DEFAULT_WORK_DAY,
   floorToMinute,
   roundUpToFiveMinutes,
 } from '../time/work-hours';
@@ -21,7 +22,13 @@ import {
 } from './entities/event.entity';
 import { intervalOf, isRunning } from './event-sections';
 import { StartNowGuard, TimingAction } from './timing';
-import { Day, TimelineService, workSecondsOf } from './timeline.service';
+import {
+  Day,
+  inOrder,
+  isMissed,
+  TimelineService,
+  workSecondsOf,
+} from './timeline.service';
 
 /**
  * Something running at this minute: a task that was begun, or an event.
@@ -194,10 +201,10 @@ export class EventLayoutService {
    * Writes a task down at the end of the backlog, which is where everything
    * waits until it is dragged into the queue.
    *
-   * One asked for straight in the queue goes at its end. With a floor it
-   * goes into the queue where that floor falls instead, after everything the
-   * queue puts before it, and keeps the floor so the next read does not pull
-   * it back to now.
+   * One asked for straight in the queue goes at its end, or at the place in
+   * the list it was written down at. One written down at an hour is anchored
+   * there instead: it keeps that hour and the queue flows around it. An hour
+   * the clock has passed is now.
    */
   async createTask(
     user: CalendarUser,
@@ -218,27 +225,31 @@ export class EventLayoutService {
       return;
     }
 
-    const queue = queueOf(day);
-    const floor =
+    const queue = turnTaking(day);
+    const anchor =
       request.notBefore === undefined
         ? undefined
-        : floorToMinute(new Date(request.notBefore));
-    const useful = floor !== undefined && floor > now ? floor : undefined;
-
+        : laterOf(
+            floorToMinute(new Date(request.notBefore)),
+            floorToMinute(now),
+          );
     const index =
-      useful === undefined
+      anchor !== undefined || request.index === undefined
         ? queue.length
-        : queue.filter((task) => day.placed.get(task.id)!.start < useful)
-            .length;
+        : queueIndexOf(day, request.index, new Set());
 
     const created = await this._tasks.insert(user, {
       title: request.title,
       minutes: request.minutes,
       position: await this._positionAt(user, queue, index),
-      notBefore: useful?.toISOString(),
+      notBefore: anchor?.toISOString(),
     });
 
-    trace.log('task.create', { taskId: created.id, index });
+    trace.log('task.create', {
+      taskId: created.id,
+      index,
+      anchor: anchor?.toISOString(),
+    });
   }
 
   /**
@@ -257,6 +268,25 @@ export class EventLayoutService {
     const day = await this._timeline.day(user, 1, now);
     let task = pendingOf(day, taskId);
     const live = day.live.get(taskId);
+
+    if (edit.startTime !== undefined) {
+      if (live !== undefined) {
+        throw new BadRequestException(
+          'Não dá para mudar o início de algo que já começou.',
+        );
+      }
+
+      const anchor = laterOf(
+        floorToMinute(new Date(edit.startTime)),
+        floorToMinute(now),
+      );
+      trace.log('task.anchor', { taskId, at: anchor.toISOString() });
+      task = await this._tasks.update(user, {
+        ...task,
+        notBefore: anchor.toISOString(),
+        backlog: false,
+      });
+    }
 
     const words = {
       ...(edit.title !== undefined && edit.title !== task.title
@@ -359,25 +389,32 @@ export class EventLayoutService {
       await this._calendar.remove(user, own);
     }
 
-    // A drop into a gap asks for that gap, so the task is not laid out any
-    // earlier than where it starts. A drop between two cards asks for no
-    // such thing, and lifts whatever floor it had.
-    const floor =
+    // A drop into a gap asks for that hour, so the task is anchored there
+    // and the queue flows around it. A drop between two cards asks for a
+    // place and not an hour, and lifts whatever anchor it had.
+    const anchor =
       action.after === undefined
         ? undefined
         : laterOf(floorToMinute(new Date(action.after)), floorToMinute(now));
 
-    const still = [...day.live.keys()].filter(
-      (id) => id !== task.id && id !== postponed?.id,
-    ).length;
-    const queue = queueOf(day).filter((it) => it.id !== task.id);
-    const index = Math.max(0, Math.min(action.index - still, queue.length));
+    const queue = turnTaking(day).filter(
+      (it) => it.id !== task.id && it.id !== postponed?.id,
+    );
+    const index = queueIndexOf(
+      day,
+      action.index,
+      new Set([task.id, ...(postponed === undefined ? [] : [postponed.id])]),
+    );
 
-    trace.log('task.move', { taskId: task.id, index });
+    trace.log('task.move', {
+      taskId: task.id,
+      index,
+      anchor: anchor?.toISOString(),
+    });
     const moved = await this._tasks.update(user, {
       ...task,
       position: await this._positionAt(user, queue, index),
-      notBefore: floor?.toISOString(),
+      notBefore: anchor?.toISOString(),
       minutes: action.minutes ?? task.minutes,
       backlog: false,
     });
@@ -485,13 +522,19 @@ export class EventLayoutService {
     now = new Date(),
   ): Promise<void> {
     const day = await this._timeline.day(user, 1, now);
-    pendingOf(day, taskId);
+    const task = pendingOf(day, taskId);
 
     const live = day.live.get(taskId);
     if (live !== undefined) await this._calendar.remove(user, live);
 
     trace.log('task.remove', { taskId });
-    await this._tasks.remove(user, taskId);
+    // A day of a routine is kept as taken off, so the next read does not
+    // write the same day back.
+    if (task.routineId !== undefined) {
+      await this._tasks.update(user, { ...task, cancelled: true });
+    } else {
+      await this._tasks.remove(user, taskId);
+    }
   }
 
   async pauseTask(
@@ -619,7 +662,13 @@ export class EventLayoutService {
         event.taskId !== undefined &&
         Date.parse(event.endTime) <= now.getTime(),
     );
-    if (over.length === 0) return;
+    const begun = new Set(
+      events.flatMap((event) =>
+        event.taskId !== undefined && Date.parse(event.endTime) > now.getTime()
+          ? [event.taskId]
+          : [],
+      ),
+    );
 
     const pending = new Map(
       (await this._tasks.pending(user)).map((task) => [task.id, task]),
@@ -630,6 +679,18 @@ export class EventLayoutService {
 
       trace.log('task.over', { taskId: task.id });
       await this._tasks.update(user, { ...task, doneAt: event.endTime });
+      pending.delete(task.id);
+    }
+
+    // A day of a routine nobody began before its day ended is gone, as the
+    // hour of a fixed one would be.
+    const zone = this._timeline.zone(user);
+    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
+    for (const task of pending.values()) {
+      if (begun.has(task.id) || !isMissed(task, now, zone, workDay)) continue;
+
+      trace.log('task.missed', { taskId: task.id });
+      await this._tasks.update(user, { ...task, cancelled: true });
     }
   }
 
@@ -937,9 +998,30 @@ export class EventLayoutService {
   }
 }
 
-/** The tasks waiting their turn, in queue order: everything not begun. */
-function queueOf(day: Day): Task[] {
-  return day.tasks.filter((task) => !day.live.has(task.id));
+/**
+ * The tasks that take their turn, in queue order: everything neither begun
+ * nor anchored at an hour of its own.
+ */
+function turnTaking(day: Day): Task[] {
+  return day.tasks.filter(
+    (task) => !day.live.has(task.id) && task.notBefore === undefined,
+  );
+}
+
+/**
+ * Where a place in the list lands in the queue.
+ *
+ * The list is in the order of the hours, which counts what is running and
+ * the anchored tasks too; the queue only orders the tasks that take their
+ * turn. A place is after however many of those are above it, with the ones
+ * in [without] taken out first, as the list was when the drop was made.
+ */
+function queueIndexOf(day: Day, index: number, without: Set<string>): number {
+  return inOrder(day)
+    .filter((task) => !without.has(task.id))
+    .slice(0, index)
+    .filter((task) => !day.live.has(task.id) && task.notBefore === undefined)
+    .length;
 }
 
 /** The task [taskId] while it is still to do, in the backlog or not, or a 404. */

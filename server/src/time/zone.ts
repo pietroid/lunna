@@ -137,6 +137,25 @@ export function instantOf(wall: Wall, zone: Zone): Date {
   return new Date(asUtc - offsetAt(new Date(guess), zone));
 }
 
+/**
+ * The same day as [at] in [zone], [minutes] after its midnight.
+ *
+ * 1440 is the midnight that ends the day, which is how a working day that
+ * runs to the end of it is written.
+ */
+export function atMinuteIn(at: Date, minutes: number, zone: Zone): Date {
+  const wall = wallOf(at, zone);
+  return instantOf(
+    {
+      ...wall,
+      hour: Math.floor(minutes / 60),
+      minute: minutes % 60,
+      second: 0,
+    },
+    zone,
+  );
+}
+
 /** The same day as [at] in [zone], at [hour] o'clock exactly. */
 export function atHourIn(at: Date, hour: number, zone: Zone): Date {
   const wall = wallOf(at, zone);

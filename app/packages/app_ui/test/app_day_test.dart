@@ -32,4 +32,11 @@ void main() {
       expect(night.r + night.g + night.b, lessThan(1));
     });
   });
+
+  test("follows the person's own day", () {
+    final at = DateTime(2026, 1, 1, 13);
+
+    expect(AppDay.progressAt(at, start: 9, end: 17), 0.5);
+    expect(AppDay.progressAt(DateTime(2026, 1, 1, 8), start: 9, end: 17), 0);
+  });
 }

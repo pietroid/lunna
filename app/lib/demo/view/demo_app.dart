@@ -29,6 +29,7 @@ class DemoApp extends StatelessWidget {
           create: (context) =>
               DemoTimelineRepository(context.l10n, resting: resting),
         ),
+        RepositoryProvider<TimelineAim>(create: (_) => TimelineAim()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -56,29 +57,6 @@ class DemoApp extends StatelessWidget {
 class _DemoHome extends StatelessWidget {
   const _DemoHome();
 
-  Future<void> _schedule(BuildContext context) async {
-    final bloc = context.read<TimelineBloc>();
-    final result = await AppPromptSheet.show(
-      context,
-      previewFor: (duration) => TimelinePlan.nextQueuedStart(
-        bloc.state.cards,
-        bloc.state.tasks,
-        duration,
-      ),
-      flexibleLabel: context.l10n.promptToBacklog,
-    );
-    if (result == null) return;
-
-    bloc.add(
-      EventCreated(
-        title: result.text,
-        durationMinutes: result.duration.inMinutes,
-        fixed: result.fixed,
-        startTime: result.startTime,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -98,6 +76,11 @@ class _DemoHome extends StatelessWidget {
                   child: TimelineList(
                     key: ValueKey(context.watch<TimelineModeCubit>().state),
                     mode: context.watch<TimelineModeCubit>().state,
+                    aim: context.read<TimelineAim>(),
+                    onWriteDown: (placement) => writeDownOnTimeline(
+                      context,
+                      placement: placement,
+                    ),
                     onCardTap: (card) => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => EventPage(id: card.id),
@@ -112,8 +95,13 @@ class _DemoHome extends StatelessWidget {
       ),
       floatingActionButton: AppFab(
         tooltip: context.l10n.shellWriteDown,
-        onPressed: () => _schedule(context),
+        onPressed: () => writeDownOnTimeline(
+          context,
+          placement:
+              context.read<TimelineAim>().value ?? const Placement.backlog(),
+        ),
       ),
+      floatingActionButtonLocation: AppFab.location,
       // Only Tempo is in the demo, so the other destinations are drawn and
       // stay where they are.
       bottomNavigationBar: AppBottomBar(
@@ -126,11 +114,11 @@ class _DemoHome extends StatelessWidget {
           ),
           AppBottomBarItem(
             iconData: AppIcons.things,
-            label: context.l10n.shellSecondTab,
+            label: context.l10n.shellProjectsTab,
           ),
           AppBottomBarItem(
             iconData: AppIcons.menu,
-            label: context.l10n.shellThirdTab,
+            label: context.l10n.shellMenuTab,
           ),
         ],
       ),

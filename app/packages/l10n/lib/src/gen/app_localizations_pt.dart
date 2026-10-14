@@ -27,13 +27,31 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shellTimelineTab => 'Tempo';
 
   @override
-  String get shellSecondTab => 'Aba 2';
+  String get shellProjectsTab => 'Projetos';
 
   @override
-  String get shellThirdTab => 'Aba 3';
+  String get shellMenuTab => 'Menu';
 
   @override
   String get shellComingSoon => 'Em breve.';
+
+  @override
+  String get menuRoutinesHint => 'Os blocos que se repetem';
+
+  @override
+  String get menuDaySection => 'Seu dia';
+
+  @override
+  String get menuDayStart => 'Começa às';
+
+  @override
+  String get menuDayEnd => 'Termina às';
+
+  @override
+  String get menuDayHelp => 'Nada entra na fila fora dessas horas.';
+
+  @override
+  String get menuDayTooShort => 'O dia precisa terminar pelo menos uma hora depois de começar.';
 
   @override
   String get shellWriteDown => 'Anotar';
@@ -320,10 +338,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stageSoonEmpty => 'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.';
 
   @override
-  String get stageBacklogEmpty => 'Nada esperando. O que você anotar fica aqui até ganhar um lugar na fila.';
+  String get stageBacklogEmpty => 'Nada esperando. Arraste para cá o que ainda não tem lugar na fila.';
 
   @override
   String get promptToBacklog => 'Vai para Depois eu priorizo';
+
+  @override
+  String get promptToQueue => 'Entra na fila, onde houver espaço';
+
+  @override
+  String get promptPickTime => 'Escolher horário';
+
+  @override
+  String get timelineAdd => 'Adicionar';
+
+  @override
+  String get timelineBackToNow => 'Voltar para agora';
 
   @override
   String get eventInBacklog => 'Em Depois eu priorizo, ainda sem hora';

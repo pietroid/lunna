@@ -128,7 +128,20 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s3),
-          const AppDayClock(),
+          // The ring fills over the person's own day, as the server last
+          // sent it.
+          Builder(
+            builder: (context) {
+              final workDay = context.select<TimelineBloc, WorkDay>(
+                (bloc) => bloc.state.workDay,
+              );
+
+              return AppDayClock(
+                startHour: workDay.start / 60,
+                endHour: workDay.end / 60,
+              );
+            },
+          ),
         ],
       ),
     );
@@ -202,8 +215,13 @@ class _Threads extends StatelessWidget {
           key: ValueKey(mode),
           mode: mode,
           onCardTap: (card) => _open(context, card),
-          // Tapping empty room is writing something down there.
-          onFreeTap: (tap) => unawaited(writeDownOnTimeline(context, tap: tap)),
+          // Where the button at the foot of the app writes follows the day
+          // on screen, so it is kept above this screen, where the button is.
+          aim: context.read<TimelineAim>(),
+          // Tapping empty room, or a +, is writing something down there.
+          onWriteDown: (placement) => unawaited(
+            writeDownOnTimeline(context, placement: placement),
+          ),
         ),
         // The guard is drawn over the timeline rather than pushed as a route:
         // the question is about a card that is still on screen, and the

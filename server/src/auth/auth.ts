@@ -64,6 +64,20 @@ export function createAuth(db: Database, settings: AuthSettings) {
           input: false,
           defaultValue: settings.defaultTimeZone,
         },
+        // When the working day runs, in minutes after midnight. Set from the
+        // app's menu through `PATCH /api/users/me`, never at sign-up.
+        dayStart: {
+          type: 'number',
+          required: false,
+          input: false,
+          defaultValue: 7 * 60,
+        },
+        dayEnd: {
+          type: 'number',
+          required: false,
+          input: false,
+          defaultValue: 22 * 60,
+        },
       },
     },
     session: {

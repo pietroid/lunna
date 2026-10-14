@@ -29,8 +29,10 @@ enum RoutineDays {
 /// A block that happens on the same days at the same hour: lunch, the
 /// morning routine.
 ///
-/// A routine is one rule on the calendar, written down as a fixed block on
-/// each day it falls on as the timeline reaches that day.
+/// A routine is one rule, written down on each day it falls on as the
+/// timeline reaches that day. Flexible unless it says otherwise: each day is
+/// a task that keeps the routine's hour, slides when something runs into it
+/// and waits to be begun. A fixed one's days are blocks nothing moves.
 /// {@endtemplate}
 class Routine extends Equatable {
   /// {@macro routine}
@@ -41,6 +43,7 @@ class Routine extends Equatable {
     required this.minute,
     required this.durationMinutes,
     required this.days,
+    this.fixed = false,
   });
 
   /// Creates a [Routine] from the API's JSON.
@@ -54,6 +57,7 @@ class Routine extends Equatable {
       minute: int.tryParse(time.length > 1 ? time[1] : '0') ?? 0,
       durationMinutes: json['durationMinutes'] as int? ?? 30,
       days: RoutineDays.fromWire(json['days'] as String?),
+      fixed: json['fixed'] as bool? ?? false,
     );
   }
 
@@ -75,6 +79,9 @@ class Routine extends Equatable {
   /// Which days it happens on.
   final RoutineDays days;
 
+  /// Whether its hour is the point of it, so nothing ever moves its days.
+  final bool fixed;
+
   /// Minutes past midnight it starts.
   int get startMinute => hour * 60 + minute;
 
@@ -83,5 +90,13 @@ class Routine extends Equatable {
       '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
   @override
-  List<Object?> get props => [id, title, hour, minute, durationMinutes, days];
+  List<Object?> get props => [
+    id,
+    title,
+    hour,
+    minute,
+    durationMinutes,
+    days,
+    fixed,
+  ];
 }

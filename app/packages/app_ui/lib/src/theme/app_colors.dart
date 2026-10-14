@@ -72,10 +72,14 @@ abstract final class AppColors {
   /// The fill behind a block a routine puts on every day.
   ///
   /// One of the two fills that is not a state. Lunch and the morning routine
-  /// are the same blocks every day, and telling them apart from what was
-  /// written down this morning at a glance is worth a faint cool shift off
-  /// [fill], and no more than that.
-  static const routineFill = Color(0xFF1A1E27);
+  /// are the same blocks every day, and the calendar should tell them apart
+  /// from what was written down this morning without being read: a deep
+  /// navy from the [info] family, plain enough beside [fill] to see at a
+  /// glance and still darker than anything that asks to be tapped.
+  static const routineFill = Color(0xFF17204A);
+
+  /// Marks and hours on [routineFill].
+  static const routineInk = Color(0xFF9AABEF);
 
   /// The fill behind a stretch of the day with nothing on it.
   ///

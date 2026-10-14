@@ -6,4 +6,6 @@ export class RoutineDto {
   durationMinutes?: number;
   /** `daily`, `weekdays` or `weekend`. */
   days?: string;
+  /** Whether its hour is the point of it. Flexible when not said. */
+  fixed?: boolean;
 }

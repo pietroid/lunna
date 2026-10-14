@@ -13,8 +13,8 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// exactly how much of the day it takes. A fixed card says so with a pin: it
 /// is the one card on the screen that will not move when the day is
 /// rearranged, and that is worth knowing before rearranging it. A routine's
-/// day carries a repeat mark and a faintly different fill, so lunch reads as
-/// lunch before its title does.
+/// day carries a repeat mark and its own navy fill, so lunch reads as lunch
+/// before its title does.
 ///
 /// A flexible block whose hour has come waits for the user. It is drawn as
 /// the running card exactly, paused at its first minute: the play button
@@ -107,7 +107,7 @@ class EventTile extends StatelessWidget {
                 AppIcon(
                   iconData: _mark!,
                   size: AppSpacing.s4,
-                  color: AppColors.ink3,
+                  color: _quiet,
                 ),
                 const SizedBox(width: AppSpacing.s2),
               ],
@@ -129,7 +129,7 @@ class EventTile extends StatelessWidget {
                     ? durationLabel(context.l10n, card.workMinutes)
                     : '${hhmm(landing?.start ?? card.startTime)}–'
                           '${hhmm(landing?.end ?? card.endTime)}',
-                style: AppTypography.label.copyWith(color: AppColors.ink3),
+                style: AppTypography.label.copyWith(color: _quiet),
               ),
             ],
           ),
@@ -182,6 +182,12 @@ class EventTile extends StatelessWidget {
       onDone: onDone!,
     );
   }
+
+  /// The colour of the mark and the hours: lifted off the navy on a
+  /// routine's day, where grey would sink into it.
+  Color get _quiet => card.isRoutine && !_isNow && !lifted && !pressed
+      ? AppColors.routineInk
+      : AppColors.ink3;
 
   /// The small icon in front of the title, when the card has earned one.
   AppIconData? get _mark {

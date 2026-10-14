@@ -125,23 +125,59 @@ abstract class AppLocalizations {
   /// **'Tempo'**
   String get shellTimelineTab;
 
-  /// No description provided for @shellSecondTab.
+  /// No description provided for @shellProjectsTab.
   ///
   /// In pt, this message translates to:
-  /// **'Aba 2'**
-  String get shellSecondTab;
+  /// **'Projetos'**
+  String get shellProjectsTab;
 
-  /// No description provided for @shellThirdTab.
+  /// No description provided for @shellMenuTab.
   ///
   /// In pt, this message translates to:
-  /// **'Aba 3'**
-  String get shellThirdTab;
+  /// **'Menu'**
+  String get shellMenuTab;
 
   /// No description provided for @shellComingSoon.
   ///
   /// In pt, this message translates to:
   /// **'Em breve.'**
   String get shellComingSoon;
+
+  /// No description provided for @menuRoutinesHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Os blocos que se repetem'**
+  String get menuRoutinesHint;
+
+  /// No description provided for @menuDaySection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu dia'**
+  String get menuDaySection;
+
+  /// No description provided for @menuDayStart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começa às'**
+  String get menuDayStart;
+
+  /// No description provided for @menuDayEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'Termina às'**
+  String get menuDayEnd;
+
+  /// No description provided for @menuDayHelp.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada entra na fila fora dessas horas.'**
+  String get menuDayHelp;
+
+  /// No description provided for @menuDayTooShort.
+  ///
+  /// In pt, this message translates to:
+  /// **'O dia precisa terminar pelo menos uma hora depois de começar.'**
+  String get menuDayTooShort;
 
   /// No description provided for @shellWriteDown.
   ///
@@ -614,7 +650,7 @@ abstract class AppLocalizations {
   /// No description provided for @stageBacklogEmpty.
   ///
   /// In pt, this message translates to:
-  /// **'Nada esperando. O que você anotar fica aqui até ganhar um lugar na fila.'**
+  /// **'Nada esperando. Arraste para cá o que ainda não tem lugar na fila.'**
   String get stageBacklogEmpty;
 
   /// No description provided for @promptToBacklog.
@@ -622,6 +658,30 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Vai para Depois eu priorizo'**
   String get promptToBacklog;
+
+  /// No description provided for @promptToQueue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entra na fila, onde houver espaço'**
+  String get promptToQueue;
+
+  /// No description provided for @promptPickTime.
+  ///
+  /// In pt, this message translates to:
+  /// **'Escolher horário'**
+  String get promptPickTime;
+
+  /// No description provided for @timelineAdd.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adicionar'**
+  String get timelineAdd;
+
+  /// No description provided for @timelineBackToNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Voltar para agora'**
+  String get timelineBackToNow;
 
   /// No description provided for @eventInBacklog.
   ///

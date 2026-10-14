@@ -30,7 +30,14 @@ export interface RoutinePatch {
   startTime?: string;
   endTime?: string;
   days?: RoutineDays;
+  fixed?: boolean;
 }
+
+/** What a routine is booked with. Flexible unless it says otherwise. */
+export type NewRoutine = Required<Omit<RoutinePatch, 'fixed'>> & {
+  title: string;
+  fixed?: boolean;
+};
 
 /**
  * Where the calendar is kept.
@@ -39,10 +46,11 @@ export interface RoutinePatch {
  * Postgres in production ([PgCalendarStore]); memory in the tests that drive
  * the timeline end to end ([MemoryCalendarStore]), which have no database.
  *
- * **Routines are expanded here.** A read of a window first writes down every
- * day of every routine that falls in it and is not already there, so from
- * the moment the timeline can see a day of a routine it is an ordinary row
- * that moves, pauses and finishes like any other block.
+ * **Fixed routines are expanded here.** A read of a window first writes down
+ * every day of every fixed routine that falls in it and is not already
+ * there, so from the moment the timeline can see such a day it is an
+ * ordinary row that pauses and finishes like any other block. A flexible
+ * routine's days are tasks, which the timeline writes down itself.
  */
 export abstract class CalendarStore {
   /** Every live event whose span touches [from, to], earliest first. */
@@ -79,7 +87,7 @@ export abstract class CalendarStore {
 
   abstract insertRoutine(
     user: CalendarUser,
-    routine: Required<RoutinePatch> & { title: string },
+    routine: NewRoutine,
   ): Promise<CalendarRoutine>;
 
   /**
@@ -141,7 +149,7 @@ export class MemoryCalendarStore extends CalendarStore {
     zone: Zone,
   ): Promise<CalendarEvent[]> {
     for (const routine of this._routines.values()) {
-      if (routine.userId !== user.id) continue;
+      if (routine.userId !== user.id || !routine.fixed) continue;
 
       for (const day of occurrencesBetween(routine, from, to, zone)) {
         const key = `${routine.id}@${day.start.toISOString()}`;
@@ -251,10 +259,11 @@ export class MemoryCalendarStore extends CalendarStore {
 
   insertRoutine(
     user: CalendarUser,
-    routine: Required<RoutinePatch> & { title: string },
+    routine: NewRoutine,
   ): Promise<CalendarRoutine> {
     const stored: StoredRoutine = {
       ...routine,
+      fixed: routine.fixed ?? false,
       id: randomUUID(),
       userId: user.id,
     };

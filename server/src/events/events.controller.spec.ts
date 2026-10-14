@@ -19,6 +19,7 @@ import { TasksController } from './tasks.controller';
 import { TimelineController } from './timeline.controller';
 import { TimelineService } from './timeline.service';
 import { StartNowGuard } from './timing';
+import { DEFAULT_WORK_DAY } from '../time/work-hours';
 
 /** Signs everyone in as the same person, in the zone this file runs in. */
 class StubSessionGuard implements CanActivate {
@@ -28,6 +29,8 @@ class StubSessionGuard implements CanActivate {
       email: 'test@example.com',
       name: 'Test',
       timeZone: ZONE,
+      dayStart: DEFAULT_WORK_DAY.start,
+      dayEnd: DEFAULT_WORK_DAY.end,
     };
     return true;
   }
@@ -466,7 +469,7 @@ describe('the day', () => {
       expect(drawn.notBefore).toBe(room.toISOString());
     });
 
-    it('puts one written in empty room in the queue where the room is', async () => {
+    it('keeps one written at an hour there, and the queue fills around it', async () => {
       await add('Primeiro', 30).expect(201);
       await add('Tarde', 30, { notBefore: inHours(4).toISOString() });
       await add('Fim da fila', 30).expect(201);
@@ -475,17 +478,43 @@ describe('the day', () => {
         await add('Meio', 30, { notBefore: inHours(2).toISOString() }),
       );
 
-      expect(titles(day)).toEqual(['Primeiro', 'Meio', 'Tarde', 'Fim da fila']);
+      expect(titles(day)).toEqual(['Primeiro', 'Fim da fila', 'Meio', 'Tarde']);
+      expect(hhmm(day[2].startTime)).toBe('12:00');
+      expect(hhmm(day[3].startTime)).toBe('14:00');
     });
 
-    it('ignores a floor the clock has already passed', async () => {
+    it('anchors one written at an hour the clock has passed at now', async () => {
+      await add('Depois', 30).expect(201);
       const past = new Date(Date.now() - 3_600_000).toISOString();
 
-      const [drawn] = tasks(
+      const [drawn, next] = tasks(
         await add('Ler', 30, { notBefore: past }).expect(201),
       );
 
-      expect(drawn.notBefore).toBeUndefined();
+      expect(drawn.title).toBe('Ler');
+      expect(drawn.awaitingStart).toBe(true);
+      expect(hhmm(drawn.startTime)).toBe('10:00');
+      expect(next.title).toBe('Depois');
+    });
+
+    it('puts one at a place in the list when asked for one', async () => {
+      await add('Primeiro', 30).expect(201);
+      await add('Segundo', 30).expect(201);
+
+      const day = tasks(await add('Meio', 30, { index: 1 }).expect(201));
+
+      expect(titles(day)).toEqual(['Primeiro', 'Meio', 'Segundo']);
+    });
+
+    it('counts a place past an anchored task as a place in the queue', async () => {
+      await add('Primeiro', 30).expect(201);
+      await add('Almoço', 60, { notBefore: inHours(2).toISOString() });
+      await add('Segundo', 30).expect(201);
+
+      // Primeiro, Segundo, Almoço: a place after Segundo is the queue's end.
+      const day = tasks(await add('Novo', 30, { index: 2 }).expect(201));
+
+      expect(titles(day)).toEqual(['Primeiro', 'Segundo', 'Novo', 'Almoço']);
     });
   });
 
@@ -1094,6 +1123,7 @@ describe('the day', () => {
     it('draws as many days as asked, routines and all', async () => {
       const lunch = inHours(2);
       await store.insertRoutine(owner, {
+        fixed: true,
         title: 'Almoço',
         startTime: lunch.toISOString(),
         endTime: new Date(lunch.getTime() + 60 * 60_000).toISOString(),
@@ -1119,6 +1149,7 @@ describe('the day', () => {
       const morning = new Date(NOW);
       morning.setHours(7, 0, 0, 0);
       await store.insertRoutine(owner, {
+        fixed: true,
         title: 'Manhã',
         startTime: morning.toISOString(),
         endTime: new Date(morning.getTime() + 5 * 3_600_000).toISOString(),
@@ -1140,9 +1171,114 @@ describe('the day', () => {
   });
 
   describe('routines', () => {
+    /** A flexible lunch every day, at [at]'s hour, an hour long. */
+    function lunchAt(at: Date) {
+      return store.insertRoutine(owner, {
+        title: 'Almoço',
+        startTime: at.toISOString(),
+        endTime: new Date(at.getTime() + 60 * 60_000).toISOString(),
+        days: 'daily',
+      });
+    }
+
+    it('writes a flexible one down as a task anchored at its hour', async () => {
+      await lunchAt(inHours(2));
+
+      const day = await read(3);
+      const lunches = day.tasks.filter((it) => it.title === 'Almoço');
+
+      expect(lunches.map((it) => it.day)).toEqual([
+        '2026-03-10',
+        '2026-03-11',
+        '2026-03-12',
+      ]);
+      expect(lunches.every((it) => hhmm(it.startTime) === '12:00')).toBe(true);
+      expect(lunches[0]).toMatchObject({ kind: 'task', routine: 'daily' });
+      expect(lunches[0].notBefore).toBeDefined();
+      // The calendar draws it too, and never as an event.
+      expect(
+        day.cards.filter((it) => it.title === 'Almoço' && it.kind === 'event'),
+      ).toHaveLength(0);
+    });
+
+    it('lets a task nobody began hop over it', async () => {
+      await lunchAt(inHours(2));
+      await add('Longa', 150).expect(201);
+
+      const day = (await read()).tasks;
+      const lunch = day.find((it) => it.title === 'Almoço')!;
+      const long = day.find((it) => it.title === 'Longa')!;
+
+      expect(hhmm(lunch.startTime)).toBe('12:00');
+      expect(hhmm(long.startTime)).toBe('13:05');
+    });
+
+    it('slides when something running runs into it', async () => {
+      await lunchAt(inHours(2));
+      await add('Longa', 150).expect(201);
+      await begin('Longa');
+
+      const lunch = await task('Almoço');
+
+      expect(hhmm(lunch.startTime)).toBe('12:35');
+    });
+
+    it('waits for the user once its hour has come', async () => {
+      await lunchAt(inHours(2));
+      await read();
+
+      later(130);
+      const [lunch] = (await read()).tasks;
+
+      expect(lunch.title).toBe('Almoço');
+      expect(lunch.awaitingStart).toBe(true);
+      expect(hhmm(lunch.startTime)).toBe('12:10');
+    });
+
+    it('is gone once its day ends without it, and tomorrow has its own', async () => {
+      await lunchAt(inHours(2));
+      await read();
+
+      later(13 * 60);
+      const lunches = (await read()).tasks.filter(
+        (it) => it.title === 'Almoço',
+      );
+
+      expect(lunches.map((it) => it.day)).toEqual(['2026-03-11']);
+    });
+
+    it('does not bring back a flexible day that was taken off', async () => {
+      await lunchAt(inHours(2));
+      const today = await task('Almoço');
+
+      await request(app.getHttpServer())
+        .delete(`/tasks/${today.id}`)
+        .expect(200);
+
+      const lunches = (await read(2)).tasks.filter(
+        (it) => it.title === 'Almoço',
+      );
+      expect(lunches.map((it) => it.day)).toEqual(['2026-03-11']);
+    });
+
+    it('gives a flexible day another hour from the detail screen', async () => {
+      await lunchAt(inHours(2));
+      const today = await task('Almoço');
+
+      const moved = tasks(
+        await request(app.getHttpServer())
+          .patch(`/tasks/${today.id}`)
+          .send({ startTime: inHours(3).toISOString() })
+          .expect(200),
+      ).find((it) => it.id === today.id)!;
+
+      expect(hhmm(moved.startTime)).toBe('13:00');
+    });
+
     it('moves one day of a routine and leaves the others where they were', async () => {
       const lunch = inHours(2);
       await store.insertRoutine(owner, {
+        fixed: true,
         title: 'Almoço',
         startTime: lunch.toISOString(),
         endTime: new Date(lunch.getTime() + 60 * 60_000).toISOString(),
@@ -1176,6 +1312,7 @@ describe('the day', () => {
     it('does not bring back a day of a routine that was taken off', async () => {
       const lunch = inHours(2);
       await store.insertRoutine(owner, {
+        fixed: true,
         title: 'Almoço',
         startTime: lunch.toISOString(),
         endTime: new Date(lunch.getTime() + 60 * 60_000).toISOString(),

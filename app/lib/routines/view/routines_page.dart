@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter/services.dart';
@@ -81,6 +82,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
         time: _time(draft.startMinute),
         durationMinutes: draft.durationMinutes,
         days: _tab,
+        fixed: draft.fixed,
       ),
     );
   }
@@ -91,6 +93,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
       title: routine.title,
       startMinute: routine.startMinute,
       durationMinutes: routine.durationMinutes,
+      fixed: routine.fixed,
       editing: true,
     );
     if (draft == null) return;
@@ -110,6 +113,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
         durationMinutes: draft.durationMinutes == routine.durationMinutes
             ? null
             : draft.durationMinutes,
+        fixed: draft.fixed == routine.fixed ? null : draft.fixed,
       ),
     );
   }
@@ -205,6 +209,9 @@ class _RoutinesPageState extends State<RoutinesPage> {
                   child: routines == null
                       ? const SizedBox.shrink()
                       : _DayGrid(
+                          workDay: context.select<TimelineBloc, WorkDay>(
+                            (bloc) => bloc.state.workDay,
+                          ),
                           own: [
                             for (final routine in routines)
                               if (routine.days == _tab) routine,
@@ -232,9 +239,14 @@ class _RoutinesPageState extends State<RoutinesPage> {
   }
 }
 
-/// The working day, seven to ten, with the routines on it.
+/// The working day, with the routines on it.
+///
+/// It spans the person's own hours, and stretches to an earlier or later
+/// hour when a routine already sits outside them, so none is drawn off the
+/// edge.
 class _DayGrid extends StatelessWidget {
   const _DayGrid({
+    required this.workDay,
     required this.own,
     required this.context_,
     required this.onCreate,
@@ -245,9 +257,27 @@ class _DayGrid extends StatelessWidget {
   /// How tall a minute is. The whole day is a long scroll, not a squeeze.
   static const perMinute = 1.1;
 
-  /// Where the day starts and ends, in minutes past midnight.
-  static const int _first = 7 * 60;
-  static const int _last = 22 * 60;
+  /// The hours the person set for their day.
+  final WorkDay workDay;
+
+  /// Where the grid starts, on the hour, in minutes past midnight.
+  int get _first {
+    final starts = [
+      workDay.start,
+      for (final it in [...own, ...context_]) it.startMinute,
+    ];
+    return starts.reduce(math.min) ~/ 60 * 60;
+  }
+
+  /// Where the grid ends, on the hour, in minutes past midnight.
+  int get _last {
+    final ends = [
+      workDay.end,
+      for (final it in [...own, ...context_])
+        it.startMinute + it.durationMinutes,
+    ];
+    return math.min((ends.reduce(math.max) + 59) ~/ 60 * 60, 24 * 60);
+  }
 
   /// How wide the hour labels on the left are.
   static const double _gutter = AppSpacing.s12;
@@ -262,11 +292,13 @@ class _DayGrid extends StatelessWidget {
   final ValueChanged<Routine> onOpen;
   final void Function(Routine routine, int startMinute) onMove;
 
-  static double _y(int minute) => (minute - _first) * perMinute;
+  double _y(int minute) => (minute - _first) * perMinute;
 
   @override
   Widget build(BuildContext context) {
-    const height = (_last - _first) * perMinute;
+    final first = _first;
+    final last = _last;
+    final height = (last - first) * perMinute;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -280,7 +312,7 @@ class _DayGrid extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            for (var hour = 7; hour <= 22; hour++)
+            for (var hour = first ~/ 60; hour <= last ~/ 60; hour++)
               Positioned(
                 top: _y(hour * 60) - AppSpacing.s2,
                 left: 0,
@@ -311,9 +343,9 @@ class _DayGrid extends StatelessWidget {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (details) {
-                  final minute = _first + details.localPosition.dy / perMinute;
+                  final minute = first + details.localPosition.dy / perMinute;
                   final quarter = (minute / 15).floor() * 15;
-                  onCreate(quarter.clamp(_first, _last - 15));
+                  onCreate(quarter.clamp(first, last - 15));
                 },
               ),
             ),
@@ -420,7 +452,9 @@ class _RoutineBlockState extends State<_RoutineBlock> {
           const SizedBox(width: AppSpacing.s2),
           Text(
             _label,
-            style: AppTypography.label.copyWith(color: AppColors.ink3),
+            style: AppTypography.label.copyWith(
+              color: _lifted ? AppColors.ink3 : AppColors.routineInk,
+            ),
           ),
         ],
       ),
@@ -467,32 +501,40 @@ class _RoutineDraft {
     required this.title,
     required this.startMinute,
     required this.durationMinutes,
+    required this.fixed,
   }) : delete = false;
 
   const _RoutineDraft.deleted()
     : title = '',
       startMinute = 0,
       durationMinutes = 0,
+      fixed = false,
       delete = true;
 
   final String title;
   final int startMinute;
   final int durationMinutes;
+  final bool fixed;
   final bool delete;
 }
 
-/// A routine, written down or opened: its name, its hour and its length.
+/// A routine, written down or opened: its name, whether its hour is the
+/// point of it, its hour and its length.
 class _RoutineSheet extends StatefulWidget {
   const _RoutineSheet({
     required this.startMinute,
     required this.durationMinutes,
     this.title,
+    this.fixed = false,
     this.editing = false,
   });
 
   final String? title;
   final int startMinute;
   final int durationMinutes;
+
+  /// Whether its days never move. Flexible, like everything, by default.
+  final bool fixed;
 
   /// Whether it already exists, which is what offers the delete.
   final bool editing;
@@ -502,6 +544,7 @@ class _RoutineSheet extends StatefulWidget {
     required int startMinute,
     required int durationMinutes,
     String? title,
+    bool fixed = false,
     bool editing = false,
   }) {
     return showModalBottomSheet<_RoutineDraft>(
@@ -513,6 +556,7 @@ class _RoutineSheet extends StatefulWidget {
         title: title,
         startMinute: startMinute,
         durationMinutes: durationMinutes,
+        fixed: fixed,
         editing: editing,
       ),
     );
@@ -526,6 +570,7 @@ class _RoutineSheetState extends State<_RoutineSheet> {
   late final _controller = TextEditingController(text: widget.title);
   late int _start = widget.startMinute;
   late int _duration = widget.durationMinutes;
+  late bool _fixed = widget.fixed;
 
   @override
   void dispose() {
@@ -565,6 +610,7 @@ class _RoutineSheetState extends State<_RoutineSheet> {
         title: title,
         startMinute: _start,
         durationMinutes: _duration,
+        fixed: _fixed,
       ),
     );
   }
@@ -615,14 +661,32 @@ class _RoutineSheetState extends State<_RoutineSheet> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.s3),
-                Row(
+                Wrap(
+                  spacing: AppSpacing.s2,
+                  runSpacing: AppSpacing.s2,
                   children: [
+                    // Flexible slides when something runs into it and waits
+                    // to be begun; fixed never moves.
+                    AppSegmented(
+                      selected: _fixed ? 1 : 0,
+                      onSelected: (index) =>
+                          setState(() => _fixed = index == 1),
+                      segments: [
+                        AppSegment(
+                          label: context.l10n.promptFlexible,
+                          iconData: AppIcons.time,
+                        ),
+                        AppSegment(
+                          label: context.l10n.promptFixed,
+                          iconData: AppIcons.pin,
+                        ),
+                      ],
+                    ),
                     AppPillButton(
                       iconData: AppIcons.time,
                       label: time,
                       onPressed: _pickTime,
                     ),
-                    const SizedBox(width: AppSpacing.s2),
                     AppPillButton(
                       iconData: AppIcons.timer,
                       label: formatDuration(

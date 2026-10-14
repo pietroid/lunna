@@ -1,6 +1,7 @@
 import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 import 'package:timeline/src/models/timeline_event.dart';
+import 'package:timeline/src/models/work_day.dart';
 
 /// {@template free_slot}
 /// A stretch of the working day with nothing on it.
@@ -16,6 +17,7 @@ class FreeSlot extends Equatable {
     required this.end,
     required this.earliest,
     required this.index,
+    this.beforeBlock = false,
   });
 
   /// Where the stretch begins: the end of the block before it, now, or the
@@ -33,6 +35,18 @@ class FreeSlot extends Equatable {
   /// the day's queue a drop into it lands on.
   final int index;
 
+  /// Whether a block comes right after it, rather than the end of the day,
+  /// so something dropped here has to end a pause before [end].
+  final bool beforeBlock;
+
+  /// The latest a block of [minutes] dropped here could start and still end
+  /// in time, pause included. Never before [earliest].
+  DateTime latestStart(int minutes) {
+    final room = beforeBlock ? end.subtract(TimelinePlan.gap) : end;
+    final latest = room.subtract(Duration(minutes: minutes));
+    return latest.isBefore(earliest) ? earliest : latest;
+  }
+
   /// How long a block dropped here can be and still fit.
   int get capacityMinutes => end.difference(earliest).inMinutes;
 
@@ -40,7 +54,7 @@ class FreeSlot extends Equatable {
   bool contains(DateTime at) => !at.isBefore(start) && at.isBefore(end);
 
   @override
-  List<Object?> get props => [start, end, earliest, index];
+  List<Object?> get props => [start, end, earliest, index, beforeBlock];
 }
 
 /// Where something new would land, worked out on the phone.
@@ -53,13 +67,10 @@ class FreeSlot extends Equatable {
 ///
 /// It can be wrong, in one way only: something the user booked on another
 /// device since the last load. The next list puts it right.
+///
+/// Every answer is inside a [WorkDay], the one the server last sent, so the
+/// phone and the server agree on when the day starts and ends.
 abstract final class TimelinePlan {
-  /// The first hour of the working day.
-  static const startHour = 7;
-
-  /// The hour the working day ends.
-  static const endHour = 22;
-
   /// The breathing room left between two blocks.
   static const gap = Duration(minutes: 5);
 
@@ -75,6 +86,7 @@ abstract final class TimelinePlan {
     List<TimelineEvent> tasks,
     Duration duration, {
     DateTime? now,
+    WorkDay workDay = WorkDay.standard,
   }) {
     final present = now ?? clock.now();
     final last = tasks.isEmpty ? null : tasks.last.endTime.add(gap);
@@ -83,6 +95,7 @@ abstract final class TimelinePlan {
       cards,
       duration,
       now: last != null && last.isAfter(present) ? last : present,
+      workDay: workDay,
     );
   }
 
@@ -95,18 +108,24 @@ abstract final class TimelinePlan {
     List<TimelineEvent> cards,
     Duration duration, {
     DateTime? now,
+    WorkDay workDay = WorkDay.standard,
   }) {
     final booked = [...cards]
       ..sort((a, b) => a.startTime.compareTo(b.startTime));
-    var start = _earliest(now ?? clock.now());
+    var start = now ?? clock.now();
 
     // One pass per block it steps over, plus one per day it spills out of.
     for (var attempt = 0; attempt < 500; attempt++) {
+      // Stepping past a block can land outside the day: before it opens,
+      // after a block that ran past midnight, or after it has closed.
+      start = _earliest(start, workDay);
       final end = start.add(duration);
-      final dayEnd = DateTime(start.year, start.month, start.day, endHour);
+      final dayEnd = workDay.endOn(start);
 
       if (end.isAfter(dayEnd)) {
-        start = DateTime(start.year, start.month, start.day + 1, startHour);
+        start = workDay.startOn(
+          DateTime(start.year, start.month, start.day + 1),
+        );
         continue;
       }
 
@@ -135,6 +154,7 @@ abstract final class TimelinePlan {
     List<TimelineEvent> cards, {
     DateTime? now,
     int days = 2,
+    WorkDay workDay = WorkDay.standard,
   }) {
     final present = now ?? clock.now();
     final sorted = [...cards]
@@ -142,18 +162,9 @@ abstract final class TimelinePlan {
     final slots = <FreeSlot>[];
 
     for (var offset = 0; offset < days; offset++) {
-      final dayStart = DateTime(
-        present.year,
-        present.month,
-        present.day + offset,
-        startHour,
-      );
-      final dayEnd = DateTime(
-        present.year,
-        present.month,
-        present.day + offset,
-        endHour,
-      );
+      final date = DateTime(present.year, present.month, present.day + offset);
+      final dayStart = workDay.startOn(date);
+      final dayEnd = workDay.endOn(date);
       var cursor = offset == 0 && present.isAfter(dayStart)
           ? _toMinute(present)
           : dayStart;
@@ -175,6 +186,7 @@ abstract final class TimelinePlan {
               end: card.startTime,
               earliest: afterBlock ? cursor.add(gap) : cursor,
               index: index,
+              beforeBlock: true,
             ),
           );
         }
@@ -200,16 +212,14 @@ abstract final class TimelinePlan {
   }
 
   /// The earliest [at] could be, given the day has hours.
-  static DateTime _earliest(DateTime at) {
-    final dayStart = DateTime(at.year, at.month, at.day, startHour);
-    final dayEnd = DateTime(at.year, at.month, at.day, endHour);
+  static DateTime _earliest(DateTime at, WorkDay workDay) {
+    final dayStart = workDay.startOn(at);
+    final dayEnd = workDay.endOn(at);
 
     if (at.isBefore(dayStart)) return dayStart;
-    if (at.isBefore(dayEnd)) {
-      return DateTime(at.year, at.month, at.day, at.hour, at.minute);
-    }
+    if (at.isBefore(dayEnd)) return _toMinute(at);
 
-    return DateTime(at.year, at.month, at.day + 1, startHour);
+    return workDay.startOn(DateTime(at.year, at.month, at.day + 1));
   }
 
   /// [at] with its seconds dropped. Exactly the gap after what it hit, not

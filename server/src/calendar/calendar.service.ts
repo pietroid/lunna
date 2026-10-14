@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { occurrencesBetween } from '../routines/routine-dates';
+import { RoutineTask } from '../tasks/task.types';
+import { floorToMinute, minutesOf } from '../time/work-hours';
 import { systemZone, Zone } from '../time/zone';
-import { CalendarStore, NewEvent, RoutinePatch } from './calendar.store';
+import {
+  CalendarStore,
+  NewEvent,
+  NewRoutine,
+  RoutinePatch,
+} from './calendar.store';
 import { CalendarEvent, CalendarRoutine, CalendarUser } from './calendar.types';
 
 /**
@@ -32,6 +40,10 @@ interface Cached {
   inFlight?: Promise<CalendarEvent[]>;
   /** How far ahead the read in flight reaches. */
   inFlightUntil?: number;
+  /** Every routine, once read, until one of them changes. */
+  routines?: CalendarRoutine[];
+  /** How far ahead the days of flexible routines were handed out. */
+  routineDaysUntil: number;
 }
 
 /**
@@ -142,13 +154,54 @@ export class CalendarService {
     cached.events = cached.events.filter((it) => it.id !== event.id);
   }
 
+  /** Every routine, from cache once read. */
   async routines(user: CalendarUser): Promise<CalendarRoutine[]> {
-    return this._store.routines(user);
+    const cached = this._entry(user);
+    cached.routines ??= await this._store.routines(user);
+
+    return cached.routines;
+  }
+
+  /**
+   * The days of every flexible routine from [now] up to [until] not handed
+   * out yet, to be written down as tasks.
+   *
+   * A day whose hour has already gone is not one: a routine written down at
+   * three for noon starts tomorrow, the way a fixed one's past day is simply
+   * not drawn. Writing a day down twice is harmless, so forgetting what was
+   * handed out, on a restart or a routine change, only costs a query.
+   */
+  async routineDays(
+    user: CalendarUser,
+    until: Date,
+    now = new Date(),
+  ): Promise<RoutineTask[]> {
+    const cached = this._entry(user);
+    const from = Math.max(
+      cached.routineDaysUntil,
+      floorToMinute(now).getTime(),
+    );
+    if (until.getTime() <= from) return [];
+
+    const zone = this.zone(user);
+    const routines = (await this.routines(user)).filter((it) => !it.fixed);
+    cached.routineDaysUntil = until.getTime();
+
+    return routines.flatMap((routine) =>
+      occurrencesBetween(routine, new Date(from), until, zone)
+        .filter((day) => day.start.getTime() >= from)
+        .map((day) => ({
+          routineId: routine.id,
+          title: routine.title,
+          minutes: minutesOf(day),
+          occurrence: day.start.toISOString(),
+        })),
+    );
   }
 
   async createRoutine(
     user: CalendarUser,
-    routine: Required<RoutinePatch> & { title: string },
+    routine: NewRoutine,
   ): Promise<CalendarRoutine> {
     const created = await this._store.insertRoutine(user, routine);
     this._invalidate(user);
@@ -209,15 +262,21 @@ export class CalendarService {
     ];
   }
 
-  /** Forgets the cached day, so the next ask goes to the store. */
+  /**
+   * Forgets the cached day and routines, so the next ask goes to the store
+   * and the days of flexible routines are handed out again.
+   */
   private _invalidate(user: CalendarUser): void {
-    this._entry(user).readAt = 0;
+    const cached = this._entry(user);
+    cached.readAt = 0;
+    cached.routines = undefined;
+    cached.routineDaysUntil = 0;
   }
 
   private _entry(user: CalendarUser): Cached {
     let cached = this._cache.get(user.id);
     if (cached === undefined) {
-      cached = { events: [], readAt: 0, until: 0 };
+      cached = { events: [], readAt: 0, until: 0, routineDaysUntil: 0 };
       this._cache.set(user.id, cached);
     }
 

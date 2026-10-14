@@ -57,6 +57,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           cards: timeline.cards,
           tasks: timeline.tasks,
           backlog: timeline.backlog,
+          workDay: timeline.workDay,
           clearFailure: true,
         ),
       );
@@ -88,6 +89,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           cards: timeline.cards,
           tasks: timeline.tasks,
           backlog: timeline.backlog,
+          workDay: timeline.workDay,
         ),
       );
     } on Object catch (error) {
@@ -119,6 +121,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         cards: timeline.cards,
         tasks: timeline.tasks,
         backlog: timeline.backlog,
+        workDay: timeline.workDay,
         guard: timeline.guard,
         clearFailure: true,
       ),
@@ -144,6 +147,9 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           : _repository.createTask(
               title: event.title,
               minutes: event.durationMinutes,
+              placement: startTime == null
+                  ? event.placement
+                  : Placement.at(startTime),
               days: _days,
             ),
     );
@@ -241,6 +247,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           cards: timeline.cards,
           tasks: timeline.tasks,
           backlog: timeline.backlog,
+          workDay: timeline.workDay,
           guard: timeline.guard,
           clearGuard: timeline.guard == null,
           guardBusy: false,

@@ -1,3 +1,5 @@
+import { WorkDay } from '../time/work-hours';
+
 /**
  * The calendar, as the rest of the server knows it.
  *
@@ -20,6 +22,11 @@ export interface CalendarUser {
    * tests and background work, where the server's default stands in.
    */
   timeZone?: string;
+  /**
+   * When their working day runs. Absent in tests and background work, where
+   * seven to ten stands in.
+   */
+  workDay?: WorkDay;
 }
 
 /** One event on this person's calendar. */
@@ -108,4 +115,9 @@ export interface CalendarRoutine {
   startTime: string;
   endTime: string;
   days: RoutineDays;
+  /**
+   * Whether its hour is the point of it. A fixed routine's days are events;
+   * a flexible one's are tasks anchored at its hour.
+   */
+  fixed: boolean;
 }

@@ -635,7 +635,8 @@ void main() {
         ]);
 
         // Between the meeting and "Bloco c": the fourth place on the
-        // calendar, and the third in the queue.
+        // calendar, and the third in the queue. Right under a meeting,
+        // which has an hour rather than a place, it asks for the hour after.
         final above = tester.getBottomLeft(
           find.widgetWithText(EventTile, 'Reunião'),
         );
@@ -644,7 +645,15 @@ void main() {
         );
         await drag(tester, 'Bloco d', (above.dy + below.dy) / 2);
 
-        verify(() => bloc.add(const EventMoved(id: 'd', index: 2))).called(1);
+        verify(
+          () => bloc.add(
+            EventMoved(
+              id: 'd',
+              index: 2,
+              after: meeting.endTime.add(TimelinePlan.gap),
+            ),
+          ),
+        ).called(1);
       },
     );
   });
@@ -688,7 +697,8 @@ void main() {
       expect(height('long'), height('short'));
     });
 
-    testAt('heads each task with the day the queue puts it on', (
+    testAt('keeps every task with an hour under one heading, not cut into '
+        'days', (
       tester,
     ) async {
       final inTwoDays = DateTime(now.year, now.month, now.day + 2, 9);
@@ -702,13 +712,13 @@ void main() {
       );
       await pump(tester, [running, far], mode: TimelineMode.list);
 
-      final date = lookupAppLocalizations(
-        const Locale('pt'),
-      ).sectionDay(inTwoDays);
-      expect(find.text('Agora'), findsOneWidget);
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final date = l10n.sectionDay(inTwoDays);
+      expect(find.text(l10n.stageSoon), findsOneWidget);
+      expect(find.text('Agora'), findsNothing);
       expect(
         find.text(date[0].toUpperCase() + date.substring(1)),
-        findsOneWidget,
+        findsNothing,
       );
     });
 
@@ -937,7 +947,7 @@ void main() {
   });
 
   group('a tap on empty room', () {
-    Future<(Finder, FreeSlot, List<FreeTap>)> pumpRoom(
+    Future<(Finder, FreeSlot, List<Placement>)> pumpRoom(
       WidgetTester tester,
     ) async {
       final first = block('x', 25, 25);
@@ -950,7 +960,7 @@ void main() {
           tasks: [running, first, last],
         ),
       );
-      final taps = <FreeTap>[];
+      final taps = <Placement>[];
 
       await tester.pumpWidget(
         MaterialApp(
@@ -961,7 +971,7 @@ void main() {
           home: Scaffold(
             body: BlocProvider<TimelineBloc>.value(
               value: bloc,
-              child: TimelineList(onCardTap: (_) {}, onFreeTap: taps.add),
+              child: TimelineList(onCardTap: (_) {}, onWriteDown: taps.add),
             ),
           ),
         ),
@@ -986,18 +996,19 @@ void main() {
               room.earliest.day,
               room.earliest.hour + 1,
             ).difference(room.earliest) <
-            const Duration(minutes: TimelineScale.step);
+            const Duration(minutes: 15);
         final dy = (soon ? lines[1] : lines[0]) / 2;
 
-        await tester.tapAt(tester.getTopLeft(gap) + Offset(10, dy));
+        // Clear of the + at the left edge, which writes at the same hour.
+        await tester.tapAt(tester.getTopLeft(gap) + Offset(200, dy));
         await tester.pump(const Duration(milliseconds: 400));
 
-        expect(taps, [(from: room.earliest, fixedAt: null)]);
+        expect(taps, [Placement.at(room.earliest)]);
       },
     );
 
     testAt(
-      'on a later hour is something fixed at that hour',
+      'on a later hour is something flexible at that hour',
       (tester) async {
         final (gap, room, taps) = await pumpRoom(tester);
         final lines = TimelineScale.hourLines(room);
@@ -1007,14 +1018,296 @@ void main() {
         // Anywhere inside the hour after the second line, which is a part
         // of its own however soon the first line comes.
         await tester.tapAt(
-          tester.getTopLeft(gap) + Offset(10, (lines[1] + lines[2]) / 2),
+          tester.getTopLeft(gap) + Offset(200, (lines[1] + lines[2]) / 2),
         );
         await tester.pump(const Duration(milliseconds: 400));
 
-        // The room's start comes along, for when the sheet is switched back
-        // to flexible.
-        expect(taps, [(from: room.earliest, fixedAt: hour)]);
+        expect(taps, [Placement.at(hour)]);
       },
     );
+  });
+
+  group('always in sight', () {
+    /// The list, with somewhere for what it writes down and aims at to go.
+    Future<(TimelineBloc, List<Placement>, TimelineAim)> pumpWith(
+      WidgetTester tester,
+      TimelineState state, {
+      TimelineMode mode = TimelineMode.calendar,
+    }) async {
+      final bloc = _MockTimelineBloc();
+      when(() => bloc.state).thenReturn(state);
+      final written = <Placement>[];
+      final aim = TimelineAim();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: BlocProvider<TimelineBloc>.value(
+              value: bloc,
+              child: TimelineList(
+                onCardTap: (_) {},
+                onWriteDown: written.add,
+                aim: aim,
+                mode: mode,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      return (bloc as TimelineBloc, written, aim);
+    }
+
+    testAt('Agora is drawn even when the next block is moments away', (
+      tester,
+    ) async {
+      final soon = block('s', 3, 30);
+      await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [soon],
+          tasks: [soon],
+        ),
+      );
+
+      expect(find.text('Agora'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((it) => it is FreeTile && it.now),
+        findsOneWidget,
+      );
+    });
+
+    testAt('a task let go on the break is begun now', (tester) async {
+      final next = block('n', 60, 30);
+      final (bloc, _, _) = await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [next],
+          tasks: [next],
+        ),
+      );
+
+      final room = find.byWidgetPredicate((it) => it is FreeTile && it.now);
+      await drag(tester, 'Bloco n', tester.getCenter(room).dy);
+
+      verify(
+        () => bloc.add(const EventMoved(id: 'n', index: 0, start: true)),
+      ).called(1);
+    });
+
+    testAt('the button at the foot aims at the first free hour in sight', (
+      tester,
+    ) async {
+      final next = block('n', 60, 30);
+      final (_, _, aim) = await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [running, next],
+          tasks: [running, next],
+        ),
+      );
+
+      // The room after the running block, a pause after it ends.
+      expect(aim.value, Placement.at(running.endTime.add(TimelinePlan.gap)));
+    });
+
+    testAt('a stretch carries a + that writes there, filling short room', (
+      tester,
+    ) async {
+      final next = block('n', 60, 30);
+      final (_, written, _) = await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [running, next],
+          tasks: [running, next],
+        ),
+      );
+
+      final plus = find.byIcon(AppIcons.plus.iconData!);
+      expect(plus, findsWidgets);
+      await tester.tap(plus.first);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // The room up to the next block is short, so it is all of it.
+      expect(written, [
+        Placement.at(running.endTime.add(TimelinePlan.gap), minutes: 30),
+      ]);
+    });
+
+    testAt('the + stays at the top of a stretch scrolled under it', (
+      tester,
+    ) async {
+      final next = block('n', 600, 30);
+      await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [running, next],
+          tasks: [running, next],
+        ),
+      );
+      final gap = find.byWidgetPredicate(
+        (widget) =>
+            widget is FreeStretch && widget.slot.start == running.endTime,
+      );
+      final plus = find.descendant(
+        of: gap,
+        matching: find.byIcon(AppIcons.plus.iconData!),
+      );
+      final list = tester.getRect(find.byType(ListView));
+
+      await tester.drag(find.byType(ListView), const Offset(0, -300));
+      await tester.pump();
+
+      expect(tester.getRect(gap).top, lessThan(list.top));
+      final at = tester.getRect(plus).top;
+      expect(at, greaterThan(list.top + 40));
+      expect(at, lessThan(list.top + 40 + AppSpacing.tapTarget));
+
+      // And moves with the next scroll in the same frame.
+      await tester.drag(find.byType(ListView), const Offset(0, -100));
+      await tester.pump();
+      expect(tester.getRect(plus).top, moreOrLessEquals(at, epsilon: 0.5));
+
+      // The hours stay beside it, from the first in sight.
+      await tester.pump();
+      final hours = find.descendant(
+        of: gap,
+        matching: find.textContaining('–${hhmm(next.startTime)}'),
+      );
+      expect(hours, findsOneWidget);
+      expect(
+        tester.widget<Text>(hours).data,
+        isNot(startsWith(hhmm(running.endTime))),
+      );
+      expect(
+        tester.getCenter(hours).dy,
+        moreOrLessEquals(tester.getCenter(plus).dy, epsilon: 1),
+      );
+    });
+
+    testAt('far down the day, a chip goes back to Agora', (tester) async {
+      final (_, _, _) = await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [running],
+          tasks: [running],
+        ),
+      );
+      final back = find.text('Agora');
+      expect(back, findsOneWidget);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -3000));
+      await tester.pump();
+      await tester.pump();
+
+      // The heading scrolled away and the chip took its word.
+      final chip = find.byIcon(AppIcons.arrowUp.iconData!);
+      expect(chip, findsOneWidget);
+
+      await tester.tap(chip);
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      final list = tester.widget<ListView>(find.byType(ListView));
+      expect(list.controller!.offset, 0);
+    });
+
+    testAt('a card held near the bottom carries the list down', (
+      tester,
+    ) async {
+      final next = block('n', 30, 30);
+      await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [next],
+          tasks: [next],
+        ),
+      );
+      final list = tester.widget<ListView>(find.byType(ListView));
+      final bottom = tester.getBottomLeft(find.byType(ListView)).dy;
+
+      final from = tester.getCenter(find.text('Bloco n'));
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 350));
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveTo(
+          Offset.lerp(from, Offset(from.dx, bottom - 10), step / 8)!,
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+
+      expect(list.controller!.offset, greaterThan(0));
+      await gesture.up();
+      await settle(tester);
+    });
+
+    testAt('each stage of the list ends in a + that writes in it', (
+      tester,
+    ) async {
+      final tomorrow = TimelineEvent(
+        id: 't',
+        title: 'Amanhã cedo',
+        section: TimelineSection.dia,
+        startTime: DateTime(2026, 6, 11, 8),
+        endTime: DateTime(2026, 6, 11, 8, 30),
+        durationMinutes: 30,
+      );
+      final (_, written, _) = await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [running, later, tomorrow],
+          tasks: [running, later, tomorrow],
+        ),
+        mode: TimelineMode.list,
+      );
+
+      // Fazer em breve ends in one, after every day of it.
+      final adds = find.text('Adicionar');
+      expect(adds, findsNWidgets(2));
+      await tester.tap(adds.first);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // So does the backlog, further down.
+      await tester.drag(find.byType(ListView), const Offset(0, -2000));
+      await tester.pump();
+      await tester.tap(adds.last);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(written, [const Placement.queue(3), const Placement.backlog()]);
+    });
+
+    testAt('in the list, the button at the foot writes at the end of the '
+        'stage at the top', (tester) async {
+      final (_, _, aim) = await pumpWith(
+        tester,
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: [running, later],
+          tasks: [running, later],
+        ),
+        mode: TimelineMode.list,
+      );
+
+      // Fazer em breve is at the top: after the last task in it.
+      expect(aim.value, const Placement.queue(2));
+    });
   });
 }

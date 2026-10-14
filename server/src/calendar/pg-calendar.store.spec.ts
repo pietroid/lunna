@@ -132,6 +132,7 @@ describe('PgCalendarStore', () => {
   it('writes each day of a routine once, however often it is read', async () => {
     // Noon, every day.
     await store.insertRoutine(OWNER, {
+      fixed: true,
       title: 'Almoço',
       startTime: '2026-03-10T15:00:00Z',
       endTime: '2026-03-10T16:00:00Z',
@@ -153,6 +154,7 @@ describe('PgCalendarStore', () => {
   it('skips the days a routine does not fall on', async () => {
     // Friday 13/03/2026 at noon, weekdays only.
     await store.insertRoutine(OWNER, {
+      fixed: true,
       title: 'Daily',
       startTime: '2026-03-13T15:00:00Z',
       endTime: '2026-03-13T15:30:00Z',
@@ -175,6 +177,7 @@ describe('PgCalendarStore', () => {
 
   it('keeps a cancelled day of a routine cancelled', async () => {
     await store.insertRoutine(OWNER, {
+      fixed: true,
       title: 'Almoço',
       startTime: '2026-03-10T15:00:00Z',
       endTime: '2026-03-10T16:00:00Z',
@@ -192,6 +195,7 @@ describe('PgCalendarStore', () => {
 
   it('moves the days still ahead when a routine is retimed', async () => {
     const created = await store.insertRoutine(OWNER, {
+      fixed: true,
       title: 'Almoço',
       startTime: '2026-03-10T15:00:00Z',
       endTime: '2026-03-10T16:00:00Z',
@@ -222,6 +226,7 @@ describe('PgCalendarStore', () => {
 
   it('keeps the days already gone when a routine is removed', async () => {
     const created = await store.insertRoutine(OWNER, {
+      fixed: true,
       title: 'Café',
       // 08:00, which at NOW has already happened today.
       startTime: '2026-03-10T11:00:00Z',

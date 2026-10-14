@@ -33,6 +33,9 @@ class AppIcons {
   /// Back Icon.
   static const back = AppIconData.phosphor(PhosphorIconsRegular.arrowLeft);
 
+  /// Back up the list, to what is happening now.
+  static const arrowUp = AppIconData.phosphor(PhosphorIconsRegular.arrowUp);
+
   /// Check, for something that has been closed out.
   ///
   /// The bare mark, not a check in a circle: the disc is a second shape doing

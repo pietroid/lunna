@@ -4,31 +4,41 @@ import {
   floorToMinute,
   Interval,
   nextFreeSlot,
+  WorkDay,
 } from './work-hours';
 import { Zone } from './zone';
 
-/** One task in the queue, as the layout sees it. */
+/** One task, as the layout sees it. */
 export interface QueuedBlock {
   /** The task id. */
   id: string;
   minutes: number;
   /**
-   * The earliest it may start, when the user asked for later.
+   * The hour it is anchored at, when it has one.
    *
-   * The cursor jumps to it rather than the block being fitted in earlier, so
-   * the gap the user left before it stays a gap.
+   * An anchored block is not in the queue's turn-taking at all. It keeps its
+   * hour, and the queue flows around it the way it flows around an event.
+   * It is still flexible: something already there when its hour comes, a
+   * running block that overran or an anchored block before it that was
+   * pushed, pushes it later, and an hour the clock has passed is now.
    */
-  notBefore?: Date;
+  anchor?: Date;
 }
 
 /**
- * Where a queue of tasks lands, laid out around whatever cannot move.
+ * Where the tasks land, laid out around whatever is already there.
  *
- * One pass down the queue. Each block takes the first slot that fits after
- * the cursor, the cursor moves past it, and the next one starts looking from
- * there. The anchors are never assigned anywhere: they are the events on the
- * calendar, and the tasks flow into the gaps between them, including the
- * gaps that come *before* a fixed block later in the day.
+ * Two passes. The anchored tasks go first, in the order of their hours: each
+ * takes its hour, or the first slot that fits after it when something is in
+ * the way, and is then in the way of everything after it. That is what
+ * makes a flexible block flexible and a fixed one not: an event pushes a
+ * lunch at noon later, and nothing pushes an event.
+ *
+ * Then the queue, one pass down it. Each block takes the first slot that
+ * fits after the cursor, the cursor moves past it, and the next one starts
+ * looking from there. The anchors are obstacles, so the queue fills the gaps
+ * before a lunch at noon and hops over it rather than pushing it: a task
+ * nobody has begun has not run into anything yet.
  *
  * That is the whole scheduler, and nothing it works out is written down. A
  * task's hour is this function's answer on the read that asked, so adding,
@@ -38,20 +48,32 @@ export interface QueuedBlock {
  * day after that.
  */
 export function relayout(
-  queue: QueuedBlock[],
+  blocks: QueuedBlock[],
   anchors: Interval[],
   from: Date,
   zone: Zone,
+  day?: WorkDay,
 ): Map<string, Interval> {
   const placed = new Map<string, Interval>();
-  let cursor = from;
+  const busy = [...anchors];
 
-  for (const block of queue) {
-    const floor =
-      block.notBefore !== undefined && block.notBefore > cursor
-        ? block.notBefore
-        : cursor;
-    const slot = nextFreeSlot(floor, block.minutes, anchors, zone);
+  const anchored = blocks
+    .filter((block) => block.anchor !== undefined)
+    .sort((a, b) => a.anchor!.getTime() - b.anchor!.getTime());
+  for (const block of anchored) {
+    // An hour the clock has passed is now: the block waits for the user at
+    // the current minute, like the first task in the queue.
+    const floor = block.anchor! > from ? block.anchor! : from;
+    const slot = nextFreeSlot(floor, block.minutes, busy, zone, day);
+    placed.set(block.id, slot);
+    busy.push(slot);
+  }
+
+  let cursor = from;
+  for (const block of blocks) {
+    if (block.anchor !== undefined) continue;
+
+    const slot = nextFreeSlot(cursor, block.minutes, busy, zone, day);
     placed.set(block.id, slot);
     // Five minutes apart, and not snapped to a grid of five. The day slides
     // a minute at a time while something is paused, and a grid would turn

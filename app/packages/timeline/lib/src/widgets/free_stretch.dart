@@ -1,16 +1,8 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:l10n/l10n.dart';
 import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/timeline_scale.dart';
-
-/// What a tap on empty room asked for.
-///
-/// `from` is where the room starts, which is the earliest anything written
-/// down there may start. `fixedAt` is the hour that was tapped, when a full
-/// hour was, and the block is fixed there. Switched to flexible in the
-/// sheet, it goes back to `from` rather than to now: it was written down in
-/// that room, not at the top of the day.
-typedef FreeTap = ({DateTime from, DateTime? fixedAt});
 
 /// {@template free_stretch}
 /// Empty room later in the day, drawn as a negative block.
@@ -26,12 +18,19 @@ typedef FreeTap = ({DateTime from, DateTime? fixedAt});
 /// room as a solid block with its hours, so the drop can be read before the
 /// finger comes off.
 ///
-/// It is also somewhere to tap, which writes something down at that hour.
-/// Each hour of it answers a tap with its own faint ripple, so empty room
-/// reads as hours that can be used and not only as a gap. The first part,
-/// up to the first full hour, writes down something flexible that starts no
-/// earlier than the room does. Every hour after it writes down something
-/// fixed at that hour.
+/// It is also somewhere to tap, which writes something down at that hour,
+/// flexible like everything. Each hour of it answers a tap with its own faint
+/// ripple, so empty room reads as hours that can be used and not only as a
+/// gap. The first part, up to the first full hour, writes down at the start
+/// of the room; every hour after it at that hour. Between two blocks, when
+/// what is left from that hour to the next block is short
+/// ([fillsWithin] or less), what is written down is as long as all of it.
+///
+/// Every stretch also carries a small +, and its hours on the right, both
+/// stuck to the top of the part of it in sight ([stickBelow] under the top
+/// of the list), so a long empty evening scrolled deep into still says
+/// where it is. The hours run from the first in sight, which is where the
+/// + writes something down.
 /// {@endtemplate}
 class FreeStretch extends StatelessWidget {
   /// {@macro free_stretch}
@@ -40,6 +39,7 @@ class FreeStretch extends StatelessWidget {
     this.targeted = false,
     this.preview,
     this.onTap,
+    this.stickBelow = 0,
     super.key,
   });
 
@@ -52,9 +52,26 @@ class FreeStretch extends StatelessWidget {
   /// Where the card in the air would land, when it is aimed here.
   final ({DateTime start, DateTime end})? preview;
 
-  /// Called with what a tap asked for: the start of the room, flexible, or a
-  /// later hour, fixed.
-  final ValueChanged<FreeTap>? onTap;
+  /// Called with where a tap asked for: the start of the room, or a later
+  /// full hour, and how long, when that is the rest of a short room.
+  final ValueChanged<Placement>? onTap;
+
+  /// How far under the top of the list the + stops, so it stays clear of
+  /// what is pinned there.
+  final double stickBelow;
+
+  /// The longest room between two blocks that a tap fills whole: the usual
+  /// length, and the little that would be left over after it.
+  static const fillsWithin = Duration(minutes: 45);
+
+  /// What a tap at [at] writes down.
+  Placement placementAt(DateTime at) {
+    final left = slot.latestStart(0).difference(at);
+    final fills =
+        slot.beforeBlock && left > Duration.zero && left <= fillsWithin;
+
+    return Placement.at(at, minutes: fills ? left.inMinutes : null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,28 +97,20 @@ class FreeStretch extends StatelessWidget {
                     top: band.top,
                     height: band.bottom - band.top,
                     child: InkWell(
-                      onTap: () => onTap!(band.tap),
+                      onTap: () => onTap!(placementAt(band.tap)),
                       splashColor: AppColors.fillStrong,
                       highlightColor: AppColors.fill,
                     ),
                   ),
-              // Drawn over the hours and let through, so a tap on the label
-              // is a tap on the hour under it.
-              IgnorePointer(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.s4,
-                    vertical: AppSpacing.s3,
-                  ),
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: Text(
-                      '${hhmm(slot.start)}–${hhmm(slot.end)}',
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.ink3,
-                      ),
-                    ),
-                  ),
+              Positioned.fill(
+                child: _Sticky(
+                  stickBelow: stickBelow,
+                  label: (dy) =>
+                      '${hhmm(dy <= 0 ? slot.start : _hourAt(dy, height))}'
+                      '–${hhmm(slot.end)}',
+                  onAdd: onTap == null || landing != null
+                      ? null
+                      : (dy) => onTap!(placementAt(_hourAt(dy, height))),
                 ),
               ),
               if (landing != null) _landing(landing, height),
@@ -112,14 +121,14 @@ class FreeStretch extends StatelessWidget {
     );
   }
 
-  /// The room cut at every hour line, and what a tap on each part asks for.
+  /// The room cut at every hour line, and the hour a tap on each part asks
+  /// for.
   ///
-  /// The first part is the room itself: something flexible that starts no
-  /// earlier than the room does. Every part after it starts on a full hour,
-  /// and a tap there is something fixed at that hour. A first part shorter
-  /// than a quarter of an hour is too thin to hit, so it runs on into the
-  /// hour after it.
-  List<({double top, double bottom, FreeTap tap})> _bands(
+  /// The first part is the start of the room. Every part after it starts on
+  /// a full hour, and a tap there is that hour. A first part shorter than a
+  /// quarter of an hour is too thin to hit, so it runs on into the hour after
+  /// it.
+  List<({double top, double bottom, DateTime tap})> _bands(
     List<double> lines,
     double height,
   ) {
@@ -138,7 +147,7 @@ class FreeStretch extends StatelessWidget {
           ),
     ];
     if (hours.isNotEmpty &&
-        hours.first.at.difference(from).inMinutes < TimelineScale.step) {
+        hours.first.at.difference(from).inMinutes < _thinnest) {
       hours.removeAt(0);
     }
 
@@ -149,10 +158,26 @@ class FreeStretch extends StatelessWidget {
         (
           top: edges[i],
           bottom: edges[i + 1],
-          tap: (from: from, fixedAt: i == 0 ? null : hours[i - 1].at),
+          tap: i == 0 ? from : hours[i - 1].at,
         ),
     ];
   }
+
+  /// The hour [dy] down the room falls on, moved on to the next five
+  /// minutes, and never so late nothing fits after it.
+  DateTime _hourAt(double dy, double height) {
+    if (dy <= 0) return slot.earliest;
+    final at = TimelineScale.timeAt(slot, dy, height);
+    final minutes =
+        (at.minute / TimelineScale.step).ceil() * TimelineScale.step;
+    final stepped = DateTime(at.year, at.month, at.day, at.hour, minutes);
+    final latest = slot.latestStart(TimelineScale.step);
+
+    return stepped.isAfter(latest) ? latest : stepped;
+  }
+
+  /// The shortest first part a tap can still hit, in minutes.
+  static const _thinnest = 15;
 
   /// The block as it would sit here, to the same scale as the room.
   Widget _landing(({DateTime start, DateTime end}) landing, double height) {
@@ -185,6 +210,175 @@ class FreeStretch extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The + of a stretch and its hours: a small circle a shade off the room on
+/// the left, the hours on the right, stuck to the top of the part of the
+/// room in sight.
+///
+/// They are placed while the list is painted, from where the room is at
+/// that moment, so they move with the scroll in the same frame rather than
+/// catching up after it. The hours are written again once a frame is done,
+/// when the first in sight has changed.
+class _Sticky extends StatefulWidget {
+  const _Sticky({
+    required this.stickBelow,
+    required this.label,
+    this.onAdd,
+  });
+
+  /// The circle.
+  static const double dot = AppSpacing.s6;
+
+  /// What answers a tap, around the circle, and the band both sit in.
+  static const double size = AppSpacing.tapTarget;
+
+  final double stickBelow;
+
+  /// The hours, for the + this far down the room.
+  final String Function(double dy) label;
+
+  /// Called with how far down the room the + was when it was tapped. No +
+  /// without it.
+  final ValueChanged<double>? onAdd;
+
+  @override
+  State<_Sticky> createState() => _StickyState();
+}
+
+class _StickyState extends State<_Sticky> {
+  /// How far down the room they are drawn, as of the last paint.
+  double _dy = 0;
+
+  late final _label = ValueNotifier<String>(widget.label(0));
+  bool _relabelling = false;
+
+  @override
+  void didUpdateWidget(_Sticky old) {
+    super.didUpdateWidget(old);
+    _label.value = widget.label(_dy);
+  }
+
+  @override
+  void dispose() {
+    _label.dispose();
+    super.dispose();
+  }
+
+  /// How far down the room they belong: the top of what is in sight, and
+  /// never past the end of the room.
+  double _place(Size room) {
+    final box = context.findRenderObject() as RenderBox?;
+    final list = Scrollable.maybeOf(context)?.context.findRenderObject();
+    if (box == null || !box.attached || list is! RenderBox) return 0;
+
+    final top = list.localToGlobal(Offset.zero).dy + widget.stickBelow;
+    final dy = top - box.localToGlobal(Offset.zero).dy;
+    final last = (room.height - _Sticky.size).clamp(0.0, room.height);
+    _dy = dy.clamp(0.0, last);
+    _relabelSoon();
+
+    return _dy;
+  }
+
+  /// Writes the hours again after this frame, if they changed. Nothing can
+  /// be rebuilt while painting.
+  void _relabelSoon() {
+    if (_relabelling || widget.label(_dy) == _label.value) return;
+    _relabelling = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _relabelling = false;
+      if (mounted) _label.value = widget.label(_dy);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onAdd = widget.onAdd;
+
+    return Flow(
+      delegate: _Stick(
+        place: _place,
+        scroll: Scrollable.maybeOf(context)?.position,
+      ),
+      children: [
+        // Drawn over the hours and let through, so a tap on the label is a
+        // tap on the hour under it.
+        IgnorePointer(
+          child: ValueListenableBuilder<String>(
+            valueListenable: _label,
+            builder: (context, label, _) => Text(
+              label,
+              style: AppTypography.label.copyWith(color: AppColors.ink3),
+            ),
+          ),
+        ),
+        if (onAdd != null)
+          Semantics(
+            button: true,
+            label: context.l10n.timelineAdd,
+            child: SizedBox.square(
+              dimension: _Sticky.size,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => onAdd(_dy),
+                child: Center(
+                  child: Container(
+                    width: _Sticky.dot,
+                    height: _Sticky.dot,
+                    decoration: const BoxDecoration(
+                      color: AppColors.fill,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: const AppIcon(
+                      iconData: AppIcons.plus,
+                      size: AppSpacing.s4,
+                      color: AppColors.ink2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Paints the hours (first child) on the right and the + (second, if any) on
+/// the left, as far down as [place] says, again on every scroll.
+class _Stick extends FlowDelegate {
+  _Stick({required this.place, this.scroll}) : super(repaint: scroll);
+
+  final double Function(Size room) place;
+  final ScrollPosition? scroll;
+
+  @override
+  BoxConstraints getConstraintsForChild(int i, BoxConstraints constraints) =>
+      constraints.loosen();
+
+  @override
+  void paintChildren(FlowPaintingContext context) {
+    final room = context.size;
+    final dy = place(room);
+
+    final label = context.getChildSize(0)!;
+    context.paintChild(
+      0,
+      transform: Matrix4.translationValues(
+        room.width - AppSpacing.s4 - label.width,
+        dy + (_Sticky.size - label.height) / 2,
+        0,
+      ),
+    );
+    if (context.childCount > 1) {
+      context.paintChild(1, transform: Matrix4.translationValues(0, dy, 0));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Stick old) => old.scroll != scroll;
 }
 
 /// The dashed edge, the hour lines, and the fill while a card is aimed here.

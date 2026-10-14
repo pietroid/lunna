@@ -48,6 +48,12 @@ export const user = pgTable('user', {
    * the person's own.
    */
   timeZone: text('time_zone').notNull().default('America/Sao_Paulo'),
+  /**
+   * When their working day starts and ends, in minutes after midnight in
+   * [timeZone]. Nothing is laid out outside it. [dayEnd] may be 1440.
+   */
+  dayStart: integer('day_start').notNull().default(420),
+  dayEnd: integer('day_end').notNull().default(1320),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -140,7 +146,15 @@ export const task = pgTable(
      * its new neighbours.
      */
     position: doublePrecision('position').notNull(),
-    /** The earliest the layout may start it. */
+    /**
+     * The hour it is anchored at, when it has one.
+     *
+     * A task with an hour keeps it, and the queue flows around it like it
+     * flows around an event. Unlike an event it slides: whatever is really
+     * happening before it and runs into it pushes it later, and once the hour
+     * comes it waits for the user to begin it. Null for a task that simply
+     * takes its turn in the queue.
+     */
     notBefore: timestamp('not_before', { withTimezone: true }),
     /**
      * Whether it waits in the backlog ("Depois eu priorizo") rather than in
@@ -150,10 +164,30 @@ export const task = pgTable(
     backlog: boolean('backlog').notNull().default(false),
     /** When it was finished. Null while there is still something to do. */
     doneAt: timestamp('done_at', { withTimezone: true }),
+    /** The flexible routine this is a day of, when it is one. */
+    routineId: uuid('routine_id').references(() => routine.id, {
+      onDelete: 'set null',
+    }),
+    /** Which day of the routine: the instant the rule put it at. */
+    occurrence: timestamp('occurrence', { withTimezone: true }),
+    /**
+     * A day of a routine that was taken off the day, or that its day ended
+     * without.
+     *
+     * Kept as a row rather than deleted, so the next read does not write the
+     * same occurrence back.
+     */
+    cancelled: boolean('cancelled').notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (table) => [index('task_user_position_idx').on(table.userId, table.position)],
+  (table) => [
+    index('task_user_position_idx').on(table.userId, table.position),
+    uniqueIndex('task_routine_occurrence_idx').on(
+      table.routineId,
+      table.occurrence,
+    ),
+  ],
 );
 
 // ---------------------------------------------------------------------------
@@ -180,6 +214,15 @@ export const routine = pgTable(
     endTime: timestamp('end_time', { withTimezone: true }).notNull(),
     /** 'daily' | 'weekdays' | 'weekend'. */
     days: text('days').notNull(),
+    /**
+     * Whether its hour is the point of it.
+     *
+     * A fixed routine writes its days down as [event] rows, which nothing
+     * moves. A flexible one, the default, writes them down as [task] rows
+     * anchored at the routine's hour: they keep it unless something already
+     * happening runs into them, and they wait for the user to begin them.
+     */
+    fixed: boolean('fixed').notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

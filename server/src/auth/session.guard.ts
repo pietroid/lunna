@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import type { Auth } from './auth';
 import { AUTH, AuthUser } from './auth.tokens';
 
@@ -30,12 +31,19 @@ export class SessionGuard implements CanActivate {
     if (session === null) throw new UnauthorizedException();
 
     const { user } = session;
+    const extra = user as {
+      timeZone?: string;
+      dayStart?: number;
+      dayEnd?: number;
+    };
     request.user = {
       id: user.id,
       email: user.email,
       name: user.name,
       image: user.image ?? undefined,
-      timeZone: (user as { timeZone?: string }).timeZone ?? 'America/Sao_Paulo',
+      timeZone: extra.timeZone ?? 'America/Sao_Paulo',
+      dayStart: extra.dayStart ?? DEFAULT_WORK_DAY.start,
+      dayEnd: extra.dayEnd ?? DEFAULT_WORK_DAY.end,
     };
 
     return true;
