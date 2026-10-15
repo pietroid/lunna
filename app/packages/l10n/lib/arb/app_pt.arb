@@ -504,5 +504,28 @@
   "agentUndo": "Desfazer",
   "agentSuggestionAccept": "Encaixar",
   "agentSuggestionDismiss": "Agora não",
-  "agentFailure": "Algo deu errado. Tente de novo."
+  "agentFailure": "Algo deu errado. Tente de novo.",
+  "agentVoiceStart": "Falar",
+  "agentVoiceListening": "Ouvindo",
+  "agentVoiceStopped": "Parei de ouvir no limite de 1 minuto",
+  "agentVoiceHint": "Pode falar. Eu escrevo enquanto você fala.",
+  "agentVoiceDiscard": "Descartar",
+  "agentVoiceEdit": "Corrigir o texto",
+  "agentVoiceVia": "por voz · {length}",
+  "@agentVoiceVia": {
+    "placeholders": {
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "agentVoiceDenied": "{brand, select, lunna{A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.} other{O Focus não tem acesso ao microfone. Libere nos Ajustes do aparelho.}}",
+  "@agentVoiceDenied": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
+  "agentVoiceUnavailable": "Este aparelho não reconhece fala em português."
 }

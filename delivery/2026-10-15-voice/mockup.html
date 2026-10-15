@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+:root{--bg:#fff;--fill:#F7F3F3;--fillS:#EEE7E8;--line:#EEE7E8;--ink:#1C1517;--ink2:#6F6468;--ink3:#A89DA1;--accent:#E2394F;--soft:rgba(226,57,79,.14);--wash:rgba(226,57,79,.07);--ok:#0E8F68;--rf:#EEF0F9;--ri:#4B5AA6;--ff:#FBF1E6;--fi:#A0602A;--sh:rgba(28,21,23,.25)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Onest,sans-serif;background:#EFE9EA;color:var(--ink);padding:48px;-webkit-font-smoothing:antialiased}
+.board{display:flex;gap:56px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:20px;width:390px}
+.cap h3{font-weight:500;font-size:18px;margin-bottom:6px}.cap p{font-size:13.5px;color:var(--ink2);line-height:1.5}
+.cap .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:99px;background:var(--ink);color:#fff;font-size:12px;margin-right:8px;vertical-align:2px}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:44px;overflow:hidden;position:relative;box-shadow:0 30px 60px -20px var(--sh)}
+.status{height:50px;display:flex;justify-content:space-between;align-items:center;padding:14px 32px 0;font-weight:600;font-size:15px}
+.status i{font-size:15px;margin-left:4px}
+.pad{padding:0 20px}
+.greet{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 6px}
+.greet h1{font-weight:400;font-size:28px;letter-spacing:-.02em}
+.greet small{display:block;font-size:14px;color:var(--ink2);margin-bottom:2px}
+.seg{display:flex;background:var(--fill);border-radius:12px;padding:3px;margin:12px 20px 16px}
+.seg div{flex:1;text-align:center;padding:8px;font-size:14px;color:var(--ink2);border-radius:10px}
+.seg .on{background:#fff;color:var(--ink);font-weight:500;box-shadow:0 1px 3px var(--line)}
+.sh{font-size:13px;color:var(--ink2);font-weight:500;padding:6px 20px 8px;display:flex;justify-content:space-between}
+.card{background:var(--fill);border-radius:18px;padding:14px 16px;margin:0 20px 8px;display:flex;gap:12px;align-items:center}
+.card .t{font-weight:500;font-size:15.5px}.card .m{font-size:13px;color:var(--ink2);margin-top:2px}
+.card .ck{width:22px;height:22px;border-radius:99px;border:1.5px solid var(--ink3);flex:none}
+.card.run{background:var(--ink);color:#fff}.card.run .m{color:#c9bfc2}.card.run .ck{border-color:#fff}
+.card.rt{background:var(--rf)}.card.rt .m{color:var(--ri)}
+.card.fx{background:var(--ff)}.card.fx .m{color:var(--fi)}
+.card.new{background:var(--wash);outline:1.5px solid var(--soft)}
+.tag{font-size:11px;font-weight:500;color:var(--accent);background:var(--soft);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:2px}
+.bar{position:absolute;left:0;right:0;bottom:0;height:96px;background:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.95));backdrop-filter:blur(12px);display:flex;justify-content:space-around;padding:12px 60px 0}
+.bar div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;color:var(--ink3)}
+.bar i{font-size:24px}.bar .on{color:var(--ink)}
+.fab{position:absolute;right:20px;bottom:112px;width:56px;height:56px;border-radius:99px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:26px;box-shadow:0 10px 24px -8px var(--accent)}
+.ask{position:absolute;left:20px;right:88px;bottom:114px;height:52px;border-radius:99px;background:#fff;box-shadow:0 8px 28px -10px var(--sh),0 0 0 1px var(--line);display:flex;align-items:center;gap:10px;padding:0 8px 0 18px;color:var(--ink3);font-size:15px}
+.ask .sp{color:var(--accent);font-size:20px}
+.ask .mic{margin-left:auto;width:36px;height:36px;border-radius:99px;background:var(--fill);display:grid;place-items:center;color:var(--ink2);font-size:18px}
+.nudge{margin:4px 20px 14px;border-radius:18px;background:var(--wash);padding:14px 16px}
+.nudge .h{display:flex;gap:8px;align-items:center;font-size:12.5px;font-weight:500;color:var(--accent);margin-bottom:6px}
+.nudge p{font-size:14.5px;line-height:1.45}
+.nudge .a{display:flex;gap:8px;margin-top:12px}
+.btn{border-radius:12px;padding:9px 14px;font-size:14px;font-weight:500;background:#fff;color:var(--ink)}
+.btn.p{background:var(--accent);color:#fff}
+.dim{position:absolute;inset:0;background:rgba(28,21,23,.32)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;display:flex;flex-direction:column}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--fillS);margin:10px auto 6px}
+.shh{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px}
+.shh .ttl{display:flex;align-items:center;gap:10px;font-weight:500;font-size:17px}
+.orb{width:32px;height:32px;border-radius:99px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-size:17px}
+.ib{width:36px;height:36px;border-radius:99px;background:var(--fill);display:grid;place-items:center;color:var(--ink2);font-size:18px}
+.chips{display:flex;flex-direction:column;gap:8px;padding:4px 20px 16px}
+.chip{background:var(--fill);border-radius:14px;padding:12px 14px;font-size:14.5px;display:flex;gap:10px;align-items:center}
+.chip i{color:var(--ink2);font-size:18px}
+.comp{margin:0 16px 30px;border-radius:24px;background:var(--fill);padding:14px 16px 10px}
+.comp .in{font-size:16px;color:var(--ink);min-height:24px}
+.comp .in.hint{color:var(--ink3)}
+.comp .row{display:flex;align-items:center;gap:8px;margin-top:14px;color:var(--ink2)}
+.comp .row .pill{font-size:12.5px;background:#fff;border-radius:99px;padding:5px 10px;display:flex;gap:6px;align-items:center}
+.send{margin-left:auto;width:36px;height:36px;border-radius:99px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:17px}
+.send.off{background:var(--fillS);color:var(--ink3)}
+.me{align-self:flex-end;max-width:78%;background:var(--ink);color:#fff;border-radius:20px 20px 6px 20px;padding:11px 15px;font-size:15px;line-height:1.4;margin:0 20px 14px}
+.steps{margin:0 20px 12px;font-size:13.5px;color:var(--ink2);display:flex;flex-direction:column;gap:7px}
+.steps div{display:flex;gap:8px;align-items:center}.steps .ok{color:var(--ok)}
+.say{font-size:15px;line-height:1.5;margin:0 20px 12px}
+.plan{margin:0 20px 12px;border-radius:20px;border:1px solid var(--line);overflow:hidden}
+.plan .phd{padding:12px 16px;font-size:13px;color:var(--ink2);font-weight:500;background:var(--fill);display:flex;justify-content:space-between}
+.chg{display:flex;gap:12px;padding:12px 16px;border-top:1px solid var(--line);align-items:flex-start}
+.chg .ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
+.chg .ic.add{background:var(--soft);color:var(--accent)}.chg .ic.mv{background:var(--rf);color:var(--ri)}.chg .ic.fx{background:var(--ff);color:var(--fi)}
+.chg .t{font-size:14.5px;font-weight:500}.chg .m{font-size:13px;color:var(--ink2);margin-top:2px}
+.chg s{color:var(--ink3)}
+.plan .a{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.plan .a .btn{flex:1;text-align:center;background:var(--fill)}.plan .a .btn.p{background:var(--accent)}
+.toast{position:absolute;left:20px;right:20px;bottom:186px;background:var(--ink);color:#fff;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;font-size:14.5px;box-shadow:0 12px 30px -10px var(--sh)}
+.toast b{margin-left:auto;color:#FF8A9A;font-weight:500}
+.now{display:flex;align-items:center;gap:8px;margin:2px 20px 10px;font-size:12px;color:var(--accent);font-weight:500}
+.now:after{content:"";flex:1;height:1.5px;background:var(--accent)}
+.note{font-size:12.5px;color:var(--ink2);background:#fff;border-radius:14px;padding:12px 14px;line-height:1.5}
+.note b{color:var(--ink);font-weight:500}
+.pin{position:absolute;width:24px;height:24px;border-radius:99px;background:#2563EB;color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;box-shadow:0 0 0 3px #fff;z-index:9}
+.moon{width:20px;height:20px;flex:none;display:block}.ask .moon{width:22px;height:22px}.nudge .moon{width:14px;height:14px}.orb .moon{width:18px;height:18px}.toast .moon{width:20px;height:20px}
+.moon1{width:10px;height:10px;display:inline-block;vertical-align:-1px;margin-right:4px;color:var(--accent)}
+.legend .pin{position:static;display:inline-grid;margin-right:6px;box-shadow:none;vertical-align:-6px}
+.h2{font-size:21px;font-weight:400;padding:14px 20px 10px;letter-spacing:-.01em}
+.card .hr{margin-left:auto;font-size:13px;color:var(--ink2)}
+.ask{right:88px}
+.ask .mic{background:var(--wash);color:var(--accent)}
+.rec{margin:0 16px 30px;border-radius:24px;background:var(--fill);padding:16px 16px 12px}
+.live{font-size:17px;line-height:1.45;color:var(--ink);min-height:74px}
+.live span{color:var(--ink3)}
+.live .caret{display:inline-block;width:2px;height:18px;background:var(--accent);vertical-align:-3px;margin-left:2px}
+.wrow{display:flex;align-items:center;gap:10px;margin-top:14px}
+.wave{flex:1;display:flex;align-items:center;gap:3px;height:32px}
+.wave i{display:block;width:3px;border-radius:3px;background:var(--accent)}
+.wave i.q{background:var(--ink3);opacity:.5}
+.tm{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums;width:34px}
+.stop{width:44px;height:44px;border-radius:99px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:20px}
+.dot{width:8px;height:8px;border-radius:99px;background:var(--accent);display:inline-block;margin-right:6px;vertical-align:1px}
+.lst{display:flex;align-items:center;font-size:12.5px;color:var(--accent);font-weight:500;margin-bottom:8px}
+.vt{display:flex;justify-content:flex-end;gap:6px;align-items:center;font-size:12px;color:var(--ink3);margin:-8px 22px 14px}
+.mic2{width:36px;height:36px;border-radius:99px;background:#fff;display:grid;place-items:center;color:var(--accent);font-size:18px}
+.alert{position:absolute;left:50px;right:50px;top:300px;background:rgba(242,242,247,.97);border-radius:14px;text-align:center;overflow:hidden;font-family:-apple-system,Onest,sans-serif;z-index:5}
+.alert .b{padding:18px 16px 14px}.alert h4{font-size:16px;font-weight:600;margin-bottom:6px}.alert p{font-size:13px;line-height:1.4}
+.alert .r{display:flex;border-top:1px solid #d1d1d6}.alert .r div{flex:1;padding:11px;color:#0A7AFF;font-size:16px}.alert .r div+div{border-left:1px solid #d1d1d6;font-weight:600}
+.warn{display:flex;gap:10px;align-items:flex-start;background:#fff;border-radius:14px;padding:12px;margin-bottom:12px;font-size:13.5px;line-height:1.4;color:var(--ink2)}
+.warn i{font-size:18px;color:var(--ink2)}.warn b{color:var(--accent);font-weight:500;display:block;margin-top:4px}
+.arch{background:#fff;border-radius:24px;padding:24px 22px;font-size:13px;line-height:1.5;color:var(--ink2);height:1080px}
+.arch h4{font-size:15px;color:var(--ink);font-weight:500;margin:16px 0 6px;display:flex;align-items:center;gap:8px}
+.arch h4:first-child{margin-top:0}
+.arch .opt{border-radius:14px;background:var(--fill);padding:12px 14px;margin-bottom:8px}
+.arch .opt.rec2{background:var(--wash);outline:1.5px solid var(--soft)}
+.arch .opt b{color:var(--ink);font-weight:500}
+.arch code{font-family:Onest;font-size:12px;background:var(--fill);border-radius:6px;padding:1px 5px;color:var(--ink)}
+.arch ul{padding-left:16px}.arch li{margin-bottom:3px}
+.badge{font-size:11px;font-weight:500;color:#fff;background:var(--accent);border-radius:99px;padding:2px 8px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="lf" x1="10" y1="10" x2="46" y2="54" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD3D9"/><stop offset=".45" stop-color="#F7899A"/><stop offset="1" stop-color="#E2394F"/></linearGradient>
+<radialGradient id="lg" cx="16" cy="22" r="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<symbol id="moon" viewBox="6 6 52 52"><path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="url(#lf)"/><path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="url(#lg)"/></symbol>
+<symbol id="moon1" viewBox="6 6 52 52"><path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="currentColor"/></symbol>
+</defs></svg>
+<div class="board">
+
+<!-- 1 -->
+<div class="col">
+<div class="cap"><h3><span class="n">1</span>O microfone na barra</h3><p>Um toque no microfone abre a folha já ouvindo. Tocar no texto continua abrindo com o teclado.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="greet"><div><h1>Bom dia, Pietro</h1></div></div>
+ <div class="seg"><div class="on">Lista</div><div>Calendário</div></div>
+ <div class="h2">Agora</div>
+ <div class="card run"><div><div class="t">Revisar proposta da Acme</div><div class="m">Faltam 25 min</div></div><span class="hr" style="color:#c9bfc2">09:30–10:15</span></div>
+ <div class="h2">Ainda hoje</div>
+ <div class="card fx"><div><div class="t">Reunião com o time</div></div><span class="hr" style="color:var(--fi)">11:00–11:45</span></div>
+ <div class="card rt"><div><div class="t">Almoço</div></div><span class="hr" style="color:var(--ri)">12:30–13:30</span></div>
+ <div class="card"><div><div class="t">Responder e-mails</div></div><span class="hr">13:35–14:05</span></div>
+ <div class="card"><div><div class="t">Relatório mensal</div></div><span class="hr">14:10–15:40</span></div>
+ <div class="pin" style="left:292px;top:662px">A</div>
+ <div class="ask"><svg class="moon sp"><use href="#moon"/></svg>Pergunte à Lunna…<span class="mic"><i class="ph ph-microphone"></i></span></div>
+ <div class="fab"><i class="ph ph-plus"></i></div>
+ <div class="bar"><div class="on"><i class="ph-fill ph-clock"></i>Tempo</div><div><i class="ph ph-folders"></i>Projetos</div><div><i class="ph ph-list"></i>Menu</div></div>
+</div>
+<div class="note legend"><span class="pin">A</span><b>Entrada:</b> o microfone volta para a ponta direita da barra, num círculo accent 7% (<b>ph-microphone</b>). É um alvo separado: o resto da barra abre a folha com teclado, o microfone abre a folha ouvindo. Só aparece se o aparelho reconhece fala em pt-BR; senão a barra fica como hoje.</div>
+</div>
+
+<!-- 2 -->
+<div class="col">
+<div class="cap"><h3><span class="n">2</span>Ouvindo, com o texto ao vivo</h3><p>O compositor vira gravador: as palavras aparecem enquanto você fala, e a onda prova que está ouvindo.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="greet"><div><h1>Bom dia, Pietro</h1></div></div>
+ <div class="dim"></div>
+ <div class="sheet" style="top:120px">
+  <div class="grab"></div>
+  <div class="shh"><div class="ttl"><svg class="moon" style="width:26px;height:26px"><use href="#moon"/></svg>Lunna</div><span class="ib" style="background:none"><i class="ph ph-x"></i></span></div>
+  <div style="padding:16px 20px 18px"><div style="font-size:24px;font-weight:400;letter-spacing:-.02em;line-height:1.2">Como posso arrumar seu dia?</div><div style="font-size:14px;color:var(--ink2);margin-top:8px">Pode falar. Eu escrevo enquanto você fala.</div></div>
+  <div style="flex:1"></div>
+  <div class="pin" style="left:6px;bottom:118px">B</div>
+  <div class="pin" style="left:6px;bottom:52px">C</div>
+  <div class="pin" style="right:4px;bottom:86px">D</div>
+  <div class="rec">
+   <div class="lst"><span class="dot"></span>Ouvindo</div>
+   <div class="live">Amanhã de manhã encaixa duas horas de estudo e <span>empurra a academia pra</span><i class="caret"></i></div>
+   <div class="wrow">
+    <span class="ib" style="background:#fff;flex:none"><i class="ph ph-x"></i></span>
+    <div class="wave">
+     <i style="height:6px"></i><i style="height:12px"></i><i style="height:20px"></i><i style="height:14px"></i><i style="height:26px"></i><i style="height:18px"></i><i style="height:30px"></i><i style="height:22px"></i><i style="height:12px"></i><i style="height:8px"></i><i style="height:16px"></i><i style="height:24px"></i><i style="height:28px"></i><i style="height:18px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:20px"></i><i style="height:8px"></i><i style="height:6px"></i><i class="q" style="height:4px"></i><i class="q" style="height:4px"></i><i class="q" style="height:4px"></i><i class="q" style="height:4px"></i><i class="q" style="height:4px"></i><i class="q" style="height:4px"></i>
+    </div>
+    <span class="tm">0:09</span>
+    <span class="stop"><i class="ph-bold ph-arrow-up"></i></span>
+   </div>
+  </div>
+ </div>
+</div>
+<div class="note legend"><span class="pin">B</span><b>Texto ao vivo:</b> o que já foi reconhecido em ink, o trecho ainda provisório em ink3, cursor accent. Tocar no texto para de ouvir e abre o teclado para corrigir.<br><span class="pin">C</span><b>Onda:</b> barras accent no volume do microfone, rolando da direita. Ponto accent + "Ouvindo" no topo. Sem som por 3s, as barras acinzentam, nada é enviado sozinho.<br><span class="pin">D</span><b>Saídas:</b> ↑ accent para e envia. <b>×</b> descarta tudo. Limite de 1 min (o do iOS); ao chegar, para de ouvir e espera o ↑.</div>
+</div>
+
+<!-- 3 -->
+<div class="col">
+<div class="cap"><h3><span class="n">3</span>Vira uma mensagem como outra qualquer</h3><p>O que foi dito chega como texto. Daí em diante é o mesmo agente: passos, plano, Aplicar.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="sheet" style="top:56px">
+  <div class="grab"></div>
+  <div class="shh"><div class="ttl"><svg class="moon" style="width:26px;height:26px"><use href="#moon"/></svg>Lunna</div><div style="display:flex;gap:4px"><span class="ib" style="background:none"><i class="ph ph-note-pencil"></i></span><span class="ib" style="background:none"><i class="ph ph-x"></i></span></div></div>
+  <div style="display:flex;flex-direction:column;padding-top:8px">
+   <div class="me">Amanhã de manhã encaixa duas horas de estudo e empurra a academia pra depois</div>
+   <div class="vt"><i class="ph ph-microphone"></i>por voz · 0:11</div>
+   <div class="pin" style="left:6px;top:146px">E</div>
+   <div class="steps">
+    <div><i class="ph-bold ph-check ok"></i>Olhei amanhã</div>
+    <div><i class="ph-bold ph-check ok"></i>Achei 08:00–10:00 livre</div>
+    <div><i class="ph-bold ph-check ok"></i>Academia cabe às 18:30</div>
+   </div>
+   <div class="say">Pronto. Fica assim amanhã:</div>
+   <div class="plan">
+    <div class="phd"><span>Quinta-feira, 16 de outubro</span><span>2 mudanças</span></div>
+    <div class="chg"><span class="ic add"><i class="ph ph-plus"></i></span><div><div class="t">Estudo</div><div class="m">08:00–10:00 · nova tarefa</div></div></div>
+    <div class="chg"><span class="ic mv"><i class="ph ph-arrow-right"></i></span><div><div class="t">Academia</div><div class="m"><s>08:00</s> → 18:30 · rotina, só nesse dia</div></div></div>
+    <div class="a"><span class="btn">Ajustar</span><span class="btn p">Aplicar</span></div>
+   </div>
+  </div>
+  <div style="flex:1"></div>
+  <div class="pin" style="right:8px;bottom:82px">F</div>
+  <div class="comp" style="margin-bottom:30px"><div class="in hint">Responder…</div><div class="row"><span class="mic2" style="margin-left:auto"><i class="ph ph-microphone"></i></span></div></div>
+ </div>
+</div>
+<div class="note legend"><span class="pin">E</span><b>Marca de voz:</b> sob a bolha, em ink3, "por voz · 0:11" com ph-microphone. Só informa; o áudio não é guardado em lugar nenhum, então não há o que tocar de novo.<br><span class="pin">F</span><b>Responder falando:</b> com o campo vazio, o botão do compositor é o microfone (accent); com texto, vira o ↑ de hoje. "Ajustar" também pode ser falado.</div>
+</div>
+
+<!-- 4 -->
+<div class="col">
+<div class="cap"><h3><span class="n">4</span>Primeira vez, e quando não dá</h3><p>O sistema pede o microfone uma vez. Se a pessoa negar, a Lunna diz como liberar e o teclado segue funcionando.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="greet"><div><h1>Bom dia, Pietro</h1></div></div>
+ <div class="dim" style="background:rgba(28,21,23,.45)"></div>
+ <div class="pin" style="right:40px;top:290px">G</div>
+ <div class="alert"><div class="b"><h4>"Lunna" quer acessar o microfone</h4><p>A Lunna ouve só enquanto o botão de gravar está ligado, para escrever o que você pedir.</p></div><div class="r"><div>Não Permitir</div><div>Permitir</div></div></div>
+ <div class="sheet" style="top:520px">
+  <div class="grab"></div>
+  <div style="flex:1"></div>
+  <div class="pin" style="left:6px;bottom:150px">H</div>
+  <div class="comp" style="margin-bottom:30px">
+   <div class="warn"><i class="ph ph-microphone-slash"></i><div>A Lunna não tem acesso ao microfone.<b>Abrir Ajustes</b></div></div>
+   <div class="in hint">Pergunte ou peça algo…</div><div class="row"><span class="send off" style="margin-left:auto"><i class="ph ph-arrow-up"></i></span></div></div>
+ </div>
+</div>
+<div class="note legend"><span class="pin">G</span><b>Pedido do sistema:</b> aparece no primeiro toque no microfone, nunca na abertura do app. Texto nosso, em pt-BR (no iOS são dois: microfone e reconhecimento de fala).<br><span class="pin">H</span><b>Negado:</b> aviso em branco dentro do compositor, ph-microphone-slash, "Abrir Ajustes" em accent. O microfone some do compositor até a permissão voltar; o resto da folha funciona igual.</div>
+</div>
+
+<!-- 5 -->
+<div class="col">
+<div class="cap"><h3><span class="n">5</span>O que é preciso</h3><p>Duas formas de transformar voz em texto. A primeira cabe toda no app.</p></div>
+<div class="arch">
+ <h4>Caminho A <span class="badge">recomendado</span></h4>
+ <div class="opt rec2"><b>Reconhecimento no aparelho.</b> Pacote <code>speech_to_text</code>: SFSpeechRecognizer no iOS, SpeechRecognizer no Android, Web Speech no Chrome/Safari. Locale <code>pt_BR</code>, resultados parciais (o texto ao vivo) e nível de som (a onda). Grátis, sem rede extra, o servidor não muda: a mensagem chega como texto em <code>POST /agent/turn</code>.</div>
+ <h4>Caminho B</h4>
+ <div class="opt"><b>Áudio para o modelo.</b> Pacote <code>record</code> grava m4a/webm, o app manda o áudio, o servidor passa como <code>input_audio</code> ao Gemini pela OpenRouter. Entende melhor nomes próprios, mas sem texto ao vivo, mais lento, paga por áudio e precisa de rota nova com limite de tamanho. Fica como plano B se A errar demais.</div>
+ <h4><i class="ph ph-device-mobile"></i>App (A)</h4>
+ <ul>
+  <li><code>VoiceCubit</code> em <code>packages/agent</code>: idle → pedindo → ouvindo (texto, nível, tempo) → pronto | negado | indisponível.</li>
+  <li><code>VoiceRecorder</code>: interface sobre o pacote, com um fake nos testes e no preview.</li>
+  <li><code>AskBar</code> ganha o microfone; o compositor da <code>AgentSheet</code> ganha o modo gravador.</li>
+  <li>Bolha com <code>viaVoice</code> + duração (só no app, não vai ao servidor).</li>
+  <li>~8 strings <code>agentVoice*</code> no <code>app_pt.arb</code>.</li>
+ </ul>
+ <h4><i class="ph ph-gear"></i>Nativo</h4>
+ <ul>
+  <li>iOS: <code>NSMicrophoneUsageDescription</code> e <code>NSSpeechRecognitionUsageDescription</code> nos quatro flavors (nome da marca em cada).</li>
+  <li>Android: <code>RECORD_AUDIO</code> e o <code>&lt;queries&gt;</code> do RecognitionService (Android 11+).</li>
+  <li>Web: só Chrome, Edge e Safari; Firefox não tem, o microfone não aparece.</li>
+ </ul>
+ <h4><i class="ph ph-warning"></i>Riscos</h4>
+ <ul>
+  <li><b>Decidido:</b> no aparelho quando houver pt-BR; senão, a nuvem da Apple/Google. O microfone aparece em todo aparelho que reconhece fala.</li>
+  <li>Android para sozinho após ~2s de silêncio: reabrir a sessão e juntar o texto.</li>
+  <li>Testes: cubit com o fake; aparelho real para os dois sistemas, que nenhum CI cobre.</li>
+ </ul>
+</div>
+</div>
+
+</div>
+</body></html>

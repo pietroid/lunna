@@ -30,6 +30,16 @@ class AppIcons {
     PhosphorIconsRegular.arrowRight,
   );
 
+  /// Speaks to the agent instead of typing.
+  static const microphone = AppIconData.phosphor(
+    PhosphorIconsRegular.microphone,
+  );
+
+  /// The microphone is out of reach: refused, or not on this device.
+  static const microphoneSlash = AppIconData.phosphor(
+    PhosphorIconsRegular.microphoneSlash,
+  );
+
   /// Closes a sheet.
   static const close = AppIconData.phosphor(PhosphorIconsRegular.x);
 

@@ -1258,6 +1258,60 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Algo deu errado. Tente de novo.'**
   String get agentFailure;
+
+  /// No description provided for @agentVoiceStart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Falar'**
+  String get agentVoiceStart;
+
+  /// No description provided for @agentVoiceListening.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ouvindo'**
+  String get agentVoiceListening;
+
+  /// No description provided for @agentVoiceStopped.
+  ///
+  /// In pt, this message translates to:
+  /// **'Parei de ouvir no limite de 1 minuto'**
+  String get agentVoiceStopped;
+
+  /// No description provided for @agentVoiceHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pode falar. Eu escrevo enquanto você fala.'**
+  String get agentVoiceHint;
+
+  /// No description provided for @agentVoiceDiscard.
+  ///
+  /// In pt, this message translates to:
+  /// **'Descartar'**
+  String get agentVoiceDiscard;
+
+  /// No description provided for @agentVoiceEdit.
+  ///
+  /// In pt, this message translates to:
+  /// **'Corrigir o texto'**
+  String get agentVoiceEdit;
+
+  /// No description provided for @agentVoiceVia.
+  ///
+  /// In pt, this message translates to:
+  /// **'por voz · {length}'**
+  String agentVoiceVia(String length);
+
+  /// No description provided for @agentVoiceDenied.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.} other{O Focus não tem acesso ao microfone. Libere nos Ajustes do aparelho.}}'**
+  String agentVoiceDenied(String brand);
+
+  /// No description provided for @agentVoiceUnavailable.
+  ///
+  /// In pt, this message translates to:
+  /// **'Este aparelho não reconhece fala em português.'**
+  String get agentVoiceUnavailable;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -726,4 +726,42 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentFailure => 'Algo deu errado. Tente de novo.';
+
+  @override
+  String get agentVoiceStart => 'Falar';
+
+  @override
+  String get agentVoiceListening => 'Ouvindo';
+
+  @override
+  String get agentVoiceStopped => 'Parei de ouvir no limite de 1 minuto';
+
+  @override
+  String get agentVoiceHint => 'Pode falar. Eu escrevo enquanto você fala.';
+
+  @override
+  String get agentVoiceDiscard => 'Descartar';
+
+  @override
+  String get agentVoiceEdit => 'Corrigir o texto';
+
+  @override
+  String agentVoiceVia(String length) {
+    return 'por voz · $length';
+  }
+
+  @override
+  String agentVoiceDenied(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.',
+        'other': 'O Focus não tem acesso ao microfone. Libere nos Ajustes do aparelho.',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agentVoiceUnavailable => 'Este aparelho não reconhece fala em português.';
 }

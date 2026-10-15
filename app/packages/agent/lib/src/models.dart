@@ -166,12 +166,17 @@ sealed class AgentEntry extends Equatable {
 /// What the user said.
 final class UserEntry extends AgentEntry {
   /// {@macro agent_entry}
-  const UserEntry(this.text);
+  const UserEntry(this.text, {this.voice});
 
   final String text;
 
+  /// How long the user spoke for, when it was said rather than typed.
+  ///
+  /// Only the app keeps it; the agent reads the text alone.
+  final Duration? voice;
+
   @override
-  List<Object?> get props => [text];
+  List<Object?> get props => [text, voice];
 }
 
 /// What the agent answered, and where its plan stands.

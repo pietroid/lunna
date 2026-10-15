@@ -12,6 +12,24 @@ Phase 3 is real engineering. Phase 4 always closes a build.
 
 Worked example of the whole flow: `delivery/2026-10-15-agent/README.md`.
 
+## Cost and time
+
+Every delivery records what it cost and how long it took. The `usage-bars` mod
+(`~/.claude/mods/usage-bars`) gives Claude a tool,
+`mcp__usage-bars__session_cost`, that answers `{ usd, at }`: this session's
+running cost so far.
+
+- **Read it when a phase starts and when it ends**, and keep the readings in
+  a running table (phase, start, end, duration, spent). The difference
+  between two readings is what the work between them cost; their `at`
+  timestamps give its wall-clock time.
+- When the user asks to count from a given moment ("from now to the end"),
+  take a reading right then and count from it.
+- The figure is the session's, so it includes the talk around the work. Say
+  so in the table instead of trying to split it.
+- If the tool isn't listed (the mod isn't loaded), ask the user to run
+  `/cost` at the same points and paste the total, and record those.
+
 ## Phase 1: Mockup and prints
 
 A proposal is a **board of 3–5 phone screens** telling one flow left to right,
@@ -77,5 +95,11 @@ Only when asked. Read `AGENTS.md` first. It is the spec of how the day works, an
    2. **The design**: the board (`img/mockup-board.png`, plus `mockup.html`), the references, the decisions table matching the pins, and the icon.
    3. **What was built**: strips of the real build in both brands, the contract (the rule that matters), the server files and routes, the app pieces, the tests (with counts, and any flaky test named), and **where the build differs from the mockup** and why.
    4. **How to turn it on**: env vars, commands, and what happens without them.
+   5. **Cost and time**: the readings table from the Cost and time section
+      above (phase, start and end time, duration, start and end reading, spent
+      in USD) and the totals. Wall-clock time includes the user's pauses
+      between messages; say so. Note where each figure
+      came from (the tool or a pasted `/cost`), and any spend outside Claude
+      that the build caused (e.g. OpenRouter calls), or that there was none.
 3. Add a short section for the feature to `AGENTS.md` (what it does, its contract, its routes), and its folders to the Layout block.
-4. Report in a few lines: what works, what was verified and how, the deviations, what wasn't tested (e.g. "never run against a real model"), and the delivery path. Don't commit unless asked.
+4. Report in a few lines: what it cost, what works, what was verified and how, the deviations, what wasn't tested (e.g. "never run against a real model"), and the delivery path. Don't commit unless asked.

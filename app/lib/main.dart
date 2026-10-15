@@ -54,6 +54,9 @@ Future<void> main() async {
           create: (_) => timelineRepository,
         ),
         RepositoryProvider<AgentRepository>(create: (_) => agentRepository),
+        RepositoryProvider<VoiceRecognizer>(
+          create: (_) => SpeechVoiceRecognizer(),
+        ),
         RepositoryProvider<RoutinesRepository>(
           create: (_) => routinesRepository,
         ),

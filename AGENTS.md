@@ -77,7 +77,7 @@ app/
   tool/brand_web.sh     stamps a brand on a web build
   lib/                  shell, home (Tempo), routines page, landing, demo
   packages/
-    agent/              the agent: ask bar, sheet, plan card, suggestion
+    agent/              the agent: ask bar, sheet, plan card, suggestion, voice
     api_client/         Dio + bearer token interceptor
     app_ui/             the design system: AppBrand, theme, tokens, widgets
     auth/               Better Auth client: Google sign-in, token store
@@ -411,6 +411,27 @@ is drawn above the list, and "Agora não" rests it for 24 hours on the
 device. Applying replaces the day (`TimelineReplaced`) and marks the cards
 it changed with the agent's crescent (`AppIcons.agent`, per brand) and an
 accent edge; a snackbar offers Desfazer.
+
+#### Voice
+
+The user can speak instead of typing. **Speech becomes text on the phone,
+and only the text reaches the agent**: a spoken request is an ordinary
+`POST /agent/turn`, and nothing on the server knows it was spoken.
+`VoiceRecognizer` (`packages/agent/lib/src/voice/`) is the platform's own
+recognizer through `speech_to_text`, in pt-BR: on the device where it has
+Portuguese, in Apple's or Google's cloud where it does not. The audio never
+reaches our server.
+
+The microphone on the ask bar opens the sheet already recording
+(`showAgentSheet(listen: true)`); in the sheet, an empty composer offers it.
+While recording, `VoiceCubit` writes the words into the composer as they are
+heard (settled in ink, still provisional in ink3). Silence never sends: a
+session the platform ends after a pause (Android) is followed by another,
+and their words are joined. The recording ends on ↑ (send), × (discard),
+tapping the words (to correct them by keyboard) or at one minute. A message
+that was spoken carries `UserEntry.voice`, its length, shown as "por voz",
+and kept on the device. A refused microphone, or a device with no
+recognizer, is said in the composer and the microphone is no longer offered.
 
 ## Commands
 

@@ -93,6 +93,10 @@
 		<array>
 			<string>fetch</string>
 		</array>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>Para escrever o que você pedir por voz. O microfone só fica ligado enquanto você grava.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Para transformar o que você fala em texto, no aparelho quando possível.</string>
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>The app needs to connect to the development server on your local network.</string>
 		<key>NSAppTransportSecurity</key>

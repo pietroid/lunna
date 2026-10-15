@@ -50,12 +50,13 @@ class AgentCubit extends Cubit<AgentState> {
 
   final AgentRepository _repository;
 
-  /// Says [text], about the [day] on screen.
-  Future<void> send(String text, {DateTime? day}) async {
+  /// Says [text], about the [day] on screen; [voice] is how long it took to
+  /// say, when it was spoken.
+  Future<void> send(String text, {DateTime? day, Duration? voice}) async {
     final said = text.trim();
     if (said.isEmpty || state.busy) return;
 
-    final entries = [...state.entries, UserEntry(said)];
+    final entries = [...state.entries, UserEntry(said, voice: voice)];
     emit(state.copyWith(entries: entries, busy: true, clearFailure: true));
 
     try {

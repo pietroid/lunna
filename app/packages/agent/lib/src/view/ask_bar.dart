@@ -6,7 +6,8 @@ import 'package:l10n/l10n.dart';
 /// Where a conversation with the agent starts: a pill beside the +.
 ///
 /// It only looks like a field. Tapping it opens the sheet, where the real
-/// field is, so the keyboard never comes up over the day.
+/// field is, so the keyboard never comes up over the day. The microphone at
+/// its end is a target of its own: it opens the sheet already recording.
 /// {@endtemplate}
 class AskBar extends StatelessWidget {
   /// {@macro ask_bar}
@@ -26,7 +27,10 @@ class AskBar extends StatelessWidget {
         onTap: () => showAgentSheet(context, day: day?.call()),
         child: Container(
           height: height,
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s4),
+          padding: const EdgeInsets.only(
+            left: AppSpacing.s4,
+            right: AppSpacing.s2,
+          ),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
@@ -50,6 +54,32 @@ class AskBar extends StatelessWidget {
                   style: AppTypography.body.copyWith(color: AppColors.ink3),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Semantics(
+                button: true,
+                label: context.l10n.agentVoiceStart,
+                child: GestureDetector(
+                  onTap: () => showAgentSheet(
+                    context,
+                    day: day?.call(),
+                    listen: true,
+                  ),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: AppColors.accentWash,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: AppIcon(
+                        iconData: AppIcons.microphone,
+                        size: 18,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
