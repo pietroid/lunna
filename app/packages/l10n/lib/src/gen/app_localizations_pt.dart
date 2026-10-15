@@ -608,4 +608,122 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get demoDentist => 'Marcar dentista';
+
+  @override
+  String agentAsk(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Pergunte à Lunna…',
+        'other': 'Pergunte ao Focus…',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agentSuggestionLabel(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Sugestão da Lunna',
+        'other': 'Sugestão do Focus',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agentGreeting => 'Como posso arrumar seu dia?';
+
+  @override
+  String get agentGreetingHint => 'Peça para encaixar, mover ou reorganizar o que quiser. Nada muda sem você aplicar.';
+
+  @override
+  String get agentChipAfternoon => 'Organiza minha tarde';
+
+  @override
+  String get agentChipStudy => 'Encaixa 2h de estudo amanhã';
+
+  @override
+  String get agentChipLate => 'Atrasei 30 min, refaz o dia';
+
+  @override
+  String get agentChipTomorrow => 'O que tenho amanhã?';
+
+  @override
+  String get agentInputHint => 'Pergunte ou peça algo…';
+
+  @override
+  String get agentReplyHint => 'Responder…';
+
+  @override
+  String get agentThinking => 'Olhando seu dia…';
+
+  @override
+  String get agentSend => 'Enviar';
+
+  @override
+  String get agentNewConversation => 'Nova conversa';
+
+  @override
+  String get agentClose => 'Fechar';
+
+  @override
+  String get agentApply => 'Aplicar';
+
+  @override
+  String get agentAdjust => 'Ajustar';
+
+  @override
+  String get agentApplied => 'Aplicado';
+
+  @override
+  String agentChanges(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mudanças',
+      one: '1 mudança',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agentChangeAddTask => 'nova tarefa';
+
+  @override
+  String get agentChangeAddEvent => 'novo bloco fixo';
+
+  @override
+  String get agentChangeMoved => 'movida';
+
+  @override
+  String get agentChangeRoutine => 'rotina, só nesse dia';
+
+  @override
+  String get agentChangeFromBacklog => 'saiu do Depois eu priorizo';
+
+  @override
+  String agentAppliedToast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count mudanças aplicadas',
+      one: '1 mudança aplicada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agentUndo => 'Desfazer';
+
+  @override
+  String get agentSuggestionAccept => 'Encaixar';
+
+  @override
+  String get agentSuggestionDismiss => 'Agora não';
+
+  @override
+  String get agentFailure => 'Algo deu errado. Tente de novo.';
 }

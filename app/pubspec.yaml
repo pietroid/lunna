@@ -8,6 +8,8 @@ environment:
   flutter: ^3.44.0
 
 dependencies:
+  agent:
+    path: packages/agent
   api_client:
     path: packages/api_client
   app_ui:

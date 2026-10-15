@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -67,10 +69,19 @@ class _ShellPageState extends State<ShellPage> {
               const MenuPage(),
             ],
           ),
-          floatingActionButton: AppFab(
-            tooltip: l10n.shellWriteDown,
-            onPressed: () => unawaited(_onFabPressed()),
-          ),
+          floatingActionButton: _index == _timelineIndex
+              ? _AskAndWrite(
+                  // The conversation is about the day Tempo is showing.
+                  day: () => _aim.value?.at,
+                  fab: AppFab(
+                    tooltip: l10n.shellWriteDown,
+                    onPressed: () => unawaited(_onFabPressed()),
+                  ),
+                )
+              : AppFab(
+                  tooltip: l10n.shellWriteDown,
+                  onPressed: () => unawaited(_onFabPressed()),
+                ),
           floatingActionButtonLocation: AppFab.location,
           bottomNavigationBar: AppBottomBar(
             currentIndex: _index,
@@ -97,6 +108,38 @@ class _ShellPageState extends State<ShellPage> {
 }
 
 /// A destination that is not built yet.
+/// The agent's bar and the +, side by side, on Tempo.
+///
+/// The + still writes something down in one tap; the bar beside it is
+/// where a conversation starts. Both float where the + always did, across
+/// the column the content is drawn in.
+class _AskAndWrite extends StatelessWidget {
+  const _AskAndWrite({required this.day, required this.fab});
+
+  final DateTime? Function() day;
+
+  final Widget fab;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = math.min(
+      MediaQuery.sizeOf(context).width,
+      AppSpacing.maxContentWidth,
+    );
+
+    return SizedBox(
+      width: width - 2 * kFloatingActionButtonMargin,
+      child: Row(
+        children: [
+          Expanded(child: AskBar(day: day)),
+          const SizedBox(width: AppSpacing.s3),
+          fab,
+        ],
+      ),
+    );
+  }
+}
+
 class _Placeholder extends StatelessWidget {
   const _Placeholder({required this.title});
 

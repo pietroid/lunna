@@ -123,6 +123,8 @@ sudo mkdir -p /opt/lunna && sudo chown "$USER" /opt/lunna
 #   GOOGLE_CLIENT_SECRET=<web secret>
 #   ALLOWED_EMAILS=you@gmail.com
 #   LUNNA_TIMEZONE=America/Sao_Paulo
+#   OPENROUTER_API_KEY=<key>    # the agent; empty turns it off
+#   OPENROUTER_MODEL=<model with tool calls>
 #   LUNNA_HTTP_PORT=8080
 #   FOCUS_HTTP_PORT=8081
 chmod 600 /opt/lunna/.env

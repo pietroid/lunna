@@ -21,6 +21,24 @@ final class TimelineRequested extends TimelineBlocEvent {
   const TimelineRequested();
 }
 
+/// Draws a day someone else already read: the agent applied or undid a
+/// plan, and its answer is the whole timeline, as every write's is.
+///
+/// [touched] are the cards it changed, which the list marks.
+final class TimelineReplaced extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const TimelineReplaced(this.timeline, {this.touched = const {}});
+
+  /// The day, as the server answered.
+  final Timeline timeline;
+
+  /// The cards the agent changed.
+  final Set<String> touched;
+
+  @override
+  List<Object?> get props => [timeline, touched];
+}
+
 /// Draws more days: the calendar was scrolled to its end.
 final class TimelineExtended extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}

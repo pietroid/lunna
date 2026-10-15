@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -22,12 +23,25 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<TimelineModeCubit>(
-      create: (_) {
-        final cubit = TimelineModeCubit();
-        unawaited(cubit.restore());
-        return cubit;
-      },
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<TimelineModeCubit>(
+          create: (_) {
+            final cubit = TimelineModeCubit();
+            unawaited(cubit.restore());
+            return cubit;
+          },
+        ),
+        BlocProvider<SuggestionCubit>(
+          create: (context) {
+            final cubit = SuggestionCubit(
+              repository: context.read<AgentRepository>(),
+            );
+            unawaited(cubit.load());
+            return cubit;
+          },
+        ),
+      ],
       child: SafeArea(
         bottom: false,
         child: Center(
@@ -39,6 +53,9 @@ class HomePage extends StatelessWidget {
               children: [
                 _Header(),
                 TimelineModeSwitch(),
+                // The agent's one unasked-for offer sits above the day it
+                // is about, and goes once it is taken or turned down.
+                SuggestionCard(),
                 Expanded(child: _Threads()),
               ],
             ),

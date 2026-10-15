@@ -36,6 +36,7 @@ class EventTile extends StatelessWidget {
     this.pressed = false,
     this.hidden = false,
     this.lifted = false,
+    this.touched = false,
     this.landing,
     this.actionsKey,
     this.onPauseToggled,
@@ -60,6 +61,10 @@ class EventTile extends StatelessWidget {
 
   /// Whether this is the copy that follows the finger.
   final bool lifted;
+
+  /// Whether the agent just changed it: it wears the agent's mark and a
+  /// faint accent edge, so what was done for the user is plain to see.
+  final bool touched;
 
   /// The hours it would have if it were let go now, which the copy under the
   /// finger reads in place of its own.
@@ -107,7 +112,7 @@ class EventTile extends StatelessWidget {
                 AppIcon(
                   iconData: _mark!,
                   size: AppSpacing.s4,
-                  color: _quiet,
+                  color: touched ? AppColors.accent : _quiet,
                 ),
                 const SizedBox(width: AppSpacing.s2),
               ],
@@ -154,7 +159,12 @@ class EventTile extends StatelessWidget {
             : card.isRoutine
             ? AppColors.routineFill
             : AppColors.fill,
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+          side: touched && !_isNow
+              ? const BorderSide(color: AppColors.accentSoft, width: 1.5)
+              : BorderSide.none,
+        ),
         elevation: lifted ? 8 : 0,
         shadowColor: AppColors.bg,
         child: _isNow
@@ -200,6 +210,7 @@ class EventTile extends StatelessWidget {
 
   /// The small icon in front of the title, when the card has earned one.
   AppIconData? get _mark {
+    if (touched) return AppIcons.agent;
     if (!card.managed) return AppIcons.calendar;
     if (card.isRoutine) return AppIcons.repeat;
     return card.fixed ? AppIcons.pin : null;

@@ -848,4 +848,26 @@ void main() {
       ).called(1);
     },
   );
+
+  blocTest<TimelineBloc, TimelineState>(
+    'draws a day the agent answered with, and marks what it changed',
+    build: () => TimelineBloc(repository: repository),
+    seed: loaded,
+    act: (bloc) => bloc.add(TimelineReplaced(_day, touched: const {'b'})),
+    expect: () => [
+      isA<TimelineState>()
+          .having((state) => state.tasks, 'tasks', _tasks)
+          .having((state) => state.touched, 'touched', {'b'}),
+    ],
+  );
+
+  blocTest<TimelineBloc, TimelineState>(
+    'an undo draws the day and takes the marks away',
+    build: () => TimelineBloc(repository: repository),
+    seed: () => loaded().copyWith(touched: {'b'}),
+    act: (bloc) => bloc.add(TimelineReplaced(_day)),
+    expect: () => [
+      isA<TimelineState>().having((state) => state.touched, 'touched', isEmpty),
+    ],
+  );
 }

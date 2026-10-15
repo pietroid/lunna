@@ -1090,6 +1090,174 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Marcar dentista'**
   String get demoDentist;
+
+  /// No description provided for @agentAsk.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{Pergunte à Lunna…} other{Pergunte ao Focus…}}'**
+  String agentAsk(String brand);
+
+  /// No description provided for @agentSuggestionLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{Sugestão da Lunna} other{Sugestão do Focus}}'**
+  String agentSuggestionLabel(String brand);
+
+  /// No description provided for @agentGreeting.
+  ///
+  /// In pt, this message translates to:
+  /// **'Como posso arrumar seu dia?'**
+  String get agentGreeting;
+
+  /// No description provided for @agentGreetingHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Peça para encaixar, mover ou reorganizar o que quiser. Nada muda sem você aplicar.'**
+  String get agentGreetingHint;
+
+  /// No description provided for @agentChipAfternoon.
+  ///
+  /// In pt, this message translates to:
+  /// **'Organiza minha tarde'**
+  String get agentChipAfternoon;
+
+  /// No description provided for @agentChipStudy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Encaixa 2h de estudo amanhã'**
+  String get agentChipStudy;
+
+  /// No description provided for @agentChipLate.
+  ///
+  /// In pt, this message translates to:
+  /// **'Atrasei 30 min, refaz o dia'**
+  String get agentChipLate;
+
+  /// No description provided for @agentChipTomorrow.
+  ///
+  /// In pt, this message translates to:
+  /// **'O que tenho amanhã?'**
+  String get agentChipTomorrow;
+
+  /// No description provided for @agentInputHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pergunte ou peça algo…'**
+  String get agentInputHint;
+
+  /// No description provided for @agentReplyHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Responder…'**
+  String get agentReplyHint;
+
+  /// No description provided for @agentThinking.
+  ///
+  /// In pt, this message translates to:
+  /// **'Olhando seu dia…'**
+  String get agentThinking;
+
+  /// No description provided for @agentSend.
+  ///
+  /// In pt, this message translates to:
+  /// **'Enviar'**
+  String get agentSend;
+
+  /// No description provided for @agentNewConversation.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova conversa'**
+  String get agentNewConversation;
+
+  /// No description provided for @agentClose.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fechar'**
+  String get agentClose;
+
+  /// No description provided for @agentApply.
+  ///
+  /// In pt, this message translates to:
+  /// **'Aplicar'**
+  String get agentApply;
+
+  /// No description provided for @agentAdjust.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ajustar'**
+  String get agentAdjust;
+
+  /// No description provided for @agentApplied.
+  ///
+  /// In pt, this message translates to:
+  /// **'Aplicado'**
+  String get agentApplied;
+
+  /// No description provided for @agentChanges.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 mudança} other{{count} mudanças}}'**
+  String agentChanges(int count);
+
+  /// No description provided for @agentChangeAddTask.
+  ///
+  /// In pt, this message translates to:
+  /// **'nova tarefa'**
+  String get agentChangeAddTask;
+
+  /// No description provided for @agentChangeAddEvent.
+  ///
+  /// In pt, this message translates to:
+  /// **'novo bloco fixo'**
+  String get agentChangeAddEvent;
+
+  /// No description provided for @agentChangeMoved.
+  ///
+  /// In pt, this message translates to:
+  /// **'movida'**
+  String get agentChangeMoved;
+
+  /// No description provided for @agentChangeRoutine.
+  ///
+  /// In pt, this message translates to:
+  /// **'rotina, só nesse dia'**
+  String get agentChangeRoutine;
+
+  /// No description provided for @agentChangeFromBacklog.
+  ///
+  /// In pt, this message translates to:
+  /// **'saiu do Depois eu priorizo'**
+  String get agentChangeFromBacklog;
+
+  /// No description provided for @agentAppliedToast.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 mudança aplicada} other{{count} mudanças aplicadas}}'**
+  String agentAppliedToast(int count);
+
+  /// No description provided for @agentUndo.
+  ///
+  /// In pt, this message translates to:
+  /// **'Desfazer'**
+  String get agentUndo;
+
+  /// No description provided for @agentSuggestionAccept.
+  ///
+  /// In pt, this message translates to:
+  /// **'Encaixar'**
+  String get agentSuggestionAccept;
+
+  /// No description provided for @agentSuggestionDismiss.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora não'**
+  String get agentSuggestionDismiss;
+
+  /// No description provided for @agentFailure.
+  ///
+  /// In pt, this message translates to:
+  /// **'Algo deu errado. Tente de novo.'**
+  String get agentFailure;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

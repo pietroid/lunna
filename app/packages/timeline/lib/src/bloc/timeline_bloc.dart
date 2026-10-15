@@ -22,6 +22,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
   TimelineBloc({required this._repository}) : super(const TimelineState()) {
     on<TimelineRequested>(_onRequested);
     on<TimelineExtended>(_onExtended);
+    on<TimelineReplaced>(_onReplaced);
     on<EventCreated>(_onCreated);
     on<EventMoved>(_onMoved);
     on<EventStarted>(_onStarted);
@@ -102,6 +103,22 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
   /// The refusal is kept as the server wrote it, because the server is the
   /// one that knows what went wrong. Every write on this screen is all or
   /// nothing, so the cards already on it are still the true ones.
+  void _onReplaced(TimelineReplaced event, Emitter<TimelineState> emit) {
+    final timeline = event.timeline;
+    emit(
+      state.copyWith(
+        status: TimelineStatus.success,
+        cards: timeline.cards,
+        tasks: timeline.tasks,
+        backlog: timeline.backlog,
+        workDay: timeline.workDay,
+        touched: event.touched,
+        clearGuard: true,
+        clearFailure: true,
+      ),
+    );
+  }
+
   TimelineState _failed(Object error) {
     return state.copyWith(
       status: TimelineStatus.failure,

@@ -63,6 +63,12 @@ abstract final class AppColors {
       ? Color(0x24E2394F)
       : Color(0x24EEFFBB);
 
+  /// A 7% accent tint: the quietest wash, behind what the agent offers
+  /// without being asked.
+  static const accentWash = AppBrand.isLunna
+      ? Color(0x12E2394F)
+      : Color(0x12EEFFBB);
+
   /// Done, free, available, confirmed.
   static const success = AppBrand.isLunna
       ? Color(0xFF0E8F68)

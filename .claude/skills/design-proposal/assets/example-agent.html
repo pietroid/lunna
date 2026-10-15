@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>
+:root{--bg:#fff;--fill:#F7F3F3;--fillS:#EEE7E8;--line:#EEE7E8;--ink:#1C1517;--ink2:#6F6468;--ink3:#A89DA1;--accent:#E2394F;--soft:rgba(226,57,79,.14);--wash:rgba(226,57,79,.07);--ok:#0E8F68;--rf:#EEF0F9;--ri:#4B5AA6;--ff:#FBF1E6;--fi:#A0602A;--sh:rgba(28,21,23,.25)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Onest,sans-serif;background:#EFE9EA;color:var(--ink);padding:48px;-webkit-font-smoothing:antialiased}
+.board{display:flex;gap:56px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:20px;width:390px}
+.cap h3{font-weight:500;font-size:18px;margin-bottom:6px}.cap p{font-size:13.5px;color:var(--ink2);line-height:1.5}
+.cap .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:99px;background:var(--ink);color:#fff;font-size:12px;margin-right:8px;vertical-align:2px}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:44px;overflow:hidden;position:relative;box-shadow:0 30px 60px -20px var(--sh)}
+.status{height:50px;display:flex;justify-content:space-between;align-items:center;padding:14px 32px 0;font-weight:600;font-size:15px}
+.status i{font-size:15px;margin-left:4px}
+.pad{padding:0 20px}
+.greet{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 6px}
+.greet h1{font-weight:400;font-size:28px;letter-spacing:-.02em}
+.greet small{display:block;font-size:14px;color:var(--ink2);margin-bottom:2px}
+.seg{display:flex;background:var(--fill);border-radius:12px;padding:3px;margin:12px 20px 16px}
+.seg div{flex:1;text-align:center;padding:8px;font-size:14px;color:var(--ink2);border-radius:10px}
+.seg .on{background:#fff;color:var(--ink);font-weight:500;box-shadow:0 1px 3px var(--line)}
+.sh{font-size:13px;color:var(--ink2);font-weight:500;padding:6px 20px 8px;display:flex;justify-content:space-between}
+.card{background:var(--fill);border-radius:18px;padding:14px 16px;margin:0 20px 8px;display:flex;gap:12px;align-items:center}
+.card .t{font-weight:500;font-size:15.5px}.card .m{font-size:13px;color:var(--ink2);margin-top:2px}
+.card .ck{width:22px;height:22px;border-radius:99px;border:1.5px solid var(--ink3);flex:none}
+.card.run{background:var(--ink);color:#fff}.card.run .m{color:#c9bfc2}.card.run .ck{border-color:#fff}
+.card.rt{background:var(--rf)}.card.rt .m{color:var(--ri)}
+.card.fx{background:var(--ff)}.card.fx .m{color:var(--fi)}
+.card.new{background:var(--wash);outline:1.5px solid var(--soft)}
+.tag{font-size:11px;font-weight:500;color:var(--accent);background:var(--soft);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:2px}
+.bar{position:absolute;left:0;right:0;bottom:0;height:96px;background:linear-gradient(rgba(255,255,255,.6),rgba(255,255,255,.95));backdrop-filter:blur(12px);display:flex;justify-content:space-around;padding:12px 60px 0}
+.bar div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;color:var(--ink3)}
+.bar i{font-size:24px}.bar .on{color:var(--ink)}
+.fab{position:absolute;right:20px;bottom:112px;width:56px;height:56px;border-radius:99px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:26px;box-shadow:0 10px 24px -8px var(--accent)}
+.ask{position:absolute;left:20px;right:88px;bottom:114px;height:52px;border-radius:99px;background:#fff;box-shadow:0 8px 28px -10px var(--sh),0 0 0 1px var(--line);display:flex;align-items:center;gap:10px;padding:0 8px 0 18px;color:var(--ink3);font-size:15px}
+.ask .sp{color:var(--accent);font-size:20px}
+.ask .mic{margin-left:auto;width:36px;height:36px;border-radius:99px;background:var(--fill);display:grid;place-items:center;color:var(--ink2);font-size:18px}
+.nudge{margin:4px 20px 14px;border-radius:18px;background:var(--wash);padding:14px 16px}
+.nudge .h{display:flex;gap:8px;align-items:center;font-size:12.5px;font-weight:500;color:var(--accent);margin-bottom:6px}
+.nudge p{font-size:14.5px;line-height:1.45}
+.nudge .a{display:flex;gap:8px;margin-top:12px}
+.btn{border-radius:12px;padding:9px 14px;font-size:14px;font-weight:500;background:#fff;color:var(--ink)}
+.btn.p{background:var(--accent);color:#fff}
+.dim{position:absolute;inset:0;background:rgba(28,21,23,.32)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;display:flex;flex-direction:column}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--fillS);margin:10px auto 6px}
+.shh{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 12px}
+.shh .ttl{display:flex;align-items:center;gap:10px;font-weight:500;font-size:17px}
+.orb{width:32px;height:32px;border-radius:99px;background:var(--soft);color:var(--accent);display:grid;place-items:center;font-size:17px}
+.ib{width:36px;height:36px;border-radius:99px;background:var(--fill);display:grid;place-items:center;color:var(--ink2);font-size:18px}
+.chips{display:flex;flex-direction:column;gap:8px;padding:4px 20px 16px}
+.chip{background:var(--fill);border-radius:14px;padding:12px 14px;font-size:14.5px;display:flex;gap:10px;align-items:center}
+.chip i{color:var(--ink2);font-size:18px}
+.comp{margin:0 16px 30px;border-radius:24px;background:var(--fill);padding:14px 16px 10px}
+.comp .in{font-size:16px;color:var(--ink);min-height:24px}
+.comp .in.hint{color:var(--ink3)}
+.comp .row{display:flex;align-items:center;gap:8px;margin-top:14px;color:var(--ink2)}
+.comp .row .pill{font-size:12.5px;background:#fff;border-radius:99px;padding:5px 10px;display:flex;gap:6px;align-items:center}
+.send{margin-left:auto;width:36px;height:36px;border-radius:99px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:17px}
+.send.off{background:var(--fillS);color:var(--ink3)}
+.me{align-self:flex-end;max-width:78%;background:var(--ink);color:#fff;border-radius:20px 20px 6px 20px;padding:11px 15px;font-size:15px;line-height:1.4;margin:0 20px 14px}
+.steps{margin:0 20px 12px;font-size:13.5px;color:var(--ink2);display:flex;flex-direction:column;gap:7px}
+.steps div{display:flex;gap:8px;align-items:center}.steps .ok{color:var(--ok)}
+.say{font-size:15px;line-height:1.5;margin:0 20px 12px}
+.plan{margin:0 20px 12px;border-radius:20px;border:1px solid var(--line);overflow:hidden}
+.plan .phd{padding:12px 16px;font-size:13px;color:var(--ink2);font-weight:500;background:var(--fill);display:flex;justify-content:space-between}
+.chg{display:flex;gap:12px;padding:12px 16px;border-top:1px solid var(--line);align-items:flex-start}
+.chg .ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
+.chg .ic.add{background:var(--soft);color:var(--accent)}.chg .ic.mv{background:var(--rf);color:var(--ri)}.chg .ic.fx{background:var(--ff);color:var(--fi)}
+.chg .t{font-size:14.5px;font-weight:500}.chg .m{font-size:13px;color:var(--ink2);margin-top:2px}
+.chg s{color:var(--ink3)}
+.plan .a{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.plan .a .btn{flex:1;text-align:center;background:var(--fill)}.plan .a .btn.p{background:var(--accent)}
+.toast{position:absolute;left:20px;right:20px;bottom:186px;background:var(--ink);color:#fff;border-radius:16px;padding:13px 16px;display:flex;align-items:center;gap:10px;font-size:14.5px;box-shadow:0 12px 30px -10px var(--sh)}
+.toast b{margin-left:auto;color:#FF8A9A;font-weight:500}
+.now{display:flex;align-items:center;gap:8px;margin:2px 20px 10px;font-size:12px;color:var(--accent);font-weight:500}
+.now:after{content:"";flex:1;height:1.5px;background:var(--accent)}
+.note{font-size:12.5px;color:var(--ink2);background:#fff;border-radius:14px;padding:12px 14px;line-height:1.5}
+.note b{color:var(--ink);font-weight:500}
+.pin{position:absolute;width:24px;height:24px;border-radius:99px;background:#2563EB;color:#fff;font-size:12px;font-weight:600;display:grid;place-items:center;box-shadow:0 0 0 3px #fff;z-index:9}
+.moon{width:20px;height:20px;flex:none;display:block}.ask .moon{width:22px;height:22px}.nudge .moon{width:14px;height:14px}.orb .moon{width:18px;height:18px}.toast .moon{width:20px;height:20px}
+.moon1{width:10px;height:10px;display:inline-block;vertical-align:-1px;margin-right:4px;color:var(--accent)}
+.legend .pin{position:static;display:inline-grid;margin-right:6px;box-shadow:none;vertical-align:-6px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="lf" x1="10" y1="10" x2="46" y2="54" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFD3D9"/><stop offset=".45" stop-color="#F7899A"/><stop offset="1" stop-color="#E2394F"/></linearGradient>
+<radialGradient id="lg" cx="16" cy="22" r="22" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<symbol id="moon" viewBox="6 6 52 52"><path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="url(#lf)"/><path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="url(#lg)"/></symbol>
+<symbol id="moon1" viewBox="6 6 52 52"><path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="currentColor"/></symbol>
+</defs></svg>
+<div class="board">
+
+<!-- 1 -->
+<div class="col" id="s1">
+<div class="cap"><h3><span class="n">1</span>Tempo, com a Lunna à mão</h3><p>O agente mora numa barra fixa ao lado do +. Quando enxerga algo no dia, sugere dentro da própria lista.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="greet"><div><small>Quarta, 15 de outubro</small><h1>Bom dia, Pietro</h1></div></div>
+ <div class="seg"><div class="on">Lista</div><div>Calendário</div></div>
+ <div class="sh"><span>Fazer em breve</span><span>5 tarefas · 4h10</span></div>
+ <div class="card run"><div class="ck"></div><div><div class="t">Revisar proposta da Acme</div><div class="m">Agora · até 10:15</div></div></div>
+ <div class="pin" style="left:8px;top:332px">B</div>
+ <div class="nudge">
+  <div class="h"><svg class="moon"><use href="#moon"/></svg>Sugestão da Lunna</div>
+  <p>Sua tarde tem 3h livres e "Relatório mensal" está sem hora há 4 dias. Quer que eu encaixe às 14:00?</p>
+  <div class="a"><span class="btn p">Encaixar</span><span class="btn">Agora não</span></div>
+ </div>
+ <div class="card fx"><div class="ck"></div><div><div class="t">Reunião com time</div><div class="m">11:00 – 11:45 · fixo</div></div></div>
+ <div class="card rt"><div class="ck"></div><div><div class="t">Almoço</div><div class="m">12:30 · rotina</div></div></div>
+ <div class="card"><div class="ck"></div><div><div class="t">Responder e-mails</div><div class="m">13:20 · 30 min</div></div></div>
+ <div class="pin" style="left:8px;top:722px">A</div>
+ <div class="ask"><svg class="moon sp"><use href="#moon"/></svg>Pergunte à Lunna…<span class="mic"><i class="ph ph-microphone"></i></span></div>
+ <div class="fab"><i class="ph ph-plus"></i></div>
+ <div class="bar"><div class="on"><i class="ph-fill ph-clock"></i>Tempo</div><div><i class="ph ph-folders"></i>Projetos</div><div><i class="ph ph-list"></i>Menu</div></div>
+</div>
+<div class="note legend"><span class="pin">A</span><b>Entrada:</b> barra "Pergunte à Lunna" acima da tab bar, à esquerda do + (o + continua criando direto). Ícone: <b>a lua da Lunna sem o check</b>, com o gradiente da marca. Microfone à direita. Some ao rolar para baixo, volta ao subir.<br><span class="pin">B</span><b>Sugestão proativa:</b> no máximo uma por vez, entre cards, fundo accent 7%. "Agora não" some por 24h.</div>
+</div>
+
+<!-- 2 -->
+<div class="col" id="s2">
+<div class="cap"><h3><span class="n">2</span>A folha da Lunna</h3><p>Toque na barra abre uma folha de 3/4 sobre o Tempo, com atalhos do que mais se pede.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="greet"><div><small>Quarta, 15 de outubro</small><h1>Bom dia, Pietro</h1></div></div>
+ <div class="card run" style="margin-top:20px"><div class="ck"></div><div><div class="t">Revisar proposta da Acme</div><div class="m">Agora · até 10:15</div></div></div>
+ <div class="dim"></div>
+ <div class="sheet" style="top:150px">
+  <div class="grab"></div>
+  <div class="shh"><div class="ttl"><span class="orb"><svg class="moon"><use href="#moon"/></svg></span>Lunna</div><div style="display:flex;gap:8px"><span class="ib"><i class="ph ph-clock-counter-clockwise"></i></span><span class="ib"><i class="ph ph-x"></i></span></div></div>
+  <div class="pin" style="right:96px;top:14px">C</div>
+  <div style="padding:20px 20px 18px"><div style="font-size:24px;font-weight:400;letter-spacing:-.02em;line-height:1.2">Como posso<br>arrumar seu dia?</div><div style="font-size:14px;color:var(--ink2);margin-top:8px">Você tem 4h10 de tarefas e 3h livres hoje.</div></div>
+  <div class="chips">
+   <div class="chip"><i class="ph ph-magic-wand"></i>Organiza minha tarde</div>
+   <div class="chip"><i class="ph ph-calendar-plus"></i>Encaixa 2h de estudo amanhã</div>
+   <div class="chip"><i class="ph ph-arrows-clockwise"></i>Atrasei 30 min, refaz o dia</div>
+   <div class="chip"><i class="ph ph-sun-horizon"></i>Como foi minha semana?</div>
+  </div>
+  <div style="flex:1"></div>
+  <div class="pin" style="left:6px;bottom:96px">D</div>
+  <div class="comp"><div class="in hint">Pergunte ou peça algo…</div><div class="row"><span class="pill"><i class="ph ph-calendar-blank"></i>Hoje</span><span class="pill"><i class="ph ph-paperclip"></i></span><span class="send off"><i class="ph ph-microphone"></i></span></div></div>
+ </div>
+</div>
+<div class="note legend"><span class="pin">C</span><b>Cabeçalho:</b> a lua num círculo accent 14% + "Lunna"; histórico (ph-clock-counter-clockwise) e fechar.<br><span class="pin">D</span><b>Compositor:</b> campo em fill, chip de contexto ("Hoje" = dia que o Tempo mostra). Botão vira microfone quando vazio, enviar quando há texto.</div>
+</div>
+
+<!-- 3 -->
+<div class="col" id="s3">
+<div class="cap"><h3><span class="n">3</span>O agente propõe, você aprova</h3><p>Mostra o que está fazendo e devolve um plano. Nada muda no dia sem "Aplicar".</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="sheet" style="top:56px;border-radius:28px 28px 0 0">
+  <div class="grab"></div>
+  <div class="shh"><div class="ttl"><span class="orb"><svg class="moon"><use href="#moon"/></svg></span>Lunna</div><div style="display:flex;gap:8px"><span class="ib"><i class="ph ph-clock-counter-clockwise"></i></span><span class="ib"><i class="ph ph-x"></i></span></div></div>
+  <div style="display:flex;flex-direction:column;padding-top:8px">
+   <div class="me">Encaixa 2h de estudo amanhã de manhã e empurra a academia pra depois</div>
+   <div class="pin" style="left:6px;top:150px">E</div>
+   <div class="steps">
+    <div><i class="ph-bold ph-check ok"></i>Li sua quinta-feira</div>
+    <div><i class="ph-bold ph-check ok"></i>Achei 08:00 – 10:00 livre</div>
+    <div><i class="ph-bold ph-check ok"></i>Academia cabe às 18:30</div>
+   </div>
+   <div class="say">Pronto. Fica assim amanhã:</div>
+   <div class="pin" style="left:6px;top:290px">F</div>
+   <div class="plan">
+    <div class="phd"><span>Quinta, 16 de out</span><span>3 mudanças</span></div>
+    <div class="chg"><span class="ic add"><i class="ph ph-plus"></i></span><div><div class="t">Estudo: Flutter</div><div class="m">08:00 – 10:00 · nova tarefa</div></div></div>
+    <div class="chg"><span class="ic mv"><i class="ph ph-arrow-right"></i></span><div><div class="t">Academia</div><div class="m"><s>08:00</s> → 18:30 · rotina, só amanhã</div></div></div>
+    <div class="chg"><span class="ic fx"><i class="ph ph-arrow-right"></i></span><div><div class="t">Responder e-mails</div><div class="m"><s>09:00</s> → 10:05 · empurrada</div></div></div>
+    <div class="a"><span class="btn">Ajustar</span><span class="btn p">Aplicar</span></div>
+   </div>
+  </div>
+  <div style="flex:1"></div>
+  <div class="comp" style="margin-bottom:30px"><div class="in hint">Responder…</div><div class="row"><span class="pill"><i class="ph ph-calendar-blank"></i>Amanhã</span><span class="send off"><i class="ph ph-microphone"></i></span></div></div>
+ </div>
+</div>
+<div class="note legend"><span class="pin">E</span><b>Passos:</b> o que o agente fez, em uma linha cada, check verde. Enquanto roda, um spinner no lugar do check.<br><span class="pin">F</span><b>Plano:</b> um card de diff por dia. Ícone diz o tipo (+ nova, → movida), hora antiga riscada. Accent só no "Aplicar".</div>
+</div>
+
+<!-- 4 -->
+<div class="col" id="s4">
+<div class="cap"><h3><span class="n">4</span>Aplicado, com desfazer</h3><p>A folha fecha, o Tempo pula para o dia mudado e destaca o que a Lunna mexeu.</p></div>
+<div class="phone">
+ <div class="status">9:41<span><i class="ph-fill ph-cell-signal-full"></i><i class="ph-fill ph-wifi-high"></i><i class="ph-fill ph-battery-full"></i></span></div>
+ <div class="greet"><div><small>Quinta, 16 de outubro</small><h1>Amanhã</h1></div></div>
+ <div class="seg"><div>Lista</div><div class="on">Calendário</div></div>
+ <div class="sh"><span>Qui, 16</span><span></span></div>
+ <div class="card new"><div class="ck"></div><div><div class="t">Estudo: Flutter <span class="tag"><svg class="moon1"><use href="#moon1"/></svg>Lunna</span></div><div class="m">08:00 – 10:00 · 2h</div></div></div>
+ <div class="pin" style="left:8px;top:258px">G</div>
+ <div class="card"><div class="ck"></div><div><div class="t">Responder e-mails <span class="tag"><svg class="moon1"><use href="#moon1"/></svg>movida</span></div><div class="m">10:05 · 30 min</div></div></div>
+ <div class="card fx"><div class="ck"></div><div><div class="t">1:1 com Ana</div><div class="m">11:00 – 11:30 · fixo</div></div></div>
+ <div class="card rt"><div class="ck"></div><div><div class="t">Almoço</div><div class="m">12:30 · rotina</div></div></div>
+ <div class="card rt new"><div class="ck"></div><div><div class="t">Academia <span class="tag"><svg class="moon1"><use href="#moon1"/></svg>movida</span></div><div class="m">18:30 · rotina</div></div></div>
+ <div class="toast"><svg class="moon"><use href="#moon"/></svg>3 mudanças aplicadas<b>Desfazer</b></div>
+ <div class="pin" style="right:8px;bottom:200px">H</div>
+ <div class="ask"><svg class="moon sp"><use href="#moon"/></svg>Pergunte à Lunna…<span class="mic"><i class="ph ph-microphone"></i></span></div>
+ <div class="fab"><i class="ph ph-plus"></i></div>
+ <div class="bar"><div class="on"><i class="ph-fill ph-clock"></i>Tempo</div><div><i class="ph ph-folders"></i>Projetos</div><div><i class="ph ph-list"></i>Menu</div></div>
+</div>
+<div class="note legend"><span class="pin">G</span><b>Marca:</b> o que o agente criou ou moveu ganha contorno accent e a tag "Lunna"/"movida" com a lua sólida até o fim do dia ou até ser tocado.<br><span class="pin">H</span><b>Desfazer:</b> snackbar escuro por 8s, acima da barra. Desfaz o plano inteiro de uma vez.</div>
+</div>
+
+</div>
+</body></html>

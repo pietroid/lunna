@@ -31,6 +31,7 @@ final class TimelineState extends Equatable {
     this.guard,
     this.guardBusy = false,
     this.failure,
+    this.touched = const {},
   });
 
   /// How many days the calendar draws before it is scrolled.
@@ -85,6 +86,10 @@ final class TimelineState extends Equatable {
   /// the rest.
   final TimelineFailure? failure;
 
+  /// The cards the agent last changed, marked until the day is read again
+  /// without it.
+  final Set<String> touched;
+
   /// The card with [id], or null if the day does not have it.
   ///
   /// The lists first, because between them they have every task and the
@@ -129,6 +134,7 @@ final class TimelineState extends Equatable {
     StartNowGuard? guard,
     bool? guardBusy,
     TimelineFailure? failure,
+    Set<String>? touched,
     bool clearGuard = false,
     bool clearFailure = false,
   }) {
@@ -143,6 +149,7 @@ final class TimelineState extends Equatable {
       guard: clearGuard ? null : guard ?? this.guard,
       guardBusy: guardBusy ?? this.guardBusy,
       failure: clearFailure ? null : failure ?? this.failure,
+      touched: touched ?? this.touched,
     );
   }
 
@@ -158,5 +165,6 @@ final class TimelineState extends Equatable {
     guard,
     guardBusy,
     failure,
+    touched,
   ];
 }

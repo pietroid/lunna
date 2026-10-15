@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:api_client/api_client.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter/foundation.dart';
@@ -34,6 +35,7 @@ Future<void> main() async {
     tokenProvider: AuthTokenProvider(authRepository),
   );
   final timelineRepository = TimelineRepository(apiClient: apiClient);
+  final agentRepository = AgentRepository(apiClient: apiClient);
   final routinesRepository = RoutinesRepository(apiClient: apiClient);
   final notificationScheduler = NotificationScheduler(
     repository: NotificationsRepository(apiClient: apiClient),
@@ -51,6 +53,7 @@ Future<void> main() async {
         RepositoryProvider<TimelineRepository>(
           create: (_) => timelineRepository,
         ),
+        RepositoryProvider<AgentRepository>(create: (_) => agentRepository),
         RepositoryProvider<RoutinesRepository>(
           create: (_) => routinesRepository,
         ),
@@ -65,6 +68,11 @@ Future<void> main() async {
               authRepository: authRepository,
               initialUser: initialUser,
             ),
+          ),
+          // One conversation for the whole session: closing the sheet and
+          // opening it again carries on where it was.
+          BlocProvider<AgentCubit>(
+            create: (_) => AgentCubit(repository: agentRepository),
           ),
           BlocProvider<TimelineBloc>(
             create: (_) {

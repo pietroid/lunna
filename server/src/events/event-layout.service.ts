@@ -78,7 +78,7 @@ export class EventLayoutService {
     user: CalendarUser,
     request: EventRequest,
     trace: Trace,
-  ): Promise<void> {
+  ): Promise<string> {
     const start = roundUpToFiveMinutes(new Date(request.startTime));
     const created = await this._calendar.create(user, {
       title: request.title,
@@ -91,6 +91,8 @@ export class EventLayoutService {
       eventId: created.id,
       start: created.startTime,
     });
+
+    return created.id;
   }
 
   /**
@@ -223,7 +225,7 @@ export class EventLayoutService {
     request: TaskRequest,
     trace: Trace,
     now = new Date(),
-  ): Promise<void> {
+  ): Promise<string> {
     const day = await this._timeline.day(user, 1, now);
 
     if (request.backlog) {
@@ -234,7 +236,7 @@ export class EventLayoutService {
         backlog: true,
       });
       trace.log('task.create', { taskId: created.id, backlog: true });
-      return;
+      return created.id;
     }
 
     const queue = turnTaking(day);
@@ -262,6 +264,8 @@ export class EventLayoutService {
       index,
       anchor: anchor?.toISOString(),
     });
+
+    return created.id;
   }
 
   /**

@@ -12,7 +12,7 @@ Each build is one of two brands, Focus or Lunna (see below).
 It started as a copy of Focus with the AI agent, the conversations, the
 untimed "things" list and Google Calendar taken out. What is left is the
 timeline and its calendar dynamics, the routines, the reminders, and the
-design system.
+design system, plus a smaller agent of its own (see "The agent").
 
 ### Two brands
 
@@ -77,6 +77,7 @@ app/
   tool/brand_web.sh     stamps a brand on a web build
   lib/                  shell, home (Tempo), routines page, landing, demo
   packages/
+    agent/              the agent: ask bar, sheet, plan card, suggestion
     api_client/         Dio + bearer token interceptor
     app_ui/             the design system: AppBrand, theme, tokens, widgets
     auth/               Better Auth client: Google sign-in, token store
@@ -85,6 +86,7 @@ app/
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
   src/
+    agent/              the agent: OpenRouter client, tools, plans
     auth/               Better Auth instance + SessionGuard
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
     db/                 Drizzle schema + pool + boot-time migrations
@@ -95,6 +97,7 @@ server/
     time/               work hours, zones, the scheduler
   drizzle/              generated SQL migrations (committed)
 deploy/                 docker-compose.yml, nginx.conf, web.Dockerfile
+delivery/               one folder per delivered feature: prompt, design, notes
 _product/record/        product notes (time-system.md)
 ```
 
@@ -373,6 +376,41 @@ Every other task's hour moves too often to be worth one. Events get a plain
 `starting` reminder. An item's `eventId` is the id of the card a tap opens:
 the task's for a task. The phone mirrors the
 plan into local notifications, so reminders arrive without push or network.
+
+### The agent
+
+The agent (named after the brand: "Pergunte à Lunna", "Pergunte ao
+Focus") reads the day and proposes changes to it. It runs inside the Nest
+server (`server/src/agent/`) and calls a model through OpenRouter
+(`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; with no key, `POST /agent/turn`
+answers 503 and nothing else changes).
+
+**Reads run, writes are only ever proposed.** The model has two tools:
+`read_timeline` (the day, with ids and wall-clock hours) and
+`propose_plan`. There is no tool that writes. `propose_plan` checks every
+change against the day (the id exists, nothing begun is moved, nothing goes
+into the past) and files a plan in memory (`PlanStore`, two hours); a bad
+change goes back to the model as an error to answer. The user applies the
+plan, and it is the server that makes each change, through
+`EventLayoutService`, keeping what it needs to undo it. A plan applies
+whole or not at all.
+
+A change is one of `add_task` (anchored at its hour), `move_task` (from
+the queue or the backlog), `add_event`, `move_event`. Nothing is removed.
+
+| Route | What it does |
+|-------|--------------|
+| `POST /agent/turn` | `{ messages, day? }` → `{ reply, steps, plan? }`; changes nothing |
+| `GET /agent/suggestion` | the first backlog task that fits in the room left today, as a plan; no model |
+| `POST /agent/plans/:id/apply?days=` | the timeline, plus `touched`: the ids it changed |
+| `POST /agent/plans/:id/undo?days=` | the timeline; the plan can be applied again |
+
+On the app, the ask bar sits beside the + on Tempo and opens the sheet;
+the conversation lives as long as the session (`AgentCubit`). The suggestion
+is drawn above the list, and "Agora não" rests it for 24 hours on the
+device. Applying replaces the day (`TimelineReplaced`) and marks the cards
+it changed with the agent's crescent (`AppIcons.agent`, per brand) and an
+accent edge; a snackbar offers Desfazer.
 
 ## Commands
 
