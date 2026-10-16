@@ -34,6 +34,20 @@ export interface PlanChange {
   routine: boolean;
 }
 
+/**
+ * A task the plan does not name that would start later because of it: the
+ * queue flowing on after something put in its way, as it does when the same
+ * change is made by hand.
+ */
+export interface Pushed {
+  id: string;
+  title: string;
+  /** ISO 8601, the hour it has now. */
+  before: string;
+  /** ISO 8601, the hour it would have. */
+  at: string;
+}
+
 /** What applying one change did, so undoing it is exact. */
 export type Undo =
   | { kind: 'remove_task'; id: string }
@@ -54,6 +68,8 @@ export interface Plan {
   /** Short lines the user sees ticked off: what the agent found. */
   findings: string[];
   changes: PlanChange[];
+  /** What the plan pushes later, for the person to see before applying. */
+  pushed: Pushed[];
   createdAt: number;
   /** Set once applied: how to take it back, and the ids it touched. */
   applied?: { undo: Undo[]; touched: string[] };
@@ -73,7 +89,12 @@ export class PlanStore {
 
   constructor(private readonly _now: () => number = Date.now) {}
 
-  put(userId: string, findings: string[], changes: PlanChange[]): Plan {
+  put(
+    userId: string,
+    findings: string[],
+    changes: PlanChange[],
+    pushed: Pushed[] = [],
+  ): Plan {
     this._prune();
 
     const plan: Plan = {
@@ -81,6 +102,7 @@ export class PlanStore {
       userId,
       findings,
       changes,
+      pushed,
       createdAt: this._now(),
     };
     this._plans.set(plan.id, plan);

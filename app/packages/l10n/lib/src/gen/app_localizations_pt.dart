@@ -664,9 +664,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSend => 'Enviar';
 
   @override
-  String get agentNewConversation => 'Nova conversa';
-
-  @override
   String get agentClose => 'Fechar';
 
   @override
@@ -705,18 +702,86 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentChangeFromBacklog => 'saiu do Depois eu priorizo';
 
   @override
-  String agentAppliedToast(int count) {
+  String get agentUndo => 'Desfazer';
+
+  @override
+  String get agentEarlier => 'Conversas anteriores';
+
+  @override
+  String get agentEarlierFailed => 'Não consegui trazer as conversas anteriores. Toque para tentar de novo.';
+
+  @override
+  String agentHistoryToday(DateTime time) {
+    final intl.DateFormat timeDateFormat = intl.DateFormat('HH:mm', localeName);
+    final String timeString = timeDateFormat.format(time);
+
+    return 'Hoje · $timeString';
+  }
+
+  @override
+  String agentHistoryYesterday(DateTime day, DateTime time) {
+    final intl.DateFormat dayDateFormat = intl.DateFormat.EEEE(localeName);
+    final String dayString = dayDateFormat.format(day);
+    final intl.DateFormat timeDateFormat = intl.DateFormat('HH:mm', localeName);
+    final String timeString = timeDateFormat.format(time);
+
+    return 'Ontem, $dayString · $timeString';
+  }
+
+  @override
+  String agentHistoryDay(DateTime day, DateTime time) {
+    final intl.DateFormat dayDateFormat = intl.DateFormat('EEE, d \'de\' MMM', localeName);
+    final String dayString = dayDateFormat.format(day);
+    final intl.DateFormat timeDateFormat = intl.DateFormat('HH:mm', localeName);
+    final String timeString = timeDateFormat.format(time);
+
+    return '$dayString · $timeString';
+  }
+
+  @override
+  String agentHistoryNow(DateTime time) {
+    final intl.DateFormat timeDateFormat = intl.DateFormat('HH:mm', localeName);
+    final String timeString = timeDateFormat.format(time);
+
+    return 'Agora · $timeString';
+  }
+
+  @override
+  String agentPlanSummary(String changes, String status) {
+    return '$changes · $status';
+  }
+
+  @override
+  String get agentPlanApplied => 'aplicado';
+
+  @override
+  String get agentPlanUndone => 'desfeito';
+
+  @override
+  String get agentPlanNotApplied => 'não aplicado';
+
+  @override
+  String agentPushedCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count mudanças aplicadas',
-      one: '1 mudança aplicada',
+      other: '$count empurradas',
+      one: '1 empurrada',
     );
     return '$_temp0';
   }
 
   @override
-  String get agentUndo => 'Desfazer';
+  String get agentChangePushed => 'empurrada';
+
+  @override
+  String get agentPush => 'Empurrar';
+
+  @override
+  String get agentOtherTime => 'Outro horário';
+
+  @override
+  String get agentOtherTimeDraft => 'Prefiro outro horário: ';
 
   @override
   String get agentSuggestionAccept => 'Encaixar';

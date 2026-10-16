@@ -5,7 +5,7 @@ import {
   CalendarUser,
   RoutineDays,
 } from '../calendar/calendar.types';
-import { relayout } from '../time/scheduling';
+import { QueuedBlock, relayout } from '../time/scheduling';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
 import {
@@ -281,6 +281,56 @@ export function isMissed(
   }
 
   return atMinuteIn(new Date(task.occurrence), workDay.end, zone) <= now;
+}
+
+/**
+ * Where the queue would put every task not begun, were the day changed.
+ *
+ * The same layout [TimelineService.day] makes, run again on the day already
+ * read with [blocks] put in the queue (one with a task's id takes that task's
+ * place) and [events] on the calendar (one with an event's id takes that
+ * event's hour). Nothing is written: this is how a change is shown before it
+ * is made.
+ */
+export function rehearse(
+  day: Day,
+  blocks: QueuedBlock[],
+  events: { id?: string; interval: Interval }[],
+): Map<string, Interval> {
+  const replaced = new Map(blocks.map((block) => [block.id, block] as const));
+  const queue: QueuedBlock[] = day.tasks
+    .filter((task) => !day.live.has(task.id))
+    .map(
+      (task) =>
+        replaced.get(task.id) ?? {
+          id: task.id,
+          minutes: task.minutes,
+          anchor:
+            task.notBefore === undefined ? undefined : new Date(task.notBefore),
+        },
+    );
+  const queued = new Set(queue.map((block) => block.id));
+  queue.push(...blocks.filter((block) => !queued.has(block.id)));
+
+  const moved = new Map(
+    events.flatMap((it) => (it.id === undefined ? [] : [[it.id, it] as const])),
+  );
+  const obstacles = [
+    ...day.events.flatMap((event) =>
+      moved.has(event.id)
+        ? [moved.get(event.id)!.interval]
+        : (intervalOf(event) ?? []),
+    ),
+    ...events.filter((it) => it.id === undefined).map((it) => it.interval),
+  ];
+
+  return relayout(
+    queue,
+    obstacles,
+    cursorOf(day.events, day.now),
+    day.zone,
+    day.workDay,
+  );
 }
 
 /** Where a task's hour is: the one it is taking, or the one it is given. */

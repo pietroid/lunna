@@ -20,15 +20,16 @@ class AppIcons {
     AppBrand.isLunna ? 'agent_lunna' : 'agent_focus',
   );
 
-  /// Starts a conversation over.
-  static const newConversation = AppIconData.phosphor(
-    PhosphorIconsRegular.notePencil,
-  );
+  /// The conversations before this one, above it.
+  static const earlier = AppIconData.phosphor(PhosphorIconsRegular.caretUp);
 
   /// A move, in a plan.
   static const arrowRight = AppIconData.phosphor(
     PhosphorIconsRegular.arrowRight,
   );
+
+  /// A task a plan pushes later.
+  static const pushed = AppIconData.phosphor(PhosphorIconsRegular.arrowDown);
 
   /// Speaks to the agent instead of typing.
   static const microphone = AppIconData.phosphor(

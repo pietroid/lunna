@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -9,7 +10,8 @@ import { CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
 import { TimelineCard } from '../events/entities/event.entity';
 import { EventLayoutService } from '../events/event-layout.service';
-import { TimelineService } from '../events/timeline.service';
+import { rehearse, TimelineService } from '../events/timeline.service';
+import { QueuedBlock } from '../time/scheduling';
 import { TaskStore } from '../tasks/task.store';
 import {
   DEFAULT_WORK_DAY,
@@ -29,6 +31,7 @@ import {
   Zone,
 } from '../time/zone';
 import { contextLine, SYSTEM_PROMPT, TOOLS } from './agent.prompt';
+import { ConversationStore, PlanStatus } from './conversation.store';
 import { ChatMessage, OpenRouterClient, ToolCall } from './openrouter.client';
 import {
   CHANGE_KINDS,
@@ -36,6 +39,7 @@ import {
   Plan,
   PlanChange,
   PlanStore,
+  Pushed,
   Undo,
 } from './plan';
 
@@ -43,21 +47,32 @@ import {
 export interface AgentMessage {
   role: 'user' | 'assistant';
   text: string;
+  /** How long it took to say, when the user spoke it. */
+  voiceSeconds?: number;
+}
+
+/** A plan, as the app draws it. */
+export interface PlanView {
+  id: string;
+  changes: PlanChange[];
+  pushed: Pushed[];
 }
 
 /** What one turn answers with. */
 export interface AgentReply {
+  /** The conversation the turn was written into. */
+  conversationId: string;
   reply: string;
   /** What the agent did, one short line each, in the order it did it. */
   steps: string[];
   /** The changes it proposes, when it proposes any. */
-  plan?: { id: string; changes: PlanChange[] };
+  plan?: PlanView;
 }
 
 /** A proposal the agent makes without being asked. */
 export interface Suggestion {
   text: string;
-  plan: { id: string; changes: PlanChange[] };
+  plan: PlanView;
 }
 
 /** How many model round-trips one turn is allowed. */
@@ -65,6 +80,12 @@ const MAX_ITERATIONS = 6;
 
 /** How far ahead the agent can see and plan. */
 const HORIZON_DAYS = 14;
+
+/** How many pushed tasks a plan shows; the rest follow them. */
+const MAX_PUSHED = 8;
+
+/** How many past messages one search hands the model. */
+const MAX_FOUND = 20;
 
 /**
  * Lunna's agent: it reads the day and proposes changes to it.
@@ -87,20 +108,71 @@ export class AgentService {
     private readonly _layout: EventLayoutService,
     private readonly _calendar: CalendarService,
     private readonly _tasks: TaskStore,
+    private readonly _conversations: ConversationStore,
   ) {}
 
   get configured(): boolean {
     return this._model.configured;
   }
 
-  /** Answers the last message of [history]. Changes nothing. */
+  /**
+   * Answers the last message of [history], the conversation [conversationId]
+   * (a new one when absent), and writes both down. Changes nothing on the day.
+   *
+   * [history] is all the model is told: past conversations are only for the
+   * person to read back, and for the model to look up when asked about them.
+   */
   async turn(
     user: CalendarUser,
+    conversationId: string | undefined,
     history: AgentMessage[],
     focusDay: string | undefined,
     trace: Trace,
     now = new Date(),
   ): Promise<AgentReply> {
+    const conversation = conversationId ?? randomUUID();
+    const answer = await this._answer(
+      user,
+      conversation,
+      history,
+      focusDay,
+      trace,
+      now,
+    );
+    const said = history[history.length - 1];
+    await this._conversations.append(user, conversation, [
+      {
+        role: 'user',
+        text: said.text,
+        voiceSeconds: said.voiceSeconds,
+        at: now,
+      },
+      {
+        role: 'assistant',
+        text: answer.reply,
+        steps: answer.steps,
+        plan: answer.plan,
+        // After the question, however long the answer took to work out.
+        at: new Date(now.getTime() + 1),
+      },
+    ]);
+
+    return { conversationId: conversation, ...answer };
+  }
+
+  /** The conversations before [before], most recent first. */
+  history(user: CalendarUser, before: Date | undefined, limit: number) {
+    return this._conversations.recent(user, before, limit);
+  }
+
+  private async _answer(
+    user: CalendarUser,
+    conversationId: string,
+    history: AgentMessage[],
+    focusDay: string | undefined,
+    trace: Trace,
+    now: Date,
+  ): Promise<Omit<AgentReply, 'conversationId'>> {
     const zone = this._timeline.zone(user);
     const workDay = user.workDay ?? DEFAULT_WORK_DAY;
     const messages: ChatMessage[] = [
@@ -140,7 +212,14 @@ export class AgentService {
       });
 
       for (const call of outcome.toolCalls) {
-        const result = await this._run(user, call, now, trace, steps);
+        const result = await this._run(
+          user,
+          conversationId,
+          call,
+          now,
+          trace,
+          steps,
+        );
         if (result.plan !== undefined) plan = result.plan;
         messages.push({
           role: 'tool',
@@ -205,6 +284,7 @@ export class AgentService {
     }
 
     plan.applied = { undo, touched };
+    await this._mark(user, planId, 'applied', trace);
     trace.log('agent.applied', { planId, changes: plan.changes.length });
 
     return touched;
@@ -220,7 +300,25 @@ export class AgentService {
     await this._takeBack(user, plan.applied.undo, trace);
     // Back to a proposal: the card offers Aplicar again.
     plan.applied = undefined;
+    await this._mark(user, planId, 'undone', trace);
     trace.log('agent.undone', { planId });
+  }
+
+  /** Notes on the conversation what became of a plan; never fails a write. */
+  private async _mark(
+    user: CalendarUser,
+    planId: string,
+    status: PlanStatus,
+    trace: Trace,
+  ): Promise<void> {
+    try {
+      await this._conversations.markPlan(user, planId, status);
+    } catch (error) {
+      trace.warn('agent.markFailed', {
+        planId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /**
@@ -284,7 +382,7 @@ export class AgentService {
           `"${task.title}" está esperando no Depois eu priorizo. ` +
           `Hoje às ${formatTimeIn(slot.start, zone)} tem espaço para ela. ` +
           'Quer encaixar?',
-        plan: { id: offered.id, changes: offered.changes },
+        plan: planView(offered),
       };
     }
 
@@ -295,7 +393,7 @@ export class AgentService {
     content: string,
     steps: string[],
     plan: Plan | undefined,
-  ): AgentReply {
+  ): Omit<AgentReply, 'conversationId'> {
     const reply =
       content.trim() !== ''
         ? content.trim()
@@ -306,14 +404,14 @@ export class AgentService {
     return {
       reply,
       steps: [...steps, ...(plan?.findings ?? [])],
-      plan:
-        plan === undefined ? undefined : { id: plan.id, changes: plan.changes },
+      plan: plan === undefined ? undefined : planView(plan),
     };
   }
 
   /** Runs one tool call, and says what it found in the model's terms. */
   private async _run(
     user: CalendarUser,
+    conversationId: string,
     call: ToolCall,
     now: Date,
     trace: Trace,
@@ -335,10 +433,28 @@ export class AgentService {
         if (!steps.includes(step)) steps.push(step);
         return { answer: read.snapshot };
       }
+      case 'read_conversations': {
+        const read = await this._past(user, conversationId, args, now);
+        steps.push(read.step);
+        return { answer: read.snapshot };
+      }
       case 'propose_plan': {
         try {
           const plan = await this._propose(user, args, now);
-          return { answer: { ok: true, changes: plan.changes.length }, plan };
+          const zone = this._timeline.zone(user);
+          return {
+            answer: {
+              ok: true,
+              changes: plan.changes.length,
+              // What the person will see pushed later, to ask them about.
+              pushed: plan.pushed.map((it) => ({
+                title: it.title,
+                from: wallText(new Date(it.before), zone),
+                to: wallText(new Date(it.at), zone),
+              })),
+            },
+            plan,
+          };
         } catch (error) {
           return {
             answer: {
@@ -391,6 +507,7 @@ export class AgentService {
     return {
       label: span === 1 ? dayLabel(from, today, zone) : `${span} dias`,
       snapshot: {
+        now: wallText(now, zone),
         from,
         days: span,
         items,
@@ -413,18 +530,158 @@ export class AgentService {
     const raw = Array.isArray(args.changes) ? args.changes : [];
     if (raw.length === 0) throw new Error('A plan needs at least one change.');
 
-    const view = this._timeline.view(
-      await this._timeline.day(user, HORIZON_DAYS, now),
-    );
+    const day = await this._timeline.day(user, HORIZON_DAYS, now);
+    const view = this._timeline.view(day);
     const changes = raw.map((item) =>
       this._change(item as Record<string, unknown>, view, zone, now),
     );
+    const pushed = this._rehearse(day, view, changes, zone);
     const findings = (Array.isArray(args.findings) ? args.findings : [])
       .filter((it): it is string => typeof it === 'string' && it.trim() !== '')
       .slice(0, 3)
       .map((it) => it.trim().slice(0, 80));
 
-    return this._plans.put(user.id, findings, changes);
+    return this._plans.put(user.id, findings, changes, pushed);
+  }
+
+  /**
+   * Lays the day out again as if [changes] were made, and answers what the
+   * queue would push later because of them.
+   *
+   * Refuses a change that would not get its own hour, so the plan never
+   * promises one the layout would not give: an anchored task lands after
+   * whatever already keeps that hour, and an event is never pushed at all.
+   */
+  private _rehearse(
+    day: Awaited<ReturnType<TimelineService['day']>>,
+    view: { cards: TimelineCard[] },
+    changes: PlanChange[],
+    zone: Zone,
+  ): Pushed[] {
+    const blocks: QueuedBlock[] = [];
+    const events: { id?: string; interval: Interval }[] = [];
+    const ids = changes.map((change, index) => change.id ?? `new-${index}`);
+
+    changes.forEach((change, index) => {
+      const start = new Date(change.at);
+      const end = new Date(start.getTime() + change.minutes * 60_000);
+      if (change.kind === 'add_task' || change.kind === 'move_task') {
+        blocks.push({ id: ids[index], minutes: change.minutes, anchor: start });
+      } else {
+        events.push({ id: change.id, interval: { start, end } });
+      }
+    });
+
+    const after = rehearse(day, blocks, events);
+
+    changes.forEach((change, index) => {
+      if (change.kind === 'add_task' || change.kind === 'move_task') {
+        const landed = after.get(ids[index])?.start;
+        if (
+          landed === undefined ||
+          landed.getTime() === Date.parse(change.at)
+        ) {
+          return;
+        }
+        const blocker = view.cards.find(
+          (card) =>
+            !ids.includes(card.id) &&
+            Date.parse(card.startTime) < landed.getTime() &&
+            Date.parse(card.endTime) > Date.parse(change.at),
+        );
+        throw new Error(
+          `"${change.title}" would not start at ${wallText(new Date(change.at), zone)} ` +
+            `but at ${wallText(landed, zone)}` +
+            (blocker === undefined
+              ? ', outside the working day.'
+              : `: "${blocker.title}" (${blocker.kind === 'event' ? 'a fixed event, never pushed' : 'a task that keeps its hour'}) is there. ` +
+                'Move it in the same plan, or ask the person what to do.'),
+        );
+      }
+    });
+
+    const named = new Set(ids);
+    const pushed: Pushed[] = [];
+    for (const task of day.tasks) {
+      if (named.has(task.id) || day.live.has(task.id)) continue;
+      const before = day.placed.get(task.id);
+      const later = after.get(task.id);
+      if (before === undefined || later === undefined) continue;
+      if (later.start.getTime() <= before.start.getTime()) continue;
+
+      pushed.push({
+        id: task.id,
+        title: task.title,
+        before: before.start.toISOString(),
+        at: later.start.toISOString(),
+      });
+    }
+
+    return pushed
+      .sort((a, b) => Date.parse(a.before) - Date.parse(b.before))
+      .slice(0, MAX_PUSHED);
+  }
+
+  /** Past conversations, searched by words and days. */
+  private async _past(
+    user: CalendarUser,
+    conversationId: string,
+    args: Record<string, unknown>,
+    now: Date,
+  ): Promise<{ step: string; snapshot: unknown }> {
+    const zone = this._timeline.zone(user);
+    const today = isoDayIn(now, zone);
+    const text =
+      typeof args.text === 'string' && args.text.trim() !== ''
+        ? args.text.trim().slice(0, 80)
+        : undefined;
+    const day =
+      typeof args.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(args.day)
+        ? args.day
+        : undefined;
+    const from =
+      day === undefined ? undefined : startOfDayIn(dayInstant(day, zone), zone);
+
+    const found = await this._conversations.search(user, {
+      text,
+      from,
+      until:
+        from === undefined
+          ? undefined
+          : startOfDayIn(addDaysIn(from, 1, zone), zone),
+      exclude: conversationId,
+      limit: MAX_FOUND,
+    });
+
+    const what = [
+      text === undefined ? undefined : `"${text}"`,
+      day === undefined ? undefined : dayLabel(day, today, zone),
+    ].filter((it) => it !== undefined);
+
+    return {
+      step:
+        `Procurei nas conversas${what.length === 0 ? '' : `: ${what.join(', ')}`}` +
+        (found.length === 0 ? ', sem nada' : ''),
+      snapshot: {
+        messages: found.map((message) => ({
+          conversation: message.conversationId,
+          at: wallText(new Date(message.at), zone),
+          role: message.role,
+          text: message.text,
+          plan:
+            message.plan === undefined
+              ? undefined
+              : {
+                  status: message.planStatus ?? 'proposed',
+                  changes: message.plan.changes.map((change) => ({
+                    kind: change.kind,
+                    title: change.title,
+                    at: wallText(new Date(change.at), zone),
+                  })),
+                },
+        })),
+      },
+    };
   }
 
   private _change(
@@ -647,4 +904,9 @@ function clampInt(
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
 
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/** A plan as the app draws it. */
+function planView(plan: Plan): PlanView {
+  return { id: plan.id, changes: plan.changes, pushed: plan.pushed };
 }

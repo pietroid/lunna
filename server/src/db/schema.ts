@@ -3,6 +3,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -297,6 +298,46 @@ export const event = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------------------
+// The agent
+// ---------------------------------------------------------------------------
+
+/**
+ * One message of a conversation with the agent.
+ *
+ * Kept for the person to read back, and for the agent to look up when it is
+ * asked about them; a turn's context is only the conversation it is in. A
+ * conversation is the messages sharing a [conversationId], which the server
+ * hands out on its first turn.
+ */
+export const agentMessage = pgTable(
+  'agent_message',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    conversationId: uuid('conversation_id').notNull(),
+    /** `user` or `assistant`. */
+    role: text('role').notNull(),
+    text: text('text').notNull(),
+    /** What the agent did, one short line each. Empty for the user's. */
+    steps: jsonb('steps').$type<string[]>().notNull().default([]),
+    /** The plan the answer proposed, as the app draws it. */
+    plan: jsonb('plan').$type<unknown>(),
+    planId: uuid('plan_id'),
+    /** `proposed`, `applied` or `undone`. */
+    planStatus: text('plan_status'),
+    /** How long the user spoke for, when the message was said. */
+    voiceSeconds: integer('voice_seconds'),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index('agent_message_user_created_idx').on(table.userId, table.createdAt),
+    index('agent_message_conversation_idx').on(table.conversationId),
+  ],
+);
+
 export const schema = {
   user,
   session,
@@ -305,9 +346,11 @@ export const schema = {
   routine,
   task,
   event,
+  agentMessage,
 };
 
 export type EventRow = typeof event.$inferSelect;
 export type NewEventRow = typeof event.$inferInsert;
 export type RoutineRow = typeof routine.$inferSelect;
 export type TaskRow = typeof task.$inferSelect;
+export type AgentMessageRow = typeof agentMessage.$inferSelect;

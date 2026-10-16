@@ -22,10 +22,16 @@ import {
   AgentService,
   Suggestion,
 } from './agent.service';
+import { Conversation } from './conversation.store';
 import { ModelUnavailableError } from './openrouter.client';
 
 /** How long a conversation the app may send, in messages. */
 const MAX_MESSAGES = 40;
+
+/** How many past conversations one page of history holds, at most. */
+const MAX_CONVERSATIONS = 20;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Talking to Lunna about the day.
@@ -45,7 +51,8 @@ export class AgentController {
   @Post('turn')
   async turn(
     @CurrentUser() user: AuthUser,
-    @Body() dto: { messages?: unknown; day?: unknown },
+    @Body()
+    dto: { conversationId?: unknown; messages?: unknown; day?: unknown },
   ): Promise<AgentReply> {
     if (!this.agent.configured) {
       throw new ServiceUnavailableException(
@@ -57,6 +64,7 @@ export class AgentController {
     try {
       return await this.agent.turn(
         owner(user),
+        optionalConversation(dto.conversationId),
         requireMessages(dto.messages),
         typeof dto.day === 'string' ? dto.day : undefined,
         trace,
@@ -70,6 +78,32 @@ export class AgentController {
       }
       throw error;
     }
+  }
+
+  /**
+   * The conversations had before [before] (ISO 8601), most recent first, for
+   * the person to read back. Nothing here is ever the agent's context.
+   */
+  @Get('conversations')
+  async conversations(
+    @CurrentUser() user: AuthUser,
+    @Query('before') before?: string,
+    @Query('limit') limit?: string,
+  ): Promise<{ conversations: Conversation[] }> {
+    const until = before === undefined ? undefined : new Date(before);
+    if (until !== undefined && Number.isNaN(until.getTime())) {
+      throw new BadRequestException('before must be an ISO 8601 instant');
+    }
+    const count = limit === undefined ? 10 : Number(limit);
+    if (!Number.isInteger(count) || count < 1 || count > MAX_CONVERSATIONS) {
+      throw new BadRequestException(
+        `limit must be a whole number from 1 to ${MAX_CONVERSATIONS}`,
+      );
+    }
+
+    return {
+      conversations: await this.agent.history(owner(user), until, count),
+    };
   }
 
   @Get('suggestion')
@@ -120,7 +154,7 @@ export function requireMessages(raw: unknown): AgentMessage[] {
   }
 
   const messages = raw.slice(-MAX_MESSAGES).map((item): AgentMessage => {
-    const message = item as { role?: unknown; text?: unknown };
+    const message = item as { role?: unknown; text?: unknown; voice?: unknown };
     if (message.role !== 'user' && message.role !== 'assistant') {
       throw new BadRequestException('role must be user or assistant');
     }
@@ -128,7 +162,18 @@ export function requireMessages(raw: unknown): AgentMessage[] {
       throw new BadRequestException('text must be a non-empty string');
     }
 
-    return { role: message.role, text: message.text.slice(0, 4000) };
+    const voice =
+      typeof message.voice === 'number' &&
+      Number.isFinite(message.voice) &&
+      message.voice > 0
+        ? Math.min(3600, Math.round(message.voice))
+        : undefined;
+
+    return {
+      role: message.role,
+      text: message.text.slice(0, 4000),
+      voiceSeconds: message.role === 'user' ? voice : undefined,
+    };
   });
 
   if (messages[messages.length - 1].role !== 'user') {
@@ -136,4 +181,14 @@ export function requireMessages(raw: unknown): AgentMessage[] {
   }
 
   return messages;
+}
+
+/** The conversation a turn carries on, or none for the first turn. */
+export function optionalConversation(raw: unknown): string | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'string' || !UUID.test(raw)) {
+    throw new BadRequestException('conversationId must be a UUID');
+  }
+
+  return raw.toLowerCase();
 }

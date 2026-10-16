@@ -90,6 +90,41 @@ void main() {
       });
     });
 
+    test('a session that fails at once is not started again', () {
+      _onFakeTime((async) {
+        final recognizer = _FakeRecognizer();
+        final cubit = VoiceCubit(recognizer: recognizer);
+
+        unawaited(cubit.start());
+        async.flushMicrotasks();
+        // No microphone (a simulator): the platform ends it straight away.
+        recognizer.end();
+        async.flushMicrotasks();
+
+        expect(recognizer.sessions, 1);
+        expect(cubit.state.status, VoiceStatus.unavailable);
+        unawaited(cubit.close());
+      });
+    });
+
+    test('a quiet session that ran a while is followed by another', () {
+      _onFakeTime((async) {
+        final recognizer = _FakeRecognizer();
+        final cubit = VoiceCubit(recognizer: recognizer);
+
+        unawaited(cubit.start());
+        async
+          ..flushMicrotasks()
+          ..elapse(const Duration(seconds: 5));
+        recognizer.end();
+        async.flushMicrotasks();
+
+        expect(recognizer.sessions, 2);
+        expect(cubit.state.status, VoiceStatus.listening);
+        unawaited(cubit.close());
+      });
+    });
+
     test('a pause does not end the recording: the next session joins on', () {
       _onFakeTime((async) {
         final recognizer = _FakeRecognizer();
@@ -249,8 +284,18 @@ void main() {
     }) async {
       final repository = _MockRepository();
       when(
-        () => repository.turn(any(), day: any(named: 'day')),
-      ).thenAnswer((_) async => const AgentReply(text: 'Pronto.'));
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+        ),
+      ).thenAnswer(
+        (_) async =>
+            (conversationId: 'c1', reply: const AgentReply(text: 'Pronto.')),
+      );
+      when(
+        () => repository.conversations(before: any(named: 'before')),
+      ).thenAnswer((_) async => []);
       final recognizer = _FakeRecognizer();
       final agent = AgentCubit(repository: repository);
 

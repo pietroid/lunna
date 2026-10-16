@@ -81,17 +81,58 @@ class PlanChange extends Equatable {
   List<Object?> get props => [kind, id, title, minutes, at, before, routine];
 }
 
+/// {@template pushed_task}
+/// A task a plan does not name that would start later because of it, as the
+/// queue flows on after something put in its way.
+/// {@endtemplate}
+class PushedTask extends Equatable {
+  /// {@macro pushed_task}
+  const PushedTask({
+    required this.id,
+    required this.title,
+    required this.before,
+    required this.at,
+  });
+
+  factory PushedTask.fromJson(Map<String, dynamic> json) => PushedTask(
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    before: DateTime.parse(json['before'] as String).toLocal(),
+    at: DateTime.parse(json['at'] as String).toLocal(),
+  );
+
+  final String id;
+
+  final String title;
+
+  /// The hour it has now.
+  final DateTime before;
+
+  /// The hour it would have.
+  final DateTime at;
+
+  @override
+  List<Object?> get props => [id, title, before, at];
+}
+
 /// {@template agent_plan}
 /// Changes the agent proposes. Nothing has happened until it is applied.
 /// {@endtemplate}
 class AgentPlan extends Equatable {
   /// {@macro agent_plan}
-  const AgentPlan({required this.id, required this.changes});
+  const AgentPlan({
+    required this.id,
+    required this.changes,
+    this.pushed = const [],
+  });
 
   factory AgentPlan.fromJson(Map<String, dynamic> json) => AgentPlan(
     id: json['id'] as String,
     changes: (json['changes'] as List<dynamic>? ?? [])
         .map((it) => PlanChange.fromJson(it as Map<String, dynamic>))
+        .toList(),
+    pushed: (json['pushed'] as List<dynamic>? ?? [])
+        .map((it) => PushedTask.fromJson(it as Map<String, dynamic>))
         .toList(),
   );
 
@@ -99,8 +140,11 @@ class AgentPlan extends Equatable {
 
   final List<PlanChange> changes;
 
+  /// What applying it pushes later, which the person is asked about.
+  final List<PushedTask> pushed;
+
   @override
-  List<Object?> get props => [id, changes];
+  List<Object?> get props => [id, changes, pushed];
 }
 
 /// {@template agent_reply}
@@ -153,7 +197,20 @@ class AgentSuggestion extends Equatable {
 }
 
 /// Where a plan shown in the conversation stands.
-enum PlanStatus { pending, applying, applied }
+enum PlanStatus {
+  pending,
+  applying,
+  applied,
+
+  /// Applied, then taken back.
+  undone;
+
+  static PlanStatus fromWire(String? value) => switch (value) {
+    'applied' => applied,
+    'undone' => undone,
+    _ => pending,
+  };
+}
 
 /// {@template agent_entry}
 /// One bubble of the conversation.
@@ -192,4 +249,64 @@ final class ReplyEntry extends AgentEntry {
 
   @override
   List<Object?> get props => [reply, status];
+}
+
+/// {@template past_conversation}
+/// A conversation had before this one, kept for the user to read back.
+///
+/// It is not the agent's context: a new conversation starts with nothing of
+/// it, and the agent looks the past up only when asked about it.
+/// {@endtemplate}
+class PastConversation extends Equatable {
+  /// {@macro past_conversation}
+  const PastConversation({
+    required this.id,
+    required this.startedAt,
+    required this.entries,
+  });
+
+  factory PastConversation.fromJson(Map<String, dynamic> json) {
+    final messages = (json['messages'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+
+    return PastConversation(
+      id: json['id'] as String,
+      startedAt: DateTime.parse(json['startedAt'] as String).toLocal(),
+      entries: [
+        for (final message in messages)
+          if (message['role'] == 'assistant')
+            ReplyEntry(
+              AgentReply(
+                text: message['text'] as String? ?? '',
+                steps: (message['steps'] as List<dynamic>? ?? [])
+                    .cast<String>(),
+                plan: message['plan'] is Map<String, dynamic>
+                    ? AgentPlan.fromJson(
+                        message['plan'] as Map<String, dynamic>,
+                      )
+                    : null,
+              ),
+              status: PlanStatus.fromWire(message['planStatus'] as String?),
+            )
+          else
+            UserEntry(
+              message['text'] as String? ?? '',
+              voice: switch (message['voiceSeconds']) {
+                final num seconds => Duration(seconds: seconds.round()),
+                _ => null,
+              },
+            ),
+      ],
+    );
+  }
+
+  final String id;
+
+  /// When its first message was said.
+  final DateTime startedAt;
+
+  final List<AgentEntry> entries;
+
+  @override
+  List<Object?> get props => [id, startedAt, entries];
 }

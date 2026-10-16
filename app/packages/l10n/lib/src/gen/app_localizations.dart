@@ -1163,12 +1163,6 @@ abstract class AppLocalizations {
   /// **'Enviar'**
   String get agentSend;
 
-  /// No description provided for @agentNewConversation.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nova conversa'**
-  String get agentNewConversation;
-
   /// No description provided for @agentClose.
   ///
   /// In pt, this message translates to:
@@ -1229,17 +1223,101 @@ abstract class AppLocalizations {
   /// **'saiu do Depois eu priorizo'**
   String get agentChangeFromBacklog;
 
-  /// No description provided for @agentAppliedToast.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =1{1 mudança aplicada} other{{count} mudanças aplicadas}}'**
-  String agentAppliedToast(int count);
-
   /// No description provided for @agentUndo.
   ///
   /// In pt, this message translates to:
   /// **'Desfazer'**
   String get agentUndo;
+
+  /// No description provided for @agentEarlier.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conversas anteriores'**
+  String get agentEarlier;
+
+  /// No description provided for @agentEarlierFailed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não consegui trazer as conversas anteriores. Toque para tentar de novo.'**
+  String get agentEarlierFailed;
+
+  /// No description provided for @agentHistoryToday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Hoje · {time}'**
+  String agentHistoryToday(DateTime time);
+
+  /// No description provided for @agentHistoryYesterday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ontem, {day} · {time}'**
+  String agentHistoryYesterday(DateTime day, DateTime time);
+
+  /// No description provided for @agentHistoryDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'{day} · {time}'**
+  String agentHistoryDay(DateTime day, DateTime time);
+
+  /// No description provided for @agentHistoryNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora · {time}'**
+  String agentHistoryNow(DateTime time);
+
+  /// No description provided for @agentPlanSummary.
+  ///
+  /// In pt, this message translates to:
+  /// **'{changes} · {status}'**
+  String agentPlanSummary(String changes, String status);
+
+  /// No description provided for @agentPlanApplied.
+  ///
+  /// In pt, this message translates to:
+  /// **'aplicado'**
+  String get agentPlanApplied;
+
+  /// No description provided for @agentPlanUndone.
+  ///
+  /// In pt, this message translates to:
+  /// **'desfeito'**
+  String get agentPlanUndone;
+
+  /// No description provided for @agentPlanNotApplied.
+  ///
+  /// In pt, this message translates to:
+  /// **'não aplicado'**
+  String get agentPlanNotApplied;
+
+  /// No description provided for @agentPushedCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 empurrada} other{{count} empurradas}}'**
+  String agentPushedCount(int count);
+
+  /// No description provided for @agentChangePushed.
+  ///
+  /// In pt, this message translates to:
+  /// **'empurrada'**
+  String get agentChangePushed;
+
+  /// No description provided for @agentPush.
+  ///
+  /// In pt, this message translates to:
+  /// **'Empurrar'**
+  String get agentPush;
+
+  /// No description provided for @agentOtherTime.
+  ///
+  /// In pt, this message translates to:
+  /// **'Outro horário'**
+  String get agentOtherTime;
+
+  /// No description provided for @agentOtherTimeDraft.
+  ///
+  /// In pt, this message translates to:
+  /// **'Prefiro outro horário: '**
+  String get agentOtherTimeDraft;
 
   /// No description provided for @agentSuggestionAccept.
   ///

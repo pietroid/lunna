@@ -72,8 +72,8 @@ Future<void> main() async {
               initialUser: initialUser,
             ),
           ),
-          // One conversation for the whole session: closing the sheet and
-          // opening it again carries on where it was.
+          // The conversations of the session: each opening of the sheet
+          // starts a new one, with the ones before it above.
           BlocProvider<AgentCubit>(
             create: (_) => AgentCubit(repository: agentRepository),
           ),

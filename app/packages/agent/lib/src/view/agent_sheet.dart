@@ -27,6 +27,8 @@ Future<void> showAgentSheet(
   final repository = context.read<AgentRepository>();
   final timeline = context.read<TimelineBloc>();
   final recognizer = context.read<VoiceRecognizer>();
+  // Every opening is a new conversation; the last one goes above it.
+  agent.open();
 
   return showModalBottomSheet<void>(
     context: context,
@@ -58,6 +60,10 @@ Future<void> showAgentSheet(
 /// Empty, it offers what is most often asked. Then it is the conversation:
 /// what the user said, what the agent did (one ticked line per step), what
 /// it answered, and the plan it proposes, which nothing makes until Aplicar.
+///
+/// It opens on the conversation alone, which fills the sheet. The ones before
+/// it are above, out of sight until the list is pulled down: dimmed, read
+/// only, each under the day and hour it began.
 ///
 /// What is said rather than typed is written into the composer as it is
 /// heard, and sent as text.
@@ -131,17 +137,35 @@ class _AgentSheetState extends State<AgentSheet> {
     _focus.requestFocus();
   }
 
+  /// Puts [draft] in the field, to be finished by hand.
+  void _draft(String draft) {
+    _field
+      ..text = draft
+      ..selection = TextSelection.collapsed(offset: draft.length);
+    _focus.requestFocus();
+  }
+
+  /// Back to the newest message, which is the bottom of a reversed list.
   void _toEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
       unawaited(
         _scroll.animateTo(
-          _scroll.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOut,
         ),
       );
     });
+  }
+
+  /// Reads older conversations once the top of those held is near.
+  bool _onScroll(ScrollNotification notification) {
+    final position = notification.metrics;
+    if (position.pixels >= position.maxScrollExtent - 400) {
+      unawaited(context.read<AgentCubit>().loadPast());
+    }
+    return false;
   }
 
   @override
@@ -167,49 +191,61 @@ class _AgentSheetState extends State<AgentSheet> {
               return Column(
                 children: [
                   const _Grabber(),
-                  _Header(
-                    onReset: state.entries.isEmpty
-                        ? null
-                        : () => context.read<AgentCubit>().reset(),
-                  ),
+                  const _Header(),
                   Expanded(
-                    child: state.entries.isEmpty && !state.busy
-                        ? _Welcome(onPick: _send)
-                        : ListView(
-                            controller: _scroll,
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.s5,
-                              AppSpacing.s2,
-                              AppSpacing.s5,
-                              AppSpacing.s4,
-                            ),
-                            children: [
-                              for (final entry in state.entries)
-                                switch (entry) {
-                                  UserEntry(:final text, :final voice) => _Said(
-                                    text,
-                                    voice: voice,
+                    child: LayoutBuilder(
+                      builder: (context, box) =>
+                          NotificationListener<ScrollNotification>(
+                            onNotification: _onScroll,
+                            child: ListView(
+                              controller: _scroll,
+                              // Newest at the bottom, where it opens.
+                              reverse: true,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.s5,
+                              ),
+                              children: [
+                                ConstrainedBox(
+                                  // The conversation fills the sheet, so the
+                                  // past is out of sight until pulled down.
+                                  constraints: BoxConstraints(
+                                    minHeight: box.maxHeight,
                                   ),
-                                  ReplyEntry() => _Answer(
-                                    entry: entry,
-                                    onAdjust: _focus.requestFocus,
-                                  ),
-                                },
-                              if (state.busy) const _Thinking(),
-                              if (state.failure case final failure?)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: AppSpacing.s2,
-                                  ),
-                                  child: Text(
-                                    failure.message ?? l10n.agentFailure,
-                                    style: AppTypography.label.copyWith(
-                                      color: AppColors.dangerInk,
-                                    ),
+                                  child: _Current(
+                                    state: state,
+                                    onPick: _send,
+                                    onAdjust: (plan) => plan.pushed.isEmpty
+                                        ? _focus.requestFocus()
+                                        : _draft(l10n.agentOtherTimeDraft),
+                                    onLoadPast: context
+                                        .read<AgentCubit>()
+                                        .loadPast,
                                   ),
                                 ),
-                            ],
+                                if (state.past.isNotEmpty)
+                                  _Divider(
+                                    l10n.agentHistoryNow(DateTime.now()),
+                                    accent: true,
+                                  ),
+                                for (final conversation in state.past)
+                                  _Past(conversation: conversation),
+                                if (state.pastStatus == PastStatus.loading)
+                                  const Padding(
+                                    padding: EdgeInsets.all(AppSpacing.s4),
+                                    child: Center(
+                                      child: SizedBox.square(
+                                        dimension: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppColors.ink3,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
+                    ),
                   ),
                   BlocBuilder<VoiceCubit, VoiceState>(
                     builder: (context, voice) => voice.status.recording
@@ -261,9 +297,7 @@ class _Grabber extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({this.onReset});
-
-  final VoidCallback? onReset;
+  const _Header();
 
   @override
   Widget build(BuildContext context) {
@@ -283,16 +317,6 @@ class _Header extends StatelessWidget {
           Expanded(
             child: Text(l10n.appName(AppBrand.id), style: AppTypography.title),
           ),
-          if (onReset != null)
-            Tooltip(
-              message: l10n.agentNewConversation,
-              child: AppIconButton(
-                iconData: AppIcons.newConversation,
-                size: AppSpacing.s5,
-                color: AppColors.ink2,
-                onPressed: onReset!,
-              ),
-            ),
           Tooltip(
             message: l10n.agentClose,
             child: AppIconButton(
@@ -302,6 +326,180 @@ class _Header extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The conversation being had, at the bottom of the sheet, under a hint
+/// that the ones before it are above.
+class _Current extends StatelessWidget {
+  const _Current({
+    required this.state,
+    required this.onPick,
+    required this.onAdjust,
+    required this.onLoadPast,
+  });
+
+  final AgentState state;
+
+  final ValueChanged<String> onPick;
+
+  final ValueChanged<AgentPlan> onAdjust;
+
+  final VoidCallback onLoadPast;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final quiet = AppTypography.label.copyWith(color: AppColors.ink3);
+
+    return Column(
+      // Held at least as tall as the sheet: the hint at the top, the
+      // conversation at the bottom, by the composer.
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (state.past.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const AppIcon(
+                  iconData: AppIcons.earlier,
+                  size: 12,
+                  color: AppColors.ink3,
+                ),
+                const SizedBox(width: AppSpacing.s1),
+                Text(l10n.agentEarlier, style: quiet),
+              ],
+            ),
+          )
+        else if (state.pastStatus == PastStatus.failed)
+          InkWell(
+            onTap: onLoadPast,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
+              child: Text(
+                l10n.agentEarlierFailed,
+                style: quiet,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+        else
+          const SizedBox.shrink(),
+        Padding(
+          padding: const EdgeInsets.only(
+            top: AppSpacing.s5,
+            bottom: AppSpacing.s4,
+          ),
+          child: state.entries.isEmpty && !state.busy
+              ? _Welcome(onPick: onPick)
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final entry in state.entries)
+                      switch (entry) {
+                        UserEntry(:final text, :final voice) => _Said(
+                          text,
+                          voice: voice,
+                        ),
+                        ReplyEntry() => _Answer(
+                          entry: entry,
+                          onAdjust: onAdjust,
+                        ),
+                      },
+                    if (state.busy) const _Thinking(),
+                    if (state.failure case final failure?)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.s2),
+                        child: Text(
+                          failure.message ?? l10n.agentFailure,
+                          style: AppTypography.label.copyWith(
+                            color: AppColors.dangerInk,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A conversation already over, under the day and hour it began: dimmed,
+/// and read only.
+class _Past extends StatelessWidget {
+  const _Past({required this.conversation});
+
+  final PastConversation conversation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Divider(_startedText(context.l10n, conversation.startedAt)),
+        for (final entry in conversation.entries)
+          switch (entry) {
+            UserEntry(:final text, :final voice) => _Said(
+              text,
+              voice: voice,
+              past: true,
+            ),
+            ReplyEntry() => _Answer(entry: entry),
+          },
+      ],
+    );
+  }
+}
+
+/// "Hoje · 14:12", "Ontem, quarta-feira · 18:40", "seg., 12 de out. · 09:10".
+String _startedText(AppLocalizations l10n, DateTime at) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(at.year, at.month, at.day);
+  final ago = today.difference(day).inHours ~/ 24;
+
+  final text = switch (ago) {
+    0 => l10n.agentHistoryToday(at),
+    1 => l10n.agentHistoryYesterday(at, at),
+    _ => l10n.agentHistoryDay(at, at),
+  };
+  return text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);
+}
+
+/// A thin rule with a time on it, between conversations.
+class _Divider extends StatelessWidget {
+  const _Divider(this.text, {this.accent = false});
+
+  final String text;
+
+  /// Whether it marks where the conversation being had begins.
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accent ? AppColors.accent : AppColors.ink3;
+    const rule = Expanded(child: Divider(height: 1, color: AppColors.line));
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s3, bottom: AppSpacing.s4),
+      child: Row(
+        children: [
+          rule,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s3),
+            child: Text(
+              text,
+              style: AppTypography.label.copyWith(color: color, fontSize: 12),
+            ),
+          ),
+          rule,
         ],
       ),
     );
@@ -326,13 +524,8 @@ class _Welcome extends StatelessWidget {
       (AppIcons.time, l10n.agentChipTomorrow),
     ];
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s5,
-        AppSpacing.s5,
-        AppSpacing.s5,
-        AppSpacing.s4,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(l10n.agentGreeting, style: AppTypography.headline),
         const SizedBox(height: AppSpacing.s2),
@@ -377,11 +570,14 @@ class _Welcome extends StatelessWidget {
 
 /// What the user said, on the right, in ink, marked when it was spoken.
 class _Said extends StatelessWidget {
-  const _Said(this.text, {this.voice});
+  const _Said(this.text, {this.voice, this.past = false});
 
   final String text;
 
   final Duration? voice;
+
+  /// Whether it belongs to a conversation already over, drawn quieter.
+  final bool past;
 
   @override
   Widget build(BuildContext context) {
@@ -397,9 +593,9 @@ class _Said extends StatelessWidget {
           horizontal: AppSpacing.s4,
           vertical: AppSpacing.s3,
         ),
-        decoration: const BoxDecoration(
-          color: AppColors.ink,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: past ? AppColors.fillStrong : AppColors.ink,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(20),
             topRight: Radius.circular(20),
             bottomLeft: Radius.circular(20),
@@ -408,7 +604,9 @@ class _Said extends StatelessWidget {
         ),
         child: Text(
           text,
-          style: AppTypography.body.copyWith(color: AppColors.bg),
+          style: AppTypography.body.copyWith(
+            color: past ? AppColors.ink : AppColors.bg,
+          ),
         ),
       ),
     );
@@ -457,12 +655,15 @@ String _clockText(Duration length) {
 }
 
 /// What the agent did and said, and its plan.
+///
+/// Without [onAdjust] it belongs to a conversation already over: quieter,
+/// and its plan is one line saying what became of it.
 class _Answer extends StatelessWidget {
-  const _Answer({required this.entry, required this.onAdjust});
+  const _Answer({required this.entry, this.onAdjust});
 
   final ReplyEntry entry;
 
-  final VoidCallback onAdjust;
+  final ValueChanged<AgentPlan>? onAdjust;
 
   @override
   Widget build(BuildContext context) {
@@ -490,13 +691,21 @@ class _Answer extends StatelessWidget {
               ),
             ),
           if (reply.steps.isNotEmpty) const SizedBox(height: AppSpacing.s1),
-          Text(reply.text, style: AppTypography.body),
-          if (plan != null) ...[
+          Text(
+            reply.text,
+            style: onAdjust == null
+                ? AppTypography.body.copyWith(color: AppColors.ink2)
+                : AppTypography.body,
+          ),
+          if (plan != null && onAdjust == null) ...[
+            const SizedBox(height: AppSpacing.s3),
+            PlanLine(plan: plan, status: entry.status),
+          ] else if (plan != null) ...[
             const SizedBox(height: AppSpacing.s3),
             PlanCard(
               plan: plan,
               status: entry.status,
-              onAdjust: onAdjust,
+              onAdjust: () => onAdjust!(plan),
               onApply: () async {
                 final navigator = Navigator.of(context);
                 if (await applyAgentPlan(context, plan)) navigator.pop();

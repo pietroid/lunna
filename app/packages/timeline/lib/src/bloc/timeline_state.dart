@@ -31,7 +31,7 @@ final class TimelineState extends Equatable {
     this.guard,
     this.guardBusy = false,
     this.failure,
-    this.touched = const {},
+    this.undoable,
   });
 
   /// How many days the calendar draws before it is scrolled.
@@ -86,9 +86,13 @@ final class TimelineState extends Equatable {
   /// the rest.
   final TimelineFailure? failure;
 
-  /// The cards the agent last changed, marked until the day is read again
-  /// without it.
-  final Set<String> touched;
+  /// The id of the last change someone else made to the day (the agent's
+  /// plan), while it can still be taken back.
+  ///
+  /// Anything the user then does to the day by hand forgets it: undoing a
+  /// plan restores the cards as they were before it, which would undo the
+  /// user's own change too.
+  final String? undoable;
 
   /// The card with [id], or null if the day does not have it.
   ///
@@ -134,9 +138,10 @@ final class TimelineState extends Equatable {
     StartNowGuard? guard,
     bool? guardBusy,
     TimelineFailure? failure,
-    Set<String>? touched,
+    String? undoable,
     bool clearGuard = false,
     bool clearFailure = false,
+    bool clearUndoable = false,
   }) {
     return TimelineState(
       status: status ?? this.status,
@@ -149,7 +154,7 @@ final class TimelineState extends Equatable {
       guard: clearGuard ? null : guard ?? this.guard,
       guardBusy: guardBusy ?? this.guardBusy,
       failure: clearFailure ? null : failure ?? this.failure,
-      touched: touched ?? this.touched,
+      undoable: clearUndoable ? null : undoable ?? this.undoable,
     );
   }
 
@@ -165,6 +170,6 @@ final class TimelineState extends Equatable {
     guard,
     guardBusy,
     failure,
-    touched,
+    undoable,
   ];
 }

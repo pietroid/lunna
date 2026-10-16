@@ -38,20 +38,28 @@ class AgentRepository {
 
   final ApiClient apiClient;
 
-  /// Answers the last of [history]. Changes nothing on the day.
+  /// Answers the last of [history], in the conversation [conversationId]
+  /// (a new one when null). Changes nothing on the day.
   ///
-  /// [day] is the day Tempo is showing, so "aqui" means something.
-  Future<AgentReply> turn(
+  /// [day] is the day Tempo is showing, so "aqui" means something. Answers
+  /// with the conversation the turn was written into.
+  Future<({String conversationId, AgentReply reply})> turn(
     List<AgentEntry> history, {
+    String? conversationId,
     DateTime? day,
   }) => _guard(() async {
     final response = await apiClient.post<Map<String, dynamic>>(
       '/agent/turn',
       data: {
+        'conversationId': ?conversationId,
         'messages': [
           for (final entry in history)
             switch (entry) {
-              UserEntry(:final text) => {'role': 'user', 'text': text},
+              UserEntry(:final text, :final voice) => {
+                'role': 'user',
+                'text': text,
+                if (voice != null) 'voice': voice.inMilliseconds / 1000,
+              },
               ReplyEntry(:final reply) => {
                 'role': 'assistant',
                 'text': reply.text,
@@ -62,7 +70,31 @@ class AgentRepository {
       },
     );
 
-    return AgentReply.fromJson(response.data ?? {});
+    final data = response.data ?? {};
+
+    return (
+      conversationId: data['conversationId'] as String? ?? '',
+      reply: AgentReply.fromJson(data),
+    );
+  });
+
+  /// Up to [limit] conversations that started before [before], the most
+  /// recent first.
+  Future<List<PastConversation>> conversations({
+    DateTime? before,
+    int limit = 10,
+  }) => _guard(() async {
+    final response = await apiClient.get<Map<String, dynamic>>(
+      '/agent/conversations',
+      queryParameters: {
+        'limit': '$limit',
+        if (before != null) 'before': before.toUtc().toIso8601String(),
+      },
+    );
+
+    return (response.data?['conversations'] as List<dynamic>? ?? [])
+        .map((it) => PastConversation.fromJson(it as Map<String, dynamic>))
+        .toList();
   });
 
   /// The plan worth offering on Tempo right now, if there is one.
@@ -75,21 +107,16 @@ class AgentRepository {
     return suggestion == null ? null : AgentSuggestion.fromJson(suggestion);
   });
 
-  /// Makes every change of [planId]. Answers with the day, and the cards it
-  /// changed.
-  Future<({Timeline timeline, Set<String> touched})> apply(
+  /// Makes every change of [planId]. Answers with the day it leaves.
+  Future<Timeline> apply(
     String planId, {
     int days = TimelineRepository.defaultDays,
   }) => _guard(() async {
     final response = await apiClient.post<Map<String, dynamic>>(
       '/agent/plans/$planId/apply?days=$days',
     );
-    final data = response.data ?? {};
 
-    return (
-      timeline: Timeline.fromJson(data),
-      touched: (data['touched'] as List<dynamic>? ?? []).cast<String>().toSet(),
-    );
+    return Timeline.fromJson(response.data ?? {});
   });
 
   /// Takes an applied plan back.

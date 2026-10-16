@@ -121,6 +121,12 @@ class VoiceCubit extends Cubit<VoiceState> {
   /// How many levels the wave keeps.
   static const bars = 28;
 
+  /// A session the platform ends sooner than this, having heard nothing,
+  /// failed rather than paused: there is no microphone to hear with (a
+  /// simulator), or the recognizer refused. Starting another would only fail
+  /// the same way, over and over.
+  static const quickEnd = Duration(seconds: 1);
+
   /// Counts sessions, so a late word from one that was ended is dropped.
   int _session = 0;
 
@@ -162,11 +168,14 @@ class VoiceCubit extends Cubit<VoiceState> {
     bool live() => !isClosed && session == _session;
     // Once a session has said its last words, anything after is a repeat.
     var said = false;
+    var heard = false;
+    final began = clock.now();
 
     try {
       await _recognizer.listen(
         onWords: (words, {required done}) {
           if (!live() || said || !state.status.recording) return;
+          if (words.isNotEmpty) heard = true;
           if (done) {
             said = true;
             emit(state.copyWith(heard: _join(state.heard, words), hearing: ''));
@@ -179,6 +188,10 @@ class VoiceCubit extends Cubit<VoiceState> {
         },
         onEnd: () {
           if (!live()) return;
+          if (!heard && clock.now().difference(began) < quickEnd) {
+            _giveUp();
+            return;
+          }
           _session++;
           emit(state.copyWith(heard: state.text, hearing: ''));
           _resume();
@@ -221,6 +234,22 @@ class VoiceCubit extends Cubit<VoiceState> {
     } else {
       emit(state.copyWith(elapsed: elapsed));
     }
+  }
+
+  /// Stops after a session that failed, keeping whatever was heard before
+  /// it; with nothing heard at all, there is no recognizer to be had here.
+  void _giveUp() {
+    _ticker?.cancel();
+    _session++;
+    emit(
+      state.text.isEmpty
+          ? const VoiceState(status: VoiceStatus.unavailable)
+          : state.copyWith(
+              status: VoiceStatus.stopped,
+              heard: state.text,
+              hearing: '',
+            ),
+    );
   }
 
   /// Stops hearing at the limit, holding the words.

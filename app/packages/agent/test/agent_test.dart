@@ -56,46 +56,218 @@ void main() {
       expect(changes.last.routine, isTrue);
     });
 
+    test('reads what a plan pushes later', () {
+      final plan = AgentPlan.fromJson(const {
+        'id': 'p1',
+        'changes': <Object>[],
+        'pushed': [
+          {
+            'id': 't1',
+            'title': 'Responder e-mails',
+            'before': '2026-10-15T18:00:00.000Z',
+            'at': '2026-10-15T19:05:00.000Z',
+          },
+        ],
+      });
+
+      expect(plan.pushed.single.title, 'Responder e-mails');
+      expect(
+        plan.pushed.single.at.difference(plan.pushed.single.before),
+        const Duration(minutes: 65),
+      );
+    });
+
     test('a reply with no plan has none', () {
       expect(AgentReply.fromJson(const {'reply': 'Oi'}).plan, isNull);
     });
   });
 
+  group('PastConversation.fromJson', () {
+    test('reads the messages back as the conversation drew them', () {
+      final past = PastConversation.fromJson(const {
+        'id': 'c1',
+        'startedAt': '2026-10-14T21:40:00.000Z',
+        'messages': [
+          {
+            'role': 'user',
+            'text': 'Passa a academia',
+            'steps': <String>[],
+            'voiceSeconds': 4,
+            'at': '2026-10-14T21:40:00.000Z',
+          },
+          {
+            'role': 'assistant',
+            'text': 'Fica assim:',
+            'steps': ['Olhei amanhã'],
+            'plan': {'id': 'p1', 'changes': <Object>[], 'pushed': <Object>[]},
+            'planStatus': 'undone',
+            'at': '2026-10-14T21:40:00.001Z',
+          },
+        ],
+      });
+
+      expect(past.entries, [
+        const UserEntry('Passa a academia', voice: Duration(seconds: 4)),
+        const ReplyEntry(_reply, status: PlanStatus.undone),
+      ]);
+    });
+  });
+
   group('AgentCubit', () {
     late AgentRepository repository;
+    final start = DateTime(2026, 10, 15, 14, 12);
+
+    void answers(AgentReply reply) => when(
+      () => repository.turn(
+        any(),
+        conversationId: any(named: 'conversationId'),
+        day: any(named: 'day'),
+      ),
+    ).thenAnswer((_) async => (conversationId: 'c2', reply: reply));
 
     setUp(() => repository = _MockRepository());
 
     blocTest<AgentCubit, AgentState>(
       'says what the user said, then what the agent answered',
-      setUp: () => when(
-        () => repository.turn(any(), day: any(named: 'day')),
-      ).thenAnswer((_) async => _reply),
-      build: () => AgentCubit(repository: repository),
+      setUp: () => answers(_reply),
+      build: () => AgentCubit(repository: repository, now: () => start),
       act: (cubit) => cubit.send('  Encaixa estudo  '),
       expect: () => [
-        const AgentState(entries: [UserEntry('Encaixa estudo')], busy: true),
-        const AgentState(
-          entries: [UserEntry('Encaixa estudo'), ReplyEntry(_reply)],
+        AgentState(
+          entries: const [UserEntry('Encaixa estudo')],
+          startedAt: start,
+          busy: true,
+        ),
+        AgentState(
+          conversationId: 'c2',
+          startedAt: start,
+          entries: const [UserEntry('Encaixa estudo'), ReplyEntry(_reply)],
         ),
       ],
     );
 
     blocTest<AgentCubit, AgentState>(
+      'carries the conversation on, and sends only it',
+      setUp: () => answers(_reply),
+      build: () => AgentCubit(repository: repository, now: () => start),
+      seed: () => AgentState(
+        conversationId: 'c2',
+        startedAt: start,
+        entries: const [UserEntry('Oi'), ReplyEntry(_reply)],
+        past: [
+          PastConversation(
+            id: 'c1',
+            startedAt: start.subtract(const Duration(days: 1)),
+            entries: const [UserEntry('Ontem')],
+          ),
+        ],
+      ),
+      act: (cubit) => cubit.send('E amanhã?'),
+      verify: (_) {
+        final sent =
+            verify(
+                  () => repository.turn(
+                    captureAny(),
+                    conversationId: 'c2',
+                    day: any(named: 'day'),
+                  ),
+                ).captured.single
+                as List<AgentEntry>;
+        expect(sent, const [
+          UserEntry('Oi'),
+          ReplyEntry(_reply),
+          UserEntry('E amanhã?'),
+        ]);
+      },
+    );
+
+    blocTest<AgentCubit, AgentState>(
       'keeps what the user said when the agent fails',
       setUp: () => when(
-        () => repository.turn(any(), day: any(named: 'day')),
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+        ),
       ).thenThrow(const AgentFailure('Não consegui')),
-      build: () => AgentCubit(repository: repository),
+      build: () => AgentCubit(repository: repository, now: () => start),
       act: (cubit) => cubit.send('Oi'),
       expect: () => [
-        const AgentState(entries: [UserEntry('Oi')], busy: true),
-        const AgentState(
-          entries: [UserEntry('Oi')],
-          failure: AgentFailure('Não consegui'),
+        AgentState(
+          entries: const [UserEntry('Oi')],
+          startedAt: start,
+          busy: true,
+        ),
+        AgentState(
+          entries: const [UserEntry('Oi')],
+          startedAt: start,
+          failure: const AgentFailure('Não consegui'),
         ),
       ],
     );
+
+    test(
+      'opening starts a new conversation and puts the last one above',
+      () async {
+        final yesterday = PastConversation(
+          id: 'c0',
+          startedAt: start.subtract(const Duration(days: 1)),
+          entries: const [UserEntry('Ontem')],
+        );
+        when(
+          () => repository.conversations(before: any(named: 'before')),
+        ).thenAnswer((_) async => [yesterday]);
+        answers(_reply);
+        final cubit = AgentCubit(repository: repository, now: () => start)
+          ..open();
+        await pumpEventQueue();
+        expect(cubit.state.past, [yesterday]);
+        expect(cubit.state.pastStatus, PastStatus.done);
+
+        await cubit.send('Oi');
+        cubit.open();
+
+        expect(cubit.state.entries, isEmpty);
+        expect(cubit.state.conversationId, isNull);
+        expect(cubit.state.past.map((it) => it.id), ['c2', 'c0']);
+        expect(cubit.state.past.first.startedAt, start);
+        // The past is read once, not on every opening.
+        verify(
+          () => repository.conversations(before: any(named: 'before')),
+        ).called(1);
+        await cubit.close();
+      },
+    );
+
+    test('pages back from the oldest conversation held', () async {
+      final page = List.generate(
+        AgentCubit.pageSize,
+        (i) => PastConversation(
+          id: 'c$i',
+          startedAt: start.subtract(Duration(hours: i + 1)),
+          entries: const [UserEntry('Oi')],
+        ),
+      );
+      when(
+        () => repository.conversations(before: any(named: 'before')),
+      ).thenAnswer((_) async => page);
+      final cubit = AgentCubit(repository: repository, now: () => start);
+
+      await cubit.loadPast();
+      expect(cubit.state.pastStatus, PastStatus.idle);
+
+      when(
+        () => repository.conversations(before: any(named: 'before')),
+      ).thenAnswer((_) async => []);
+      await cubit.loadPast();
+
+      verify(
+        () => repository.conversations(before: page.last.startedAt),
+      ).called(1);
+      expect(cubit.state.pastStatus, PastStatus.done);
+      expect(cubit.state.past, page);
+      await cubit.close();
+    });
 
     blocTest<AgentCubit, AgentState>(
       'says nothing for an empty message',
@@ -105,13 +277,29 @@ void main() {
     );
 
     blocTest<AgentCubit, AgentState>(
-      'marks where a plan stands',
+      'marks where a plan stands, wherever it was proposed',
       build: () => AgentCubit(repository: repository),
-      seed: () => const AgentState(entries: [ReplyEntry(_reply)]),
-      act: (cubit) => cubit.markPlan('p1', PlanStatus.applied),
+      seed: () => AgentState(
+        entries: const [ReplyEntry(_reply)],
+        past: [
+          PastConversation(
+            id: 'c1',
+            startedAt: start,
+            entries: const [ReplyEntry(_reply)],
+          ),
+        ],
+      ),
+      act: (cubit) => cubit.markPlan('p1', PlanStatus.undone),
       expect: () => [
-        const AgentState(
-          entries: [ReplyEntry(_reply, status: PlanStatus.applied)],
+        AgentState(
+          entries: const [ReplyEntry(_reply, status: PlanStatus.undone)],
+          past: [
+            PastConversation(
+              id: 'c1',
+              startedAt: start,
+              entries: const [ReplyEntry(_reply, status: PlanStatus.undone)],
+            ),
+          ],
         ),
       ],
     );

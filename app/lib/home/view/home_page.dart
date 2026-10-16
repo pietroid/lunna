@@ -85,24 +85,29 @@ class TimelineModeSwitch extends StatelessWidget {
         AppSpacing.s6,
         AppSpacing.s3,
       ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: AppSegmented(
-          segments: [
-            AppSegment(
-              label: context.l10n.timelineModeList,
-              iconData: AppIcons.prioritize,
+      child: Row(
+        children: [
+          AppSegmented(
+            segments: [
+              AppSegment(
+                label: context.l10n.timelineModeList,
+                iconData: AppIcons.prioritize,
+              ),
+              AppSegment(
+                label: context.l10n.timelineModeCalendar,
+                iconData: AppIcons.calendar,
+              ),
+            ],
+            selected: TimelineMode.values.indexOf(mode),
+            onSelected: (index) => context.read<TimelineModeCubit>().choose(
+              TimelineMode.values[index],
             ),
-            AppSegment(
-              label: context.l10n.timelineModeCalendar,
-              iconData: AppIcons.calendar,
-            ),
-          ],
-          selected: TimelineMode.values.indexOf(mode),
-          onSelected: (index) => context.read<TimelineModeCubit>().choose(
-            TimelineMode.values[index],
           ),
-        ),
+          const Spacer(),
+          // The agent's last plan, while it can be taken back. It stays
+          // until the day is changed by hand rather than timing out.
+          const UndoChip(),
+        ],
       ),
     );
   }

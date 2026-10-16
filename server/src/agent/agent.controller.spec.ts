@@ -12,6 +12,7 @@ import { CalendarService } from '../calendar/calendar.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
 import { Timeline } from '../events/entities/event.entity';
 import { EventLayoutService } from '../events/event-layout.service';
+import { EventsController } from '../events/events.controller';
 import { TasksController } from '../events/tasks.controller';
 import { PauseTickerService } from '../events/pause-ticker.service';
 import { TimelineController } from '../events/timeline.controller';
@@ -20,6 +21,11 @@ import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import { AgentController } from './agent.controller';
 import { AgentReply, AgentService } from './agent.service';
+import {
+  Conversation,
+  ConversationStore,
+  MemoryConversationStore,
+} from './conversation.store';
 import {
   ChatMessage,
   ModelOutcome,
@@ -116,7 +122,12 @@ describe('the agent', () => {
     model = new ScriptedModel();
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ ignoreEnvFile: true })],
-      controllers: [AgentController, TimelineController, TasksController],
+      controllers: [
+        AgentController,
+        TimelineController,
+        TasksController,
+        EventsController,
+      ],
       providers: [
         AgentService,
         TimelineService,
@@ -126,6 +137,7 @@ describe('the agent', () => {
         { provide: OpenRouterClient, useValue: model },
         { provide: CalendarStore, useClass: MemoryCalendarStore },
         { provide: TaskStore, useClass: MemoryTaskStore },
+        { provide: ConversationStore, useClass: MemoryConversationStore },
       ],
     })
       .overrideGuard(SessionGuard)
@@ -333,6 +345,211 @@ describe('the agent', () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  const history = async (): Promise<Conversation[]> =>
+    (
+      (await request(app.getHttpServer()).get('/agent/conversations')).body as {
+        conversations: Conversation[];
+      }
+    ).conversations;
+
+  it('writes each turn into its conversation, and tells the model only that one', async () => {
+    model.steps = [say('Oi! Como posso ajudar?')];
+    const first = (await ask('Oi')).body as AgentReply;
+    expect(first.conversationId).toMatch(/^[0-9a-f-]{36}$/);
+
+    jest.setSystemTime(new Date(NOW.getTime() + 10_000));
+    model.steps = [say('Às 18:30.')];
+    await post('/agent/turn', {
+      conversationId: first.conversationId,
+      messages: [
+        { role: 'user', text: 'Oi' },
+        { role: 'assistant', text: 'Oi! Como posso ajudar?' },
+        { role: 'user', text: 'Que horas é a academia?', voice: 4.2 },
+      ],
+    });
+
+    jest.setSystemTime(new Date(NOW.getTime() + 60_000));
+    model.steps = [say('Claro.')];
+    const other = (await ask('Outra coisa')).body as AgentReply;
+    jest.setSystemTime(NOW);
+    expect(other.conversationId).not.toBe(first.conversationId);
+
+    // A new conversation starts with nothing of the old one.
+    const told = model.seen[model.seen.length - 1];
+    expect(told.filter((it) => it.role !== 'system')).toEqual([
+      { role: 'user', content: 'Outra coisa' },
+    ]);
+
+    const past = await history();
+    expect(past.map((it) => it.messages.length)).toEqual([2, 4]);
+    expect(past[1].id).toBe(first.conversationId);
+    expect(past[1].messages.map((it) => it.text)).toEqual([
+      'Oi',
+      'Oi! Como posso ajudar?',
+      'Que horas é a academia?',
+      'Às 18:30.',
+    ]);
+    expect(past[1].messages[2].voiceSeconds).toBe(4);
+  });
+
+  it('pages the history back from an instant', async () => {
+    model.steps = [say('Um.')];
+    await ask('Primeira');
+    jest.setSystemTime(new Date(NOW.getTime() + 60_000));
+    model.steps = [say('Dois.')];
+    await ask('Segunda');
+    jest.setSystemTime(NOW);
+
+    const page = (
+      await request(app.getHttpServer()).get(
+        `/agent/conversations?limit=1&before=${new Date(NOW.getTime() + 30_000).toISOString()}`,
+      )
+    ).body as { conversations: Conversation[] };
+
+    expect(page.conversations.map((it) => it.messages[0].text)).toEqual([
+      'Primeira',
+    ]);
+    expect(
+      (await request(app.getHttpServer()).get('/agent/conversations?limit=0'))
+        .status,
+    ).toBe(400);
+  });
+
+  it('keeps what became of each plan in the history', async () => {
+    await post('/tasks', { title: 'Responder e-mails', minutes: 30 });
+    scriptStudyPlan();
+    const plan = ((await ask('Encaixa 2h de estudo')).body as AgentReply).plan!;
+
+    expect((await history())[0].messages[1].planStatus).toBe('proposed');
+    await post(`/agent/plans/${plan.id}/apply`);
+    expect((await history())[0].messages[1].planStatus).toBe('applied');
+    await post(`/agent/plans/${plan.id}/undo`);
+    expect((await history())[0].messages[1].planStatus).toBe('undone');
+  });
+
+  it('looks earlier conversations up only through its tool', async () => {
+    model.steps = [say('Fica às 18:30.')];
+    await ask('Passa a academia pras 18:30');
+
+    model.steps = [
+      () => call('read_conversations', { text: 'ACADEMIA' }),
+      (messages) => {
+        const found = lastTool(messages) as {
+          messages: { role: string; text: string; at: string }[];
+        };
+        expect(found.messages.map((it) => it.text)).toEqual([
+          'Passa a academia pras 18:30',
+        ]);
+        expect(found.messages[0].at).toBe('2026-03-10T10:00');
+        return { kind: 'final', content: 'Você pediu 18:30.' };
+      },
+    ];
+    const reply = (await ask('O que eu pedi sobre a academia?'))
+      .body as AgentReply;
+
+    expect(reply.steps).toEqual(['Procurei nas conversas: "ACADEMIA"']);
+  });
+
+  it('tells the model the minute it is in every read', async () => {
+    model.steps = [
+      () => call('read_timeline', {}),
+      (messages) => {
+        expect(lastTool(messages).now).toBe('2026-03-10T10:00');
+        return { kind: 'final', content: 'Ok.' };
+      },
+    ];
+
+    await ask('Como está meu dia?');
+  });
+
+  it('shows what a plan pushes later, as the queue would', async () => {
+    await post('/tasks', {
+      title: 'Revisar proposta',
+      minutes: 60,
+      backlog: false,
+    });
+    await post('/tasks', {
+      title: 'Responder e-mails',
+      minutes: 30,
+      backlog: false,
+    });
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          changes: [
+            {
+              kind: 'add_event',
+              title: 'Dentista',
+              minutes: 60,
+              at: '2026-03-10T10:30',
+            },
+          ],
+        }),
+      (messages) => {
+        expect(lastTool(messages).pushed).toEqual([
+          {
+            title: 'Revisar proposta',
+            from: '2026-03-10T10:00',
+            to: '2026-03-10T11:35',
+          },
+          {
+            title: 'Responder e-mails',
+            from: '2026-03-10T11:05',
+            to: '2026-03-10T12:40',
+          },
+        ]);
+        return {
+          kind: 'final',
+          content: 'Quer que eu coloque o Dentista às 10:30 e empurre o resto?',
+        };
+      },
+    ];
+
+    const plan = ((await ask('Dentista às 10:30')).body as AgentReply).plan!;
+    expect(plan.pushed.map((it) => it.title)).toEqual([
+      'Revisar proposta',
+      'Responder e-mails',
+    ]);
+
+    // Applied, the day is what the plan showed.
+    const after = (await post(`/agent/plans/${plan.id}/apply?days=3`))
+      .body as Timeline;
+    expect(after.tasks.map((it) => [it.title, it.startTime])).toEqual([
+      ['Revisar proposta', plan.pushed[0].at],
+      ['Responder e-mails', plan.pushed[1].at],
+    ]);
+  });
+
+  it('refuses a task at an hour an event keeps, so the model asks', async () => {
+    await post('/events', {
+      title: 'Reunião',
+      durationMinutes: 60,
+      startTime: new Date('2026-03-10T15:00:00-03:00').toISOString(),
+    });
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          changes: [
+            {
+              kind: 'add_task',
+              title: 'Ligar pro banco',
+              minutes: 30,
+              at: '2026-03-10T15:00',
+            },
+          ],
+        }),
+      (messages) => {
+        expect(lastTool(messages).error).toContain('"Reunião"');
+        expect(lastTool(messages).error).toContain('never pushed');
+        return { kind: 'final', content: 'Às 15:00 tem a Reunião.' };
+      },
+    ];
+
+    expect(
+      ((await ask('Banco às 15h')).body as AgentReply).plan,
+    ).toBeUndefined();
   });
 
   it('says so when no model is configured', async () => {

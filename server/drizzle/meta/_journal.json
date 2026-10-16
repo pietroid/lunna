@@ -36,6 +36,13 @@
       "when": 1791942718933,
       "tag": "0004_flexible",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792109347272,
+      "tag": "0005_agent_messages",
+      "breakpoints": true
     }
   ]
 }

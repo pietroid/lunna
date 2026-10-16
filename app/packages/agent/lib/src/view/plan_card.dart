@@ -7,8 +7,10 @@ import 'package:l10n/l10n.dart';
 ///
 /// Each line says what it is by its mark (+ for something new, → for a move)
 /// and by its colour (the fixed blocks' sand, the routines' blue), and a move
-/// shows the hour it had struck through. The accent is spent once, on
-/// Aplicar.
+/// shows the hour it had struck through. Then, in grey with ↓, what the plan
+/// pushes later: then the card is a question, and its buttons say so
+/// (Outro horário, Empurrar). The accent is spent once, on the button that
+/// applies it.
 /// {@endtemplate}
 class PlanCard extends StatelessWidget {
   /// {@macro plan_card}
@@ -26,7 +28,8 @@ class PlanCard extends StatelessWidget {
 
   final VoidCallback onApply;
 
-  /// Puts the user back in the field, to say what to change.
+  /// Puts the user back in the field, to say what to change, or which other
+  /// hour.
   final VoidCallback onAdjust;
 
   @override
@@ -61,7 +64,10 @@ class PlanCard extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    l10n.agentChanges(plan.changes.length),
+                    plan.pushed.isEmpty
+                        ? l10n.agentChanges(plan.changes.length)
+                        : '${l10n.agentChanges(plan.changes.length)} · '
+                              '${l10n.agentPushedCount(plan.pushed.length)}',
                     style: AppTypography.label,
                   ),
                 ],
@@ -69,6 +75,7 @@ class PlanCard extends StatelessWidget {
             ),
           ),
           for (final change in plan.changes) _ChangeRow(change: change),
+          for (final pushed in plan.pushed) _PushedRow(pushed: pushed),
           const Divider(height: 1, color: AppColors.line),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.s3),
@@ -94,7 +101,9 @@ class PlanCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: AppButton.text(
-                          text: l10n.agentAdjust,
+                          text: plan.pushed.isEmpty
+                              ? l10n.agentAdjust
+                              : l10n.agentOtherTime,
                           color: AppColors.ink,
                           expand: true,
                           onPressed: status == PlanStatus.pending
@@ -105,7 +114,9 @@ class PlanCard extends StatelessWidget {
                       const SizedBox(width: AppSpacing.s2),
                       Expanded(
                         child: AppButton(
-                          text: l10n.agentApply,
+                          text: plan.pushed.isEmpty
+                              ? l10n.agentApply
+                              : l10n.agentPush,
                           expand: true,
                           onPressed: status == PlanStatus.pending
                               ? onApply
@@ -204,6 +215,136 @@ class _ChangeRow extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A task the plan pushes later: quiet, since the plan does not name it.
+class _PushedRow extends StatelessWidget {
+  const _PushedRow({required this.pushed});
+
+  final PushedTask pushed;
+
+  @override
+  Widget build(BuildContext context) {
+    final quiet = AppTypography.label;
+
+    return Container(
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s4,
+        vertical: AppSpacing.s3,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: AppColors.fill,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Center(
+              child: AppIcon(
+                iconData: AppIcons.pushed,
+                size: 15,
+                color: AppColors.ink2,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s3),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(pushed.title, style: AppTypography.bodyStrong),
+                const SizedBox(height: 2),
+                Text.rich(
+                  TextSpan(
+                    style: quiet,
+                    children: [
+                      TextSpan(
+                        text: _hhmm(pushed.before),
+                        style: quiet.copyWith(
+                          color: AppColors.ink3,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            ' → ${_hhmm(pushed.at)} · '
+                            '${context.l10n.agentChangePushed}',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// {@template plan_line}
+/// A plan from a conversation already over, in one line: what it changed and
+/// what became of it. Read only.
+/// {@endtemplate}
+class PlanLine extends StatelessWidget {
+  /// {@macro plan_line}
+  const PlanLine({required this.plan, required this.status, super.key});
+
+  final AgentPlan plan;
+
+  final PlanStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final applied = status == PlanStatus.applied;
+    final what = plan.changes.length == 1
+        ? '${plan.changes.first.title} ${_hhmm(plan.changes.first.at)}'
+        : l10n.agentChanges(plan.changes.length);
+    final changes = plan.pushed.isEmpty
+        ? what
+        : '$what · ${l10n.agentPushedCount(plan.pushed.length)}';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s4,
+        vertical: AppSpacing.s3,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.fill,
+        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+      ),
+      child: Row(
+        children: [
+          AppIcon(
+            iconData: applied ? AppIcons.check : AppIcons.undo,
+            size: 14,
+            color: applied ? AppColors.success : AppColors.ink3,
+          ),
+          const SizedBox(width: AppSpacing.s2),
+          Expanded(
+            child: Text(
+              l10n.agentPlanSummary(
+                changes,
+                switch (status) {
+                  PlanStatus.applied => l10n.agentPlanApplied,
+                  PlanStatus.undone => l10n.agentPlanUndone,
+                  _ => l10n.agentPlanNotApplied,
+                },
+              ),
+              style: AppTypography.label,
             ),
           ),
         ],

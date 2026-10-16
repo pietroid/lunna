@@ -1476,8 +1476,6 @@ class _TimelineListState extends State<TimelineList> {
     return EventTile(
       card: card,
       pressed: card.id == _pressed,
-      // The list rebuilds on every state, so reading it here is enough.
-      touched: bloc.state.touched.contains(card.id),
       // The card in the air is drawn over the list, so the one left behind
       // only holds its place open.
       hidden: card.id == dragging,

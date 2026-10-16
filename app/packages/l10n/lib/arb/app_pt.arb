@@ -475,7 +475,6 @@
   "agentReplyHint": "Responder…",
   "agentThinking": "Olhando seu dia…",
   "agentSend": "Enviar",
-  "agentNewConversation": "Nova conversa",
   "agentClose": "Fechar",
   "agentApply": "Aplicar",
   "agentAdjust": "Ajustar",
@@ -493,15 +492,85 @@
   "agentChangeMoved": "movida",
   "agentChangeRoutine": "rotina, só nesse dia",
   "agentChangeFromBacklog": "saiu do Depois eu priorizo",
-  "agentAppliedToast": "{count, plural, =1{1 mudança aplicada} other{{count} mudanças aplicadas}}",
-  "@agentAppliedToast": {
+  "agentUndo": "Desfazer",
+  "agentEarlier": "Conversas anteriores",
+  "agentEarlierFailed": "Não consegui trazer as conversas anteriores. Toque para tentar de novo.",
+  "agentHistoryToday": "Hoje · {time}",
+  "@agentHistoryToday": {
+    "placeholders": {
+      "time": {
+        "type": "DateTime",
+        "format": "HH:mm",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "agentHistoryYesterday": "Ontem, {day} · {time}",
+  "@agentHistoryYesterday": {
+    "placeholders": {
+      "day": {
+        "type": "DateTime",
+        "format": "EEEE",
+        "isCustomDateFormat": "true"
+      },
+      "time": {
+        "type": "DateTime",
+        "format": "HH:mm",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "agentHistoryDay": "{day} · {time}",
+  "@agentHistoryDay": {
+    "placeholders": {
+      "day": {
+        "type": "DateTime",
+        "format": "EEE, d 'de' MMM",
+        "isCustomDateFormat": "true"
+      },
+      "time": {
+        "type": "DateTime",
+        "format": "HH:mm",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "agentHistoryNow": "Agora · {time}",
+  "@agentHistoryNow": {
+    "placeholders": {
+      "time": {
+        "type": "DateTime",
+        "format": "HH:mm",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "agentPlanSummary": "{changes} · {status}",
+  "@agentPlanSummary": {
+    "placeholders": {
+      "changes": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPlanApplied": "aplicado",
+  "agentPlanUndone": "desfeito",
+  "agentPlanNotApplied": "não aplicado",
+  "agentPushedCount": "{count, plural, =1{1 empurrada} other{{count} empurradas}}",
+  "@agentPushedCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "agentUndo": "Desfazer",
+  "agentChangePushed": "empurrada",
+  "agentPush": "Empurrar",
+  "agentOtherTime": "Outro horário",
+  "agentOtherTimeDraft": "Prefiro outro horário: ",
   "agentSuggestionAccept": "Encaixar",
   "agentSuggestionDismiss": "Agora não",
   "agentFailure": "Algo deu errado. Tente de novo.",

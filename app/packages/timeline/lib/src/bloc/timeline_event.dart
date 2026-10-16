@@ -24,19 +24,19 @@ final class TimelineRequested extends TimelineBlocEvent {
 /// Draws a day someone else already read: the agent applied or undid a
 /// plan, and its answer is the whole timeline, as every write's is.
 ///
-/// [touched] are the cards it changed, which the list marks.
+/// [undoable] is the change that drew it, when it can still be taken back.
 final class TimelineReplaced extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
-  const TimelineReplaced(this.timeline, {this.touched = const {}});
+  const TimelineReplaced(this.timeline, {this.undoable});
 
   /// The day, as the server answered.
   final Timeline timeline;
 
-  /// The cards the agent changed.
-  final Set<String> touched;
+  /// The id of the change that drew this day, while it can be undone.
+  final String? undoable;
 
   @override
-  List<Object?> get props => [timeline, touched];
+  List<Object?> get props => [timeline, undoable];
 }
 
 /// Draws more days: the calendar was scrolled to its end.
