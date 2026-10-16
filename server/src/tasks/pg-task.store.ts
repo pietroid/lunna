@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, isNull, notInArray } from 'drizzle-orm';
+import { and, asc, eq, gt, isNotNull, isNull, notInArray } from 'drizzle-orm';
 import { CalendarUser } from '../calendar/calendar.types';
 import { DB } from '../db/db';
 import type { Database } from '../db/db';
@@ -23,11 +23,28 @@ export class PgTaskStore extends TaskStore {
           eq(task.userId, user.id),
           isNull(task.doneAt),
           eq(task.cancelled, false),
+          eq(task.parked, false),
         ),
       )
       // The days of a routine all sit at position zero, which only means
       // something to the queue: their hours order them.
       .orderBy(asc(task.position), asc(task.notBefore), asc(task.createdAt));
+
+    return rows.map(toTask);
+  }
+
+  async ofProjects(user: CalendarUser): Promise<Task[]> {
+    const rows = await this._db
+      .select()
+      .from(task)
+      .where(
+        and(
+          eq(task.userId, user.id),
+          isNotNull(task.projectId),
+          eq(task.cancelled, false),
+        ),
+      )
+      .orderBy(asc(task.position), asc(task.createdAt));
 
     return rows.map(toTask);
   }
@@ -96,6 +113,8 @@ export class PgTaskStore extends TaskStore {
         position: input.position,
         notBefore: dateOf(input.notBefore),
         backlog: input.backlog ?? false,
+        projectId: input.projectId ?? null,
+        parked: input.parked ?? false,
       })
       .returning();
 
@@ -114,6 +133,8 @@ export class PgTaskStore extends TaskStore {
         backlog: next.backlog,
         doneAt: dateOf(next.doneAt),
         cancelled: next.cancelled === true,
+        projectId: next.projectId ?? null,
+        parked: next.parked === true,
       })
       .where(and(eq(task.id, next.id), eq(task.userId, user.id)))
       .returning();
@@ -149,6 +170,8 @@ function toTask(row: TaskRow): Task {
       ? {}
       : { occurrence: row.occurrence.toISOString() }),
     ...(row.cancelled ? { cancelled: true } : {}),
+    ...(row.projectId === null ? {} : { projectId: row.projectId }),
+    ...(row.parked ? { parked: true } : {}),
   };
 }
 

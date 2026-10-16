@@ -8,6 +8,7 @@ import 'package:l10n/l10n.dart';
 import 'package:lunna/home/home.dart';
 import 'package:lunna/menu/menu.dart';
 import 'package:lunna/notifications/notifications.dart';
+import 'package:projects/projects.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template shell_page}
@@ -17,14 +18,14 @@ import 'package:timeline/timeline.dart';
 /// rebuilt on every tap: moving between them is not navigation, it is looking
 /// somewhere else, and a list should be where it was left.
 ///
-/// Tempo and Menu are built. Projetos is a placeholder that holds its place
-/// in the bar.
-///
-/// The [AppFab] writes something down on the timeline from anywhere, on the
+/// The [AppFab] writes down whatever the tab in front is about. On Projetos
+/// that is a project. Anywhere else it is something on the timeline, on the
 /// day Tempo is showing: at the first free hour in sight on the calendar, at
-/// the end of the day at the top of the list. From a tab other than Tempo it
-/// brings Tempo forward first, so the new block is on screen when the sheet
-/// closes.
+/// the end of the day at the top of the list; from Menu it brings Tempo
+/// forward first, so the new block is on screen when the sheet closes.
+///
+/// Projetos is read again each time it comes to the front, since the hours
+/// of its tasks on the day move with the day.
 /// {@endtemplate}
 class ShellPage extends StatefulWidget {
   /// {@macro shell_page}
@@ -38,12 +39,36 @@ class _ShellPageState extends State<ShellPage> {
   /// Tempo, the timeline.
   static const _timelineIndex = 0;
 
+  /// Projetos.
+  static const _projectsIndex = 1;
+
   int _index = _timelineIndex;
 
   /// Where Tempo is looking, which is where the button writes.
   final _aim = TimelineAim();
 
+  @override
+  void initState() {
+    super.initState();
+    unawaited(context.read<ProjectsCubit>().load());
+  }
+
+  void _onSelected(int index) {
+    if (index == _projectsIndex) {
+      unawaited(context.read<ProjectsCubit>().load());
+    }
+    setState(() => _index = index);
+  }
+
   Future<void> _onFabPressed() async {
+    if (_index == _projectsIndex) {
+      final cubit = context.read<ProjectsCubit>();
+      final draft = await showProjectSheet(context);
+      if (draft == null) return;
+      await cubit.create(draft.title, deadline: draft.deadline);
+      return;
+    }
+
     if (_index != _timelineIndex) setState(() => _index = _timelineIndex);
     await writeDownOnTimeline(
       context,
@@ -63,11 +88,7 @@ class _ShellPageState extends State<ShellPage> {
           extendBody: true,
           body: IndexedStack(
             index: _index,
-            children: [
-              const HomePage(),
-              _Placeholder(title: l10n.shellProjectsTab),
-              const MenuPage(),
-            ],
+            children: const [HomePage(), ProjectsPage(), MenuPage()],
           ),
           floatingActionButton: _index == _timelineIndex
               ? _AskAndWrite(
@@ -79,13 +100,15 @@ class _ShellPageState extends State<ShellPage> {
                   ),
                 )
               : AppFab(
-                  tooltip: l10n.shellWriteDown,
+                  tooltip: _index == _projectsIndex
+                      ? l10n.projectsNew
+                      : l10n.shellWriteDown,
                   onPressed: () => unawaited(_onFabPressed()),
                 ),
           floatingActionButtonLocation: AppFab.location,
           bottomNavigationBar: AppBottomBar(
             currentIndex: _index,
-            onSelected: (index) => setState(() => _index = index),
+            onSelected: _onSelected,
             items: [
               AppBottomBarItem(
                 iconData: AppIcons.time,
@@ -107,7 +130,6 @@ class _ShellPageState extends State<ShellPage> {
   }
 }
 
-/// A destination that is not built yet.
 /// The agent's bar and the +, side by side, on Tempo.
 ///
 /// The + still writes something down in one tap; the bar beside it is
@@ -135,35 +157,6 @@ class _AskAndWrite extends StatelessWidget {
           const SizedBox(width: AppSpacing.s3),
           fab,
         ],
-      ),
-    );
-  }
-}
-
-class _Placeholder extends StatelessWidget {
-  const _Placeholder({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.s6),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(title, style: AppTypography.headline),
-              const SizedBox(height: AppSpacing.s2),
-              Text(
-                context.l10n.shellComingSoon,
-                style: AppTypography.body.copyWith(color: AppColors.ink3),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

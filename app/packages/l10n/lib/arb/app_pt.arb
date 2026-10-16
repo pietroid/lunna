@@ -15,7 +15,6 @@
   "shellTimelineTab": "Tempo",
   "shellProjectsTab": "Projetos",
   "shellMenuTab": "Menu",
-  "shellComingSoon": "Em breve.",
   "menuRoutinesHint": "Os blocos que se repetem",
   "menuDaySection": "Seu dia",
   "menuDayStart": "Começa às",
@@ -596,5 +595,104 @@
       }
     }
   },
-  "agentVoiceUnavailable": "Este aparelho não reconhece fala em português."
+  "agentVoiceUnavailable": "Este aparelho não reconhece fala em português.",
+  "projectsOpenCount": "{count, plural, =0{Nenhum em andamento} =1{1 em andamento} other{{count} em andamento}}",
+  "@projectsOpenCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsDoneSection": "Concluídos",
+  "projectsEmpty": "Um projeto junta as tarefas de um mesmo assunto, com prazo ou sem.",
+  "projectsNew": "Novo projeto",
+  "projectUntitled": "Sem nome",
+  "projectNoDeadline": "Sem prazo",
+  "projectGiveDeadline": "Dar um prazo",
+  "projectUntil": "até {date}",
+  "@projectUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "projectDaysLeft": "{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}",
+  "@projectDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "projectOverdue": "{days, plural, =1{atrasado 1 dia} other{atrasado {days} dias}}",
+  "@projectOverdue": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "projectTaskCount": "{done} de {total}",
+  "@projectTaskCount": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "projectDoneOn": "concluído {date}",
+  "@projectDoneOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "projectMinusDay": "−1 dia",
+  "projectPlusDay": "+1 dia",
+  "projectLessDay": "Um dia a menos",
+  "projectMoreDay": "Um dia a mais",
+  "projectDone": "Concluir projeto",
+  "projectReopen": "Reabrir projeto",
+  "projectTasksTab": "{count, plural, =0{Tarefas} other{Tarefas · {count}}}",
+  "@projectTasksTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectNotesTab": "Notas",
+  "projectNotesHint": "Escreva o que quiser sobre o projeto…",
+  "projectAddTask": "Nova tarefa",
+  "projectTasksDone": "{count, plural, =1{1 feita} other{{count} feitas}}",
+  "@projectTasksDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectSheetHint": "Qual é o projeto?",
+  "projectSheetOpenEnded": "Sem data para acabar",
+  "projectWeek": "1 semana",
+  "projectMonth": "1 mês",
+  "projectPickDay": "Escolher dia",
+  "placeTitle": "Onde fica esta tarefa?",
+  "placeProject": "Só no projeto",
+  "placeProjectHelp": "Não aparece no Tempo. Espera aqui até você decidir.",
+  "placeBacklog": "Depois eu priorizo",
+  "placeBacklogHelp": "Vai para o fim do backlog do Tempo, ainda sem hora.",
+  "placeQueue": "Fazer em breve",
+  "placeQueueHelp": "Entra no fim da fila e pega a próxima hora livre.",
+  "placeScheduled": "Num horário",
+  "placeScheduledHelp": "Você escolhe o dia e a hora, e ela espera por você.",
+  "placeDone": "Feita",
+  "placeDoneHelp": "Sai da lista e conta no progresso do projeto.",
+  "projectDeleteBody": "As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá."
 }

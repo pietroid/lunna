@@ -1,5 +1,6 @@
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -128,6 +129,33 @@ export const verification = pgTable(
  * [event] row of its own only when it is begun, because only then is its
  * hour a fact.
  */
+/**
+ * A subject that outlives a day: a name, free-text notes, and the tasks that
+ * point at it (`task.project_id`).
+ *
+ * The deadline is a day, not an hour: the project is due by the end of it,
+ * in the person's zone. Null for a project with no deadline at all.
+ */
+export const project = pgTable(
+  'project',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    /** Free text the user keeps on it. */
+    notes: text('notes').notNull().default(''),
+    /** The day it is due by, `YYYY-MM-DD`. */
+    deadline: date('deadline', { mode: 'string' }),
+    /** When it was marked done. Null while it is open. */
+    doneAt: timestamp('done_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('project_user_idx').on(table.userId)],
+);
+
 export const task = pgTable(
   'task',
   {
@@ -163,6 +191,16 @@ export const task = pgTable(
      * hour: the layout never sees it until it is dragged into the queue.
      */
     backlog: boolean('backlog').notNull().default(false),
+    /** The project it belongs to, when it belongs to one. */
+    projectId: uuid('project_id').references(() => project.id, {
+      onDelete: 'set null',
+    }),
+    /**
+     * Whether it waits in its project, out of the day's sight: in neither the
+     * queue nor the backlog. A project's tasks start here, so a project with
+     * twenty of them does not drop twenty tasks on the backlog.
+     */
+    parked: boolean('parked').notNull().default(false),
     /** When it was finished. Null while there is still something to do. */
     doneAt: timestamp('done_at', { withTimezone: true }),
     /** The flexible routine this is a day of, when it is one. */
@@ -344,6 +382,7 @@ export const schema = {
   account,
   verification,
   routine,
+  project,
   task,
   event,
   agentMessage,
@@ -353,4 +392,5 @@ export type EventRow = typeof event.$inferSelect;
 export type NewEventRow = typeof event.$inferInsert;
 export type RoutineRow = typeof routine.$inferSelect;
 export type TaskRow = typeof task.$inferSelect;
+export type ProjectRow = typeof project.$inferSelect;
 export type AgentMessageRow = typeof agentMessage.$inferSelect;

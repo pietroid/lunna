@@ -137,12 +137,6 @@ abstract class AppLocalizations {
   /// **'Menu'**
   String get shellMenuTab;
 
-  /// No description provided for @shellComingSoon.
-  ///
-  /// In pt, this message translates to:
-  /// **'Em breve.'**
-  String get shellComingSoon;
-
   /// No description provided for @menuRoutinesHint.
   ///
   /// In pt, this message translates to:
@@ -1390,6 +1384,246 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Este aparelho não reconhece fala em português.'**
   String get agentVoiceUnavailable;
+
+  /// No description provided for @projectsOpenCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Nenhum em andamento} =1{1 em andamento} other{{count} em andamento}}'**
+  String projectsOpenCount(int count);
+
+  /// No description provided for @projectsDoneSection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluídos'**
+  String get projectsDoneSection;
+
+  /// No description provided for @projectsEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Um projeto junta as tarefas de um mesmo assunto, com prazo ou sem.'**
+  String get projectsEmpty;
+
+  /// No description provided for @projectsNew.
+  ///
+  /// In pt, this message translates to:
+  /// **'Novo projeto'**
+  String get projectsNew;
+
+  /// No description provided for @projectUntitled.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem nome'**
+  String get projectUntitled;
+
+  /// No description provided for @projectNoDeadline.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem prazo'**
+  String get projectNoDeadline;
+
+  /// No description provided for @projectGiveDeadline.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dar um prazo'**
+  String get projectGiveDeadline;
+
+  /// No description provided for @projectUntil.
+  ///
+  /// In pt, this message translates to:
+  /// **'até {date}'**
+  String projectUntil(String date);
+
+  /// No description provided for @projectDaysLeft.
+  ///
+  /// In pt, this message translates to:
+  /// **'{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}'**
+  String projectDaysLeft(int days);
+
+  /// No description provided for @projectOverdue.
+  ///
+  /// In pt, this message translates to:
+  /// **'{days, plural, =1{atrasado 1 dia} other{atrasado {days} dias}}'**
+  String projectOverdue(int days);
+
+  /// No description provided for @projectTaskCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{done} de {total}'**
+  String projectTaskCount(int done, int total);
+
+  /// No description provided for @projectDoneOn.
+  ///
+  /// In pt, this message translates to:
+  /// **'concluído {date}'**
+  String projectDoneOn(String date);
+
+  /// No description provided for @projectMinusDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'−1 dia'**
+  String get projectMinusDay;
+
+  /// No description provided for @projectPlusDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'+1 dia'**
+  String get projectPlusDay;
+
+  /// No description provided for @projectLessDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Um dia a menos'**
+  String get projectLessDay;
+
+  /// No description provided for @projectMoreDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Um dia a mais'**
+  String get projectMoreDay;
+
+  /// No description provided for @projectDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluir projeto'**
+  String get projectDone;
+
+  /// No description provided for @projectReopen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Reabrir projeto'**
+  String get projectReopen;
+
+  /// No description provided for @projectTasksTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Tarefas} other{Tarefas · {count}}}'**
+  String projectTasksTab(int count);
+
+  /// No description provided for @projectNotesTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Notas'**
+  String get projectNotesTab;
+
+  /// No description provided for @projectNotesHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Escreva o que quiser sobre o projeto…'**
+  String get projectNotesHint;
+
+  /// No description provided for @projectAddTask.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova tarefa'**
+  String get projectAddTask;
+
+  /// No description provided for @projectTasksDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 feita} other{{count} feitas}}'**
+  String projectTasksDone(int count);
+
+  /// No description provided for @projectSheetHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Qual é o projeto?'**
+  String get projectSheetHint;
+
+  /// No description provided for @projectSheetOpenEnded.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem data para acabar'**
+  String get projectSheetOpenEnded;
+
+  /// No description provided for @projectWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'1 semana'**
+  String get projectWeek;
+
+  /// No description provided for @projectMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'1 mês'**
+  String get projectMonth;
+
+  /// No description provided for @projectPickDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Escolher dia'**
+  String get projectPickDay;
+
+  /// No description provided for @placeTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Onde fica esta tarefa?'**
+  String get placeTitle;
+
+  /// No description provided for @placeProject.
+  ///
+  /// In pt, this message translates to:
+  /// **'Só no projeto'**
+  String get placeProject;
+
+  /// No description provided for @placeProjectHelp.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não aparece no Tempo. Espera aqui até você decidir.'**
+  String get placeProjectHelp;
+
+  /// No description provided for @placeBacklog.
+  ///
+  /// In pt, this message translates to:
+  /// **'Depois eu priorizo'**
+  String get placeBacklog;
+
+  /// No description provided for @placeBacklogHelp.
+  ///
+  /// In pt, this message translates to:
+  /// **'Vai para o fim do backlog do Tempo, ainda sem hora.'**
+  String get placeBacklogHelp;
+
+  /// No description provided for @placeQueue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fazer em breve'**
+  String get placeQueue;
+
+  /// No description provided for @placeQueueHelp.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entra no fim da fila e pega a próxima hora livre.'**
+  String get placeQueueHelp;
+
+  /// No description provided for @placeScheduled.
+  ///
+  /// In pt, this message translates to:
+  /// **'Num horário'**
+  String get placeScheduled;
+
+  /// No description provided for @placeScheduledHelp.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você escolhe o dia e a hora, e ela espera por você.'**
+  String get placeScheduledHelp;
+
+  /// No description provided for @placeDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feita'**
+  String get placeDone;
+
+  /// No description provided for @placeDoneHelp.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sai da lista e conta no progresso do projeto.'**
+  String get placeDoneHelp;
+
+  /// No description provided for @projectDeleteBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.'**
+  String get projectDeleteBody;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

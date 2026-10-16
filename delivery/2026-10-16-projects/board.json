@@ -1,0 +1,194 @@
+{
+ "title": "Projetos",
+ "screens": [
+  {
+   "png": "img/shot-1.png",
+   "title": "1 · Projetos",
+   "why": "Every open project, nearest deadline first, with its time and its tasks.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 165,
+     "label": "Time bar",
+     "text": "Each row's bar is time gone by, from the day it was created to the end of its deadline day. It turns red (dangerInk) once overdue, with 'atrasado N dias'."
+    },
+    {
+     "id": "B",
+     "x": 372,
+     "y": 200,
+     "label": "Tasks count",
+     "text": "'3 de 8': tasks done out of all of them. This is the only task progress shown; the bar is never about tasks."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 470,
+     "label": "Order",
+     "text": "Nearest deadline first, then the ones with no deadline (no bar). Finished projects go under 'Concluídos', in grey."
+    },
+    {
+     "id": "D",
+     "x": 300,
+     "y": 700,
+     "label": "+ on this tab",
+     "text": "On Projetos the + (AppFab) creates a project. On Tempo it still writes on the day."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-2.png",
+   "title": "2 · Novo projeto",
+   "why": "Built like the task sheet: a bare field, one row of controls, a check.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 290,
+     "y": 757,
+     "label": "Deadline",
+     "text": "Sem prazo / 1 semana / 1 mês. 'Sem prazo' comes first and is the default."
+    },
+    {
+     "id": "B",
+     "x": 200,
+     "y": 811,
+     "label": "Pick a day",
+     "text": "The calendar pill shows the deadline ('até seg, 16 nov'). Tapping it opens the wheel to pick any day; then no segment is selected."
+    },
+    {
+     "id": "C",
+     "x": 370,
+     "y": 780,
+     "label": "Create",
+     "text": "The check creates the project and leaves you on the list. It stays dimmed until there is a name."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-3.png",
+   "title": "3 · Projeto",
+   "why": "Built like a task page on top. Below, the tasks are Lista’s cards, filed the way Lista files its stages.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 24,
+     "y": 58,
+     "label": "Deadline",
+     "text": "Tap to pick another day. The name is edited in place, like a task’s."
+    },
+    {
+     "id": "B",
+     "x": 245,
+     "y": 135,
+     "label": "Controls",
+     "text": "−1 dia / +1 dia / ✓, like the running card’s −15 / +15 / ✓."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 138,
+     "label": "Bar",
+     "text": "Time gone by: the 3px line a running block uses."
+    },
+    {
+     "id": "D",
+     "x": 240,
+     "y": 180,
+     "label": "Two spaces",
+     "text": "Tarefas · N | Notas, each with the full height."
+    },
+    {
+     "id": "E",
+     "x": 165,
+     "y": 233,
+     "label": "Stages",
+     "text": "Tasks are filed by where they are, under headings in Lista’s type: Só no projeto, Fazer em breve, Depois eu priorizo, N feitas. Empty ones are not drawn."
+    },
+    {
+     "id": "F",
+     "x": 380,
+     "y": 290,
+     "label": "Same card",
+     "text": "The card Lista draws: grey fill, title, and on the right its length, or its hours once it is on the day (with ‘amanhã’ / ‘dom’, since there are no day headings here)."
+    },
+    {
+     "id": "G",
+     "x": 180,
+     "y": 384,
+     "label": "Nova tarefa",
+     "text": "Same sheet as anywhere (name + length). Lands in Só no projeto, so the backlog never floods."
+    },
+    {
+     "id": "H",
+     "x": 120,
+     "y": 720,
+     "label": "Done",
+     "text": "Done cards keep the shape, quieter, with a check mark before the title (where Tempo puts its pin and repeat marks)."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-4.png",
+   "title": "4 · Onde fica esta tarefa?",
+   "why": "Tapping a card opens this: how a task reaches the day, comes back, or gets ticked off.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 165,
+     "y": 479,
+     "label": "Só no projeto",
+     "text": "Off the day. The current place gets the accent and a check."
+    },
+    {
+     "id": "B",
+     "x": 226,
+     "y": 561,
+     "label": "Backlog",
+     "text": "End of ‘Depois eu priorizo’ on Tempo, no hour."
+    },
+    {
+     "id": "C",
+     "x": 206,
+     "y": 643,
+     "label": "Queue",
+     "text": "End of the queue, like + on Fazer em breve."
+    },
+    {
+     "id": "D",
+     "x": 110,
+     "y": 707,
+     "label": "An hour",
+     "text": "Day + hour wheel; anchored there, waits to be begun."
+    },
+    {
+     "id": "E",
+     "x": 100,
+     "y": 789,
+     "label": "Feita",
+     "text": "Ticks it off; the card moves under N feitas."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-5.png",
+   "title": "5 · Sem prazo, Notas",
+   "why": "A project with no deadline, on its notes: free text, saved as you type.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 150,
+     "y": 60,
+     "label": "No deadline",
+     "text": "No bar and no ±1 dia, only ✓. 'Dar um prazo' opens the wheel."
+    },
+    {
+     "id": "B",
+     "x": 250,
+     "y": 160,
+     "label": "Notas",
+     "text": "Free text, saved like a task's notes: shortly after typing stops, on blur, and when the page closes."
+    }
+   ]
+  }
+ ]
+}

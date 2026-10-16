@@ -83,6 +83,7 @@ app/
     auth/               Better Auth client: Google sign-in, token store
     l10n/               every user-facing string (pt-BR)
     notifications/      local reminder queue + background refresh
+    projects/           Projetos: list, project page, stages, sheets
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
   src/
@@ -94,6 +95,7 @@ server/
     events/             the timeline routes, the read model, the layout rules
     tasks/              TaskStore (Postgres) over the task table
     notifications/      the reminder plan, derived from the calendar
+    projects/           ProjectStore, projects and their parked tasks
     routines/           routine CRUD and day expansion
     time/               work hours, zones, the scheduler
   drizzle/              generated SQL migrations (committed)
@@ -362,11 +364,48 @@ nothing; the app draws `GuardSheet` and posts the answer to
 
 ### The app shell
 
-Three tabs: **Tempo** (the timeline), **Projetos** (a placeholder) and
+Three tabs: **Tempo** (the timeline), **Projetos** (see below) and
 **Menu**, which opens Rotina and sets when the day starts and ends. The
-`AppFab` (a `+`) opens the creation sheet from any tab, on the day Tempo is
-showing, and brings Tempo forward. The
+`AppFab` (a `+`) writes down whatever the tab in front is about: on
+Projetos a project, anywhere else something on the day Tempo is showing
+(from Menu it brings Tempo forward). The
 greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
+
+### Projects
+
+A project (`project` table) is a subject that outlives a day: a name,
+notes, an optional **deadline** (a day, `YYYY-MM-DD`, due by its end) and
+`done_at`. Its bar is time, from `created_at` to the deadline, never tasks.
+
+**A project's task is an ordinary task** with `project_id`, and it starts
+**parked** (`task.parked`): `TaskStore.pending` leaves it out, so the queue,
+the backlog, the layout, reminders and the agent never see it. A project
+with twenty tasks does not drop twenty on the backlog. Letting one out puts
+it at the end of the backlog, then, for the queue or an hour, moves it
+through `EventLayoutService` as a drag would; from there it is a task like
+any other. Back into the project takes it off the day, except one that has
+begun (refused, in Portuguese). Removing a project removes what only it
+could see and lets the rest belong to no project.
+
+The app files a project's tasks the way Lista files the day, in the same
+cards: *Só no projeto*, *Fazer em breve* (with the hours the timeline gives
+them on the same read), *Depois eu priorizo*, *N feitas*. Tapping a card
+asks where it goes (`PlaceSheet`, an hour included); dragging it into
+another stage moves it there, and dropping it on a parked card takes that
+card's place. A move tells the timeline to read itself again
+(`ProjectsCubit.onDayChanged`). Projetos reads itself again whenever it comes
+to the front.
+
+| Route | What it does |
+|-------|--------------|
+| `GET /projects` | `{ projects }`: each with `tasks: [{ id, title, minutes, place, at?, doneAt? }]` |
+| `POST /projects` | `{ title, deadline? }` |
+| `PATCH /projects/:id` | `{ title?, notes?, deadline? (day or null), done? }` |
+| `DELETE /projects/:id` | parked tasks go with it; the rest stay |
+| `POST /projects/:id/tasks` | `{ title, minutes }`, parked at the end |
+| `POST /projects/:id/tasks/:taskId/place` | `{ place: project\|backlog\|queue\|scheduled\|done, at?, index? }` |
+
+Every route answers with every project.
 
 ### Reminders
 

@@ -29,6 +29,8 @@ dependencies:
     path: packages/l10n
   notifications:
     path: packages/notifications
+  projects:
+    path: packages/projects
   timeline:
     path: packages/timeline
   # 0.10 pulls workmanager_apple 0.9.6+, which uses iOS 26 background task

@@ -13,9 +13,16 @@ export abstract class TaskStore {
   /**
    * Every task still to do, the backlog's included, in position order.
    *
-   * A day of a routine that was taken off is not one.
+   * A day of a routine that was taken off is not one, and neither is a task
+   * waiting in its project: the day never sees those.
    */
   abstract pending(user: CalendarUser): Promise<Task[]>;
+
+  /**
+   * Every task that belongs to a project, done, parked or on the day, in
+   * position order. A day of a routine that was taken off is not one.
+   */
+  abstract ofProjects(user: CalendarUser): Promise<Task[]>;
 
   /**
    * Writes down each day of a flexible routine that is not there yet, as a
@@ -63,6 +70,21 @@ export class MemoryTaskStore extends TaskStore {
           (it) =>
             it.userId === user.id &&
             it.doneAt === undefined &&
+            it.cancelled !== true &&
+            it.parked !== true,
+        )
+        .sort((a, b) => a.position - b.position)
+        .map(toTask),
+    );
+  }
+
+  ofProjects(user: CalendarUser): Promise<Task[]> {
+    return Promise.resolve(
+      [...this._tasks.values()]
+        .filter(
+          (it) =>
+            it.userId === user.id &&
+            it.projectId !== undefined &&
             it.cancelled !== true,
         )
         .sort((a, b) => a.position - b.position)
@@ -139,6 +161,8 @@ export class MemoryTaskStore extends TaskStore {
       position: task.position,
       backlog: task.backlog ?? false,
       ...(task.notBefore === undefined ? {} : { notBefore: task.notBefore }),
+      ...(task.projectId === undefined ? {} : { projectId: task.projectId }),
+      ...(task.parked === true ? { parked: true } : {}),
     };
     this._tasks.set(stored.id, stored);
 
@@ -170,11 +194,13 @@ function toTask(stored: Task & { userId?: string }): Task {
   const task: Partial<Task & { userId: string }> = { ...stored };
   delete task.userId;
   if (task.cancelled !== true) delete task.cancelled;
+  if (task.parked !== true) delete task.parked;
   for (const key of [
     'notBefore',
     'doneAt',
     'routineId',
     'occurrence',
+    'projectId',
   ] as const) {
     if (task[key] === undefined) delete task[key];
   }

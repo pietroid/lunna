@@ -30,6 +30,13 @@ export interface Task {
   backlog: boolean;
   /** ISO 8601, when it was finished. Absent while there is still work. */
   doneAt?: string;
+  /** The project it belongs to, when it belongs to one. */
+  projectId?: string;
+  /**
+   * Whether it waits in its project, out of the day's sight: in neither the
+   * queue nor the backlog. Absent means false.
+   */
+  parked?: boolean;
   /** The flexible routine this is a day of, when it is one. */
   routineId?: string;
   /** ISO 8601, which day of the routine: the hour the rule put it at. */
@@ -55,4 +62,8 @@ export interface NewTask {
   notBefore?: string;
   /** Whether it goes into the backlog. The queue when not said. */
   backlog?: boolean;
+  /** The project it belongs to. */
+  projectId?: string;
+  /** Whether it waits in its project, out of the day's sight. */
+  parked?: boolean;
 }

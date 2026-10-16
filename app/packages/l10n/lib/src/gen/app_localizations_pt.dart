@@ -42,9 +42,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shellMenuTab => 'Menu';
 
   @override
-  String get shellComingSoon => 'Em breve.';
-
-  @override
   String get menuRoutinesHint => 'Os blocos que se repetem';
 
   @override
@@ -829,4 +826,172 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentVoiceUnavailable => 'Este aparelho não reconhece fala em português.';
+
+  @override
+  String projectsOpenCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count em andamento',
+      one: '1 em andamento',
+      zero: 'Nenhum em andamento',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get projectsDoneSection => 'Concluídos';
+
+  @override
+  String get projectsEmpty => 'Um projeto junta as tarefas de um mesmo assunto, com prazo ou sem.';
+
+  @override
+  String get projectsNew => 'Novo projeto';
+
+  @override
+  String get projectUntitled => 'Sem nome';
+
+  @override
+  String get projectNoDeadline => 'Sem prazo';
+
+  @override
+  String get projectGiveDeadline => 'Dar um prazo';
+
+  @override
+  String projectUntil(String date) {
+    return 'até $date';
+  }
+
+  @override
+  String projectDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'faltam $days dias',
+      one: 'falta 1 dia',
+      zero: 'termina hoje',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectOverdue(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'atrasado $days dias',
+      one: 'atrasado 1 dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectTaskCount(int done, int total) {
+    return '$done de $total';
+  }
+
+  @override
+  String projectDoneOn(String date) {
+    return 'concluído $date';
+  }
+
+  @override
+  String get projectMinusDay => '−1 dia';
+
+  @override
+  String get projectPlusDay => '+1 dia';
+
+  @override
+  String get projectLessDay => 'Um dia a menos';
+
+  @override
+  String get projectMoreDay => 'Um dia a mais';
+
+  @override
+  String get projectDone => 'Concluir projeto';
+
+  @override
+  String get projectReopen => 'Reabrir projeto';
+
+  @override
+  String projectTasksTab(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tarefas · $count',
+      zero: 'Tarefas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get projectNotesTab => 'Notas';
+
+  @override
+  String get projectNotesHint => 'Escreva o que quiser sobre o projeto…';
+
+  @override
+  String get projectAddTask => 'Nova tarefa';
+
+  @override
+  String projectTasksDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count feitas',
+      one: '1 feita',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get projectSheetHint => 'Qual é o projeto?';
+
+  @override
+  String get projectSheetOpenEnded => 'Sem data para acabar';
+
+  @override
+  String get projectWeek => '1 semana';
+
+  @override
+  String get projectMonth => '1 mês';
+
+  @override
+  String get projectPickDay => 'Escolher dia';
+
+  @override
+  String get placeTitle => 'Onde fica esta tarefa?';
+
+  @override
+  String get placeProject => 'Só no projeto';
+
+  @override
+  String get placeProjectHelp => 'Não aparece no Tempo. Espera aqui até você decidir.';
+
+  @override
+  String get placeBacklog => 'Depois eu priorizo';
+
+  @override
+  String get placeBacklogHelp => 'Vai para o fim do backlog do Tempo, ainda sem hora.';
+
+  @override
+  String get placeQueue => 'Fazer em breve';
+
+  @override
+  String get placeQueueHelp => 'Entra no fim da fila e pega a próxima hora livre.';
+
+  @override
+  String get placeScheduled => 'Num horário';
+
+  @override
+  String get placeScheduledHelp => 'Você escolhe o dia e a hora, e ela espera por você.';
+
+  @override
+  String get placeDone => 'Feita';
+
+  @override
+  String get placeDoneHelp => 'Sai da lista e conta no progresso do projeto.';
+
+  @override
+  String get projectDeleteBody => 'As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.';
 }
