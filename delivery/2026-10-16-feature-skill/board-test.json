@@ -1,0 +1,6 @@
+{ "screens": [
+  { "png": "test-shots/1.png", "title": "Tempo", "why": "O dia como está hoje.",
+    "pins": [ { "id": "A", "x": 40, "y": 120, "label": "Saudação", "text": "Abre o menu da conta." },
+              { "id": "B", "x": 300, "y": 790, "label": "FAB", "text": "Cria onde o Tempo está olhando." } ] },
+  { "png": "test-shots/2.png", "title": "Mesma tela", "why": "Segunda coluna para testar o recorte.", "pins": [] }
+] }
