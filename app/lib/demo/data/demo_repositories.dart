@@ -219,6 +219,40 @@ class DemoTimelineRepository implements TimelineRepository {
   }
 
   @override
+  Future<Timeline> shiftTask(
+    String id,
+    int minutes, {
+    int days = TimelineRepository.defaultDays,
+  }) async => _timeline(days);
+
+  @override
+  Future<Timeline> swapTasks(
+    String id,
+    String other, {
+    int days = TimelineRepository.defaultDays,
+  }) async {
+    final a = _tasks.indexWhere((it) => it.id == id);
+    final b = _tasks.indexWhere((it) => it.id == other);
+    if (a != -1 && b != -1) {
+      final task = _tasks[a];
+      _tasks[a] = _tasks[b];
+      _tasks[b] = task;
+    }
+    return _timeline(days);
+  }
+
+  @override
+  Future<Timeline> resize(
+    CardKind kind,
+    String id,
+    int minutes, {
+    int days = TimelineRepository.defaultDays,
+  }) async {
+    _task(id)?.minutes = minutes;
+    return _timeline(days);
+  }
+
+  @override
   Future<Timeline> edit(
     CardKind kind,
     String id, {

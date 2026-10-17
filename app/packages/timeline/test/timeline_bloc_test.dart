@@ -589,6 +589,75 @@ void main() {
         expect(order(bloc.state), ['d', 'c', 'b', 'a']);
       },
     );
+
+    blocTest<TimelineBloc, TimelineState>(
+      'slides a task in time and draws what the server answers',
+      build: () {
+        when(
+          () => repository.shiftTask(any(), any(), days: any(named: 'days')),
+        ).thenAnswer((_) async => Timeline(tasks: _tasks.reversed.toList()));
+        return build();
+      },
+      seed: loaded,
+      act: (bloc) => bloc.add(const EventShifted('b', 20)),
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        verify(
+          () => repository.shiftTask(
+            'b',
+            20,
+            days: TimelineState.initialDays,
+          ),
+        ).called(1);
+        expect(order(bloc.state), ['d', 'c', 'b', 'a']);
+      },
+    );
+
+    blocTest<TimelineBloc, TimelineState>(
+      'trades the places of two tasks',
+      build: () {
+        when(
+          () => repository.swapTasks(any(), any(), days: any(named: 'days')),
+        ).thenAnswer((_) async => Timeline(tasks: _tasks.reversed.toList()));
+        return build();
+      },
+      seed: loaded,
+      act: (bloc) => bloc.add(const EventSwapped('d', 'a')),
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        verify(
+          () => repository.swapTasks(
+            'd',
+            'a',
+            days: TimelineState.initialDays,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<TimelineBloc, TimelineState>(
+      'gives a card a new length by its seam',
+      build: () {
+        when(
+          () =>
+              repository.resize(any(), any(), any(), days: any(named: 'days')),
+        ).thenAnswer((_) async => Timeline(tasks: _tasks.reversed.toList()));
+        return build();
+      },
+      seed: loaded,
+      act: (bloc) => bloc.add(const EventResized('a', 45)),
+      wait: const Duration(milliseconds: 10),
+      verify: (bloc) {
+        verify(
+          () => repository.resize(
+            CardKind.task,
+            'a',
+            45,
+            days: TimelineState.initialDays,
+          ),
+        ).called(1);
+      },
+    );
   });
 
   blocTest<TimelineBloc, TimelineState>(

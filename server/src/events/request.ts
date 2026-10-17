@@ -213,6 +213,28 @@ export function requireDelta(minutes: number | undefined): number {
   return minutes;
 }
 
+/** A new length for a block: a whole number of minutes, at least five. */
+export function requireLength(minutes: number | undefined): number {
+  if (
+    typeof minutes !== 'number' ||
+    !Number.isInteger(minutes) ||
+    minutes < 5 ||
+    minutes > 24 * 60
+  ) {
+    throw new BadRequestException('minutes must be between 5 and 1440');
+  }
+
+  return minutes;
+}
+
+/** The task a swap trades places with. */
+export function requireSwap(other: string | undefined): string {
+  const id = typeof other === 'string' ? other.trim() : '';
+  if (id === '') throw new BadRequestException('with is required');
+
+  return id;
+}
+
 /** How long a snooze is: between one minute and four hours. */
 export function requireSnooze(minutes: number | undefined): number {
   const value = minutes ?? 15;

@@ -26,6 +26,7 @@ class FreeTile extends StatelessWidget {
     required this.slot,
     this.now = false,
     this.targeted = false,
+    this.vacated = false,
     this.onTap,
     super.key,
   });
@@ -38,6 +39,11 @@ class FreeTile extends StatelessWidget {
 
   /// Whether a card in the air would land here.
   final bool targeted;
+
+  /// Whether it stands in for the running block while that block is being
+  /// dragged off Agora: what Agora will be once it is let go, which is the
+  /// break, said as such so nothing seems to be left running.
+  final bool vacated;
 
   /// Called when it is tapped.
   final VoidCallback? onTap;
@@ -108,7 +114,9 @@ class FreeTile extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    context.l10n.freeNothingScheduled,
+                    vacated
+                        ? context.l10n.vacatedTitle
+                        : context.l10n.freeNothingScheduled,
                     style: AppTypography.body.copyWith(
                       color: AppColors.freeInk,
                     ),
@@ -116,7 +124,9 @@ class FreeTile extends StatelessWidget {
                   if (now) ...[
                     const SizedBox(height: AppSpacing.s2),
                     Text(
-                      messageFor(context.l10n, slot),
+                      vacated
+                          ? context.l10n.vacatedBody
+                          : messageFor(context.l10n, slot),
                       style: AppTypography.label.copyWith(
                         color: AppColors.ink2,
                       ),

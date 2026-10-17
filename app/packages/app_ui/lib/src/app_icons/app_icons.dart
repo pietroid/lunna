@@ -144,4 +144,15 @@ class AppIcons {
   static const prioritize = AppIconData.phosphor(
     PhosphorIconsRegular.calendarPlus,
   );
+
+  /// The working day is over: nothing starts until it opens again.
+  static const dayOver = AppIconData.phosphor(PhosphorIconsRegular.moon);
+
+  /// A card taking another one's place.
+  static const swap = AppIconData.phosphor(PhosphorIconsRegular.arrowsDownUp);
+
+  /// A block being made longer or shorter by its edge.
+  static const resize = AppIconData.phosphor(
+    PhosphorIconsRegular.arrowsVertical,
+  );
 }

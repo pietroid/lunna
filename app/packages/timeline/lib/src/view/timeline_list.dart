@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
@@ -9,6 +10,7 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/src/bloc/timeline_bloc.dart';
 import 'package:timeline/src/bloc/timeline_mode_cubit.dart';
 import 'package:timeline/src/models/models.dart';
+import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
 /// A place a card can land, and where it is on the screen.
@@ -138,6 +140,16 @@ const Object _loose = #loose;
 /// everything: at the start of the room in its first part, and on the full
 /// hour in any hour after it.
 ///
+/// On the calendar a drag starts by sliding the task in time: under half an
+/// hour of travel it keeps its place and moves later or earlier, five
+/// minutes at a time, and the tasks snapped to its end slide with it. Past
+/// half an hour it is looking for somewhere else, and stays so: let go on
+/// another task, the two trade places and nothing else moves; on a heading
+/// or between two cards it takes that place; in empty room, that hour.
+/// Held on its bottom edge
+/// instead, a card's seam comes up: pulled, the block above takes the new
+/// length and the run snapped below slides along, each keeping its own.
+///
 /// A drag picks an axis as soon as it starts moving and keeps it. Up and down
 /// reorders; right carries the card out of the day and marks it done, and
 /// left deletes it once the user has confirmed.
@@ -156,6 +168,7 @@ class TimelineList extends StatefulWidget {
     required this.onCardTap,
     this.onWriteDown,
     this.aim,
+    this.onAdjustDay,
     this.mode = TimelineMode.calendar,
     super.key,
   });
@@ -177,6 +190,10 @@ class TimelineList extends StatefulWidget {
   /// pointed at the day on screen.
   final TimelineAim? aim;
 
+  /// Opens the hours of the working day, offered by Agora once the day is
+  /// over.
+  final VoidCallback? onAdjustDay;
+
   @override
   State<TimelineList> createState() => _TimelineListState();
 }
@@ -195,6 +212,14 @@ class _TimelineListState extends State<TimelineList> {
   /// How far sideways a card has to be carried before letting it go finishes
   /// the block rather than dropping it back into the list.
   static const _solveTravel = 96.0;
+
+  /// How many minutes of travel a drag on the calendar stays a nudge: the
+  /// task slides in time. Past it, the drag is a swap.
+  static const _nudgeReach = 30;
+
+  /// How far up from a card's bottom edge a press picks up the seam under
+  /// it rather than the card.
+  static const _seamBand = 14.0;
 
   /// How close to the top of the list a card has to be held for the list
   /// to scroll up under it.
@@ -303,6 +328,26 @@ class _TimelineListState extends State<TimelineList> {
   /// Which way this drag is going, decided once and then kept.
   Axis? _axis;
 
+  /// Whether the card in the air is still being nudged: sliding in time
+  /// rather than looking for a place. Once false, it stays false until the
+  /// card is let go.
+  bool _nudging = false;
+
+  /// How many minutes the nudge has slid it, in steps of five.
+  int _nudge = 0;
+
+  /// The tasks snapped to the end of the card being nudged or stretched,
+  /// which come along by as much.
+  Set<String> _run = const {};
+
+  /// The task the card in the air would trade places with, when it is over
+  /// one.
+  String? _swap;
+
+  /// The card whose bottom edge is being pulled, and by how many minutes.
+  String? _seam;
+  int _stretch = 0;
+
   /// The card thrown off the day after being finished, still on screen while
   /// it plays out.
   _Flying? _flight;
@@ -385,6 +430,159 @@ class _TimelineListState extends State<TimelineList> {
   bool get _armedSolve => _solveProgress == 1;
 
   GlobalKey _cardKey(String id) => _cardKeys.putIfAbsent(id, GlobalKey.new);
+
+  /// Whether a short drag slides [card] in time: a task with an hour that
+  /// has not begun, on the calendar.
+  bool _nudges(TimelineEvent card) =>
+      !_isList &&
+      card.isTask &&
+      !card.started &&
+      !card.isBacklog &&
+      card.section != TimelineSection.agora;
+
+  /// Whether the seam under [card] can be pulled: anything on the calendar
+  /// later in the day, but what is running, which has its own buttons.
+  bool _stretches(TimelineEvent card) =>
+      !_isList &&
+      card.isInteractive &&
+      !card.isBacklog &&
+      card.section != TimelineSection.agora &&
+      !card.started;
+
+  /// The tasks snapped to the end of [card], in the order they follow it:
+  /// each starting within [TimelinePlan.snap] of the one before. The run
+  /// stops at the first real gap, at an event and at anything begun, as it
+  /// does on the server.
+  Set<String> _runAfter(TimelineEvent card) {
+    final cards = _state.cards;
+    final run = <String>{};
+    var end = card.endTime;
+
+    for (final next in cards.skip(cards.indexOf(card) + 1)) {
+      if (next.startTime.difference(end) > TimelinePlan.snap) break;
+      if (!next.isTask || next.started) break;
+      run.add(next.id);
+      end = next.endTime;
+    }
+
+    return run;
+  }
+
+  /// The task under [finger] the card in the air would trade places with:
+  /// one with an hour that has not begun, other than itself. The top of a
+  /// card is left to the place above it, so a heading's first card can
+  /// still be dropped above.
+  String? _swapAt(Offset finger) {
+    for (final entry in _cardKeys.entries) {
+      if (entry.key == _dragging) continue;
+      final rect = _rectOf(entry.value);
+      if (rect == null || !rect.contains(finger)) continue;
+      if (finger.dy < rect.top + _seamBand) return null;
+
+      final card = _state.byId(entry.key);
+      return card != null && _nudges(card) ? card.id : null;
+    }
+
+    return null;
+  }
+
+  /// The card whose seam is under [global], if a card's bottom edge is.
+  String? _seamAt(Offset global) {
+    if (_isList) return null;
+
+    for (final entry in _cardKeys.entries) {
+      final rect = _rectOf(entry.value);
+      if (rect == null || global.dx < rect.left || global.dx > rect.right) {
+        continue;
+      }
+      if (global.dy < rect.bottom - _seamBand ||
+          global.dy > rect.bottom + AppSpacing.s1) {
+        continue;
+      }
+
+      final card = _state.byId(entry.key);
+      return card != null && _stretches(card) ? card.id : null;
+    }
+
+    return null;
+  }
+
+  /// Whether [now] is outside the working day, when nothing begins.
+  bool _closedAt(DateTime now) {
+    final minute = now.hour * 60 + now.minute;
+    final day = _state.workDay;
+
+    return minute < day.start || minute >= day.end;
+  }
+
+  /// Whether the card in the air is the running block, whose place under
+  /// Agora is kept by the break.
+  bool get _leavesBreak {
+    final card = _draggedCard;
+    return card != null &&
+        card.section == TimelineSection.agora &&
+        card.started;
+  }
+
+  /// Whether a drop at [target] is the place [id] already has.
+  ///
+  /// The target counts the list with the card lifted out, so its old place
+  /// is its old index, except on the calendar at the top of a day it is not
+  /// already on: the last card of today let go above the first of
+  /// tomorrow is in the same place in the list and on another day.
+  bool _stays(String id, int target) {
+    if (target != _originIndex) return false;
+    if (_isList) return true;
+
+    final top = _dayTopAt(id, target);
+    final card = _state.byId(id);
+    return top == null ||
+        card == null ||
+        DateTime(top.year, top.month, top.day) == card.day;
+  }
+
+  /// Whether the running block is being carried off Agora, which leaves
+  /// Agora free: letting it go below pauses it.
+  bool get _vacating {
+    final card = _draggedCard;
+    final finger = _finger;
+    final origin = _originRect;
+    if (card == null || finger == null || origin == null) return false;
+
+    return card.section == TimelineSection.agora &&
+        card.started &&
+        _axis == Axis.vertical &&
+        finger.dy > origin.bottom;
+  }
+
+  /// The first hour of the day a drop at [index] opens, when it is the top
+  /// of a day: the card below it falls on a later day than the one above
+  /// it, or than today.
+  ///
+  /// A place in the queue would let the queue pack the task back into
+  /// whatever room is left before that day, so a drop there asks for the
+  /// day's first hour instead, and the card below follows it.
+  DateTime? _dayTopAt(String id, int index) {
+    final rest = _slots.where((card) => card?.id != id).toList();
+    if (index >= rest.length) return null;
+    final below = rest[index];
+    if (below == null) return null;
+
+    final now = clock.now();
+    final before = index == 0
+        ? DateTime(now.year, now.month, now.day)
+        : rest[index - 1]?.day;
+    if (before == null || !below.day.isAfter(before)) return null;
+
+    final opens = below.day.add(Duration(minutes: _state.workDay.start));
+    return below.startTime.isBefore(opens) ? below.startTime : opens;
+  }
+
+  /// "+20 min", "−15 min".
+  String _delta(int minutes) => context.l10n.minutesDelta(
+    minutes < 0 ? '−' : '+',
+    minutes.abs().toString(),
+  );
 
   /// The global rect a key has been laid out into, if it is on screen.
   Rect? _rectOf(GlobalKey key) {
@@ -538,7 +736,18 @@ class _TimelineListState extends State<TimelineList> {
   _Span? _landingFor(_Anchor anchor) {
     final slot = anchor.slot;
     final card = _draggedCard;
-    if (slot == null || card == null) return null;
+    if (card == null) return null;
+
+    // Between two cards, only the top of a day says an hour: its first.
+    if (slot == null) {
+      final top = _dayTopAt(card.id, anchor.index);
+      return top == null || _stays(card.id, anchor.index)
+          ? null
+          : (start: top, end: top.add(Duration(minutes: card.durationMinutes)));
+    }
+
+    // Agora once the day is over takes nothing, so it says no hour.
+    if (anchor.row?.$2 == null && _closedAt(clock.now())) return null;
 
     var start = slot.earliest;
     final shown = anchor.shown;
@@ -573,7 +782,9 @@ class _TimelineListState extends State<TimelineList> {
     final target = _target;
     if (target == null) return 0;
 
-    final left = _originIndex < before ? 1 : 0;
+    // The running block carried off Agora leaves the break in its place,
+    // as tall as it was, so nothing under it closes up.
+    final left = _originIndex < before && !_leavesBreak ? 1 : 0;
     final arrived = target <= before - left ? 1 : 0;
 
     return (arrived - left) * _slotHeight;
@@ -586,6 +797,16 @@ class _TimelineListState extends State<TimelineList> {
     if (onButton) return;
 
     _down = event.position;
+
+    // The bottom edge of a card is its seam, and holding it pulls that
+    // rather than the card.
+    final seam = _seamAt(event.position);
+    if (seam != null) {
+      setState(() => _pressed = seam);
+      _hold = Timer(_holdDuration, () => _liftSeam(seam));
+      return;
+    }
+
     final id = _cardAt(event.position);
     if (id == null) return;
 
@@ -598,10 +819,14 @@ class _TimelineListState extends State<TimelineList> {
     final origin = _indexOf(id);
     if (rect == null || origin == -1) return;
 
+    final card = _state.byId(id);
     unawaited(HapticFeedback.selectionClick());
     setState(() {
       _dragging = id;
       _axis = null;
+      _nudging = card != null && _nudges(card);
+      _nudge = 0;
+      _run = _nudging ? _runAfter(card!) : const {};
       _originIndex = origin;
       _originRect = rect;
       _slotHeight = rect.height + AppSpacing.s1;
@@ -612,9 +837,43 @@ class _TimelineListState extends State<TimelineList> {
     });
   }
 
+  /// Picks up the seam under [id].
+  void _liftSeam(String id) {
+    final card = _state.byId(id);
+    if (card == null) return;
+
+    unawaited(HapticFeedback.selectionClick());
+    setState(() {
+      _seam = id;
+      _stretch = 0;
+      _run = _runAfter(card);
+    });
+  }
+
+  /// Pulls the seam by [travel] since it was picked up, five minutes at a
+  /// time, never leaving the block above under five minutes.
+  void _pull(Offset travel) {
+    final card = _state.byId(_seam!);
+    if (card == null) return;
+
+    final steps =
+        (travel.dy / TimelineScale.perMinute / TimelineScale.step).round() *
+        TimelineScale.step;
+    final stretch = math.max(steps, TimelineScale.step - card.workMinutes);
+    if (stretch == _stretch) return;
+
+    setState(() => _stretch = stretch);
+    unawaited(HapticFeedback.selectionClick());
+  }
+
   void _onMove(PointerMoveEvent event) {
     final down = _down;
     if (down == null) return;
+
+    if (_seam != null) {
+      _pull(event.position - down);
+      return;
+    }
 
     if (_dragging != null) {
       _finger = event.position;
@@ -633,6 +892,8 @@ class _TimelineListState extends State<TimelineList> {
     final wasArmed = _armedSolve;
     final wasLanding = _landing?.start;
     final wasTarget = _target;
+    final wasNudge = _nudge;
+    final wasSwap = _swap;
     final finger = _finger;
 
     setState(() {
@@ -643,11 +904,28 @@ class _TimelineListState extends State<TimelineList> {
       _travel = _axis == Axis.horizontal
           ? Offset(travel.dx, 0)
           : Offset(0, travel.dy);
+      final nudge = _nudgeFor(_travel);
+      _nudge = nudge ?? 0;
+      final dragged = _draggedCard;
+      _swap =
+          nudge == null &&
+              _axis != Axis.horizontal &&
+              finger != null &&
+              dragged != null &&
+              _nudges(dragged)
+          ? _swapAt(finger)
+          : null;
       // A card on its way out of the timeline is not aiming at a place, so
       // nothing opens one for it: the list stays where it is and the only
-      // thing left to read is the check.
+      // thing left to read is the check. Nor is one being nudged, which
+      // keeps its place and only slides.
       _aim(
-        _axis == Axis.horizontal || finger == null ? null : _nearest(finger),
+        _axis == Axis.horizontal ||
+                finger == null ||
+                nudge != null ||
+                _swap != null
+            ? null
+            : _nearest(finger),
       );
     });
 
@@ -655,9 +933,26 @@ class _TimelineListState extends State<TimelineList> {
     // the change: arming the check, a new place, a new five minutes.
     if (_armedSolve != wasArmed ||
         _target != wasTarget ||
+        _nudge != wasNudge ||
+        _swap != wasSwap ||
         (_landing != null && _landing?.start != wasLanding)) {
       unawaited(HapticFeedback.selectionClick());
     }
+  }
+
+  /// How far the card in the air slides, while the drag is still short
+  /// enough to be a nudge; null once it is a swap, which it then stays.
+  int? _nudgeFor(Offset travel) {
+    if (!_nudging || _axis == Axis.horizontal) return null;
+
+    final minutes = travel.dy / TimelineScale.perMinute;
+    if (minutes.abs() >= _nudgeReach) {
+      _nudging = false;
+      _run = const {};
+      return null;
+    }
+
+    return (minutes / TimelineScale.step).round() * TimelineScale.step;
   }
 
   /// Scrolls the list under a card held near its top or bottom.
@@ -750,8 +1045,24 @@ class _TimelineListState extends State<TimelineList> {
     // A timer still ticking means the hold never fired, so this was a tap.
     final tapped = _hold?.isActive ?? false;
     final card = id == null ? null : _state.byId(id);
-    final origin = _originIndex;
+    final nudging = _nudging;
+    final nudge = _nudge;
+    final swap = _swap;
+    final seam = _seam;
+    final stretch = _stretch;
+    final closed = _closedAt(clock.now());
     _cancel();
+
+    // A seam let go gives the block above it its new length.
+    if (seam != null) {
+      final above = _state.byId(seam);
+      if (above != null && stretch != 0) {
+        context.read<TimelineBloc>().add(
+          EventResized(seam, above.workMinutes + stretch),
+        );
+      }
+      return;
+    }
 
     if (id == null) {
       if (tapped && pressed != null) {
@@ -773,8 +1084,27 @@ class _TimelineListState extends State<TimelineList> {
       return;
     }
 
-    // Let go on the break under Agora, it is now.
+    // A short drag slid the task in time, and that is all it did.
+    if (nudging && card != null) {
+      if (nudge != 0) {
+        context.read<TimelineBloc>().add(EventShifted(id, nudge));
+      }
+      return;
+    }
+
+    // Let go on another task, the two trade places.
+    if (swap != null && card != null) {
+      context.read<TimelineBloc>().add(EventSwapped(id, swap));
+      return;
+    }
+
+    // Let go on the break under Agora, it is now: unless the working day is
+    // over, when nothing begins, and the card goes back where it was.
     if (slot != null && card != null && row != null && row.$2 == null) {
+      if (closed) {
+        unawaited(HapticFeedback.heavyImpact());
+        return;
+      }
       _now(card);
       return;
     }
@@ -790,7 +1120,7 @@ class _TimelineListState extends State<TimelineList> {
     // need to be written anywhere. The target counts the list with the card
     // already lifted out, which is the same list the server splices it into,
     // so its old place is just its old index.
-    if (target == origin) return;
+    if (_stays(id, target)) return;
 
     // Let go at the very top of the day, above whatever was first, is the
     // user saying they are doing it now. Let go in an empty queue it is only
@@ -798,14 +1128,20 @@ class _TimelineListState extends State<TimelineList> {
     final place = _placeOf(id, target);
     final ahead = !_isList || _state.tasks.any((it) => it.id != id);
     final above = place.backlog ? null : _hourAbove(id, target);
+    final top = _isList ? null : _dayTopAt(id, target);
+    // The very top is now, unless what is first is on a later day: then it
+    // is the top of that day.
+    final start =
+        target == 0 && !place.backlog && ahead && !closed && top == null;
     context.read<TimelineBloc>().add(
       EventMoved(
         id: id,
         index: place.index,
         backlog: place.backlog,
-        start: target == 0 && !place.backlog && ahead,
-        // Below something that keeps an hour, the hour after it.
-        after: above?.endTime.add(TimelinePlan.gap),
+        start: start,
+        // At the top of a day, that day's first hour; below something that
+        // keeps an hour, the hour after it.
+        after: start ? null : top ?? above?.endTime.add(TimelinePlan.gap),
       ),
     );
   }
@@ -926,6 +1262,12 @@ class _TimelineListState extends State<TimelineList> {
       _pressed = null;
       _dragging = null;
       _axis = null;
+      _nudging = false;
+      _nudge = 0;
+      _run = const {};
+      _swap = null;
+      _seam = null;
+      _stretch = 0;
       _originRect = null;
       _anchors = const [];
       _target = null;
@@ -963,13 +1305,13 @@ class _TimelineListState extends State<TimelineList> {
               // from under the place the card is aiming at. Only the card's
               // own edges scroll it then.
               child: AbsorbPointer(
-                absorbing: dragging != null,
+                absorbing: dragging != null || _seam != null,
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onScrolled,
                   child: ListView(
                     key: _listKey,
                     controller: _scroll,
-                    physics: dragging == null
+                    physics: dragging == null && _seam == null
                         ? null
                         : const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(
@@ -1220,10 +1562,31 @@ class _TimelineListState extends State<TimelineList> {
       final entrySection = card == null ? room!.heading : _headingOf(card);
       final before = card == null ? room!.slot.index : _indexOf(card.id);
 
-      // A row only moves while there is a card in the air; the rest of the
-      // time the offset is zero, so a dropped card cannot animate after it
-      // has landed.
-      final dy = dragging == null ? 0.0 : _shift(before);
+      // A row only moves while there is a card in the air or a seam held;
+      // the rest of the time the offset is zero, so a dropped card cannot
+      // animate after it has landed. The run snapped to a card being
+      // nudged or stretched slides by as much as it does.
+      final carried = card != null && _run.contains(card.id)
+          ? (_seam != null ? _stretch : _nudge)
+          : 0;
+      final dy =
+          (dragging == null ? 0.0 : _shift(before)) +
+          carried * TimelineScale.perMinute;
+      final traded = _draggedCard;
+      final landing = card != null && card.id == _swap && traded != null
+          // The task let go on reads the hour it would trade for.
+          ? (
+              start: traded.startTime,
+              end: traded.startTime.add(
+                Duration(minutes: card.durationMinutes),
+              ),
+            )
+          : carried == 0
+          ? null
+          : (
+              start: card!.startTime.add(Duration(minutes: carried)),
+              end: card.endTime.add(Duration(minutes: carried)),
+            );
 
       if (entrySection != section) {
         section = entrySection;
@@ -1266,6 +1629,12 @@ class _TimelineListState extends State<TimelineList> {
             key: key,
             dy: dy,
             child: switch ((card, entrySection)) {
+              // Outside the working day nothing begins, and Agora says so.
+              (null, null) when _closedAt(now) => DayOverTile(
+                workDay: state.workDay,
+                over: now.hour * 60 + now.minute >= state.workDay.end,
+                onAdjust: widget.onAdjustDay,
+              ),
               (null, null) => FreeTile(
                 slot: room!.slot,
                 now: true,
@@ -1285,11 +1654,41 @@ class _TimelineListState extends State<TimelineList> {
                 onTap: widget.onWriteDown,
                 stickBelow: _pinHeight,
               ),
+              // The running block carried off it leaves Agora free, and
+              // Agora shows the break it will be.
+              (final card?, null) when card.id == dragging && _vacating =>
+                Stack(
+                  children: [
+                    _tile(card, dragging),
+                    // Over the card's own box, which keeps the list's
+                    // shape while it is gone; the break is drawn as tall
+                    // as it, near enough, and cut to it.
+                    Positioned.fill(
+                      child: ClipRect(
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          maxHeight: double.infinity,
+                          child: FreeTile(
+                            slot: FreeSlot(
+                              start: now,
+                              end: card.endTime,
+                              earliest: now,
+                              index: 0,
+                            ),
+                            now: true,
+                            vacated: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               // Agora is drawn as it needs rather than to scale.
               (final card?, null) => _tile(card, dragging),
+              (final card?, _) when card.id == _seam => _stretched(card),
               (final card?, _) => SizedBox(
                 height: TimelineScale.blockHeight(card),
-                child: _tile(card, dragging),
+                child: _tile(card, dragging, landing: landing),
               ),
             },
           ),
@@ -1470,12 +1869,17 @@ class _TimelineListState extends State<TimelineList> {
     return _label(section as _Heading, now);
   }
 
-  Widget _tile(TimelineEvent card, String? dragging) {
+  Widget _tile(
+    TimelineEvent card,
+    String? dragging, {
+    ({DateTime start, DateTime end})? landing,
+  }) {
     final bloc = context.read<TimelineBloc>();
 
     return EventTile(
       card: card,
-      pressed: card.id == _pressed,
+      landing: landing,
+      pressed: card.id == _pressed || card.id == _swap,
       // The card in the air is drawn over the list, so the one left behind
       // only holds its place open.
       hidden: card.id == dragging,
@@ -1555,6 +1959,131 @@ class _TimelineListState extends State<TimelineList> {
   static DateTime _dayOf(FreeSlot slot) =>
       DateTime(slot.start.year, slot.start.month, slot.start.day);
 
+  /// The card above a seam being pulled: drawn as long as it will be,
+  /// over the rows under it, with the seam at its new end and what letting
+  /// go does said over it. Laid out at its old height, so nothing below
+  /// moves unless it is snapped to it.
+  Widget _stretched(TimelineEvent card) {
+    final height = TimelineScale.blockHeight(card);
+    final drawn = math.max(
+      height + _stretch * TimelineScale.perMinute,
+      AppSpacing.s8,
+    );
+    final end = card.endTime.add(Duration(minutes: _stretch));
+
+    return SizedBox(
+      height: height,
+      child: OverflowBox(
+        alignment: Alignment.topCenter,
+        minHeight: drawn,
+        maxHeight: drawn,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: _tile(
+                card,
+                null,
+                landing: (start: card.startTime, end: end),
+              ),
+            ),
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: -(SeamHandle.height + AppSpacing.s1) / 2,
+              child: SeamHandle(),
+            ),
+            if (_stretch != 0)
+              Positioned(
+                right: AppSpacing.s3,
+                bottom: AppSpacing.s3,
+                child: DragHint(
+                  icon: AppIcons.resize,
+                  text: context.l10n.dragHintResize(
+                    _delta(_stretch),
+                    hhmm(end),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// What letting the card in the air go would do, when it is worth
+  /// saying: how far a nudge slides it, that it is taking another card's
+  /// place, that it is being paused, or that Agora will not take it.
+  Widget? _hintFor(TimelineEvent card) {
+    final l10n = context.l10n;
+
+    if (_vacating) {
+      final now = clock.now();
+      final left = card.isPaused
+          ? card.remainingSeconds / 60
+          : card.endTime.difference(now).inSeconds / 60;
+      return DragHint(
+        icon: AppIcons.pause,
+        text: l10n.dragHintPause(
+          durationLabel(l10n, math.max(TimelineScale.step, left.ceil())),
+        ),
+      );
+    }
+
+    if (_nudging && _nudge != 0) {
+      return DragHint(
+        icon: AppIcons.pushed,
+        text: l10n.dragHintShift(
+          _delta(_nudge),
+          hhmm(card.startTime.add(Duration(minutes: _nudge))),
+        ),
+      );
+    }
+
+    final now = clock.now();
+    if (_aimedSlot != null && _aimedRow?.$2 == null && _closedAt(now)) {
+      return DragHint(
+        icon: AppIcons.dayOver,
+        text: l10n.dayClosedRefused,
+        refused: true,
+      );
+    }
+
+    final other = _swap == null ? null : _state.byId(_swap!);
+    if (other != null) {
+      return DragHint(
+        icon: AppIcons.swap,
+        text: l10n.dragHintSwapWith(other.title),
+      );
+    }
+
+    final target = _target;
+    if (_isList || target == null || _stays(card.id, target)) return null;
+
+    final top = _dayTopAt(card.id, target);
+    if (top == null) return null;
+
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(top.year, top.month, top.day);
+    final when = day.difference(today).inDays == 1
+        ? l10n.dragHintTomorrowAt(hhmm(top))
+        : '${_label(day, now)} ${hhmm(top)}';
+    return DragHint(icon: AppIcons.pushed, text: l10n.dragHintMoveTo(when));
+  }
+
+  /// The hours [card] would take by trading places with the task it is
+  /// over.
+  ({DateTime start, DateTime end})? _swapLanding(TimelineEvent card) {
+    final swap = _swap;
+    final other = swap == null ? null : _state.byId(swap);
+    if (other == null) return null;
+
+    return (
+      start: other.startTime,
+      end: other.startTime.add(Duration(minutes: card.durationMinutes)),
+    );
+  }
+
   Widget _lifted(TimelineState state, String id) {
     final rect = _originRect;
     final card = state.byId(id);
@@ -1575,7 +2104,13 @@ class _TimelineListState extends State<TimelineList> {
           card: card,
           dx: _travel.dx,
           progress: _solveProgress,
-          landing: _landing,
+          landing: _nudging && _nudge != 0
+              ? (
+                  start: card.startTime.add(Duration(minutes: _nudge)),
+                  end: card.endTime.add(Duration(minutes: _nudge)),
+                )
+              : _swapLanding(card) ?? _landing,
+          hint: _axis == Axis.horizontal ? null : _hintFor(card),
         ),
       ),
     );
@@ -1838,9 +2373,13 @@ class _Lifted extends StatelessWidget {
     required this.dx,
     required this.progress,
     this.landing,
+    this.hint,
   });
 
   final TimelineEvent card;
+
+  /// What letting go does, said over its corner.
+  final Widget? hint;
 
   /// Where it would land, which its hours read while it is aimed somewhere.
   final _Span? landing;
@@ -1854,6 +2393,7 @@ class _Lifted extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         // The check sits in the room the card opened as it left, so it is
         // read beside the card rather than through it.
@@ -1874,6 +2414,12 @@ class _Lifted extends StatelessWidget {
             child: EventTile(card: card, lifted: true, landing: landing),
           ),
         ),
+        if (hint != null)
+          Positioned(
+            right: AppSpacing.s3,
+            top: -AppSpacing.s4,
+            child: hint!,
+          ),
       ],
     );
   }

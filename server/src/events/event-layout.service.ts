@@ -15,7 +15,9 @@ import {
   floorToMinute,
   Interval,
   roundUpToFiveMinutes,
+  workWindowFor,
 } from '../time/work-hours';
+import { atMinuteIn } from '../time/zone';
 import {
   EventEdit,
   EventRequest,
@@ -363,6 +365,8 @@ export class EventLayoutService {
       return undefined;
     }
 
+    if (action.start === true) refuseOutsideWorkDay(day);
+
     const running = runningOf(day, task.id);
 
     if (action.start === true && running !== undefined && !action.decision) {
@@ -392,17 +396,22 @@ export class EventLayoutService {
       } else if (running.kind === 'task') {
         trace.log('task.postpone', { taskId: running.task.id });
         await this._calendar.remove(user, running.event);
-        postponed = running.task;
+        postponed = {
+          ...running.task,
+          minutes: owedMinutes(running.event, now),
+        };
       }
     }
 
-    // A running task dragged anywhere but the top stops running: it goes
-    // back in the queue, owing its whole length, and starts again when it
-    // comes round.
+    // A running task dragged anywhere but the top stops running, which is
+    // pausing it: it goes back in the queue owing what it had left, and
+    // starts again when it comes round.
     const own = day.live.get(task.id);
+    let owed: number | undefined;
     if (own !== undefined && action.start !== true) {
       trace.log('task.unstart', { taskId: task.id });
       await this._calendar.remove(user, own);
+      owed = owedMinutes(own, now);
     }
 
     // A drop into a gap asks for that hour, so the task is anchored there
@@ -431,7 +440,7 @@ export class EventLayoutService {
       ...task,
       position: await this._positionAt(user, queue, index),
       notBefore: anchor?.toISOString(),
-      minutes: action.minutes ?? task.minutes,
+      minutes: action.minutes ?? owed ?? task.minutes,
       backlog: false,
     });
 
@@ -470,6 +479,7 @@ export class EventLayoutService {
     const day = await this._timeline.day(user, 1, now);
     const task = pendingOf(day, taskId);
     if (day.live.has(taskId)) return undefined;
+    refuseOutsideWorkDay(day);
 
     const slot = day.placed.get(taskId);
     if (slot !== undefined && slot.start <= now) {
@@ -616,12 +626,194 @@ export class EventLayoutService {
   }
 
   /**
+   * Moves a task [minutes] later, or earlier when negative, and the run of
+   * blocks snapped to its end along with it, each keeping its length.
+   *
+   * What a short drag on the calendar asks for: the block slides rather
+   * than trading places. Every task that moves keeps its new hour, anchored,
+   * because a queued one would otherwise slip back into the room it left.
+   * Earlier than now is now. The run stops at the first gap and at an
+   * event, which nothing moves.
+   */
+  async shiftTask(
+    user: CalendarUser,
+    taskId: string,
+    minutes: number,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, taskId);
+    if (day.live.has(taskId)) {
+      throw new BadRequestException(
+        'Não dá para mudar o início de algo que já começou.',
+      );
+    }
+
+    const interval = intervalOfTask(day, taskId);
+    if (interval === undefined) {
+      throw new BadRequestException('Essa tarefa ainda não tem hora.');
+    }
+
+    const start = laterOf(
+      floorToMinute(addMinutes(interval.start, minutes)),
+      floorToMinute(now),
+    );
+    const shift = start.getTime() - interval.start.getTime();
+    if (shift === 0) return;
+
+    const run = snappedAfter(day, taskId, interval.end, true);
+    trace.log('task.shift', {
+      taskId,
+      to: start.toISOString(),
+      run: run.length,
+    });
+    await this._tasks.update(user, {
+      ...task,
+      notBefore: start.toISOString(),
+      backlog: false,
+    });
+    await this._carry(user, run, shift, trace, now);
+  }
+
+  /**
+   * Trades the places of two tasks: what a long drag on the calendar let
+   * go on another card asks for.
+   *
+   * Each takes the other's place, of whatever kind it was: its turn in the
+   * queue, or its hour. Nothing is inserted, so whatever is between them
+   * moves only by the difference in their lengths, and nothing outside
+   * them moves at all. Neither may have begun.
+   */
+  async swapTasks(
+    user: CalendarUser,
+    taskId: string,
+    otherId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    if (taskId === otherId) return;
+
+    const day = await this._timeline.day(user, 1, now);
+    const a = pendingOf(day, taskId);
+    const b = pendingOf(day, otherId);
+    if (day.live.has(a.id) || day.live.has(b.id)) {
+      throw new BadRequestException(
+        'Não dá para trocar de lugar com algo que já começou.',
+      );
+    }
+
+    const ia = intervalOfTask(day, a.id);
+    const ib = intervalOfTask(day, b.id);
+    if (ia === undefined || ib === undefined) {
+      throw new BadRequestException('Só dá para trocar tarefas que têm hora.');
+    }
+
+    // An anchored task's place is where it was laid out, which may be
+    // later than its anchor when something pushed it.
+    const hourOf = (task: Task, interval: Interval): string | undefined =>
+      isAnchored(day, task)
+        ? laterOf(interval.start, floorToMinute(now)).toISOString()
+        : undefined;
+
+    trace.log('task.swap', { taskId, otherId });
+    await this._tasks.update(user, {
+      ...a,
+      position: b.position,
+      notBefore: hourOf(b, ib),
+      backlog: false,
+    });
+    await this._tasks.update(user, {
+      ...b,
+      position: a.position,
+      notBefore: hourOf(a, ia),
+      backlog: false,
+    });
+  }
+
+  /**
+   * Gives a task a new length by its edge: the block above a seam always
+   * takes the change, and the run snapped to its end slides by as much,
+   * each keeping its own length. One that is not snapped is left alone,
+   * until the block reaches it and pushes it like anything else.
+   */
+  async resizeTask(
+    user: CalendarUser,
+    taskId: string,
+    minutes: number,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const day = await this._timeline.day(user, 1, now);
+    const task = pendingOf(day, taskId);
+    const interval = intervalOfTask(day, taskId);
+    if (interval === undefined) {
+      throw new BadRequestException('Essa tarefa ainda não tem hora.');
+    }
+
+    const live = day.live.get(taskId);
+    const length =
+      live === undefined ? task.minutes : Math.round(workSecondsOf(live) / 60);
+    const delta = minutes - length;
+    if (delta === 0) return;
+
+    const run = snappedAfter(day, taskId, interval.end, true);
+    trace.log('task.resize', { taskId, minutes, run: run.length });
+    if (live !== undefined) await this._extend(user, live, delta, trace, now);
+    await this._tasks.update(user, { ...task, minutes });
+    await this._carry(user, run, delta * 60_000, trace, now);
+  }
+
+  /** The same for a fixed block: its end moves, and its snapped run along. */
+  async resizeEvent(
+    user: CalendarUser,
+    eventId: string,
+    minutes: number,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const event = await this._event(user, eventId);
+    const interval = intervalOf(event);
+    if (interval === undefined) return;
+
+    const delta = minutes - Math.round(workSecondsOf(event) / 60);
+    if (delta === 0) return;
+
+    const day = await this._timeline.day(user, 1, now);
+    const run = snappedAfter(day, eventId, interval.end, true);
+    trace.log('event.resize', { eventId, minutes, run: run.length });
+    await this._extend(user, event, delta, trace, now);
+    await this._carry(user, run, delta * 60_000, trace, now);
+  }
+
+  /** Anchors every task of [run] [shift] milliseconds from where it was. */
+  private async _carry(
+    user: CalendarUser,
+    run: { task: Task; start: Date }[],
+    shift: number,
+    trace: Trace,
+    now: Date,
+  ): Promise<void> {
+    for (const { task, start } of run) {
+      const anchor = laterOf(
+        floorToMinute(new Date(start.getTime() + shift)),
+        floorToMinute(now),
+      );
+      trace.log('task.carry', { taskId: task.id, to: anchor.toISOString() });
+      await this._tasks.update(user, {
+        ...task,
+        notBefore: anchor.toISOString(),
+        backlog: false,
+      });
+    }
+  }
+
+  /**
    * Puts [task] at [index] in the backlog.
    *
    * It leaves the queue, and the queue closes up over it on the next read.
-   * A running one stops running and gives back the rest of its hour; the
-   * work it owes is its whole length again, as when it is dragged back down
-   * the queue.
+   * A running one stops running and gives back the rest of its hour; it
+   * owes what it had left, as when it is dragged back down the queue.
    */
   private async _shelve(
     user: CalendarUser,
@@ -645,6 +837,7 @@ export class EventLayoutService {
       position: await this._positionAt(user, backlog, at),
       notBefore: undefined,
       backlog: true,
+      minutes: live === undefined ? task.minutes : owedMinutes(live, day.now),
     });
   }
 
@@ -1089,11 +1282,16 @@ const SNAP_MINUTES = BLOCK_GAP_MINUTES + 5;
  * The anchored tasks in the run of blocks right after [end], each starting
  * within [SNAP_MINUTES] of the one before, with the hour each was laid out
  * at. The run stops at the first gap and at the first event.
+ *
+ * With [queued], every task in the run, queued or anchored: what a block
+ * carries along when it is moved or stretched. It stops at a begun task
+ * too, whose hour is a fact.
  */
 export function snappedAfter(
   day: Day,
   finished: string,
   end: Date,
+  queued = false,
 ): { task: Task; start: Date }[] {
   const blocks = [
     ...day.tasks.flatMap((task) => {
@@ -1121,8 +1319,9 @@ export function snappedAfter(
         block.interval.start >= cursor && block.interval.start <= reach,
     );
     if (next === undefined || next.task === undefined) return snapped;
+    if (queued && day.live.has(next.task.id)) return snapped;
 
-    if (isAnchored(day, next.task)) {
+    if (queued || isAnchored(day, next.task)) {
       snapped.push({ task: next.task, start: next.interval.start });
     }
     cursor = next.interval.end;
@@ -1196,4 +1395,36 @@ function pausedEnd(event: CalendarEvent, now: Date): Date {
 /** Whichever of [a] and [b] comes later. */
 function laterOf(a: Date, b: Date): Date {
   return a > b ? a : b;
+}
+
+/**
+ * The work [event] still owes at [now], in whole minutes and never under
+ * five: what a begun task goes back to the queue with when it is stopped.
+ */
+function owedMinutes(event: CalendarEvent, now: Date): number {
+  const start = Date.parse(event.startTime);
+  const until =
+    event.pausedAt === undefined
+      ? Math.min(now.getTime(), Date.parse(event.endTime))
+      : Date.parse(event.pausedAt);
+  const done = Math.max(0, (until - start) / 1000 - (event.pausedSeconds ?? 0));
+  const left = workSecondsOf(event) - done;
+
+  return Math.max(BLOCK_GAP_MINUTES, Math.ceil(left / 60));
+}
+
+/**
+ * Refuses to begin anything outside the working day: after it ends, the
+ * next task is tomorrow's, and before it opens nothing is due yet.
+ */
+function refuseOutsideWorkDay(day: Day): void {
+  const window = workWindowFor(day.now, day.zone, day.workDay);
+  if (day.now >= window.start) return;
+
+  const opens = atMinuteIn(day.now, day.workDay.start, day.zone);
+  throw new BadRequestException(
+    day.now < opens
+      ? 'Seu dia ainda não começou. Nada começa antes do horário do seu dia.'
+      : 'Seu dia já terminou. Mude o horário do seu dia para começar algo agora.',
+  );
 }

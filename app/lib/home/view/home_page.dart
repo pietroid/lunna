@@ -244,6 +244,8 @@ class _Threads extends StatelessWidget {
           onWriteDown: (placement) => unawaited(
             writeDownOnTimeline(context, placement: placement),
           ),
+          // Once the day is over, Agora offers to change when it ends.
+          onAdjustDay: context.read<OpenDayHours>().open,
         ),
         // The guard is drawn over the timeline rather than pushed as a route:
         // the question is about a card that is still on screen, and the
@@ -322,4 +324,16 @@ class _MinuteRefreshState extends State<_MinuteRefresh> {
 
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+/// {@template open_day_hours}
+/// Takes the user to where the working day's hours are set, which Agora
+/// offers once the day is over. The shell answers it with the Menu tab.
+/// {@endtemplate}
+final class OpenDayHours {
+  /// {@macro open_day_hours}
+  const OpenDayHours(this.open);
+
+  /// Goes there.
+  final VoidCallback open;
 }

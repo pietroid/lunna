@@ -1190,6 +1190,259 @@ describe('the day', () => {
     });
   });
 
+  describe('the calendar’s gestures', () => {
+    /** Today at [hour]:[minute], local; a day later with [day]. */
+    function at(hour: number, minute: number, day = 0): string {
+      const it = new Date();
+      it.setDate(it.getDate() + day);
+      it.setHours(hour, minute, 0, 0);
+      return it.toISOString();
+    }
+
+    function shift(id: string, minutes: number) {
+      return post(`/tasks/${id}/shift`, { minutes });
+    }
+
+    describe('a short drag', () => {
+      it('slides a task and the run snapped to it, each keeping its length', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await add('E-mails', 30).expect(201);
+        await add('Contador', 30, { notBefore: at(12, 0) }).expect(201);
+
+        const after = tasks(await shift(first.id, 20).expect(201));
+
+        expect(titles(after)).toEqual(['Revisar', 'E-mails', 'Contador']);
+        expect(after.map((it) => hhmm(it.startTime))).toEqual([
+          '10:20',
+          '10:55',
+          '12:00',
+        ]);
+        expect(after.map((it) => it.durationMinutes)).toEqual([30, 30, 30]);
+      });
+
+      it('keeps the hours it gave, so the room it left stays empty', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await add('E-mails', 30).expect(201);
+        await add('Curta', 10).expect(201);
+
+        const after = tasks(await shift(first.id, 20).expect(201));
+
+        expect(hhmm(after[0].startTime)).toBe('10:20');
+        expect(after[0].notBefore).toBeDefined();
+        expect(after[1].notBefore).toBeDefined();
+      });
+
+      it('never moves a fixed block, which stops the run', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await fix('Reunião', 30, new Date(at(10, 35))).expect(201);
+
+        const response = await shift(first.id, 10).expect(201);
+
+        const reuniao = cards(response).find((it) => it.title === 'Reunião');
+        expect(hhmm(reuniao!.startTime)).toBe('10:35');
+        expect(hhmm(tasks(response)[0].startTime)).toBe('11:10');
+      });
+
+      it('is never earlier than now', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+
+        const after = tasks(await shift(first.id, -30).expect(201));
+
+        expect(hhmm(after[0].startTime)).toBe('10:00');
+      });
+
+      it('refuses a task that has begun', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await begin('Revisar');
+
+        await shift(first.id, 15).expect(400);
+      });
+    });
+
+    describe('pulling the seam between two blocks', () => {
+      it('stretches the block above and slides the snapped one along', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await add('E-mails', 30, { notBefore: at(10, 35) }).expect(201);
+        await add('Contador', 30, { notBefore: at(12, 0) }).expect(201);
+
+        const after = tasks(
+          await post(`/tasks/${first.id}/resize`, { minutes: 45 }).expect(201),
+        );
+
+        expect(after.map((it) => hhmm(it.startTime))).toEqual([
+          '10:00',
+          '10:50',
+          '12:00',
+        ]);
+        expect(after.map((it) => it.durationMinutes)).toEqual([45, 30, 30]);
+      });
+
+      it('shrinks it and brings the snapped one back up', async () => {
+        const [first] = tasks(await add('Revisar', 60).expect(201));
+        await add('E-mails', 30, { notBefore: at(11, 5) }).expect(201);
+
+        const after = tasks(
+          await post(`/tasks/${first.id}/resize`, { minutes: 30 }).expect(201),
+        );
+
+        expect(after.map((it) => hhmm(it.startTime))).toEqual([
+          '10:00',
+          '10:35',
+        ]);
+      });
+
+      it('leaves a block that is not snapped where it is', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await add('Almoço', 60, { notBefore: at(12, 0) }).expect(201);
+
+        const after = tasks(
+          await post(`/tasks/${first.id}/resize`, { minutes: 45 }).expect(201),
+        );
+
+        expect(hhmm(after[1].startTime)).toBe('12:00');
+      });
+
+      it('moves the end of a fixed block, and its snapped run', async () => {
+        const [block] = cards(
+          await fix('Reunião', 60, new Date(at(11, 0))).expect(201),
+        );
+        await add('Notas', 15, { notBefore: at(12, 5) }).expect(201);
+
+        const response = await post(`/events/${block.id}/resize`, {
+          minutes: 30,
+        }).expect(201);
+
+        const reuniao = cards(response).find((it) => it.title === 'Reunião');
+        expect(hhmm(reuniao!.endTime)).toBe('11:30');
+        expect(hhmm(tasks(response)[0].startTime)).toBe('11:35');
+      });
+
+      it('refuses a length under five minutes', async () => {
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+
+        await post(`/tasks/${first.id}/resize`, { minutes: 3 }).expect(400);
+      });
+    });
+
+    describe('a long drag let go on another card', () => {
+      function swap(id: string, other: string) {
+        return post(`/tasks/${id}/swap`, { with: other });
+      }
+
+      it('trades the places of two queued tasks, and moves nothing else', async () => {
+        await add('A', 30).expect(201);
+        await add('B', 30).expect(201);
+        await add('C', 30).expect(201);
+        const before = tasks(await add('D', 30).expect(201));
+        const [a, , c] = before;
+
+        const after = tasks(await swap(c.id, a.id).expect(201));
+
+        expect(titles(after)).toEqual(['C', 'B', 'A', 'D']);
+        expect(after.map((it) => hhmm(it.startTime))).toEqual(
+          before.map((it) => hhmm(it.startTime)),
+        );
+      });
+
+      it('moves what is between only by the difference in length', async () => {
+        const [a] = tasks(await add('A', 30).expect(201));
+        await add('B', 30).expect(201);
+        const listed = tasks(await add('C', 60).expect(201));
+        await add('D', 30).expect(201);
+
+        const after = tasks(await swap(listed[2].id, a.id).expect(201));
+
+        expect(titles(after)).toEqual(['C', 'B', 'A', 'D']);
+        expect(after.map((it) => hhmm(it.startTime))).toEqual([
+          '10:00',
+          '11:05',
+          '11:40',
+          '12:15',
+        ]);
+      });
+
+      it('gives each the other’s hour when one keeps one', async () => {
+        const [a] = tasks(await add('A', 30).expect(201));
+        await add('B', 30).expect(201);
+        await add('Almoço', 60, { notBefore: at(12, 0) }).expect(201);
+        const almoco = await task('Almoço');
+
+        const after = tasks(await swap(a.id, almoco.id).expect(201));
+
+        const byTitle = new Map(after.map((it) => [it.title, it]));
+        expect(hhmm(byTitle.get('Almoço')!.startTime)).toBe('10:00');
+        expect(byTitle.get('Almoço')!.notBefore).toBeUndefined();
+        expect(hhmm(byTitle.get('A')!.startTime)).toBe('12:00');
+        expect(byTitle.get('A')!.notBefore).toBeDefined();
+      });
+
+      it('refuses a task that has begun', async () => {
+        const [a] = tasks(await add('A', 30).expect(201));
+        const listed = tasks(await add('B', 30).expect(201));
+        await begin('A');
+
+        await swap(listed[1].id, a.id).expect(400);
+      });
+    });
+
+    describe('the running task dragged off Agora', () => {
+      it('goes back in the queue owing only what it had left', async () => {
+        await add('Em andamento', 60).expect(201);
+        await add('Outra', 30).expect(201);
+        await begin('Em andamento');
+        later(20);
+
+        const response = await drag((await task('Em andamento')).id, 1).expect(
+          201,
+        );
+
+        const back = tasks(response).find((it) => it.title === 'Em andamento');
+        expect(back!.started).toBe(false);
+        expect(back!.durationMinutes).toBe(40);
+      });
+    });
+
+    describe('a drop at the top of a day', () => {
+      it('lands on that day’s first hour, not in the room left tonight', async () => {
+        later(11 * 60);
+        const [first] = tasks(await add('Revisar', 30).expect(201));
+        await add('E-mails', 30).expect(201);
+
+        const after = tasks(
+          await drag(first.id, 1, { after: at(7, 0, 1) }).expect(201),
+        );
+
+        const revisar = after.find((it) => it.title === 'Revisar')!;
+        expect(revisar.startTime).toBe(at(7, 0, 1));
+      });
+    });
+
+    describe('outside the working day', () => {
+      it('refuses to begin anything once the day is over', async () => {
+        later(12 * 60 + 30);
+        const [first] = tasks(await add('Amanhã cedo', 30).expect(201));
+
+        expect(first.awaitingStart).toBe(false);
+        expect(first.section).toBe('dia');
+        const refused = await post(`/tasks/${first.id}/start`).expect(400);
+        expect((refused.body as { message: string }).message).toContain(
+          'Seu dia já terminou',
+        );
+        await drag(first.id, 0, { start: true }).expect(400);
+      });
+
+      it('refuses to begin anything before the day opens', async () => {
+        later(-4 * 60);
+        const [first] = tasks(await add('Cedo', 30).expect(201));
+
+        const refused = await post(`/tasks/${first.id}/start`).expect(400);
+        expect((refused.body as { message: string }).message).toContain(
+          'ainda não começou',
+        );
+      });
+    });
+  });
+
   describe('further ahead', () => {
     it('lays the whole queue out, however many days it takes', async () => {
       for (let n = 0; n < 20; n++) {

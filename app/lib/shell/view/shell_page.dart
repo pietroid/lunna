@@ -42,10 +42,16 @@ class _ShellPageState extends State<ShellPage> {
   /// Projetos.
   static const _projectsIndex = 1;
 
+  /// Menu, where the working day's hours are set.
+  static const _menuIndex = 2;
+
   int _index = _timelineIndex;
 
   /// Where Tempo is looking, which is where the button writes.
   final _aim = TimelineAim();
+
+  /// What Agora's "Mudar horário" does: brings Menu forward.
+  late final _openDayHours = OpenDayHours(() => _onSelected(_menuIndex));
 
   @override
   void initState() {
@@ -80,8 +86,11 @@ class _ShellPageState extends State<ShellPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return RepositoryProvider<TimelineAim>.value(
-      value: _aim,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<TimelineAim>.value(value: _aim),
+        RepositoryProvider<OpenDayHours>.value(value: _openDayHours),
+      ],
       child: RemindersListener(
         child: Scaffold(
           // The bar fogs whatever runs under it, so the body runs under it.

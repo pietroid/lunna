@@ -236,6 +236,51 @@ final class EventExtended extends TimelineBlocEvent {
   List<Object?> get props => [id, minutes];
 }
 
+/// Slides a task [minutes] in time, and the run snapped to it along.
+final class EventShifted extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const EventShifted(this.id, this.minutes);
+
+  /// The task.
+  final String id;
+
+  /// How far: later when positive, earlier when negative.
+  final int minutes;
+
+  @override
+  List<Object?> get props => [id, minutes];
+}
+
+/// Trades the places of two tasks.
+final class EventSwapped extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const EventSwapped(this.id, this.other);
+
+  /// The task that was carried.
+  final String id;
+
+  /// The task it was let go on.
+  final String other;
+
+  @override
+  List<Object?> get props => [id, other];
+}
+
+/// Gives a card a new length by the seam under it.
+final class EventResized extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const EventResized(this.id, this.minutes);
+
+  /// The card above the seam.
+  final String id;
+
+  /// Its new length.
+  final int minutes;
+
+  @override
+  List<Object?> get props => [id, minutes];
+}
+
 /// Changes what the detail screen edits: the name, the notes, the work, or,
 /// for an event, the hour.
 final class EventEdited extends TimelineBlocEvent {

@@ -194,6 +194,46 @@ class TimelineRepository {
     ),
   );
 
+  /// Slides a task [minutes] in time, later or earlier, and the run of
+  /// blocks snapped to its end along with it: a short drag on the calendar.
+  Future<Timeline> shiftTask(
+    String id,
+    int minutes, {
+    int days = defaultDays,
+  }) => _day(
+    () => apiClient.post<Map<String, dynamic>>(
+      '/tasks/$id/shift?days=$days',
+      data: {'minutes': minutes},
+    ),
+  );
+
+  /// Trades the places of two tasks: each takes the other's turn in the
+  /// queue, or its hour.
+  Future<Timeline> swapTasks(
+    String id,
+    String other, {
+    int days = defaultDays,
+  }) => _day(
+    () => apiClient.post<Map<String, dynamic>>(
+      '/tasks/$id/swap?days=$days',
+      data: {'with': other},
+    ),
+  );
+
+  /// Gives a card a new length, [minutes], by the seam under it. The run
+  /// snapped to its end slides by as much, each keeping its own length.
+  Future<Timeline> resize(
+    CardKind kind,
+    String id,
+    int minutes, {
+    int days = defaultDays,
+  }) => _day(
+    () => apiClient.post<Map<String, dynamic>>(
+      '/${kind.path}/$id/resize?days=$days',
+      data: {'minutes': minutes},
+    ),
+  );
+
   /// Renames a card, rewrites its notes, re-estimates it, or, for an event,
   /// gives it a new [startTime].
   Future<Timeline> edit(

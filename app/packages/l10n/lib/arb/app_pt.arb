@@ -694,5 +694,99 @@
   "placeScheduledHelp": "Você escolhe o dia e a hora, e ela espera por você.",
   "placeDone": "Feita",
   "placeDoneHelp": "Sai da lista e conta no progresso do projeto.",
-  "projectDeleteBody": "As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá."
+  "projectDeleteBody": "As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.",
+  "dayOverTitle": "Seu dia terminou às {end}",
+  "@dayOverTitle": {
+    "placeholders": {
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "dayOverBody": "Nada começa agora. A fila volta a andar amanhã às {start}.",
+  "@dayOverBody": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      }
+    }
+  },
+  "dayNotYetTitle": "Seu dia começa às {start}",
+  "@dayNotYetTitle": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      }
+    }
+  },
+  "dayNotYetBody": "Nada começa antes disso. Até lá, descanse.",
+  "dayClosedAdjust": "Mudar horário",
+  "dayClosedRefused": "Agora não: seu dia terminou",
+  "vacatedTitle": "Agora fica livre",
+  "vacatedBody": "Solte para pausar: ela volta para a fila com o que falta.",
+  "dragHintPause": "Pausar · volta com {left}",
+  "@dragHintPause": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "dragHintShift": "{delta} · {hour}",
+  "@dragHintShift": {
+    "placeholders": {
+      "delta": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "dragHintResize": "{delta} · até {hour}",
+  "@dragHintResize": {
+    "placeholders": {
+      "delta": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "dragHintTomorrowAt": "amanhã {hour}",
+  "@dragHintTomorrowAt": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "minutesDelta": "{sign}{minutes} min",
+  "@minutesDelta": {
+    "placeholders": {
+      "sign": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "dragHintSwapWith": "Trocar com {title}",
+  "@dragHintSwapWith": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "dragHintMoveTo": "Para {when}",
+  "@dragHintMoveTo": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  }
 }

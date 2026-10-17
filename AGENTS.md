@@ -241,6 +241,25 @@ remembered on the device (`TimelineModeCubit`):
   while painting, so they never lag the scroll); the hours run from the
   first one in sight, which is where the + writes.
 
+  A drag on the calendar starts as a **nudge**: under 30 minutes of travel
+  a task keeps its place and slides in time, five minutes at a time, and
+  the run snapped to its end slides with it (`POST /tasks/:id/shift`).
+  Past 30 minutes it is looking for somewhere else, and stays so: let go
+  on another task that has not begun, the two **swap** (`POST
+  /tasks/:id/swap { with }`): each takes the other's turn in the queue or
+  its hour, so only what is between them moves, by the difference in
+  length; on a heading or in the gap between two cards it takes that
+  place; in free room, that hour. Held on its bottom
+  edge, a card's **seam** comes up: the block above takes the new length,
+  the snapped run below slides along keeping its own, and a block that is
+  not snapped is left alone (`POST /tasks|events/:id/resize`). A drop at
+  the top of a day asks for that day's first hour (`after`), since a place
+  in the queue would pack the task back into what is left of the day
+  before. While the running task is carried off Agora, Agora draws the
+  break ("Agora fica livre") and the card says it is being paused. Outside
+  the working day Agora is `DayOverTile`: nothing begins, a drop on it is
+  refused, and it offers the Menu's hours.
+
 In both, the heading of whatever is at the top stays pinned while it
 scrolls, a chip brings Agora back once it is out of sight, and a card held
 near the top or bottom edge scrolls the list, which is how a task goes to
@@ -314,6 +333,11 @@ Every event is an obstacle to both: meetings, fixed blocks, fixed routines,
 and **a begun task's hour**, which keeps the hour it started at. Nothing the
 layout works out is written down.
 
+**Nothing begins outside the working day.** Starting a task, or a drop
+with `start: true`, before the day opens or after it ends is refused in
+Portuguese (`refuseOutsideWorkDay`), and the queue never waits at the
+current minute then: its first task is the next day's.
+
 **A task does not start because its hour came.** The first one in the
 queue, or an anchored one whose hour has come, sits at the current minute
 (`awaitingStart`) until the user says so. `POST /tasks/:id/start` writes its
@@ -332,7 +356,8 @@ Adding a fixed block (`POST /events`) puts it at its hour. Dragging
 which counts the running task and the anchored ones (`queueIndexOf` turns
 it into a place in the queue) and lifts any anchor, or, with `after`,
 anchors it at that hour; a running task dragged anywhere else stops running
-and goes back in the queue. Finishing
+and goes back in the queue owing what it had left (`owedMinutes`), which is
+pausing it. Finishing
 (`POST /tasks/:id/done`) keeps a running task as the hour it really took
 and starts the rest of the queue five minutes later; one that never started
 simply leaves the list.
@@ -347,7 +372,10 @@ block, or ticking off a task before it began (`doneTask`, `doneEvent`),
 re-anchors every anchored task in the run right after it (each block
 starting within ten minutes of the one before, `snappedAfter`) as much
 earlier as the run now starts. The run stops at the first real gap and at
-any event, so an isolated anchor keeps its hour.
+any event, so an isolated anchor keeps its hour. Nudging a task
+(`shiftTask`) or pulling the seam under a block (`resizeTask`,
+`resizeEvent`) carries the whole run, queued tasks included, and anchors
+each at its new hour.
 
 #### The one guard
 

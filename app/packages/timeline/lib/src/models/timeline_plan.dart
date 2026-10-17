@@ -74,6 +74,11 @@ abstract final class TimelinePlan {
   /// The breathing room left between two blocks.
   static const gap = Duration(minutes: 5);
 
+  /// How close one block has to start after another to be snapped to it,
+  /// and come along when it moves or stretches: the pause and five minutes
+  /// of slack. The server's own rule, `SNAP_MINUTES`.
+  static const snap = Duration(minutes: 10);
+
   /// Where a new task would land: the end of the queue, from [now] or after
   /// the last of [tasks], whichever is later, in the first room that fits
   /// among [cards].

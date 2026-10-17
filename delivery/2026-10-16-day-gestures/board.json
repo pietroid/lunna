@@ -1,0 +1,166 @@
+{
+ "title": "Gestos do dia",
+ "screens": [
+  {
+   "png": "shots/1.png",
+   "title": "1 · Nudge (#3)",
+   "why": "A small drag moves the block in time instead of swapping it. Nothing opens up.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 380,
+     "y": 358,
+     "label": "Hint",
+     "text": "Dark pill over the lifted card: how far it moves and the hour it lands on, in 5-min steps. New widget DragHint; icon AppIcons.pushed (Phosphor arrowDown)."
+    },
+    {
+     "id": "B",
+     "x": 40,
+     "y": 336,
+     "label": "Small = move",
+     "text": "Every drag starts as a nudge. It stays one while it has moved under 30 min (~52 px) and has not passed the middle of a neighbour card. Up or down, same rule."
+    },
+    {
+     "id": "C",
+     "x": 380,
+     "y": 470,
+     "label": "Snapped run follows",
+     "text": "Blocks snapped to it (starting within 10 min of its end, as snappedAfter) slide by the same amount, lengths untouched. On drop they all keep their new hours (anchored)."
+    },
+    {
+     "id": "D",
+     "x": 380,
+     "y": 609,
+     "label": "Not snapped: stays",
+     "text": "Past the first real gap nothing moves; the gap shrinks. An event (Aula de inglês) is never moved: the nudge stops before it."
+    }
+   ]
+  },
+  {
+   "png": "shots/2.png",
+   "title": "2 · Swap (#3, #1)",
+   "why": "Past the threshold the drag becomes today's reorder: a place opens and the card takes it.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 380,
+     "y": 601,
+     "label": "Big = swap",
+     "text": "Once past 30 min or a neighbour's middle the hint turns into 'Trocar de lugar · <onde>' (AppIcons.swap, Phosphor arrowsDownUp) and stays a swap until let go."
+    },
+    {
+     "id": "B",
+     "x": 12,
+     "y": 583,
+     "label": "Top of a day (bug #1)",
+     "text": "Today a drop at the top of Amanhã is sent as a place in the queue, and the queue packs it back into today's evening, so the swap 'doesn't work'. Fix: a drop at a day's top lands at that day's first hour (anchored), the card below takes the next."
+    },
+    {
+     "id": "C",
+     "x": 191,
+     "y": 364,
+     "label": "Origin",
+     "text": "Its old place stays open until it is let go, as now."
+    }
+   ]
+  },
+  {
+   "png": "shots/3.png",
+   "title": "3 · Stretch a seam (#2)",
+   "why": "Hold the line between two blocks and drag it: the one above changes length.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 434,
+     "label": "Seam handle",
+     "text": "Hold the bottom edge of a card (its last 12 px plus the pause) and it lifts as an accent line with a grip (SeamHandle). 5-min steps, minimum 5 min."
+    },
+    {
+     "id": "B",
+     "x": 380,
+     "y": 409,
+     "label": "Hint",
+     "text": "'+15 min · até 16:00' (AppIcons.resize, Phosphor arrowsVertical). Shortening reads '−15 min'."
+    },
+    {
+     "id": "C",
+     "x": 380,
+     "y": 461,
+     "label": "Next follows",
+     "text": "The block above always wins: it takes the new length. The snapped run below slides along keeping its own lengths. Not snapped: untouched until the edge reaches it."
+    },
+    {
+     "id": "D",
+     "x": 380,
+     "y": 609,
+     "label": "Walls",
+     "text": "An event below is a wall: the edge stops one pause before it. Works on events above too (their end), never on what is running (that has −15/+15)."
+    }
+   ]
+  },
+  {
+   "png": "shots/4.png",
+   "title": "4 · Drag off Agora = pause (#5)",
+   "why": "Carrying the running block away shows Agora as it will be: free.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 380,
+     "y": 218,
+     "label": "Agora fica livre",
+     "text": "While the running card is up and aimed below Agora, Agora draws the break with 'Agora fica livre' instead of an empty hole (FreeTile vacated)."
+    },
+    {
+     "id": "B",
+     "x": 380,
+     "y": 418,
+     "label": "Pause hint",
+     "text": "'Pausar · volta com 23 min' (AppIcons.pause). Dropped back on Agora the hint goes away and nothing changes."
+    },
+    {
+     "id": "C",
+     "x": 380,
+     "y": 470,
+     "label": "Keeps what's left",
+     "text": "Change: it goes back to the queue owing what is left (23 min), not its whole length, which is what pausing means. Today it owes the whole 50."
+    }
+   ]
+  },
+  {
+   "png": "shots/5.png",
+   "title": "5 · Day over (#4)",
+   "why": "After the working day ends, nothing starts now, and Agora says so.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 198,
+     "label": "Day over",
+     "text": "Agora becomes DayOverTile (AppIcons.dayOver, Phosphor moon): when the day ended and when the queue moves again. Before the day starts: 'Seu dia começa às 07:00'."
+    },
+    {
+     "id": "B",
+     "x": 200,
+     "y": 266,
+     "label": "Mudar horário",
+     "text": "The one way round it: opens the work-day hours (same sheet as Menu). The only accent on the screen."
+    },
+    {
+     "id": "C",
+     "x": 382,
+     "y": 349,
+     "label": "Refused drop",
+     "text": "A card let go on Agora is refused: the hint dims to 'Agora não: seu dia terminou', a heavy haptic, and the card goes back."
+    },
+    {
+     "id": "D",
+     "x": 380,
+     "y": 575,
+     "label": "Server guard",
+     "text": "The server refuses start / start:true outside the working day (Portuguese refusal), and never marks tomorrow's task awaitingStart, so no reminder or ▶ for it tonight."
+    }
+   ]
+  }
+ ]
+}

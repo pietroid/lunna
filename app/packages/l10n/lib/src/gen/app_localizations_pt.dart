@@ -994,4 +994,69 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get projectDeleteBody => 'As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.';
+
+  @override
+  String dayOverTitle(String end) {
+    return 'Seu dia terminou às $end';
+  }
+
+  @override
+  String dayOverBody(String start) {
+    return 'Nada começa agora. A fila volta a andar amanhã às $start.';
+  }
+
+  @override
+  String dayNotYetTitle(String start) {
+    return 'Seu dia começa às $start';
+  }
+
+  @override
+  String get dayNotYetBody => 'Nada começa antes disso. Até lá, descanse.';
+
+  @override
+  String get dayClosedAdjust => 'Mudar horário';
+
+  @override
+  String get dayClosedRefused => 'Agora não: seu dia terminou';
+
+  @override
+  String get vacatedTitle => 'Agora fica livre';
+
+  @override
+  String get vacatedBody => 'Solte para pausar: ela volta para a fila com o que falta.';
+
+  @override
+  String dragHintPause(String left) {
+    return 'Pausar · volta com $left';
+  }
+
+  @override
+  String dragHintShift(String delta, String hour) {
+    return '$delta · $hour';
+  }
+
+  @override
+  String dragHintResize(String delta, String hour) {
+    return '$delta · até $hour';
+  }
+
+  @override
+  String dragHintTomorrowAt(String hour) {
+    return 'amanhã $hour';
+  }
+
+  @override
+  String minutesDelta(String sign, String minutes) {
+    return '$sign$minutes min';
+  }
+
+  @override
+  String dragHintSwapWith(String title) {
+    return 'Trocar com $title';
+  }
+
+  @override
+  String dragHintMoveTo(String when) {
+    return 'Para $when';
+  }
 }

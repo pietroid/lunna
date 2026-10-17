@@ -17,6 +17,7 @@ import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
 import { MoveEventDto } from './dto/move-event.dto';
 import { SnoozeEventDto } from './dto/snooze-event.dto';
+import { SwapTaskDto } from './dto/swap-task.dto';
 import { TimingDto } from './dto/timing.dto';
 import { Timeline } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
@@ -25,8 +26,10 @@ import {
   daysOf,
   owner,
   requireDelta,
+  requireLength,
   requireMove,
   requireSnooze,
+  requireSwap,
   requireTask,
   requireTaskEdit,
   requireTiming,
@@ -225,6 +228,66 @@ export class TasksController {
       owner(user),
       id,
       requireDelta(dto.minutes),
+      Trace.start(user.id, id),
+    );
+
+    return this._answer(user, days);
+  }
+
+  /**
+   * Slides a task [minutes] in time, and the run snapped to it along: a
+   * short drag on the calendar.
+   */
+  @Post(':id/shift')
+  async shift(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ExtendEventDto,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    await this.layout.shiftTask(
+      owner(user),
+      id,
+      requireDelta(dto.minutes),
+      Trace.start(user.id, id),
+    );
+
+    return this._answer(user, days);
+  }
+
+  /** Trades the places of two tasks: a long drag let go on another card. */
+  @Post(':id/swap')
+  async swap(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SwapTaskDto,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    await this.layout.swapTasks(
+      owner(user),
+      id,
+      requireSwap(dto.with),
+      Trace.start(user.id, id),
+    );
+
+    return this._answer(user, days);
+  }
+
+  /**
+   * Gives a task a new length by its edge, and slides the run snapped to
+   * its end by as much.
+   */
+  @Post(':id/resize')
+  async resize(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ExtendEventDto,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    await this.layout.resizeTask(
+      owner(user),
+      id,
+      requireLength(dto.minutes),
       Trace.start(user.id, id),
     );
 

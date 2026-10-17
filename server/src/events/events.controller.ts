@@ -22,6 +22,7 @@ import {
   daysOf,
   owner,
   requireDelta,
+  requireLength,
   requireEvent,
   requireEventEdit,
 } from './request';
@@ -137,6 +138,27 @@ export class EventsController {
       owner(user),
       id,
       requireDelta(dto.minutes),
+      Trace.start(user.id, id),
+    );
+
+    return this._answer(user, days);
+  }
+
+  /**
+   * Gives a block a new length by its edge, and slides the run snapped to
+   * its end by as much.
+   */
+  @Post(':id/resize')
+  async resize(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: ExtendEventDto,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    await this.layout.resizeEvent(
+      owner(user),
+      id,
+      requireLength(dto.minutes),
       Trace.start(user.id, id),
     );
 

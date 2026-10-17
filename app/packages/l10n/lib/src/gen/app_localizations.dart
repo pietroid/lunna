@@ -1624,6 +1624,96 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.'**
   String get projectDeleteBody;
+
+  /// No description provided for @dayOverTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu dia terminou às {end}'**
+  String dayOverTitle(String end);
+
+  /// No description provided for @dayOverBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada começa agora. A fila volta a andar amanhã às {start}.'**
+  String dayOverBody(String start);
+
+  /// No description provided for @dayNotYetTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu dia começa às {start}'**
+  String dayNotYetTitle(String start);
+
+  /// No description provided for @dayNotYetBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada começa antes disso. Até lá, descanse.'**
+  String get dayNotYetBody;
+
+  /// No description provided for @dayClosedAdjust.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mudar horário'**
+  String get dayClosedAdjust;
+
+  /// No description provided for @dayClosedRefused.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora não: seu dia terminou'**
+  String get dayClosedRefused;
+
+  /// No description provided for @vacatedTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora fica livre'**
+  String get vacatedTitle;
+
+  /// No description provided for @vacatedBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Solte para pausar: ela volta para a fila com o que falta.'**
+  String get vacatedBody;
+
+  /// No description provided for @dragHintPause.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pausar · volta com {left}'**
+  String dragHintPause(String left);
+
+  /// No description provided for @dragHintShift.
+  ///
+  /// In pt, this message translates to:
+  /// **'{delta} · {hour}'**
+  String dragHintShift(String delta, String hour);
+
+  /// No description provided for @dragHintResize.
+  ///
+  /// In pt, this message translates to:
+  /// **'{delta} · até {hour}'**
+  String dragHintResize(String delta, String hour);
+
+  /// No description provided for @dragHintTomorrowAt.
+  ///
+  /// In pt, this message translates to:
+  /// **'amanhã {hour}'**
+  String dragHintTomorrowAt(String hour);
+
+  /// No description provided for @minutesDelta.
+  ///
+  /// In pt, this message translates to:
+  /// **'{sign}{minutes} min'**
+  String minutesDelta(String sign, String minutes);
+
+  /// No description provided for @dragHintSwapWith.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trocar com {title}'**
+  String dragHintSwapWith(String title);
+
+  /// No description provided for @dragHintMoveTo.
+  ///
+  /// In pt, this message translates to:
+  /// **'Para {when}'**
+  String dragHintMoveTo(String when);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -888,6 +888,263 @@ void main() {
     });
   });
 
+  group('a short drag on the calendar', () {
+    /// Picks up [title], carries it [dy] down (or up), and holds it there
+    /// for a look before [release] lets it go.
+    Future<TestGesture> carry(
+      WidgetTester tester,
+      Offset from,
+      double dy,
+    ) async {
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 350));
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveTo(from + Offset(0, dy * step / 8));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await tester.pump(const Duration(milliseconds: 200));
+      return gesture;
+    }
+
+    testAt('slides the task in time, and the task snapped to it along', (
+      tester,
+    ) async {
+      final snapped = block('c', 60, 25);
+      final (bloc, _) = await pump(tester, [running, later, snapped]);
+
+      final gesture = await carry(
+        tester,
+        tester.getCenter(find.text('Depois')),
+        20 * TimelineScale.perMinute,
+      );
+
+      // Nothing opens up: the card says where it goes, and the one snapped
+      // to it reads its new hours.
+      final at = later.startTime.add(const Duration(minutes: 20));
+      expect(find.text('+20 min · ${hhmm(at)}'), findsOneWidget);
+      final moved = snapped.startTime.add(const Duration(minutes: 20));
+      expect(find.textContaining(hhmm(moved)), findsWidgets);
+
+      await gesture.up();
+      await settle(tester);
+
+      verify(() => bloc.add(const EventShifted('b', 20))).called(1);
+      verifyNever(() => bloc.add(any(that: isA<EventMoved>())));
+    });
+
+    testAt('slides it earlier too', (tester) async {
+      final (bloc, _) = await pump(tester, [running, block('c', 120, 25)]);
+
+      final gesture = await carry(
+        tester,
+        tester.getCenter(find.text('Bloco c')),
+        -15 * TimelineScale.perMinute,
+      );
+      await gesture.up();
+      await settle(tester);
+
+      verify(() => bloc.add(const EventShifted('c', -15))).called(1);
+    });
+
+    testAt('let go on another task far away, trades places with it', (
+      tester,
+    ) async {
+      final far = block('d', 150, 25);
+      final (bloc, _) = await pump(tester, [
+        running,
+        later,
+        block('c', 60, 25),
+        far,
+      ]);
+
+      final gesture = await carry(
+        tester,
+        tester.getCenter(find.text('Bloco d')),
+        tester.getCenter(find.text('Depois')).dy -
+            tester.getCenter(find.text('Bloco d')).dy,
+      );
+
+      // Nothing opens up: the task under the finger reads the hour it would
+      // trade for, and the card in the air reads its.
+      expect(find.text('Trocar com Depois'), findsOneWidget);
+      expect(find.textContaining(hhmm(far.startTime)), findsWidgets);
+
+      await gesture.up();
+      await settle(tester);
+
+      verify(() => bloc.add(const EventSwapped('d', 'b'))).called(1);
+      verifyNever(() => bloc.add(any(that: isA<EventMoved>())));
+    });
+
+    testAt('pulls the seam under a card, which gives it a new length', (
+      tester,
+    ) async {
+      final (bloc, _) = await pump(tester, [
+        running,
+        later,
+        block('c', 60, 25),
+      ]);
+
+      final card = tester.getRect(find.widgetWithText(EventTile, 'Depois'));
+      final gesture = await carry(
+        tester,
+        Offset(card.center.dx, card.bottom - 4),
+        15 * TimelineScale.perMinute,
+      );
+
+      expect(find.byType(SeamHandle), findsOneWidget);
+      final end = later.endTime.add(const Duration(minutes: 15));
+      expect(find.text('+15 min · até ${hhmm(end)}'), findsOneWidget);
+
+      await gesture.up();
+      await settle(tester);
+
+      verify(() => bloc.add(const EventResized('b', 45))).called(1);
+    });
+
+    testAt('leaves Agora free while the running block is carried off it', (
+      tester,
+    ) async {
+      final begun = TimelineEvent(
+        id: 'a',
+        title: 'Escrever',
+        section: TimelineSection.agora,
+        started: true,
+        startTime: running.startTime,
+        endTime: running.endTime,
+        durationMinutes: 30,
+      );
+      final (bloc, _) = await pump(tester, [
+        begun,
+        later,
+        block('c', 60, 25),
+      ]);
+
+      final gesture = await carry(
+        tester,
+        tester.getCenter(find.text('Escrever')),
+        tester.getCenter(find.text('Bloco c')).dy -
+            tester.getCenter(find.text('Escrever')).dy,
+      );
+
+      expect(find.text('Agora fica livre'), findsOneWidget);
+      expect(find.textContaining('Pausar · volta com 20 min'), findsOneWidget);
+
+      await gesture.up();
+      await settle(tester);
+
+      verify(
+        () => bloc.add(
+          any(that: isA<EventMoved>().having((it) => it.id, 'id', 'a')),
+        ),
+      ).called(1);
+    });
+  });
+
+  group('late at night', () {
+    final night = DateTime(2026, 6, 10, 21);
+    final tomorrow = DateTime(2026, 6, 11, 7);
+
+    TimelineEvent at(String id, DateTime start, int minutes) => TimelineEvent(
+      id: id,
+      title: 'Bloco $id',
+      section: TimelineSection.dia,
+      startTime: start,
+      endTime: start.add(Duration(minutes: minutes)),
+      durationMinutes: minutes,
+    );
+
+    testWidgets('a drop at the top of tomorrow asks for its first hour', (
+      tester,
+    ) async {
+      await withClock(Clock.fixed(night), () async {
+        final tonight = at('n', night.add(const Duration(minutes: 5)), 20);
+        final first = at('t', tomorrow, 30);
+        final second = at('u', tomorrow.add(const Duration(minutes: 35)), 30);
+        final cards = [tonight, first, second];
+        final (bloc, _) = await pump(
+          tester,
+          const [],
+          state: TimelineState(
+            status: TimelineStatus.success,
+            cards: cards,
+            tasks: cards,
+            days: 2,
+          ),
+        );
+
+        // On the heading: on the card itself would trade places with it.
+        final heading = tester.getCenter(find.text('Amanhã'));
+        await drag(tester, 'Bloco u', heading.dy);
+
+        verify(
+          () => bloc.add(EventMoved(id: 'u', index: 1, after: tomorrow)),
+        ).called(1);
+      });
+    });
+
+    testWidgets('the last card of today goes to the top of tomorrow', (
+      tester,
+    ) async {
+      await withClock(Clock.fixed(night), () async {
+        final tonight = at('n', night.add(const Duration(minutes: 5)), 20);
+        final first = at('t', tomorrow, 30);
+        final cards = [tonight, first];
+        final (bloc, _) = await pump(
+          tester,
+          const [],
+          state: TimelineState(
+            status: TimelineStatus.success,
+            cards: cards,
+            tasks: cards,
+            days: 2,
+          ),
+        );
+
+        // Its place in the list does not change, and its day does: this
+        // used to be taken for a card put back where it was.
+        final heading = tester.getCenter(find.text('Amanhã'));
+        await drag(tester, 'Bloco n', heading.dy);
+
+        verify(
+          () => bloc.add(EventMoved(id: 'n', index: 0, after: tomorrow)),
+        ).called(1);
+      });
+    });
+
+    testWidgets('Agora says the day is over, and begins nothing', (
+      tester,
+    ) async {
+      await withClock(Clock.fixed(DateTime(2026, 6, 10, 22, 30)), () async {
+        final first = at('t', tomorrow, 30);
+        final (bloc, _) = await pump(
+          tester,
+          const [],
+          state: TimelineState(
+            status: TimelineStatus.success,
+            cards: [first],
+            tasks: [first],
+            days: 2,
+          ),
+        );
+
+        expect(find.byType(DayOverTile), findsOneWidget);
+        expect(find.text('Seu dia terminou às 22:00'), findsOneWidget);
+
+        final tile = tester.getCenter(find.byType(DayOverTile));
+        await drag(tester, 'Bloco t', tile.dy);
+
+        verifyNever(
+          () => bloc.add(
+            any(
+              that: isA<EventMoved>().having((it) => it.start, 'start', true),
+            ),
+          ),
+        );
+      });
+    });
+  });
+
   group('the calendar', () {
     testAt('heads a day past tomorrow with its weekday and date', (
       tester,

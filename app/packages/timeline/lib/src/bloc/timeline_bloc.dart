@@ -31,6 +31,9 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     on<EventDeleted>(_onDeleted);
     on<EventPauseToggled>(_onPauseToggled);
     on<EventExtended>(_onAdjusted);
+    on<EventShifted>(_onShifted);
+    on<EventResized>(_onResized);
+    on<EventSwapped>(_onSwapped);
     on<EventEdited>(_onEdited);
     on<GuardAnswered>(_onGuardAnswered);
     on<GuardDismissed>(_onGuardDismissed);
@@ -352,6 +355,44 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     await _write(
       emit,
       () => _repository.extend(
+        _kindOf(event.id),
+        event.id,
+        event.minutes,
+        days: _days,
+      ),
+    );
+  }
+
+  /// Slides a task in time. Where everything lands is the server's.
+  Future<void> _onShifted(
+    EventShifted event,
+    Emitter<TimelineState> emit,
+  ) async {
+    await _write(
+      emit,
+      () => _repository.shiftTask(event.id, event.minutes, days: _days),
+    );
+  }
+
+  /// Trades the places of two tasks.
+  Future<void> _onSwapped(
+    EventSwapped event,
+    Emitter<TimelineState> emit,
+  ) async {
+    await _write(
+      emit,
+      () => _repository.swapTasks(event.id, event.other, days: _days),
+    );
+  }
+
+  /// Gives a card a new length by its edge.
+  Future<void> _onResized(
+    EventResized event,
+    Emitter<TimelineState> emit,
+  ) async {
+    await _write(
+      emit,
+      () => _repository.resize(
         _kindOf(event.id),
         event.id,
         event.minutes,
