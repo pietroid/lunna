@@ -23,7 +23,6 @@ export class PgTaskStore extends TaskStore {
           eq(task.userId, user.id),
           isNull(task.doneAt),
           eq(task.cancelled, false),
-          eq(task.parked, false),
         ),
       )
       // The days of a routine all sit at position zero, which only means
@@ -114,7 +113,6 @@ export class PgTaskStore extends TaskStore {
         notBefore: dateOf(input.notBefore),
         backlog: input.backlog ?? false,
         projectId: input.projectId ?? null,
-        parked: input.parked ?? false,
       })
       .returning();
 
@@ -134,7 +132,6 @@ export class PgTaskStore extends TaskStore {
         doneAt: dateOf(next.doneAt),
         cancelled: next.cancelled === true,
         projectId: next.projectId ?? null,
-        parked: next.parked === true,
       })
       .where(and(eq(task.id, next.id), eq(task.userId, user.id)))
       .returning();
@@ -171,7 +168,6 @@ function toTask(row: TaskRow): Task {
       : { occurrence: row.occurrence.toISOString() }),
     ...(row.cancelled ? { cancelled: true } : {}),
     ...(row.projectId === null ? {} : { projectId: row.projectId }),
-    ...(row.parked ? { parked: true } : {}),
   };
 }
 

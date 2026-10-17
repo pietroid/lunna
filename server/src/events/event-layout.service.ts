@@ -236,6 +236,7 @@ export class EventLayoutService {
         minutes: request.minutes,
         position: await this._positionAt(user, day.backlog, day.backlog.length),
         backlog: true,
+        projectId: request.projectId,
       });
       trace.log('task.create', { taskId: created.id, backlog: true });
       return created.id;
@@ -259,6 +260,7 @@ export class EventLayoutService {
       minutes: request.minutes,
       position: await this._positionAt(user, queue, index),
       notBefore: anchor?.toISOString(),
+      projectId: request.projectId,
     });
 
     trace.log('task.create', {
@@ -284,6 +286,11 @@ export class EventLayoutService {
     now = new Date(),
   ): Promise<void> {
     const day = await this._timeline.day(user, 1, now);
+    const done = await this._doneOf(user, day, taskId);
+    if (done !== undefined) {
+      await this._reviseDone(user, done, edit, trace);
+      return;
+    }
     let task = pendingOf(day, taskId);
     const live = day.live.get(taskId);
 
@@ -338,6 +345,46 @@ export class EventLayoutService {
       await this._extend(user, live, delta, trace, now);
       await this._tasks.update(user, { ...task, minutes: edit.workMinutes });
     }
+  }
+
+  /**
+   * [taskId], when it is a task that was finished: not on the day, but still
+   * kept, and opened from its project.
+   */
+  private async _doneOf(
+    user: CalendarUser,
+    day: Day,
+    taskId: string,
+  ): Promise<Task | undefined> {
+    if ([...day.tasks, ...day.backlog].some((it) => it.id === taskId)) {
+      return undefined;
+    }
+    const task = await this._tasks.get(user, taskId);
+
+    return task?.doneAt === undefined ? undefined : task;
+  }
+
+  /**
+   * Renames a finished task, or changes its notes. Its hour and its length
+   * are what happened, and stay.
+   */
+  private async _reviseDone(
+    user: CalendarUser,
+    task: Task,
+    edit: TaskEdit,
+    trace: Trace,
+  ): Promise<void> {
+    if (edit.startTime !== undefined || edit.workMinutes !== undefined) {
+      throw new BadRequestException(
+        'Esta tarefa já foi feita. Só o nome e as notas ainda mudam.',
+      );
+    }
+    trace.log('task.revise', { taskId: task.id, done: true });
+    await this._tasks.update(user, {
+      ...task,
+      ...(edit.title === undefined ? {} : { title: edit.title }),
+      ...(edit.notes === undefined ? {} : { notes: edit.notes }),
+    });
   }
 
   /**

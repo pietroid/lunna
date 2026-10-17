@@ -1,0 +1,144 @@
+{
+ "screens": [
+  {
+   "png": "shots/1.png",
+   "title": "1 · Notas first, remembered",
+   "why": "The project opens on what it is about; the device keeps the last tab chosen.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 70,
+     "y": 204,
+     "label": "Notas · Tarefas",
+     "text": "Order switched: Notas is the first segment. The tab last chosen is kept on the device (shared_preferences, like Lista/Calendário) and every project opens on it."
+    },
+    {
+     "id": "B",
+     "x": 185,
+     "y": 346,
+     "label": "Notes",
+     "text": "Unchanged: free text, saved as it is written."
+    },
+    {
+     "id": "C",
+     "x": 195,
+     "y": 780,
+     "label": "No dock here",
+     "text": "Nothing floats over the notes: the + and the bar appear on Tarefas only."
+    }
+   ]
+  },
+  {
+   "png": "shots/2.png",
+   "title": "2 · Tempo's Lista, kept to the project",
+   "why": "Not a look-alike: the same TimelineList widget, filtered to the project's tasks.",
+   "pins": [
+    {
+     "id": "D",
+     "x": 170,
+     "y": 204,
+     "label": "Tarefas · 6",
+     "text": "Counts what is not done."
+    },
+    {
+     "id": "E",
+     "x": 96,
+     "y": 253,
+     "label": "Fazer em breve",
+     "text": "The project's tasks with an hour, the hours Tempo gives them. Same spacing, headings, pinned heading, + Adicionar."
+    },
+    {
+     "id": "F",
+     "x": 190,
+     "y": 296,
+     "label": "Gestures",
+     "text": "Exactly Tempo's: hold to move up, down, across the line; carry right = done; carry left = delete (confirmed); tap = the task's page."
+    },
+    {
+     "id": "G",
+     "x": 107,
+     "y": 504,
+     "label": "Depois eu priorizo",
+     "text": "Tempo's own backlog. A project task is no longer parked off the day: new ones land at the end of the backlog."
+    },
+    {
+     "id": "H",
+     "x": 59,
+     "y": 755,
+     "label": "N feitas",
+     "text": "Third stage, always drawn: done tasks, newest first, quiet with a check. Tap opens notes; not a drop target."
+    },
+    {
+     "id": "I",
+     "x": 160,
+     "y": 800,
+     "label": "Pergunte à Lunna",
+     "text": "Tempo's AskDock, same behaviour (voice included). Later: the conversation knows the project (separate research)."
+    },
+    {
+     "id": "J",
+     "x": 345,
+     "y": 800,
+     "label": "+",
+     "text": "Writes where the list looks, like Tempo, and the task belongs to this project."
+    }
+   ]
+  },
+  {
+   "png": "shots/3.png",
+   "title": "3 · Tap opens the task",
+   "why": "Same EventPage as Tempo: title, controls, notes.",
+   "pins": [
+    {
+     "id": "K",
+     "x": 185,
+     "y": 55,
+     "label": "EventPage",
+     "text": "Pushed from the project; back returns to the project."
+    },
+    {
+     "id": "L",
+     "x": 175,
+     "y": 220,
+     "label": "Notes",
+     "text": "The task's notes, edited in place."
+    }
+   ]
+  },
+  {
+   "png": "shots/4.png",
+   "title": "4 · + on the project",
+   "why": "The same creation sheet as Tempo.",
+   "pins": [
+    {
+     "id": "M",
+     "x": 116,
+     "y": 796,
+     "label": "Where it goes",
+     "text": "Flexível/Fixo, length and hour as on Tempo; saved with this project's id."
+    }
+   ]
+  },
+  {
+   "png": "shots/5.png",
+   "title": "5 · Tempo, for comparison",
+   "why": "The same list unfiltered: the project's tasks sit among the rest of the day.",
+   "pins": [
+    {
+     "id": "N",
+     "x": 64,
+     "y": 60,
+     "label": "Lista",
+     "text": "Untouched. The project page is this, filtered, plus Feitas."
+    },
+    {
+     "id": "O",
+     "x": 195,
+     "y": 257,
+     "label": "Shared rows",
+     "text": "Ligar para a transportadora is the same row in both: a move in either moves it in both."
+    }
+   ]
+  }
+ ]
+}

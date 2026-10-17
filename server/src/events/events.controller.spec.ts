@@ -10,6 +10,7 @@ import { App } from 'supertest/types';
 import { SessionGuard } from '../auth/session.guard';
 import { CalendarService } from '../calendar/calendar.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
+import { MemoryProjectStore, ProjectStore } from '../projects/project.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
 import { BacklogCard, Timeline, TimelineCard } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
@@ -176,6 +177,7 @@ describe('the day', () => {
         CalendarService,
         { provide: CalendarStore, useClass: MemoryCalendarStore },
         { provide: TaskStore, useClass: MemoryTaskStore },
+        { provide: ProjectStore, useClass: MemoryProjectStore },
       ],
     })
       .overrideGuard(SessionGuard)

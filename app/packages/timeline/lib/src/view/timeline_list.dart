@@ -170,8 +170,21 @@ class TimelineList extends StatefulWidget {
     this.aim,
     this.onAdjustDay,
     this.mode = TimelineMode.calendar,
+    this.only,
+    this.done,
     super.key,
   });
+
+  /// The tasks the list draws, by id, when it is not the whole day: a
+  /// project's. Null draws every task.
+  ///
+  /// Only the list honours it; the calendar is the day, all of it.
+  final Set<String>? only;
+
+  /// What has been finished, drawn as a third stage under the backlog: the
+  /// same cards, quiet, newest first, and nothing to drop on. Null draws no
+  /// such stage, as Tempo does.
+  final List<TimelineEvent>? done;
 
   /// How the day is drawn.
   final TimelineMode mode;
@@ -370,6 +383,23 @@ class _TimelineListState extends State<TimelineList> {
 
   bool get _isList => widget.mode == TimelineMode.list;
 
+  /// The tasks with an hour the list draws: every one, or only those in
+  /// [TimelineList.only].
+  List<TimelineEvent> get _tasks => _kept(_state.tasks);
+
+  /// The backlog the list draws, the same way.
+  List<TimelineEvent> get _waiting => _kept(_state.backlog);
+
+  List<TimelineEvent> _kept(List<TimelineEvent> cards) {
+    final only = widget.only;
+    if (only == null) return cards;
+
+    return [
+      for (final card in cards)
+        if (only.contains(card.id)) card,
+    ];
+  }
+
   /// Everything drawn, in the order it is drawn: everything in the
   /// calendar; in the list, the queue, then the line between the stages as
   /// a null, then the backlog.
@@ -378,7 +408,7 @@ class _TimelineListState extends State<TimelineList> {
   /// top of the backlog are two different places to drop, even though no
   /// card sits between them.
   List<TimelineEvent?> get _slots =>
-      _isList ? [..._state.tasks, null, ..._state.backlog] : _state.cards;
+      _isList ? [..._tasks, null, ..._waiting] : _state.cards;
 
   /// Where [id] sits in what is drawn, or -1.
   int _indexOf(String id) => _slots.indexWhere((card) => card?.id == id);
@@ -394,9 +424,11 @@ class _TimelineListState extends State<TimelineList> {
     final rest = _slots.where((card) => card?.id != id).toList();
     if (_isList) {
       final line = rest.indexOf(null);
-      return index <= line
+      final place = index <= line
           ? (index: index, backlog: false)
           : (index: index - line - 1, backlog: true);
+
+      return widget.only == null ? place : _wholeOf(id, place);
     }
 
     final listed = {for (final card in _state.tasks) card.id};
@@ -404,6 +436,32 @@ class _TimelineListState extends State<TimelineList> {
       index: rest.take(index).where((card) => listed.contains(card?.id)).length,
       backlog: false,
     );
+  }
+
+  /// [place], counted among the tasks [TimelineList.only] lets through,
+  /// counted instead in the whole queue or backlog, which is what the
+  /// server counts: right under the card drawn above it, or right over the
+  /// first one when it went to the top, or at the end of a stage that draws
+  /// none.
+  ({int index, bool backlog}) _wholeOf(
+    String id,
+    ({int index, bool backlog}) place,
+  ) {
+    String? idOf(TimelineEvent card) => card.id == id ? null : card.id;
+    final drawn = [
+      for (final card in place.backlog ? _waiting : _tasks) ?idOf(card),
+    ];
+    final whole = [
+      for (final card in place.backlog ? _state.backlog : _state.tasks)
+        ?idOf(card),
+    ];
+    final index = place.index > 0
+        ? whole.indexOf(drawn[place.index - 1]) + 1
+        : drawn.isEmpty
+        ? whole.length
+        : whole.indexOf(drawn.first);
+
+    return (index: index, backlog: place.backlog);
   }
 
   /// The card right above a drop at [index], with [id] lifted out, when it
@@ -1130,13 +1188,19 @@ class _TimelineListState extends State<TimelineList> {
     // user saying they are doing it now. Let go in an empty queue it is only
     // next, and waits to be begun like any first task.
     final place = _placeOf(id, target);
+    // Counted in the whole queue: a list kept to a project still drops into
+    // the day's.
     final ahead = !_isList || _state.tasks.any((it) => it.id != id);
     final above = place.backlog ? null : _hourAbove(id, target);
     final top = _isList ? null : _dayTopAt(id, target);
     // The very top is now, unless what is first is on a later day: then it
     // is the top of that day.
     final start =
-        target == 0 && !place.backlog && ahead && !closed && top == null;
+        (_isList ? place.index : target) == 0 &&
+        !place.backlog &&
+        ahead &&
+        !closed &&
+        top == null;
     context.read<TimelineBloc>().add(
       EventMoved(
         id: id,
@@ -1508,7 +1572,7 @@ class _TimelineListState extends State<TimelineList> {
     // The end of the stage at the top.
     if (first?.section == _backlog) return const Placement.backlog();
 
-    return Placement.queue(_state.tasks.length);
+    return Placement.queue(_tasks.length);
   }
 
   /// [at] moved on to the next five minutes on the clock, if it is not on
@@ -1738,14 +1802,14 @@ class _TimelineListState extends State<TimelineList> {
     ));
     final rows = <Widget>[
       _HeadingRow(key: soonKey, label: l10n.stageSoon, first: true),
-      if (state.tasks.isEmpty)
+      if (_tasks.isEmpty)
         _Slid(
           dy: shift(0),
           child: _StageEmpty(text: l10n.stageSoonEmpty),
         ),
     ];
 
-    final tasks = state.tasks;
+    final tasks = _tasks;
     for (final card in tasks) {
       drawn.add((
         key: _cardKey(card.id),
@@ -1775,19 +1839,19 @@ class _TimelineListState extends State<TimelineList> {
     rows.add(
       _Slid(
         key: _dividerKey,
-        dy: shift(state.tasks.length),
+        dy: shift(tasks.length),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _HeadingRow(label: l10n.stageBacklog, first: false),
-            if (state.backlog.isEmpty)
+            if (_waiting.isEmpty)
               _StageEmpty(text: l10n.stageBacklogEmpty),
           ],
         ),
       ),
     );
 
-    for (final card in state.backlog) {
+    for (final card in _waiting) {
       drawn.add((
         key: _cardKey(card.id),
         section: _backlog,
@@ -1805,6 +1869,32 @@ class _TimelineListState extends State<TimelineList> {
         drawn,
       ),
     );
+
+    final done = widget.done;
+    if (done != null) {
+      // Not a place to drop: a card is finished by being carried right, as
+      // anywhere else, so this stage only ever slides out of the way.
+      rows.add(
+        _Slid(
+          dy: shift(_slots.length),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _HeadingRow(label: l10n.stageDone(done.length), first: false),
+              if (done.isEmpty) _StageEmpty(text: l10n.stageDoneEmpty),
+              for (final card in done)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.s1),
+                  child: _DoneTile(
+                    card: card,
+                    onTap: () => widget.onCardTap(card),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return rows;
   }
@@ -2353,6 +2443,60 @@ class _HeadingRow extends StatelessWidget {
         bottom: AppSpacing.s1,
       ),
       child: Text(label, style: AppTypography.title),
+    );
+  }
+}
+
+/// A finished task: the card it was, quieter, with the check in front.
+///
+/// It opens on a tap like any other, since its notes are still worth
+/// reading, and is not picked up.
+class _DoneTile extends StatelessWidget {
+  const _DoneTile({required this.card, required this.onTap});
+
+  final TimelineEvent card;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.fill,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s4,
+            vertical: AppSpacing.s3,
+          ),
+          child: Row(
+            children: [
+              const AppIcon(
+                iconData: AppIcons.check,
+                size: AppSpacing.s4,
+                color: AppColors.ink3,
+              ),
+              const SizedBox(width: AppSpacing.s2),
+              Expanded(
+                child: Text(
+                  card.title,
+                  style: AppTypography.body.copyWith(color: AppColors.ink3),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s3),
+              Text(
+                durationLabel(context.l10n, card.durationMinutes),
+                style: AppTypography.label.copyWith(color: AppColors.ink3),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

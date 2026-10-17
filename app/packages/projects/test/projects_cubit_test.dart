@@ -6,8 +6,6 @@ import 'package:projects/projects.dart';
 class _MockRepository extends Mock implements ProjectsRepository {}
 
 void main() {
-  setUpAll(() => registerFallbackValue(TaskPlace.project));
-
   late _MockRepository repository;
   final project = Project(
     id: 'p',
@@ -29,34 +27,20 @@ void main() {
     ],
   );
 
-  test('tells the day when a task moves, and only then', () async {
-    var told = 0;
-    when(
-      () => repository.placeTask(
-        any(),
-        any(),
-        any(),
-        at: any(named: 'at'),
-        index: any(named: 'index'),
-      ),
-    ).thenAnswer((_) async => [project]);
-    when(
-      () => repository.addTask(
-        any(),
-        title: any(named: 'title'),
-        minutes: any(named: 'minutes'),
-      ),
-    ).thenAnswer((_) async => [project]);
-    final cubit = ProjectsCubit(
-      repository: repository,
-      onDayChanged: () => told++,
-    );
+  test(
+    'tells the day when a project is removed, since its backlog goes',
+    () async {
+      var told = 0;
+      when(() => repository.delete(any())).thenAnswer((_) async => []);
+      final cubit = ProjectsCubit(
+        repository: repository,
+        onDayChanged: () => told++,
+      );
 
-    await cubit.addTask('p', 'Textos', 30);
-    expect(told, 0);
-    await cubit.placeTask('p', 't', TaskPlace.backlog);
-    expect(told, 1);
-  });
+      await cubit.delete('p');
+      expect(told, 1);
+    },
+  );
 
   test('moves the deadline a day at a time', () async {
     DateTime? sent;
@@ -85,8 +69,8 @@ void main() {
   blocTest<ProjectsCubit, ProjectsState>(
     'keeps the projects and says why when a write is refused',
     setUp: () => when(
-      () => repository.placeTask(any(), any(), any()),
-    ).thenThrow(const ProjectsFailure('Esta tarefa já começou.')),
+      () => repository.update(any(), done: any(named: 'done')),
+    ).thenThrow(const ProjectsFailure('O projeto não respondeu.')),
     build: () => ProjectsCubit(
       repository: repository,
       initial: ProjectsState(
@@ -94,12 +78,12 @@ void main() {
         projects: [project],
       ),
     ),
-    act: (cubit) => cubit.placeTask('p', 't', TaskPlace.project),
+    act: (cubit) => cubit.setDone('p', done: true),
     expect: () => [
       ProjectsState(
         status: ProjectsStatus.ready,
         projects: [project],
-        failure: const ProjectsFailure('Esta tarefa já começou.'),
+        failure: const ProjectsFailure('O projeto não respondeu.'),
       ),
     ],
   );

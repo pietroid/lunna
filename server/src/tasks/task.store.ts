@@ -13,13 +13,13 @@ export abstract class TaskStore {
   /**
    * Every task still to do, the backlog's included, in position order.
    *
-   * A day of a routine that was taken off is not one, and neither is a task
-   * waiting in its project: the day never sees those.
+   * A day of a routine that was taken off is not one: the day never sees
+   * it.
    */
   abstract pending(user: CalendarUser): Promise<Task[]>;
 
   /**
-   * Every task that belongs to a project, done, parked or on the day, in
+   * Every task that belongs to a project, done or still to do, in
    * position order. A day of a routine that was taken off is not one.
    */
   abstract ofProjects(user: CalendarUser): Promise<Task[]>;
@@ -70,8 +70,7 @@ export class MemoryTaskStore extends TaskStore {
           (it) =>
             it.userId === user.id &&
             it.doneAt === undefined &&
-            it.cancelled !== true &&
-            it.parked !== true,
+            it.cancelled !== true,
         )
         .sort((a, b) => a.position - b.position)
         .map(toTask),
@@ -167,7 +166,6 @@ export class MemoryTaskStore extends TaskStore {
       backlog: task.backlog ?? false,
       ...(task.notBefore === undefined ? {} : { notBefore: task.notBefore }),
       ...(task.projectId === undefined ? {} : { projectId: task.projectId }),
-      ...(task.parked === true ? { parked: true } : {}),
     };
     this._tasks.set(stored.id, stored);
 
@@ -199,7 +197,6 @@ function toTask(stored: Task & { userId?: string }): Task {
   const task: Partial<Task & { userId: string }> = { ...stored };
   delete task.userId;
   if (task.cancelled !== true) delete task.cancelled;
-  if (task.parked !== true) delete task.parked;
   for (const key of [
     'notBefore',
     'doneAt',

@@ -183,6 +183,8 @@ export interface TaskRequest {
    * its end.
    */
   index?: number;
+  /** The project it belongs to, checked against the person's own. */
+  projectId?: string;
 }
 
 /** What the detail screen can change about a task. */

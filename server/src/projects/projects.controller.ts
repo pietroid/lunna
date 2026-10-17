@@ -17,12 +17,10 @@ import {
   CreateProjectDto,
   CreateProjectTaskDto,
   EditProjectDto,
-  PlaceTaskDto,
 } from './dto/project.dto';
 import { ProjectsAnswer } from './project.types';
 import { ProjectsService } from './projects.service';
 import {
-  requirePlacement,
   requireProject,
   requireProjectEdit,
   requireProjectTask,
@@ -32,8 +30,8 @@ import {
  * The subjects that outlive a day.
  *
  * Every route answers with every project, so the screen never works out
- * what a change did. A task let out of a project changes the day as well,
- * which the app reads again on its own.
+ * what a change did. A project's tasks are moved, begun and finished on the
+ * day, through the day's own routes.
  */
 @Controller('projects')
 @UseGuards(SessionGuard)
@@ -74,31 +72,18 @@ export class ProjectsController {
     return this._answer(user);
   }
 
-  /** Writes a task down in the project, where only the project sees it. */
+  /** Writes a task down in the project, at the end of the backlog. */
   @Post(':id/tasks')
   async addTask(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: CreateProjectTaskDto,
   ): Promise<ProjectsAnswer> {
-    await this.projects.addTask(owner(user), id, requireProjectTask(dto));
-    return this._answer(user);
-  }
-
-  /** Moves a project's task: into the project, the backlog, the queue, an hour, or done. */
-  @Post(':id/tasks/:taskId/place')
-  async place(
-    @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Param('taskId') taskId: string,
-    @Body() dto: PlaceTaskDto,
-  ): Promise<ProjectsAnswer> {
-    await this.projects.placeTask(
+    await this.projects.addTask(
       owner(user),
       id,
-      taskId,
-      requirePlacement(dto),
-      Trace.start(user.id, taskId),
+      requireProjectTask(dto),
+      Trace.start(user.id),
     );
     return this._answer(user);
   }

@@ -17,6 +17,7 @@ import { TasksController } from '../events/tasks.controller';
 import { PauseTickerService } from '../events/pause-ticker.service';
 import { TimelineController } from '../events/timeline.controller';
 import { TimelineService } from '../events/timeline.service';
+import { MemoryProjectStore, ProjectStore } from '../projects/project.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import { AgentController } from './agent.controller';
@@ -146,6 +147,7 @@ describe('the agent', () => {
         { provide: OpenRouterClient, useValue: model },
         { provide: CalendarStore, useClass: MemoryCalendarStore },
         { provide: TaskStore, useClass: MemoryTaskStore },
+        { provide: ProjectStore, useClass: MemoryProjectStore },
         { provide: ConversationStore, useClass: MemoryConversationStore },
       ],
     })

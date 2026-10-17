@@ -2,9 +2,6 @@ import 'package:equatable/equatable.dart';
 
 /// Where a project's task is, as far as the day is concerned.
 enum TaskPlace {
-  /// Only in the project. The day never sees it.
-  project,
-
   /// In the backlog, "Depois eu priorizo": no hour, in its order.
   backlog,
 
@@ -21,9 +18,9 @@ enum TaskPlace {
 /// {@template project_task}
 /// One task of a project.
 ///
-/// It is the same task the day draws: once it leaves [TaskPlace.project]
-/// it is in the backlog or on the timeline like any other, and its hour is
-/// the queue's to give. [at] is that hour, as the server last worked it out.
+/// It is the same task the day draws, in the backlog or on the timeline
+/// like any other, and its hour is the queue's to give. [at] is that hour,
+/// as the server last worked it out.
 /// {@endtemplate}
 class ProjectTask extends Equatable {
   /// {@macro project_task}
@@ -32,6 +29,7 @@ class ProjectTask extends Equatable {
     required this.title,
     required this.minutes,
     required this.place,
+    this.notes = '',
     this.at,
     this.doneAt,
   });
@@ -45,6 +43,7 @@ class ProjectTask extends Equatable {
       title: json['title'] as String,
       minutes: (json['minutes'] as num).toInt(),
       place: TaskPlace.values.byName(json['place'] as String),
+      notes: json['notes'] as String? ?? '',
       at: at == null ? null : DateTime.parse(at).toLocal(),
       doneAt: doneAt == null ? null : DateTime.parse(doneAt).toLocal(),
     );
@@ -62,6 +61,9 @@ class ProjectTask extends Equatable {
   /// Where it is.
   final TaskPlace place;
 
+  /// The free text kept on it.
+  final String notes;
+
   /// Its hour, when it is on the timeline.
   final DateTime? at;
 
@@ -69,5 +71,5 @@ class ProjectTask extends Equatable {
   final DateTime? doneAt;
 
   @override
-  List<Object?> get props => [id, title, minutes, place, at, doneAt];
+  List<Object?> get props => [id, title, minutes, place, notes, at, doneAt];
 }

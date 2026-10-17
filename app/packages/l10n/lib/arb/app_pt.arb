@@ -288,12 +288,28 @@
   "stageBacklog": "Depois eu priorizo",
   "stageSoonEmpty": "Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.",
   "stageBacklogEmpty": "Nada esperando. Arraste para cá o que ainda não tem lugar na fila.",
+  "stageDone": "{count, plural, =0{Feitas} =1{1 feita} other{{count} feitas}}",
+  "@stageDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stageDoneEmpty": "Nada feito ainda. Arraste uma tarefa para a direita quando terminar.",
   "promptToBacklog": "Vai para Depois eu priorizo",
   "promptToQueue": "Entra na fila, onde houver espaço",
   "promptPickTime": "Escolher horário",
   "timelineAdd": "Adicionar",
   "timelineBackToNow": "Voltar para agora",
   "eventInBacklog": "Em Depois eu priorizo, ainda sem hora",
+  "eventDoneOn": "Feita {day}, às {time}",
+  "@eventDoneOn": {
+    "placeholders": {
+      "day": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
   "routineDaily": "Todo dia",
   "routineWeekdays": "Dias úteis",
   "routineWeekend": "Fim de semana",
@@ -731,18 +747,7 @@
   "projectWeek": "1 semana",
   "projectMonth": "1 mês",
   "projectPickDay": "Escolher dia",
-  "placeTitle": "Onde fica esta tarefa?",
-  "placeProject": "Só no projeto",
-  "placeProjectHelp": "Não aparece no Tempo. Espera aqui até você decidir.",
-  "placeBacklog": "Depois eu priorizo",
-  "placeBacklogHelp": "Vai para o fim do backlog do Tempo, ainda sem hora.",
-  "placeQueue": "Fazer em breve",
-  "placeQueueHelp": "Entra no fim da fila e pega a próxima hora livre.",
-  "placeScheduled": "Num horário",
-  "placeScheduledHelp": "Você escolhe o dia e a hora, e ela espera por você.",
-  "placeDone": "Feita",
-  "placeDoneHelp": "Sai da lista e conta no progresso do projeto.",
-  "projectDeleteBody": "As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.",
+  "projectDeleteBody": "As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.",
   "dayOverTitle": "Seu dia terminou às {end}",
   "@dayOverTitle": {
     "placeholders": {

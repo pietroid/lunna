@@ -647,6 +647,18 @@ abstract class AppLocalizations {
   /// **'Nada esperando. Arraste para cá o que ainda não tem lugar na fila.'**
   String get stageBacklogEmpty;
 
+  /// No description provided for @stageDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Feitas} =1{1 feita} other{{count} feitas}}'**
+  String stageDone(int count);
+
+  /// No description provided for @stageDoneEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada feito ainda. Arraste uma tarefa para a direita quando terminar.'**
+  String get stageDoneEmpty;
+
   /// No description provided for @promptToBacklog.
   ///
   /// In pt, this message translates to:
@@ -682,6 +694,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Em Depois eu priorizo, ainda sem hora'**
   String get eventInBacklog;
+
+  /// No description provided for @eventDoneOn.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feita {day}, às {time}'**
+  String eventDoneOn(String day, String time);
 
   /// No description provided for @routineDaily.
   ///
@@ -1613,76 +1631,10 @@ abstract class AppLocalizations {
   /// **'Escolher dia'**
   String get projectPickDay;
 
-  /// No description provided for @placeTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Onde fica esta tarefa?'**
-  String get placeTitle;
-
-  /// No description provided for @placeProject.
-  ///
-  /// In pt, this message translates to:
-  /// **'Só no projeto'**
-  String get placeProject;
-
-  /// No description provided for @placeProjectHelp.
-  ///
-  /// In pt, this message translates to:
-  /// **'Não aparece no Tempo. Espera aqui até você decidir.'**
-  String get placeProjectHelp;
-
-  /// No description provided for @placeBacklog.
-  ///
-  /// In pt, this message translates to:
-  /// **'Depois eu priorizo'**
-  String get placeBacklog;
-
-  /// No description provided for @placeBacklogHelp.
-  ///
-  /// In pt, this message translates to:
-  /// **'Vai para o fim do backlog do Tempo, ainda sem hora.'**
-  String get placeBacklogHelp;
-
-  /// No description provided for @placeQueue.
-  ///
-  /// In pt, this message translates to:
-  /// **'Fazer em breve'**
-  String get placeQueue;
-
-  /// No description provided for @placeQueueHelp.
-  ///
-  /// In pt, this message translates to:
-  /// **'Entra no fim da fila e pega a próxima hora livre.'**
-  String get placeQueueHelp;
-
-  /// No description provided for @placeScheduled.
-  ///
-  /// In pt, this message translates to:
-  /// **'Num horário'**
-  String get placeScheduled;
-
-  /// No description provided for @placeScheduledHelp.
-  ///
-  /// In pt, this message translates to:
-  /// **'Você escolhe o dia e a hora, e ela espera por você.'**
-  String get placeScheduledHelp;
-
-  /// No description provided for @placeDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Feita'**
-  String get placeDone;
-
-  /// No description provided for @placeDoneHelp.
-  ///
-  /// In pt, this message translates to:
-  /// **'Sai da lista e conta no progresso do projeto.'**
-  String get placeDoneHelp;
-
   /// No description provided for @projectDeleteBody.
   ///
   /// In pt, this message translates to:
-  /// **'As tarefas que só estão no projeto vão junto. As que já estão no Tempo ficam lá.'**
+  /// **'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.'**
   String get projectDeleteBody;
 
   /// No description provided for @dayOverTitle.

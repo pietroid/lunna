@@ -62,6 +62,7 @@ class AppPromptSheet extends StatefulWidget {
     this.initialText,
     this.initialDuration,
     this.initialStart,
+    this.fixable = true,
     super.key,
   });
 
@@ -90,6 +91,10 @@ class AppPromptSheet extends StatefulWidget {
   /// Only read when [previewFor] is given: without the clock there is no
   /// hour to start at.
   final DateTime? initialStart;
+
+  /// Whether it can be made fixed. Without, the sheet asks only how long,
+  /// and what it writes is flexible, at the hour it was opened on or none.
+  final bool fixable;
 
   /// The length something has before anyone has said otherwise.
   static const defaultDuration = Duration(minutes: 30);
@@ -120,6 +125,7 @@ class AppPromptSheet extends StatefulWidget {
     String? initialText,
     Duration? initialDuration,
     DateTime? initialStart,
+    bool fixable = true,
   }) {
     return showModalBottomSheet<AppPromptResult>(
       context: context,
@@ -132,6 +138,7 @@ class AppPromptSheet extends StatefulWidget {
         initialText: initialText,
         initialDuration: initialDuration,
         initialStart: initialStart,
+        fixable: fixable,
       ),
     );
   }
@@ -279,6 +286,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
                 if (_timed) ...[
                   _Controls(
                     fixed: _fixed,
+                    fixable: widget.fixable,
                     duration: _duration,
                     onFixed: (value) => _setFixed(fixed: value),
                     onDuration: _pickDuration,
@@ -360,12 +368,14 @@ class _Field extends StatelessWidget {
 class _Controls extends StatelessWidget {
   const _Controls({
     required this.fixed,
+    required this.fixable,
     required this.duration,
     required this.onFixed,
     required this.onDuration,
   });
 
   final bool fixed;
+  final bool fixable;
   final Duration duration;
   final ValueChanged<bool> onFixed;
   final VoidCallback onDuration;
@@ -374,18 +384,23 @@ class _Controls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        AppSegmented(
-          selected: fixed ? 1 : 0,
-          onSelected: (index) => onFixed(index == 1),
-          segments: [
-            AppSegment(
-              label: context.l10n.promptFlexible,
-              iconData: AppIcons.time,
-            ),
-            AppSegment(label: context.l10n.promptFixed, iconData: AppIcons.pin),
-          ],
-        ),
-        const SizedBox(width: AppSpacing.s2),
+        if (fixable) ...[
+          AppSegmented(
+            selected: fixed ? 1 : 0,
+            onSelected: (index) => onFixed(index == 1),
+            segments: [
+              AppSegment(
+                label: context.l10n.promptFlexible,
+                iconData: AppIcons.time,
+              ),
+              AppSegment(
+                label: context.l10n.promptFixed,
+                iconData: AppIcons.pin,
+              ),
+            ],
+          ),
+          const SizedBox(width: AppSpacing.s2),
+        ],
         AppPillButton(
           iconData: AppIcons.timer,
           label: formatDuration(context.l10n, duration),

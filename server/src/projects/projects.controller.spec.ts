@@ -122,7 +122,7 @@ describe('ProjectsController', () => {
     return (await http().get('/timeline').expect(200)).body as Timeline;
   }
 
-  /** A project with [titles] written down in it, all parked. */
+  /** A project with [titles] written down in it, in the backlog. */
   async function projectWith(...titles: string[]): Promise<ProjectView> {
     let answer = await http()
       .post('/projects')
@@ -136,13 +136,6 @@ describe('ProjectsController', () => {
         .expect(201);
     }
     return projects(answer).find((it) => it.id === id)!;
-  }
-
-  function place(project: ProjectView, title: string, body: object) {
-    const task = project.tasks.find((it) => it.title === title)!;
-    return http()
-      .post(`/projects/${project.id}/tasks/${task.id}/place`)
-      .send(body);
   }
 
   function taskOf(response: { body: unknown }, title: string) {
@@ -174,42 +167,66 @@ describe('ProjectsController', () => {
     await http().post('/projects').send({ title: '  ' }).expect(400);
   });
 
-  it('keeps a new task in the project, out of the day', async () => {
+  it('writes the task of a project at the end of the backlog', async () => {
+    await http()
+      .post('/tasks')
+      .send({ title: 'Email', minutes: 30 })
+      .expect(201);
     const project = await projectWith('Textos da home');
 
     expect(project.tasks.map((it) => [it.title, it.place])).toEqual([
-      ['Textos da home', 'project'],
+      ['Textos da home', 'backlog'],
     ]);
-    const day = await timeline();
-    expect(day.tasks).toEqual([]);
-    expect(day.backlog).toEqual([]);
-  });
-
-  it('lets a task out into the backlog', async () => {
-    const project = await projectWith('Textos da home');
-
-    const answer = await place(project, 'Textos da home', {
-      place: 'backlog',
-    }).expect(201);
-
-    expect(taskOf(answer, 'Textos da home').place).toBe('backlog');
     expect((await timeline()).backlog.map((it) => it.title)).toEqual([
+      'Email',
       'Textos da home',
     ]);
   });
 
-  it('lets a task out into the queue, with the hour the day gives it', async () => {
+  it('writes a task into a project from the day, and refuses a missing one', async () => {
+    const project = await projectWith();
+    const at = new Date(NOW.getTime() + 5 * 3_600_000).toISOString();
+
+    await http()
+      .post('/tasks')
+      .send({
+        title: 'Textos da home',
+        minutes: 30,
+        backlog: false,
+        notBefore: at,
+        projectId: project.id,
+      })
+      .expect(201);
+    const refused = await http()
+      .post('/tasks')
+      .send({ title: 'Outra', minutes: 30, projectId: 'no-such-project' })
+      .expect(400);
+
+    expect((refused.body as { message: string }).message).toContain('projeto');
+    const task = taskOf(
+      await http().get('/projects').expect(200),
+      'Textos da home',
+    );
+    expect([task.place, hhmm(task.at!)]).toEqual(['scheduled', '15:00']);
+  });
+
+  it('follows its task wherever the day moves it, with its hour', async () => {
     await http()
       .post('/tasks')
       .send({ title: 'Email', minutes: 30, backlog: false })
       .expect(201);
     const project = await projectWith('Textos da home');
+    const id = project.tasks[0].id;
 
-    const answer = await place(project, 'Textos da home', {
-      place: 'queue',
-    }).expect(201);
+    await http()
+      .post(`/tasks/${id}/move`)
+      .send({ index: 1, backlog: false })
+      .expect(201);
 
-    const task = taskOf(answer, 'Textos da home');
+    const task = taskOf(
+      await http().get('/projects').expect(200),
+      'Textos da home',
+    );
     const day = await timeline();
     expect(day.tasks.map((it) => it.title)).toEqual([
       'Email',
@@ -219,94 +236,28 @@ describe('ProjectsController', () => {
     expect(task.at).toBe(day.tasks[1].startTime);
   });
 
-  it('gives a task an hour of its own', async () => {
+  it('keeps a finished task, whose notes still change', async () => {
     const project = await projectWith('Textos da home');
-    const at = new Date(NOW.getTime() + 5 * 3_600_000).toISOString();
-
-    const answer = await place(project, 'Textos da home', {
-      place: 'scheduled',
-      at,
-    }).expect(201);
-
-    const task = taskOf(answer, 'Textos da home');
-    expect(task.place).toBe('scheduled');
-    expect(hhmm(task.at!)).toBe('15:00');
-    expect((await timeline()).tasks.map((it) => hhmm(it.startTime))).toEqual([
-      '15:00',
-    ]);
-  });
-
-  it('refuses an hour that is not one', async () => {
-    const project = await projectWith('Textos da home');
-    await place(project, 'Textos da home', { place: 'scheduled' }).expect(400);
-    await place(project, 'Textos da home', { place: 'later' }).expect(400);
-  });
-
-  it('takes a task off the day and back into the project', async () => {
-    const project = await projectWith('Textos da home');
-    await place(project, 'Textos da home', { place: 'queue' }).expect(201);
-
-    const answer = await place(project, 'Textos da home', {
-      place: 'project',
-    }).expect(201);
-
-    expect(taskOf(answer, 'Textos da home').place).toBe('project');
-    expect((await timeline()).tasks).toEqual([]);
-  });
-
-  it('will not take back a task that has begun', async () => {
-    const project = await projectWith('Textos da home');
-    await place(project, 'Textos da home', { place: 'queue' }).expect(201);
     const id = project.tasks[0].id;
-    await http().post(`/tasks/${id}/start`).expect(201);
 
-    const refused = await place(project, 'Textos da home', {
-      place: 'project',
-    }).expect(400);
+    await http().post(`/tasks/${id}/done`).expect(201);
+    await http().patch(`/tasks/${id}`).send({ notes: 'Revisar' }).expect(200);
+    const refused = await http()
+      .patch(`/tasks/${id}`)
+      .send({ workMinutes: 45 })
+      .expect(400);
 
     expect((refused.body as { message: string }).message).toContain(
-      'já começou',
+      'já foi feita',
     );
-  });
-
-  it('ticks off a parked task, and takes it back', async () => {
-    const project = await projectWith('Textos da home');
-
-    let answer = await place(project, 'Textos da home', {
-      place: 'done',
-    }).expect(201);
-    expect(taskOf(answer, 'Textos da home').place).toBe('done');
-
-    answer = await place(project, 'Textos da home', {
-      place: 'project',
-    }).expect(201);
-    expect(taskOf(answer, 'Textos da home').place).toBe('project');
-  });
-
-  it('ticks off a task on the day through the day', async () => {
-    const project = await projectWith('Textos da home');
-    await place(project, 'Textos da home', { place: 'queue' }).expect(201);
-
-    const answer = await place(project, 'Textos da home', {
-      place: 'done',
-    }).expect(201);
-
-    expect(taskOf(answer, 'Textos da home').place).toBe('done');
-    expect((await timeline()).tasks).toEqual([]);
-  });
-
-  it('orders the parked tasks by where they are dropped', async () => {
-    const project = await projectWith('A', 'B', 'C');
-
-    const answer = await place(project, 'C', {
-      place: 'project',
-      index: 0,
-    }).expect(201);
-
-    expect(projects(answer)[0].tasks.map((it) => it.title)).toEqual([
-      'C',
-      'A',
-      'B',
+    const task = taskOf(
+      await http().get('/projects').expect(200),
+      'Textos da home',
+    );
+    expect([task.place, task.notes, task.doneAt]).toEqual([
+      'done',
+      'Revisar',
+      NOW.toISOString(),
     ]);
   });
 
@@ -330,22 +281,27 @@ describe('ProjectsController', () => {
     expect(projects(answer)[0].doneAt).toBe(NOW.toISOString());
   });
 
-  it('removes a project, keeping what was let out onto the day', async () => {
-    const project = await projectWith('Parked', 'Out');
-    await place(project, 'Out', { place: 'queue' }).expect(201);
+  it('removes a project with what waits in the backlog, keeping the rest', async () => {
+    const project = await projectWith('Esperando', 'Na fila', 'Feita');
+    const [, queued, done] = project.tasks.map((it) => it.id);
+    await http()
+      .post(`/tasks/${queued}/move`)
+      .send({ index: 0, backlog: false })
+      .expect(201);
+    await http().post(`/tasks/${done}/done`).expect(201);
 
     const answer = await http().delete(`/projects/${project.id}`).expect(200);
 
     expect(projects(answer)).toEqual([]);
-    expect((await timeline()).tasks.map((it) => it.title)).toEqual(['Out']);
+    const day = await timeline();
+    expect(day.tasks.map((it) => it.title)).toEqual(['Na fila']);
+    expect(day.backlog).toEqual([]);
   });
 
-  it('answers 404 for a task of another project', async () => {
-    const first = await projectWith('Textos da home');
-    const second = await projectWith();
+  it('answers 404 for a project that is not there', async () => {
     await http()
-      .post(`/projects/${second.id}/tasks/${first.tasks[0].id}/place`)
-      .send({ place: 'queue' })
+      .post('/projects/no-such-project/tasks')
+      .send({ title: 'X', minutes: 30 })
       .expect(404);
   });
 });

@@ -71,40 +71,10 @@ class ProjectsRepository {
     ),
   );
 
-  /// Removes a project. Its tasks on the day stay there.
+  /// Removes a project, and what waited in the backlog for it. Its tasks
+  /// on the day, and the ones done, stay.
   Future<List<Project>> delete(String id) =>
       _projects(() => apiClient.delete<Map<String, dynamic>>('/projects/$id'));
-
-  /// Writes a task down in a project, where only the project sees it.
-  Future<List<Project>> addTask(
-    String projectId, {
-    required String title,
-    required int minutes,
-  }) => _projects(
-    () => apiClient.post<Map<String, dynamic>>(
-      '/projects/$projectId/tasks',
-      data: {'title': title, 'minutes': minutes},
-    ),
-  );
-
-  /// Moves a task to [place]: [at] is its hour for [TaskPlace.scheduled],
-  /// [index] its place among the tasks parked in the project.
-  Future<List<Project>> placeTask(
-    String projectId,
-    String taskId,
-    TaskPlace place, {
-    DateTime? at,
-    int? index,
-  }) => _projects(
-    () => apiClient.post<Map<String, dynamic>>(
-      '/projects/$projectId/tasks/$taskId/place',
-      data: {
-        'place': place.name,
-        if (at != null) 'at': at.toUtc().toIso8601String(),
-        'index': ?index,
-      },
-    ),
-  );
 
   /// `YYYY-MM-DD`, the day [day] is on this device.
   static String? _day(DateTime? day) {

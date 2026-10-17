@@ -3,15 +3,8 @@ import {
   CreateProjectDto,
   CreateProjectTaskDto,
   EditProjectDto,
-  PlaceTaskDto,
 } from './dto/project.dto';
-import {
-  NewProject,
-  Placement,
-  ProjectEdit,
-  TASK_PLACES,
-  TaskPlace,
-} from './project.types';
+import { NewProject, ProjectEdit } from './project.types';
 
 /**
  * Reading what the app sent, for every route about projects.
@@ -66,30 +59,6 @@ export function requireProjectTask(dto: CreateProjectTaskDto): {
   }
 
   return { title: requireTitle(dto.title), minutes: Math.round(minutes) };
-}
-
-/** Where a task goes. */
-export function requirePlacement(dto: PlaceTaskDto): Placement {
-  const place = dto.place as TaskPlace;
-  if (!TASK_PLACES.includes(place)) {
-    throw new BadRequestException(`Unknown place "${dto.place}"`);
-  }
-
-  const placement: Placement = { place };
-  if (place === 'scheduled') {
-    if (typeof dto.at !== 'string' || Number.isNaN(Date.parse(dto.at))) {
-      throw new BadRequestException('at must be an ISO 8601 date-time');
-    }
-    placement.at = dto.at;
-  }
-  if (dto.index !== undefined) {
-    if (!Number.isInteger(dto.index) || dto.index < 0) {
-      throw new BadRequestException('index must be a non-negative integer');
-    }
-    placement.index = dto.index;
-  }
-
-  return placement;
 }
 
 function requireTitle(raw: unknown): string {

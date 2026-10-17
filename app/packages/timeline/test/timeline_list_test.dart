@@ -1567,4 +1567,111 @@ void main() {
       expect(aim.value, const Placement.queue(2));
     });
   });
+
+  group('kept to some tasks, as a project draws it', () {
+    TimelineEvent shelved(String id, String title) => TimelineEvent.fromJson({
+      'id': id,
+      'kind': 'task',
+      'title': title,
+      'section': 'backlog',
+      'durationMinutes': 30,
+      'workMinutes': 30,
+    });
+
+    final queue = [block('x', 30, 30), block('c', 65, 30), block('y', 100, 30)];
+    final backlog = [shelved('d', 'Textos'), shelved('z', 'Gaveta')];
+    final finished = TimelineEvent(
+      id: 'e',
+      title: 'Logo',
+      section: TimelineSection.backlog,
+      startTime: now.subtract(const Duration(hours: 1)),
+      endTime: now.subtract(const Duration(hours: 1)),
+      durationMinutes: 45,
+    );
+
+    Future<(TimelineBloc, List<TimelineEvent>)> pumpKept(
+      WidgetTester tester,
+    ) async {
+      final bloc = _MockTimelineBloc();
+      when(() => bloc.state).thenReturn(
+        TimelineState(
+          status: TimelineStatus.success,
+          cards: queue,
+          tasks: queue,
+          backlog: backlog,
+        ),
+      );
+      final tapped = <TimelineEvent>[];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: AppTheme.current,
+          home: Scaffold(
+            body: BlocProvider<TimelineBloc>.value(
+              value: bloc,
+              child: TimelineList(
+                onCardTap: tapped.add,
+                mode: TimelineMode.list,
+                only: const {'c', 'd'},
+                done: [finished],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      return (bloc as TimelineBloc, tapped);
+    }
+
+    testAt('draws only those, and what was done under them', (tester) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final (_, tapped) = await pumpKept(tester);
+
+      double top(String text) => tester.getTopLeft(find.text(text)).dy;
+      expect(find.text('Bloco x'), findsNothing);
+      expect(find.text('Gaveta'), findsNothing);
+      expect(top(l10n.stageSoon), lessThan(top('Bloco c')));
+      expect(top('Bloco c'), lessThan(top(l10n.stageBacklog)));
+      expect(top(l10n.stageBacklog), lessThan(top('Textos')));
+      expect(top('Textos'), lessThan(top(l10n.stageDone(1))));
+      expect(top(l10n.stageDone(1)), lessThan(top('Logo')));
+
+      await tester.tap(find.text('Logo'));
+      expect(tapped.single.id, 'e');
+    });
+
+    testAt('counts a drop in the whole queue, right over the card under it', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final (bloc, _) = await pumpKept(tester);
+
+      final heading = tester.getBottomLeft(find.text(l10n.stageSoon)).dy;
+      final card = tester.getTopLeft(find.widgetWithText(EventTile, 'Bloco c'));
+      await drag(tester, 'Textos', (heading + card.dy) / 2);
+
+      verify(() => bloc.add(const EventMoved(id: 'd', index: 1))).called(1);
+    });
+
+    testAt('counts a drop in the whole backlog, right under the card above', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final (bloc, _) = await pumpKept(tester);
+
+      final card = tester.getBottomLeft(
+        find.widgetWithText(EventTile, 'Textos'),
+      );
+      final done = tester.getTopLeft(find.text(l10n.stageDone(1))).dy;
+      await drag(tester, 'Bloco c', (card.dy + done) / 2);
+
+      verify(
+        () => bloc.add(const EventMoved(id: 'c', index: 1, backlog: true)),
+      ).called(1);
+    });
+  });
 }

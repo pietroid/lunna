@@ -195,12 +195,6 @@ export const task = pgTable(
     projectId: uuid('project_id').references(() => project.id, {
       onDelete: 'set null',
     }),
-    /**
-     * Whether it waits in its project, out of the day's sight: in neither the
-     * queue nor the backlog. A project's tasks start here, so a project with
-     * twenty of them does not drop twenty tasks on the backlog.
-     */
-    parked: boolean('parked').notNull().default(false),
     /** When it was finished. Null while there is still something to do. */
     doneAt: timestamp('done_at', { withTimezone: true }),
     /** The flexible routine this is a day of, when it is one. */

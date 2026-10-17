@@ -50,6 +50,13 @@
       "when": 1792191075421,
       "tag": "0006_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792273519679,
+      "tag": "0007_drop_parked",
+      "breakpoints": true
     }
   ]
 }

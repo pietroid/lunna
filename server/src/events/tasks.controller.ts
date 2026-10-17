@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,6 +13,7 @@ import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { Trace } from '../common/trace';
+import { ProjectStore } from '../projects/project.store';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
@@ -51,6 +53,7 @@ export class TasksController {
     private readonly timeline: TimelineService,
     private readonly layout: EventLayoutService,
     private readonly ticker: PauseTickerService,
+    private readonly projects: ProjectStore,
   ) {}
 
   /** Writes a task down at the end of the queue. */
@@ -62,7 +65,14 @@ export class TasksController {
   ): Promise<Timeline> {
     const trace = Trace.start(user.id);
     trace.log('turn.begin', { kind: 'task' });
-    await this.layout.createTask(owner(user), requireTask(dto), trace);
+    const task = requireTask(dto);
+    if (
+      task.projectId !== undefined &&
+      (await this.projects.get(owner(user), task.projectId)) === undefined
+    ) {
+      throw new BadRequestException('Esse projeto não existe mais.');
+    }
+    await this.layout.createTask(owner(user), task, trace);
 
     return this._answer(user, days);
   }

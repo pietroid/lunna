@@ -126,33 +126,10 @@ class ProjectsCubit extends Cubit<ProjectsState> {
   Future<void> setDone(String id, {required bool done}) =>
       _run(() => _repository.update(id, done: done));
 
-  /// Removes a project. What it let out onto the day stays there.
-  Future<void> delete(String id) => _run(() => _repository.delete(id));
-
-  /// Writes a task down in a project.
-  Future<void> addTask(String projectId, String title, int minutes) => _run(
-    () => _repository.addTask(projectId, title: title, minutes: minutes),
-  );
-
-  /// Moves a task to [place]: [at] its hour, [index] its place among the
-  /// tasks parked in the project.
-  Future<void> placeTask(
-    String projectId,
-    String taskId,
-    TaskPlace place, {
-    DateTime? at,
-    int? index,
-  }) async {
-    final moved = await _run(
-      () => _repository.placeTask(
-        projectId,
-        taskId,
-        place,
-        at: at,
-        index: index,
-      ),
-    );
-    if (moved) onDayChanged?.call();
+  /// Removes a project, and what waited in the backlog for it, so the day
+  /// reads itself again.
+  Future<void> delete(String id) async {
+    if (await _run(() => _repository.delete(id))) onDayChanged?.call();
   }
 
   /// Forgets the last refusal, once it has been shown.

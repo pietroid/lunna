@@ -1,15 +1,24 @@
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:projects/projects.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timeline/timeline.dart';
 
 class _MockRepository extends Mock implements ProjectsRepository {}
 
+class _MockTimelineBloc extends MockBloc<TimelineBlocEvent, TimelineState>
+    implements TimelineBloc {}
+
+class _MockVoiceCubit extends MockCubit<VoiceState> implements VoiceCubit {}
+
 void main() {
-  setUpAll(() => registerFallbackValue(TaskPlace.project));
+  setUpAll(() => registerFallbackValue(const TimelineRequested()));
 
   /// Ten in the morning, wherever this runs: the screen reads [clock].
   final now = DateTime(2026, 6, 10, 10);
@@ -21,13 +30,17 @@ void main() {
     );
   }
 
-  ProjectTask task(String id, TaskPlace place, {DateTime? at}) => ProjectTask(
-    id: id,
-    title: 'Tarefa $id',
-    minutes: 30,
-    place: place,
-    at: at,
-  );
+  final l10n = lookupAppLocalizations(const Locale('pt'));
+
+  ProjectTask task(String id, TaskPlace place, {DateTime? doneAt}) =>
+      ProjectTask(
+        id: id,
+        title: 'Tarefa $id',
+        minutes: 30,
+        place: place,
+        notes: 'Notas de $id',
+        doneAt: doneAt,
+      );
 
   final project = Project(
     id: 'p',
@@ -35,123 +48,144 @@ void main() {
     createdAt: DateTime(2026, 6),
     deadline: DateTime(2026, 6, 24),
     tasks: [
-      task('a', TaskPlace.project),
-      task('b', TaskPlace.project),
-      task('c', TaskPlace.queue, at: DateTime(2026, 6, 10, 14)),
+      task('c', TaskPlace.queue),
       task('d', TaskPlace.backlog),
-      task('e', TaskPlace.done),
+      task('e', TaskPlace.done, doneAt: DateTime(2026, 6, 10, 9)),
+    ],
+  );
+
+  TimelineEvent card(String id, int fromMinutes) => TimelineEvent(
+    id: id,
+    title: 'Tarefa $id',
+    section: TimelineSection.dia,
+    startTime: now.add(Duration(minutes: fromMinutes)),
+    endTime: now.add(Duration(minutes: fromMinutes + 30)),
+    durationMinutes: 30,
+  );
+
+  final day = TimelineState(
+    status: TimelineStatus.success,
+    cards: [card('x', 30), card('c', 65)],
+    tasks: [card('x', 30), card('c', 65)],
+    backlog: [
+      TimelineEvent.fromJson({
+        'id': 'd',
+        'kind': 'task',
+        'title': 'Tarefa d',
+        'section': 'backlog',
+        'durationMinutes': 30,
+        'workMinutes': 30,
+      }),
     ],
   );
 
   late _MockRepository repository;
+  late _MockTimelineBloc timeline;
 
   setUp(() {
     repository = _MockRepository();
-    when(
-      () => repository.placeTask(
-        any(),
-        any(),
-        any(),
-        at: any(named: 'at'),
-        index: any(named: 'index'),
-      ),
-    ).thenAnswer((_) async => [project]);
+    when(() => repository.list()).thenAnswer((_) async => [project]);
+    timeline = _MockTimelineBloc();
+    when(() => timeline.state).thenReturn(day);
   });
 
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(WidgetTester tester, {String id = 'p'}) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    final voice = _MockVoiceCubit();
+    when(() => voice.state).thenReturn(const VoiceState());
 
     await tester.pumpWidget(
-      BlocProvider(
-        create: (_) => ProjectsCubit(
-          repository: repository,
-          initial: ProjectsState(
-            status: ProjectsStatus.ready,
-            projects: [project],
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<TimelineBloc>.value(value: timeline),
+          BlocProvider<VoiceCubit>.value(value: voice),
+          BlocProvider(
+            create: (_) => ProjectsCubit(
+              repository: repository,
+              initial: ProjectsState(
+                status: ProjectsStatus.ready,
+                projects: [project],
+              ),
+            ),
           ),
-        ),
+        ],
         child: MaterialApp(
           theme: AppTheme.current,
           locale: const Locale('pt', 'BR'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const ProjectPage(id: 'p'),
+          home: ProjectPage(id: id),
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
   }
 
-  testAt('files the tasks under where they are, as Lista does', (
+  testAt('opens on the notes, then on whatever was last chosen', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
+    await pump(tester);
+    expect(find.text(l10n.projectNotesHint), findsOneWidget);
+
+    await tester.tap(find.text(l10n.projectTasksTab(2)));
+    await tester.pump();
+    expect(
+      (await SharedPreferences.getInstance()).getInt('project.tab.p'),
+      1,
+    );
+  });
+
+  testAt('draws the project in Tempo\'s stages, and nothing else of the day', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'project.tab.p': 1});
     await pump(tester);
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
-    expect(top('Só no projeto'), lessThan(top('Tarefa a')));
-    expect(top('Tarefa b'), lessThan(top('Fazer em breve')));
-    expect(top('Fazer em breve'), lessThan(top('Tarefa c')));
-    expect(top('Depois eu priorizo'), lessThan(top('Tarefa d')));
-    expect(top('1 feita'), lessThan(top('Tarefa e')));
-    // On the day, a card reads its hours; off it, its length.
-    expect(find.text('14:00–14:30'), findsOneWidget);
-    expect(find.text('faltam 14 dias'), findsOneWidget);
+    expect(find.text('Tarefa x'), findsNothing);
+    expect(top(l10n.stageSoon), lessThan(top('Tarefa c')));
+    expect(top('Tarefa c'), lessThan(top(l10n.stageBacklog)));
+    expect(top(l10n.stageBacklog), lessThan(top('Tarefa d')));
+    expect(top(l10n.stageDone(1)), lessThan(top('Tarefa e')));
   });
 
-  testAt('asks where a tapped task goes, and moves it there', (tester) async {
-    await pump(tester);
-
-    await tester.tap(find.text('Tarefa a'));
-    await tester.pumpAndSettle();
-    expect(find.text('Onde fica esta tarefa?'), findsOneWidget);
-
-    await tester.tap(find.text('Fazer em breve').last);
-    await tester.pumpAndSettle();
-
-    verify(
-      () => repository.placeTask('p', 'a', TaskPlace.queue),
-    ).called(1);
-  });
-
-  testAt('moves a card dragged into another stage', (tester) async {
-    await pump(tester);
-
-    final from = tester.getCenter(find.text('Tarefa a'));
-    final to = tester.getCenter(find.text('Tarefa d'));
-    final gesture = await tester.startGesture(from);
-    await tester.pump(const Duration(milliseconds: 600));
-    for (var step = 1; step <= 10; step++) {
-      await gesture.moveTo(Offset.lerp(from, to, step / 10)!);
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    await gesture.up();
-    await tester.pumpAndSettle();
-
-    verify(
-      () => repository.placeTask('p', 'a', TaskPlace.backlog),
-    ).called(1);
-  });
-
-  testAt('reorders the project by dropping a card on another', (
+  testAt('opens a finished task on its notes, saying when it was done', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({'project.tab.p': 1});
     await pump(tester);
 
-    final from = tester.getCenter(find.text('Tarefa b'));
-    final to = tester.getCenter(find.text('Tarefa a'));
-    final gesture = await tester.startGesture(from);
+    await tester.tap(find.text('Tarefa e'));
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
-    for (var step = 1; step <= 10; step++) {
-      await gesture.moveTo(Offset.lerp(from, to, step / 10)!);
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    await gesture.up();
-    await tester.pumpAndSettle();
 
-    verify(
-      () => repository.placeTask('p', 'b', TaskPlace.project, index: 0),
-    ).called(1);
+    expect(find.text('Notas de e'), findsOneWidget);
+    expect(
+      find.text(l10n.eventDoneOn(l10n.dayToday.toLowerCase(), '09:00')),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is AppIconButton && widget.iconData == AppIcons.trash,
+      ),
+      findsNothing,
+    );
+  });
+
+  testAt('reads the project again when the day changes', (tester) async {
+    SharedPreferences.setMockInitialValues({'project.tab.p': 1});
+    whenListen(
+      timeline,
+      Stream.value(day.copyWith(backlog: const [])),
+      initialState: day,
+    );
+    await pump(tester);
+
+    verify(() => repository.list()).called(1);
   });
 }

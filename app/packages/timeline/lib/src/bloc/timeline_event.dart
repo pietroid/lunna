@@ -58,6 +58,7 @@ final class EventCreated extends TimelineBlocEvent {
     required this.fixed,
     this.startTime,
     this.placement = const Placement.backlog(),
+    this.projectId,
   });
 
   /// What the user wrote, which is what the block is called.
@@ -75,6 +76,10 @@ final class EventCreated extends TimelineBlocEvent {
   /// Where a flexible one without an hour goes.
   final Placement placement;
 
+  /// The project it is written down in, when it is. Only a task can be in
+  /// one.
+  final String? projectId;
+
   @override
   List<Object?> get props => [
     title,
@@ -82,6 +87,7 @@ final class EventCreated extends TimelineBlocEvent {
     fixed,
     startTime,
     placement,
+    projectId,
   ];
 }
 

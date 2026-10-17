@@ -96,7 +96,7 @@ server/
     events/             the timeline routes, the read model, the layout rules
     tasks/              TaskStore (Postgres) over the task table
     notifications/      the reminder plan, derived from the calendar
-    projects/           ProjectStore, projects and their parked tasks
+    projects/           ProjectStore (+ its module), the projects and where their tasks are
     routines/           routine CRUD and day expansion
     time/               work hours, zones, the scheduler
   drizzle/              generated SQL migrations (committed)
@@ -408,8 +408,10 @@ greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
 ### Projects
 
 A project is a subject that outlives a day (a name, notes, a deadline). Its
-tasks are ordinary tasks, **parked** off the day (`task.parked`) until let
-out. The routes, the stages and the rules are in
+tasks are ordinary tasks on the day (`task.project_id`), written down at
+the end of the backlog, and its Tarefas is Tempo's Lista kept to them
+(`TimelineList(only:, done:)`): the same gestures, the same stages, plus
+the ones done. The routes, the stages and the rules are in
 [product/spec/projects.md](./product/spec/projects.md): read it before
 touching `server/src/projects/` or `app/packages/projects/`.
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -7,14 +8,15 @@ import 'package:l10n/l10n.dart';
 import 'package:projects/src/bloc/projects_cubit.dart';
 import 'package:projects/src/models/models.dart';
 import 'package:projects/src/view/failure_listener.dart';
-import 'package:projects/src/view/place_sheet.dart';
 import 'package:projects/src/view/project_format.dart';
 import 'package:projects/src/view/project_sheet.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timeline/timeline.dart';
 
 /// Opens the project with [id] on its own page, over the tab.
 ///
 /// The page is its own route, so it is handed the cubit it reads.
-Future<void> openProject(BuildContext context, String id, {int tab = 0}) {
+Future<void> openProject(BuildContext context, String id, {int? tab}) {
   final cubit = context.read<ProjectsCubit>();
 
   return Navigator.of(context).push(
@@ -35,26 +37,63 @@ Future<void> openProject(BuildContext context, String id, {int tab = 0}) {
 /// a day less, a day more, done. The bar is its time, as on the running
 /// block.
 ///
-/// Under that, two spaces of their own: the tasks, and the notes. The tasks
-/// are the project's, and each says where it is: only here, in the backlog,
-/// or on the day. Tapping that is how it moves.
+/// Under that, two spaces of their own: the notes, and the tasks, opening
+/// on whichever was last chosen for this project, on this device. The tasks
+/// are Tempo's Lista kept to this project, with Tempo's bar and + at the
+/// foot.
 /// {@endtemplate}
 class ProjectPage extends StatefulWidget {
   /// {@macro project_page}
-  const ProjectPage({required this.id, this.initialTab = 0, super.key});
+  const ProjectPage({required this.id, this.initialTab, super.key});
 
   /// The project's id.
   final String id;
 
-  /// Which space opens first: 0 the tasks, 1 the notes.
-  final int initialTab;
+  /// Which space opens first: 0 the notes, 1 the tasks. Null opens the one
+  /// this device last chose.
+  final int? initialTab;
 
   @override
   State<ProjectPage> createState() => _ProjectPageState();
 }
 
 class _ProjectPageState extends State<ProjectPage> {
-  late int _tab = widget.initialTab;
+  static const _notesTab = 0;
+  static const _tasksTab = 1;
+
+  /// Where this project's last choice of space is kept, on this device:
+  /// each project opens the way it was left.
+  String get _tabKey => 'project.tab.${widget.id}';
+
+  late int _tab = widget.initialTab ?? _notesTab;
+
+  /// Where the + at the foot of the page writes: the stage at the top of
+  /// the list, as on Tempo.
+  final _aim = TimelineAim();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTab == null) unawaited(_restoreTab());
+  }
+
+  Future<void> _restoreTab() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getInt(_tabKey);
+      if (saved != null && mounted) setState(() => _tab = saved);
+    } on Object {
+      // Nothing remembered opens on the notes.
+    }
+  }
+
+  void _choose(int tab) {
+    setState(() => _tab = tab);
+    unawaited(
+      SharedPreferences.getInstance()
+          .then((prefs) => prefs.setInt(_tabKey, tab))
+          .catchError((Object _) => true),
+    );
+  }
 
   Future<void> _delete(BuildContext context, Project project) async {
     final cubit = context.read<ProjectsCubit>();
@@ -71,77 +110,103 @@ class _ProjectPageState extends State<ProjectPage> {
       (cubit) => cubit.state.byId(widget.id),
     );
 
-    return ProjectsFailureListener(
-      child: Scaffold(
-        appBar: AppBar(
-          leading: AppIconButton(
-            iconData: AppIcons.back,
-            onPressed: () => Navigator.of(context).maybePop(),
+    // Every change to a task here is the day's, through the timeline, so the
+    // project reads itself again whenever the day's tasks change.
+    return BlocListener<TimelineBloc, TimelineState>(
+      listenWhen: (before, after) =>
+          before.tasks != after.tasks || before.backlog != after.backlog,
+      listener: (context, _) => unawaited(context.read<ProjectsCubit>().load()),
+      child: ProjectsFailureListener(
+        child: Scaffold(
+          appBar: AppBar(
+            leading: AppIconButton(
+              iconData: AppIcons.back,
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+            titleSpacing: 0,
+            title: project == null ? null : _Title(project: project),
+            actions: [
+              if (project != null)
+                AppIconButton(
+                  iconData: AppIcons.trash,
+                  color: AppColors.ink2,
+                  onPressed: () => unawaited(_delete(context, project)),
+                ),
+              const SizedBox(width: AppSpacing.s2),
+            ],
           ),
-          titleSpacing: 0,
-          title: project == null ? null : _Title(project: project),
-          actions: [
-            if (project != null)
-              AppIconButton(
-                iconData: AppIcons.trash,
-                color: AppColors.ink2,
-                onPressed: () => unawaited(_delete(context, project)),
-              ),
-            const SizedBox(width: AppSpacing.s2),
-          ],
-        ),
-        body: SafeArea(
-          top: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AppSpacing.maxContentWidth,
-              ),
-              child: project == null
-                  ? const SizedBox.shrink()
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _Summary(project: project),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.s6,
-                            AppSpacing.s2,
-                            AppSpacing.s6,
-                            AppSpacing.s2,
-                          ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: AppSegmented(
-                              selected: _tab,
-                              onSelected: (tab) => setState(() => _tab = tab),
-                              segments: [
-                                AppSegment(
-                                  label: context.l10n.projectTasksTab(
-                                    project.tasks.length - project.doneCount,
+          body: SafeArea(
+            top: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: AppSpacing.maxContentWidth,
+                ),
+                child: project == null
+                    ? const SizedBox.shrink()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _Summary(project: project),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.s6,
+                              AppSpacing.s2,
+                              AppSpacing.s6,
+                              AppSpacing.s2,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: AppSegmented(
+                                selected: _tab,
+                                onSelected: _choose,
+                                segments: [
+                                  AppSegment(
+                                    label: context.l10n.projectNotesTab,
+                                    iconData: AppIcons.pen,
                                   ),
-                                  iconData: AppIcons.check,
-                                ),
-                                AppSegment(
-                                  label: context.l10n.projectNotesTab,
-                                  iconData: AppIcons.pen,
-                                ),
-                              ],
+                                  AppSegment(
+                                    label: context.l10n.projectTasksTab(
+                                      project.tasks.length - project.doneCount,
+                                    ),
+                                    iconData: AppIcons.check,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: _tab == 0
-                              ? _Tasks(project: project)
-                              : _Notes(
-                                  key: ValueKey(project.id),
-                                  project: project,
-                                ),
-                        ),
-                      ],
-                    ),
+                          Expanded(
+                            child: _tab == _tasksTab
+                                ? _Tasks(project: project, aim: _aim)
+                                : _Notes(
+                                    key: ValueKey(project.id),
+                                    project: project,
+                                  ),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
+          // The tasks are written and talked about the way the day is: the
+          // same bar and the same +. The notes are a page to write on, so
+          // nothing floats over them.
+          floatingActionButton: project == null || _tab != _tasksTab
+              ? null
+              : AskDock(
+                  fab: AppFab(
+                    tooltip: context.l10n.projectAddTask,
+                    onPressed: () => unawaited(
+                      writeDownOnTimeline(
+                        context,
+                        placement: _aim.value ?? const Placement.backlog(),
+                        projectId: widget.id,
+                      ),
+                    ),
+                  ),
+                ),
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerFloat,
         ),
       ),
     );
@@ -394,388 +459,68 @@ class _Action extends StatelessWidget {
   }
 }
 
-/// The project's tasks, filed the way Lista files the day: under a heading
-/// for where each one is, in the same cards.
+/// The project's tasks, drawn by the very list Tempo draws in Lista, kept
+/// to this project's: Fazer em breve with their hours, Depois eu priorizo,
+/// and what was done.
 ///
-/// Only in the project first, since that is where new ones land and where
-/// the work of deciding happens; then on the day, by their hours; then the
-/// backlog; then the done ones, quieter. A heading with nothing under it is
-/// not drawn, except the first, which holds the +.
-///
-/// A card held and dragged moves to whichever stage it is let go over, as
-/// in Lista. Let go over a card in the project, it takes that card's place.
-/// An hour is not a drop: tapping the card asks for one.
-class _Tasks extends StatefulWidget {
-  const _Tasks({required this.project});
+/// So everything a card does there it does here: held, it moves up, down
+/// and across the line; carried right it is done; carried left it is
+/// deleted once confirmed; tapped, it opens its page and its notes.
+class _Tasks extends StatelessWidget {
+  const _Tasks({required this.project, required this.aim});
 
   final Project project;
-
-  @override
-  State<_Tasks> createState() => _TasksState();
-}
-
-class _TasksState extends State<_Tasks> {
-  /// The card in the air, so the stages know to open up as targets.
-  ProjectTask? _dragging;
-
-  Project get project => widget.project;
+  final TimelineAim aim;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    List<ProjectTask> at(Set<TaskPlace> places) => [
-      for (final t in project.tasks)
-        if (places.contains(t.place)) t,
-    ];
     final far = DateTime(9999);
-    final onDay = at({TaskPlace.queue, TaskPlace.scheduled})
-      ..sort((a, b) => (a.at ?? far).compareTo(b.at ?? far));
-    final done = at({TaskPlace.done})
-      ..sort((a, b) => (b.doneAt ?? far).compareTo(a.doneAt ?? far));
-    final stages = [
-      (TaskPlace.project, l10n.placeProject, at({TaskPlace.project})),
-      (TaskPlace.queue, l10n.placeQueue, onDay),
-      (TaskPlace.backlog, l10n.placeBacklog, at({TaskPlace.backlog})),
-      (TaskPlace.done, l10n.projectTasksDone(done.length), done),
-    ];
+    final done = [
+      for (final t in project.tasks)
+        if (t.place == TaskPlace.done) t,
+    ]..sort((a, b) => (b.doneAt ?? far).compareTo(a.doneAt ?? far));
+    final cards = [for (final t in done) _doneCard(t)];
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s5,
-        0,
-        AppSpacing.s5,
-        AppSpacing.s8,
-      ),
-      children: [
-        for (final (i, (place, heading, tasks)) in stages.indexed)
-          // A stage is drawn when it has something, when it is the first, or
-          // while a card is in the air and could land there.
-          if (i == 0 || tasks.isNotEmpty || _dragging != null)
-            _Stage(
-              place: place,
-              heading: tasks.isEmpty && place == TaskPlace.done
-                  ? l10n.placeDone
-                  : heading,
-              first: i == 0,
-              dragging: _dragging,
-              onDrop: (task) => _drop(task, place),
-              children: [
-                for (final (index, task) in tasks.indexed) ...[
-                  _DraggableCard(
-                    task: task,
-                    onTap: () => unawaited(placeTask(context, project, task)),
-                    onDragStarted: () => setState(() => _dragging = task),
-                    onDragEnded: () => setState(() => _dragging = null),
-                    // Only the project keeps an order of its own: the day
-                    // orders the rest by their hours and their queues.
-                    onDropBefore: place == TaskPlace.project
-                        ? (dropped) => _drop(dropped, place, index: index)
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.s2),
-                ],
-                if (i == 0) _AddTask(onTap: () => unawaited(_add(context))),
-              ],
-            ),
-      ],
-    );
-  }
-
-  void _drop(ProjectTask task, TaskPlace place, {int? index}) {
-    setState(() => _dragging = null);
-    if (task.place == place && index == null) return;
-    // On the day is one stage with two kinds of card: dropping an anchored
-    // one there again changes nothing.
-    if (place == TaskPlace.queue && task.place == TaskPlace.scheduled) return;
-
-    unawaited(
-      context.read<ProjectsCubit>().placeTask(
-        project.id,
-        task.id,
-        place,
-        index: index,
-      ),
-    );
-  }
-
-  /// The same sheet the day writes with, asked without the clock: what it is
-  /// and how long. It lands in the project, where only the project sees it.
-  Future<void> _add(BuildContext context) async {
-    final cubit = context.read<ProjectsCubit>();
-    final result = await AppPromptSheet.show(context);
-    if (result == null) return;
-
-    await cubit.addTask(project.id, result.text, result.duration.inMinutes);
-  }
-}
-
-/// One stage: its heading and its cards, and a place a card can be let go.
-///
-/// While a card from another stage hovers over it, it washes in the accent,
-/// so where the card will land is never a guess.
-class _Stage extends StatelessWidget {
-  const _Stage({
-    required this.place,
-    required this.heading,
-    required this.first,
-    required this.dragging,
-    required this.onDrop,
-    required this.children,
-  });
-
-  final TaskPlace place;
-  final String heading;
-  final bool first;
-  final ProjectTask? dragging;
-  final ValueChanged<ProjectTask> onDrop;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return DragTarget<ProjectTask>(
-      onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (details) => onDrop(details.data),
-      builder: (context, candidates, _) {
-        final hovered =
-            candidates.isNotEmpty && candidates.first?.place != place;
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          margin: EdgeInsets.only(top: first ? 0 : AppSpacing.s3),
-          padding: const EdgeInsets.only(bottom: AppSpacing.s1),
-          decoration: BoxDecoration(
-            color: hovered ? AppColors.accentWash : null,
-            borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _Heading(text: heading, first: first),
-              ...children,
-              // An empty stage still needs somewhere to be let go over.
-              if (children.isEmpty && dragging != null)
-                const SizedBox(height: AppSpacing.s12),
-            ],
-          ),
-        );
+    return TimelineList(
+      mode: TimelineMode.list,
+      only: {
+        for (final t in project.tasks)
+          if (t.place != TaskPlace.done) t.id,
       },
-    );
-  }
-}
-
-/// A card that can be held and carried to another stage.
-class _DraggableCard extends StatelessWidget {
-  const _DraggableCard({
-    required this.task,
-    required this.onTap,
-    required this.onDragStarted,
-    required this.onDragEnded,
-    this.onDropBefore,
-  });
-
-  final ProjectTask task;
-  final VoidCallback onTap;
-  final VoidCallback onDragStarted;
-  final VoidCallback onDragEnded;
-
-  /// A card let go over this one, when this stage keeps an order.
-  final ValueChanged<ProjectTask>? onDropBefore;
-
-  @override
-  Widget build(BuildContext context) {
-    final card = _TaskCard(task: task, onTap: onTap);
-
-    final draggable = LayoutBuilder(
-      builder: (context, constraints) => LongPressDraggable<ProjectTask>(
-        data: task,
-        onDragStarted: onDragStarted,
-        onDragEnd: (_) => onDragEnded(),
-        onDraggableCanceled: (_, _) => onDragEnded(),
-        feedback: SizedBox(
-          width: constraints.maxWidth,
-          child: _TaskCard(task: task, onTap: () {}, lifted: true),
-        ),
-        childWhenDragging: Opacity(opacity: 0, child: card),
-        child: card,
-      ),
-    );
-
-    final dropBefore = onDropBefore;
-    if (dropBefore == null) return draggable;
-
-    return DragTarget<ProjectTask>(
-      onWillAcceptWithDetails: (details) => details.data.id != task.id,
-      onAcceptWithDetails: (details) => dropBefore(details.data),
-      builder: (context, candidates, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Where the card will land: a line above the one it is over.
-          if (candidates.isNotEmpty)
-            Container(
-              height: 2,
-              margin: const EdgeInsets.only(bottom: AppSpacing.s1),
-              color: AppColors.accent,
+      done: cards,
+      aim: aim,
+      // A finished task is not on the timeline, so its page is handed the
+      // card this list drew.
+      onCardTap: (card) => unawaited(
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => EventPage(
+              id: card.id,
+              finished: cards.where((it) => it.id == card.id).firstOrNull,
             ),
-          draggable,
-        ],
-      ),
-    );
-  }
-}
-
-/// A stage's heading, in the type Lista heads its stages with.
-class _Heading extends StatelessWidget {
-  const _Heading({required this.text, required this.first});
-
-  final String text;
-  final bool first;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.s1,
-        first ? AppSpacing.s3 : AppSpacing.s6,
-        AppSpacing.s1,
-        AppSpacing.s2,
-      ),
-      child: Text(text, style: AppTypography.title),
-    );
-  }
-}
-
-/// {@template task_card}
-/// A project's task, drawn as Lista draws a task: a borderless fill with the
-/// title, and on the right its hours once it is on the day, or its length
-/// while it is not.
-/// {@endtemplate}
-class _TaskCard extends StatelessWidget {
-  const _TaskCard({
-    required this.task,
-    required this.onTap,
-    this.lifted = false,
-  });
-
-  final ProjectTask task;
-  final VoidCallback onTap;
-
-  /// Whether this is the copy that follows the finger.
-  final bool lifted;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final done = task.place == TaskPlace.done;
-    final start = task.at;
-    final length = formatDuration(l10n, Duration(minutes: task.minutes));
-    final end = start?.add(Duration(minutes: task.minutes));
-
-    return Material(
-      color: lifted ? AppColors.fillStrong : AppColors.fill,
-      elevation: lifted ? 8 : 0,
-      shadowColor: AppColors.bg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s4,
-            vertical: AppSpacing.s3,
-          ),
-          child: Row(
-            children: [
-              // The mark goes before the title, as a routine's or a fixed
-              // block's does on the day.
-              if (done) ...[
-                const AppIcon(
-                  iconData: AppIcons.check,
-                  size: AppSpacing.s4,
-                  color: AppColors.ink3,
-                ),
-                const SizedBox(width: AppSpacing.s2),
-              ],
-              Expanded(
-                child: Text(
-                  task.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.body.copyWith(
-                    color: done ? AppColors.ink3 : AppColors.ink,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s3),
-              Text(
-                start == null || done
-                    ? length
-                    : '${_day(l10n, start)}${_hhmm(start)}–${_hhmm(end!)}',
-                style: AppTypography.label.copyWith(color: AppColors.ink3),
-              ),
-            ],
           ),
         ),
       ),
+      onWriteDown: (placement) => unawaited(
+        writeDownOnTimeline(
+          context,
+          placement: placement,
+          projectId: project.id,
+        ),
+      ),
     );
   }
 
-  /// Nothing for today, "amanhã ", "dom ": there are no day headings here to
-  /// say it.
-  static String _day(AppLocalizations l10n, DateTime at) {
-    final now = clock.now();
-    final days = DateTime.utc(
-      at.year,
-      at.month,
-      at.day,
-    ).difference(DateTime.utc(now.year, now.month, now.day)).inDays;
-    if (days <= 0) return '';
-    if (days == 1) return '${l10n.dayTomorrow.toLowerCase()} ';
-    return '${l10n.weekdaysShort.split(',')[at.weekday - 1]} ';
-  }
-
-  static String _hhmm(DateTime at) =>
-      '${at.hour.toString().padLeft(2, '0')}:'
-      '${at.minute.toString().padLeft(2, '0')}';
-}
-
-/// The + under the tasks.
-class _AddTask extends StatelessWidget {
-  const _AddTask({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.s4,
-          AppSpacing.s3,
-          AppSpacing.s4,
-          AppSpacing.s3,
-        ),
-        child: Row(
-          children: [
-            const SizedBox(
-              width: AppSpacing.s5 + 2,
-              child: AppIcon(
-                iconData: AppIcons.plus,
-                size: AppSpacing.s5,
-                color: AppColors.accent,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.s3),
-            Text(
-              context.l10n.projectAddTask,
-              style: AppTypography.bodyStrong.copyWith(color: AppColors.accent),
-            ),
-          ],
-        ),
-      ),
+  static TimelineEvent _doneCard(ProjectTask task) {
+    final at = task.doneAt ?? clock.now();
+    return TimelineEvent(
+      id: task.id,
+      title: task.title,
+      notes: task.notes,
+      section: TimelineSection.backlog,
+      startTime: at,
+      endTime: at,
+      durationMinutes: task.minutes,
     );
   }
 }

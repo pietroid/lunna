@@ -27,20 +27,28 @@ import 'package:timeline/src/widgets/widgets.dart';
 ///
 /// The card is read from the timeline rather than fetched. It is the card
 /// the user just tapped, and every change made here lands on the timeline
-/// first, so the two can never disagree.
+/// first, so the two can never disagree. A finished task is no longer on
+/// the timeline, so whoever opens one hands it in ([finished]): its page
+/// shows when it was done, and only its name and notes still change.
 /// {@endtemplate}
 class EventPage extends StatelessWidget {
   /// {@macro event_page}
-  const EventPage({required this.id, super.key});
+  const EventPage({required this.id, this.finished, super.key});
 
   /// The card's id: the task's for a task, the event's for an event.
   final String id;
 
+  /// The task as it was when it was finished, for one the timeline no
+  /// longer draws. Its [TimelineEvent.startTime] is when it was done.
+  final TimelineEvent? finished;
+
   @override
   Widget build(BuildContext context) {
-    final card = context.select<TimelineBloc, TimelineEvent?>(
+    final live = context.select<TimelineBloc, TimelineEvent?>(
       (bloc) => bloc.state.byId(id),
     );
+    final card = live ?? finished;
+    final done = live == null && card != null;
     final guard = context.select<TimelineBloc, StartNowGuard?>(
       (bloc) => bloc.state.guard,
     );
@@ -57,7 +65,7 @@ class EventPage extends StatelessWidget {
         titleSpacing: 0,
         title: card == null ? null : _Title(card: card),
         actions: [
-          if (card != null && card.isInteractive)
+          if (card != null && card.isInteractive && !done)
             AppIconButton(
               iconData: AppIcons.trash,
               color: AppColors.ink2,
@@ -80,7 +88,7 @@ class EventPage extends StatelessWidget {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _Summary(card: card),
+                          _Summary(card: card, done: done),
                           const Divider(height: 1, color: AppColors.line),
                           Expanded(
                             // Keyed by the block, so the field never carries
@@ -183,15 +191,18 @@ class _TitleState extends State<_Title> {
 /// progress bar, which is the one thing that is true of a running block and
 /// of nothing else.
 class _Summary extends StatelessWidget {
-  const _Summary({required this.card});
+  const _Summary({required this.card, required this.done});
 
   final TimelineEvent card;
+
+  /// Whether it is a finished task: when it was done, and nothing to press.
+  final bool done;
 
   @override
   Widget build(BuildContext context) {
     final now = clock.now();
-    final running = card.isRunningAt(now);
-    final controls = card.isInteractive ? _controls(context) : null;
+    final running = !done && card.isRunningAt(now);
+    final controls = card.isInteractive && !done ? _controls(context) : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -203,7 +214,7 @@ class _Summary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _When(card: card),
+          _When(card: card, done: done),
           const SizedBox(height: AppSpacing.s2),
           if (running && !card.isBacklog)
             NowProgress(card: card, trailing: controls)
@@ -212,7 +223,16 @@ class _Summary extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    card.isBacklog
+                    done
+                        ? context.l10n.eventDoneOn(
+                            AppWheelPicker.dayLabel(
+                              context.l10n,
+                              card.startTime,
+                              now: now,
+                            ).toLowerCase(),
+                            hhmm(card.startTime),
+                          )
+                        : card.isBacklog
                         ? context.l10n.eventInBacklog
                         : _startsIn(context.l10n, card.startTime, now),
                     style: AppTypography.label.copyWith(color: AppColors.ink2),
@@ -266,14 +286,17 @@ class _Summary extends StatelessWidget {
 
 /// The hour and the length, each opening its picker.
 class _When extends StatelessWidget {
-  const _When({required this.card});
+  const _When({required this.card, this.done = false});
 
   final TimelineEvent card;
+
+  /// Whether it is a finished task, whose hour and length are what happened.
+  final bool done;
 
   @override
   Widget build(BuildContext context) {
     final started = !card.startTime.isAfter(clock.now());
-    final editable = card.isInteractive;
+    final editable = card.isInteractive && !done;
 
     return Row(
       children: [
@@ -285,8 +308,9 @@ class _When extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.s1),
         ],
-        // Nothing in the backlog has an hour to show.
-        if (!card.isBacklog) ...[
+        // Nothing in the backlog has an hour to show, and what is done
+        // says when it was below.
+        if (!card.isBacklog && !done) ...[
           _Tappable(
             text: _startLabel(context.l10n, card.startTime),
             // Anything not begun can be given an hour. A task then keeps

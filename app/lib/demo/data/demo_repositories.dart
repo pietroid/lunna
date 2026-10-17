@@ -77,6 +77,7 @@ class DemoTimelineRepository implements TimelineRepository {
     required String title,
     required int minutes,
     Placement placement = const Placement.backlog(),
+    String? projectId,
     int days = TimelineRepository.defaultDays,
   }) async {
     final task = _Task(

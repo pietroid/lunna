@@ -20,13 +20,3 @@ export class CreateProjectTaskDto {
   title?: string;
   minutes?: number;
 }
-
-/** Where a project's task goes. */
-export class PlaceTaskDto {
-  /** `project`, `backlog`, `queue`, `scheduled` or `done`. */
-  place?: string;
-  /** ISO 8601, the hour, for `scheduled`. */
-  at?: string;
-  /** For `project`: its place among the tasks parked there. */
-  index?: number;
-}

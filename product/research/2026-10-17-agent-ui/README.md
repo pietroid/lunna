@@ -37,10 +37,12 @@ ids, paths or layout. The app renders surfaces with the widgets it already
 has.
 
 Projects fit the same shape. The board gets a one-line index of open
-projects, and a `read_project` tool reads one on demand: the "just in
+projects, and `read_cards` (one tool for projects and notes) reads one on demand: the "just in
 time" pattern. Project writes become gestures in the same plan and the
 same sandbox (let a task out, park it, add one, append to the notes). So
-the agent reads and writes projects, still only by proposing.
+the agent reads and writes projects, still only by proposing. Notes work
+the same way on every card, tasks and blocks included: one read tool and
+one append gesture.
 
 What is **not** needed: the A2A transport (A2UI rides any JSON channel,
 so our REST answer is enough), letting the model author layouts, RAG over
@@ -96,6 +98,7 @@ above its card. Four replies are far too few to make a baseline, so phase
 | 7 | A ref in an earlier answer now points at another card | Refs are renumbered every turn by start order, but earlier replies are replayed as text without their board | `board.ts:135`; `agent.service.ts:273` |
 | 8 | Nothing catches either problem | Evals grade the day after Aplicar and whether the agent asked; no check reads the reply. Every case is a single turn | `evals/run.ts:216` |
 | 9 | "What's left in project X?" or "put a task from X tomorrow" can't be done | Parked tasks never reach the board or the sandbox, and projects have no tool. `placeTask('scheduled')` anchors through `editTask`, a second path beside the gestures | `task.store.ts:74`; `gestures.ts:39`; `projects.service.ts:201` |
+| 10 | "What did I write on the Dentista?" or "note on the call to bring the contract" can't be done | Tasks and blocks have `notes` (`task.types.ts:13`, `calendar.types.ts:80`), but the board never carries them, and no gesture writes them. No file in `server/src/agent/` mentions notes | `board.ts:116`; `plan.ts:54` |
 
 Row 6 is the original bug pattern again: **two audiences, one text.**
 Each refusal is written once, for the model, and the person ends up
@@ -154,14 +157,15 @@ reading it secondhand.
    details loaded by tools, and a minimal set of tools that don't
    overlap** ([Anthropic, Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)).
    **For us:** an index of projects on the board (name, deadline, counts,
-   ref) and `read_project` for the detail. Don't put every parked task on
+   ref) and `read_cards` for the detail. Don't put every parked task on
    every turn.
 7. **More tools hurt small models.** Cutting the tools offered per task
    improved function-calling success and cut execution time by up to 70%
    ([Paramanayakam et al., DATE 2025](https://arxiv.org/abs/2411.15399)).
-   **For us:** go from 3 tools to 5 at most (`ask`, `show`/read folded),
-   and add project writes as new gesture kinds inside `propose_plan`, not
-   as new tools.
+   **For us:** go from 3 tools to 6 at most (`ask`, `show`, and one
+   `read_cards` for both project contents and notes), and add project and
+   note writes as new gesture kinds inside `propose_plan`, not as new
+   tools.
 
 ## 5. Recommendations
 
@@ -267,7 +271,7 @@ The options for awareness:
 | Option | What the model sees | Tokens per turn | Verdict |
 |---|---|---|---|
 | A. Everything on the board | every open project, every parked task with a ref, notes | grows with every project; notes unbounded | no |
-| **B. Index on the board + `read_project`** *(recommended)* | one line per open project: `p2 · Tese · prazo 30/11 · 6 no projeto, 2 no dia`; `read_project(ref)` gives tasks with refs (`p2.1`…) and notes | ~15 per project | yes: the just-in-time pattern (§4.6) |
+| **B. Index on the board + `read_cards`** *(recommended)* | one line per open project: `p2 · Tese · prazo 30/11 · 6 no projeto, 2 no dia`; `read_cards([p2])` gives tasks with refs (`p2.1`…) and notes | ~15 per project | yes: the just-in-time pattern (§4.6) |
 | C. Tool only | nothing until it asks | 0 | misses "isso é do projeto X?" turns |
 | D. RAG / search over notes | snippets | small | not needed until notes are long; full-text search later |
 | E. A separate projects agent | — | — | not needed: one person, one domain |
@@ -297,8 +301,47 @@ What this needs:
 - Two components: `ProjectPeek`, and a `Plan` row for project changes ("→
   Tese: Capítulo 2 · sai do projeto, amanhã 09:00").
 
+Project notes are one case of §5.5, which covers notes on every card.
+
 Deleting a project is not offered. It is the one destructive project
 action, and a person does it by hand in a few taps.
+
+### 5.5 Notes on every card: tasks, blocks and projects (priority 3, with 5.4)
+
+A note is the same thing wherever it lives: free text the person keeps on
+a card. So the agent gets **one way to read notes and one gesture to write
+them**, for any ref: a task (`t3`), a block (`e1`), a backlog task (`b2`),
+a project (`p2`), or a project's task (`p2.1`).
+
+**Reading.** On the board, a card with notes says so in one word
+(`t3 · Dentista · … · notas`). Notes are free text of any length, so the
+text itself is not put on every turn: that is the same just-in-time
+choice as for projects (§4.6). `read_cards(refs[])` returns them, trimmed to
+about 2k characters each. It is the same tool that reads a project
+(§5.4 reads a project by its `p` ref), so notes add no tool.
+`show` can then draw a card with its notes (`DayPeek` gains `notes` per
+card) when the person asks "o que eu anotei no Dentista?".
+
+**Writing.** One gesture kind inside `propose_plan`:
+
+| Gesture | What it is by hand | Made with | Undo |
+|---|---|---|---|
+| `note { ref, append }` | typing at the end of the notes on the event page | `editTask(id, { notes })` / `editEvent(id, { notes })` / `ProjectsService.edit` | `restore_task` / `restore_event` already exist (`plan.ts:90`); `restore_project` is new (§5.4) |
+| `new.notes` on `place`/`at_hour`/... | writing it down with notes | `createTask` / `createEvent` with `notes` | `remove_task` / `remove_event`, as today |
+
+- `editTask` with only notes changes no hour (`event-layout.service.ts:313`),
+  so a note never pushes anything, and the dry run shows that.
+- **Append only**, on a new line, by default. The `Plan` row shows the
+  added text in full ("+ Dentista · notas: levar o exame"), so the person
+  reads exactly what will be written before tapping Aplicar.
+- A note goes through `speakable()` like a caption, so no ref ever lands
+  in the person's own text.
+- A begun task can still take a note. Notes aren't an hour, so the
+  "nothing begun is moved" rule doesn't apply to them.
+
+Rewriting or tidying notes ("organiza as notas da Tese") is Decision 6(c).
+It needs a before/after view on the card, because it replaces the
+person's own words.
 
 ## 6. Decisions for you
 
@@ -320,13 +363,13 @@ action, and a person does it by hand in a few taps.
 4. **The caption.** *(a) Optional, ≤ 80 characters, only to add a reason*
    *(recommended)*. *(b) Never: the surface speaks alone.* *(c) Keep
    prose, shortened.* (c) leaves symptom 1 in place.
-5. **Project awareness.** *(a) Index on the board + `read_project`*
+5. **Project awareness.** *(a) Index on the board + `read_cards`*
    *(recommended)*. *(b) Tool only.* *(c) Everything on the board.*
-6. **Project writes.** *(a) Gestures in plans, notes append-only*
-   *(recommended)*. *(b) Read-only first, writes in a later release.*
-   *(c) Notes rewritable by the agent*: more useful for "organize my
-   notes", but it overwrites the person's own text, so it would need a
-   diff view first.
+6. **Project and note writes** (notes on tasks, blocks and projects
+   alike). *(a) Gestures in plans, notes append-only* *(recommended)*.
+   *(b) Read-only first, writes in a later release.* *(c) Notes rewritable
+   by the agent*: more useful for "organize my notes", but it overwrites
+   the person's own text, so it would need a before/after view first.
 
 ## 7. Rollout
 
@@ -337,8 +380,9 @@ action, and a person does it by hand in a few taps.
 | 2 | Two-text refusals for the four that reach people, as server `Choices` | 6, 3 (partly) | S |
 | 3 | A2UI envelope + catalog (`Caption`, `Plan`, `Choices`) + `AgentSurface`; steps under Detalhes; optional caption | 1, 2 | M |
 | 4 | `ask` and `show`, `DayPeek`, the `choose` action; `tool_choice: 'required'` | 3, 4 | M |
-| 5 | Project index on the board, `read_project`, `ProjectPeek`, project on day cards | 9 (read) | S–M |
-| 6 | Project gestures in plans, sandbox seeding, `restore_project`; `ProjectsService` on `make()` | 9 (write) | M–L |
+| 5 | Project index on the board, `read_cards`, `ProjectPeek`, project on day cards | 9 (read) | S–M |
+| 5b | Notes on the board (the `notas` mark), `read_cards` on any ref, the `note` gesture and `new.notes` for tasks and blocks | 10 | S |
+| 6 | Project gestures in plans, sandbox seeding, `restore_project`; `ProjectsService` on `make()`; `note` on projects | 9 (write), 10 | M–L |
 
 Run `npm run eval:agent` before merging each of phases 1–6, as
 `product/spec/agent.md` asks.

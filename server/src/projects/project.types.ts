@@ -1,8 +1,7 @@
 /**
  * A subject that outlives a day, as the rest of the server knows it.
  *
- * Its tasks are ordinary tasks that point at it (`Task.projectId`): one
- * parked in the project is out of the day's sight, one let out is in the
+ * Its tasks are ordinary tasks that point at it (`Task.projectId`), in the
  * backlog or the queue like any other.
  */
 export interface Project {
@@ -25,21 +24,14 @@ export interface NewProject {
 }
 
 /** Where a project's task is, as far as the day is concerned. */
-export type TaskPlace = 'project' | 'backlog' | 'queue' | 'scheduled' | 'done';
-
-/** Every place, for validating one off the wire. */
-export const TASK_PLACES: TaskPlace[] = [
-  'project',
-  'backlog',
-  'queue',
-  'scheduled',
-  'done',
-];
+export type TaskPlace = 'backlog' | 'queue' | 'scheduled' | 'done';
 
 /** A project's task, as the app draws it. */
 export interface ProjectTaskView {
   id: string;
   title: string;
+  /** Free text kept on it, which its page opens on. */
+  notes: string;
   minutes: number;
   place: TaskPlace;
   /**
@@ -75,13 +67,4 @@ export interface ProjectEdit {
   /** A day, or null to take the deadline away. */
   deadline?: string | null;
   done?: boolean;
-}
-
-/** Where a task goes. */
-export interface Placement {
-  place: TaskPlace;
-  /** ISO 8601, the hour, for `scheduled`. */
-  at?: string;
-  /** For `project`: its place among the tasks parked there. */
-  index?: number;
 }
