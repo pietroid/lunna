@@ -52,12 +52,18 @@ class VoiceBar extends StatelessWidget {
     required this.voice,
     required this.onStop,
     required this.onDiscard,
+    this.stopLabel,
+    this.discardLabel,
     super.key,
   });
 
   final VoiceState voice;
   final VoidCallback onStop;
   final VoidCallback onDiscard;
+
+  /// What the two buttons say to a screen reader, when not the composer's.
+  final String? stopLabel;
+  final String? discardLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +73,7 @@ class VoiceBar extends StatelessWidget {
     return Row(
       children: [
         VoiceRound(
-          label: l10n.agentVoiceDiscard,
+          label: discardLabel ?? l10n.agentVoiceDiscard,
           icon: AppIcons.trash,
           fill: Colors.transparent,
           ink: AppColors.ink2,
@@ -89,7 +95,7 @@ class VoiceBar extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.s3),
         VoiceRound(
-          label: l10n.agentVoiceStop,
+          label: stopLabel ?? l10n.agentVoiceStop,
           icon: AppIcons.stop,
           fill: AppColors.accent,
           ink: AppColors.onAccent,

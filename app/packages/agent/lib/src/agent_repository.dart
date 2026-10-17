@@ -88,11 +88,13 @@ class AgentRepository {
   /// (a new one when null). Changes nothing on the day.
   ///
   /// [day] is the day Tempo is showing, so "aqui" means something. Answers
-  /// with the conversation the turn was written into.
+  /// with the conversation the turn was written into. [about] is the page
+  /// the conversation was opened from, when it was not Tempo.
   Future<({String conversationId, AgentReply reply})> turn(
     List<AgentEntry> history, {
     String? conversationId,
     DateTime? day,
+    AgentSubject? about,
   }) => _guard(() async {
     final response = await apiClient.post<Map<String, dynamic>>(
       '/agent/turn',
@@ -113,6 +115,7 @@ class AgentRepository {
             },
         ],
         if (day != null) 'day': _isoDay(day),
+        if (about != null) 'about': about.toJson(),
       },
     );
 

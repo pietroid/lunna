@@ -44,7 +44,12 @@ Future<void> openProject(BuildContext context, String id, {int? tab}) {
 /// {@endtemplate}
 class ProjectPage extends StatefulWidget {
   /// {@macro project_page}
-  const ProjectPage({required this.id, this.initialTab, super.key});
+  const ProjectPage({
+    required this.id,
+    this.initialTab,
+    this.dictation,
+    super.key,
+  });
 
   /// The project's id.
   final String id;
@@ -52,6 +57,10 @@ class ProjectPage extends StatefulWidget {
   /// Which space opens first: 0 the notes, 1 the tasks. Null opens the one
   /// this device last chose.
   final int? initialTab;
+
+  /// The recording the notes are dictated with, when handed in (tests and
+  /// previews); otherwise the notes have their own.
+  final DictationCubit? dictation;
 
   @override
   State<ProjectPage> createState() => _ProjectPageState();
@@ -181,6 +190,7 @@ class _ProjectPageState extends State<ProjectPage> {
                                 : _Notes(
                                     key: ValueKey(project.id),
                                     project: project,
+                                    voice: widget.dictation,
                                   ),
                           ),
                         ],
@@ -189,11 +199,12 @@ class _ProjectPageState extends State<ProjectPage> {
             ),
           ),
           // The tasks are written and talked about the way the day is: the
-          // same bar and the same +. The notes are a page to write on, so
-          // nothing floats over them.
+          // same bar and the same +. The notes draw their own dock, whose
+          // microphone writes into them.
           floatingActionButton: project == null || _tab != _tasksTab
               ? null
               : AskDock(
+                  about: AgentSubject.project(widget.id),
                   fab: AppFab(
                     tooltip: context.l10n.projectAddTask,
                     onPressed: () => unawaited(
@@ -497,6 +508,7 @@ class _Tasks extends StatelessWidget {
             builder: (_) => EventPage(
               id: card.id,
               finished: cards.where((it) => it.id == card.id).firstOrNull,
+              dock: NotesDock.task,
             ),
           ),
         ),
@@ -528,11 +540,13 @@ class _Tasks extends StatelessWidget {
 /// The project's notes: free text, saved as it is written.
 ///
 /// A moment after the typing stops, when the field loses focus, and when the
-/// page closes, as a task's notes are.
+/// page closes, as a task's notes are. At their foot, the agent's bar and the
+/// microphone that dictates into them ([NotesDock]).
 class _Notes extends StatefulWidget {
-  const _Notes({required this.project, super.key});
+  const _Notes({required this.project, this.voice, super.key});
 
   final Project project;
+  final DictationCubit? voice;
 
   @override
   State<_Notes> createState() => _NotesState();
@@ -541,8 +555,9 @@ class _Notes extends StatefulWidget {
 class _NotesState extends State<_Notes> {
   static const _debounce = Duration(milliseconds: 800);
 
-  late final _controller = TextEditingController(text: widget.project.notes);
+  late final _controller = LiveTextController(text: widget.project.notes);
   final _focus = FocusNode();
+  final _scroll = ScrollController();
   late final ProjectsCubit _cubit = context.read<ProjectsCubit>();
   Timer? _timer;
 
@@ -554,20 +569,42 @@ class _NotesState extends State<_Notes> {
     _focus.addListener(() {
       if (!_focus.hasFocus) _save();
     });
+    _controller.addListener(_onChanged);
   }
 
   @override
   void didUpdateWidget(_Notes oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_focus.hasFocus && widget.project.notes != _controller.text) {
-      _controller.text = widget.project.notes;
+    // Only notes changed somewhere else replace these: the server's echo of
+    // what was saved here is not one, nor anything while it is dictated.
+    if (!_focus.hasFocus &&
+        _controller.live == null &&
+        widget.project.notes != _saved) {
       _saved = widget.project.notes;
+      _controller.text = widget.project.notes;
     }
   }
 
-  void _onChanged(String _) {
+  /// Typed or dictated, the notes are saved a moment after they stop
+  /// changing; dictated words keep the end of the notes in sight.
+  void _onChanged() {
+    if (_controller.text == _saved) return;
     _timer?.cancel();
     _timer = Timer(_debounce, _save);
+    if (_controller.live != null) _followEnd();
+  }
+
+  void _followEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      unawaited(
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        ),
+      );
+    });
   }
 
   void _save() {
@@ -584,22 +621,24 @@ class _NotesState extends State<_Notes> {
     _save();
     _controller.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    final notes = SingleChildScrollView(
+      controller: _scroll,
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.s6,
         AppSpacing.s3,
         AppSpacing.s6,
-        AppSpacing.s8,
+        // Room to scroll the last line clear of the dock.
+        kNotesDockClearance,
       ),
       child: TextField(
         controller: _controller,
         focusNode: _focus,
-        onChanged: _onChanged,
         maxLines: null,
         minLines: 8,
         keyboardType: TextInputType.multiline,
@@ -610,6 +649,24 @@ class _NotesState extends State<_Notes> {
           hintStyle: AppTypography.body.copyWith(color: AppColors.ink3),
         ),
       ),
+    );
+
+    return Stack(
+      children: [
+        Positioned.fill(child: notes),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: kFloatingActionButtonMargin,
+          child: Center(
+            child: NotesDock(
+              notes: _controller,
+              about: AgentSubject.project(widget.project.id),
+              voice: widget.voice,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

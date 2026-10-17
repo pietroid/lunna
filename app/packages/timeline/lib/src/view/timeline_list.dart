@@ -1844,8 +1844,7 @@ class _TimelineListState extends State<TimelineList> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _HeadingRow(label: l10n.stageBacklog, first: false),
-            if (_waiting.isEmpty)
-              _StageEmpty(text: l10n.stageBacklogEmpty),
+            if (_waiting.isEmpty) _StageEmpty(text: l10n.stageBacklogEmpty),
           ],
         ),
       ),

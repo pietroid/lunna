@@ -89,11 +89,22 @@ a refusal.
 
 | Route | What it does |
 |-------|--------------|
-| `POST /agent/turn` | `{ conversationId?, messages, day? }` → `{ conversationId, reply, steps, plan?, options }`; writes the turn down, changes nothing on the day |
+| `POST /agent/turn` | `{ conversationId?, messages, day?, about? }` → `{ conversationId, reply, steps, plan?, options }`; writes the turn down, changes nothing on the day |
 | `GET /agent/conversations?before=&limit=` | earlier conversations, most recent first, for the person to read back |
 | `GET /agent/suggestion` | the first backlog task that fits in the room left today, as a plan; no model |
 | `POST /agent/plans/:id/apply?days=` | the timeline, plus `touched`: the ids it changed; a plan or a quick reply's plan alike |
 | `POST /agent/plans/:id/undo?days=` | the timeline; the plan can be applied again |
+
+**A conversation opened from a page is about it.** The bar also sits at the
+foot of a task's notes and a project's (`NotesDock`); a conversation opened
+there carries `about: { taskId }` or `{ projectId }` on every turn
+(`AgentCubit.open(about:)`). The server writes it after the board: the
+task's line (its ref when it is on the board) and its notes, or the
+project's name, deadline, notes and tasks; the model is told "isso" means
+it. Notes are cut at 2000 characters. A subject that is not the person's is
+refused (404, `refused`, "Não encontrei essa tarefa."), anything else that
+is not one is a 400. The agent still only changes the day: it reads notes
+and never writes them.
 
 **A conversation is its own context.** Every turn is written to
 `agent_message` (`ConversationStore`: Postgres, memory in tests), keyed by a
@@ -166,3 +177,30 @@ that was spoken carries `UserEntry.voice`, its length, shown as "por voz",
 and kept on the device. A refused microphone, or a device with no
 recognizer, is said in the composer and the microphone is no longer offered
 there; tapped on Tempo's bar, it opens the sheet to say so.
+
+### Dictation
+
+Dictation is not the agent. At the foot of a task's notes (`EventPage.dock`)
+and a project's Notas, `NotesDock` puts the bar, and beside it, where the +
+is on Tempo, a microphone (`AppFab`, `AppIcons.microphone`) that writes what
+is said straight into the notes: **the small microphone inside the bar asks
+the agent, the big one beside it writes.**
+
+- Each recording is a paragraph of its own, after a blank line at the end
+  of the notes. The words appear as they are heard; the ones the recognizer
+  may still revise are drawn in ink3 (`LiveTextController.live`, in
+  `app_ui`). They are saved like typing: 800 ms after they stop changing,
+  through the notes' usual route. Nothing on the server knows they were
+  spoken.
+- `DictationCubit` is a `VoiceCubit` with no limit, made by the dock, so it
+  runs until stopped; a session the platform ends is followed by another
+  and joined into the same paragraph. The recorder is the same `VoiceBar`:
+  stop keeps the words, the trash takes this paragraph back out.
+- One microphone: dictating cancels the agent's recording, and the agent's
+  starting stops dictation, keeping what was said. A refused microphone, or
+  no recognizer, is said in a snackbar.
+- The dock steps aside while the keyboard is up (read off the `View`, since
+  the Scaffold takes the insets out of its body's `MediaQuery`). The notes
+  only take the server's copy when it differs from what they last saved and
+  nothing is being dictated, so neither the echo of a save nor a refresh
+  undoes words still arriving. Leaving the page saves what was heard.

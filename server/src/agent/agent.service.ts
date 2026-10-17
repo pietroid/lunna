@@ -9,7 +9,9 @@ import {
   intervalOfTask,
   TimelineService,
 } from '../events/timeline.service';
+import { ProjectStore } from '../projects/project.store';
 import { TaskStore } from '../tasks/task.store';
+import { Task } from '../tasks/task.types';
 import {
   addMinutes,
   DEFAULT_WORK_DAY,
@@ -57,6 +59,15 @@ export interface AgentMessage {
   /** How long it took to say, when the user spoke it. */
   voiceSeconds?: number;
 }
+
+/**
+ * What a conversation is about, when it was opened from a page rather than
+ * from Tempo: a task's or a project's.
+ */
+export type Subject = { taskId: string } | { projectId: string };
+
+/** How much of a subject's notes the model reads. */
+const MAX_NOTES = 2000;
 
 /** A plan, as the app draws it. */
 export interface PlanView {
@@ -167,6 +178,7 @@ export class AgentService {
     private readonly _layout: EventLayoutService,
     private readonly _calendar: CalendarService,
     private readonly _tasks: TaskStore,
+    private readonly _projects: ProjectStore,
     private readonly _conversations: ConversationStore,
   ) {}
 
@@ -195,6 +207,7 @@ export class AgentService {
     conversationId: string | undefined,
     history: AgentMessage[],
     focusDay: string | undefined,
+    about: Subject | undefined,
     trace: Trace,
     now = new Date(),
   ): Promise<AgentReply> {
@@ -216,6 +229,7 @@ export class AgentService {
       conversation,
       history,
       focusDay,
+      about,
       trace,
       now,
     );
@@ -240,6 +254,71 @@ export class AgentService {
     return { conversationId: conversation, ...answer };
   }
 
+  /**
+   * What the model reads about the page the person is on: the task or the
+   * project, its notes, and (a project's) its tasks, under their refs when
+   * they are on the board. Refused when there is no such thing.
+   */
+  private async _subject(
+    user: CalendarUser,
+    about: Subject,
+    board: Board,
+  ): Promise<string> {
+    const notes = (text: string) => {
+      const kept = text.trim().slice(0, MAX_NOTES);
+      return kept === ''
+        ? ['Notes: (none)']
+        : ['Notes:', ...kept.split('\n').map((line) => `  ${line}`)];
+    };
+    const line = (task: Task) => {
+      const card = board.byId(task.id);
+      if (card !== undefined) return board.line(card);
+      const where =
+        task.doneAt !== undefined
+          ? 'done'
+          : task.backlog
+            ? 'backlog task'
+            : 'task further ahead';
+      return `${task.title} · ${where} · ${task.minutes} min`;
+    };
+
+    if ('taskId' in about) {
+      const task = await this._tasks.get(user, about.taskId);
+      if (task === undefined) {
+        throw new AgentError(
+          'refused',
+          'Não encontrei essa tarefa.',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      return [
+        'The person is on this task’s page:',
+        `  ${line(task)}`,
+        ...notes(task.notes),
+      ].join('\n');
+    }
+
+    const project = await this._projects.get(user, about.projectId);
+    if (project === undefined) {
+      throw new AgentError(
+        'refused',
+        'Não encontrei esse projeto.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const tasks = (await this._tasks.ofProjects(user)).filter(
+      (task) => task.projectId === project.id,
+    );
+    return [
+      `The person is on the page of the project “${project.title}”${project.deadline === undefined ? '' : `, due ${project.deadline}`}${project.doneAt === undefined ? '' : ' (done)'}.`,
+      ...notes(project.notes),
+      'Its tasks:',
+      ...(tasks.length === 0
+        ? ['  (none)']
+        : tasks.map((task) => `  ${line(task)}`)),
+    ].join('\n');
+  }
+
   /** The conversations before [before], most recent first. */
   history(user: CalendarUser, before: Date | undefined, limit: number) {
     return this._conversations.recent(user, before, limit);
@@ -250,11 +329,16 @@ export class AgentService {
     conversationId: string,
     history: AgentMessage[],
     focusDay: string | undefined,
+    about: Subject | undefined,
     trace: Trace,
     now: Date,
   ): Promise<Omit<AgentReply, 'conversationId'>> {
     const day = await this._timeline.day(user, HORIZON_DAYS, now);
     const board = new Board(day, this._timeline.view(day));
+    const subject =
+      about === undefined
+        ? ''
+        : `\n\n${await this._subject(user, about, board)}`;
     const turn: Turn = {
       user,
       conversationId,
@@ -275,7 +359,7 @@ export class AgentService {
         .map((it) => ({ role: it.role, content: it.text })),
       {
         role: 'user',
-        content: `${board.context(focusDay, said)}\n\n---\nRequest: ${said}`,
+        content: `${board.context(focusDay, said)}${subject}\n\n---\nRequest: ${said}`,
       },
     ];
 

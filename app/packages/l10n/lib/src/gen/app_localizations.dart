@@ -1726,6 +1726,24 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Para {when}'**
   String dragHintMoveTo(String when);
+
+  /// No description provided for @dictationStart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ditar nas anotações'**
+  String get dictationStart;
+
+  /// No description provided for @dictationStop.
+  ///
+  /// In pt, this message translates to:
+  /// **'Parar de ditar'**
+  String get dictationStop;
+
+  /// No description provided for @dictationDiscard.
+  ///
+  /// In pt, this message translates to:
+  /// **'Descartar este parágrafo'**
+  String get dictationDiscard;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

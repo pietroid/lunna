@@ -17,6 +17,29 @@ class _MockTimelineBloc extends MockBloc<TimelineBlocEvent, TimelineState>
 
 class _MockVoiceCubit extends MockCubit<VoiceState> implements VoiceCubit {}
 
+/// A recognizer the test speaks through.
+class _FakeRecognizer implements VoiceRecognizer {
+  late VoiceWords _onWords;
+
+  @override
+  Future<VoiceAvailability> prepare() async => VoiceAvailability.available;
+
+  @override
+  Future<void> listen({
+    required VoiceWords onWords,
+    required ValueChanged<double> onLevel,
+    required VoidCallback onEnd,
+  }) async => _onWords = onWords;
+
+  void say(String words, {bool done = false}) => _onWords(words, done: done);
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> cancel() async {}
+}
+
 void main() {
   setUpAll(() => registerFallbackValue(const TimelineRequested()));
 
@@ -89,7 +112,11 @@ void main() {
     when(() => timeline.state).thenReturn(day);
   });
 
-  Future<void> pump(WidgetTester tester, {String id = 'p'}) async {
+  Future<void> pump(
+    WidgetTester tester, {
+    String id = 'p',
+    DictationCubit? dictation,
+  }) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -97,26 +124,29 @@ void main() {
     when(() => voice.state).thenReturn(const VoiceState());
 
     await tester.pumpWidget(
-      MultiBlocProvider(
-        providers: [
-          BlocProvider<TimelineBloc>.value(value: timeline),
-          BlocProvider<VoiceCubit>.value(value: voice),
-          BlocProvider(
-            create: (_) => ProjectsCubit(
-              repository: repository,
-              initial: ProjectsState(
-                status: ProjectsStatus.ready,
-                projects: [project],
+      RepositoryProvider<VoiceRecognizer>.value(
+        value: _FakeRecognizer(),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<TimelineBloc>.value(value: timeline),
+            BlocProvider<VoiceCubit>.value(value: voice),
+            BlocProvider(
+              create: (_) => ProjectsCubit(
+                repository: repository,
+                initial: ProjectsState(
+                  status: ProjectsStatus.ready,
+                  projects: [project],
+                ),
               ),
             ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.current,
+            locale: const Locale('pt', 'BR'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: ProjectPage(id: id, dictation: dictation),
           ),
-        ],
-        child: MaterialApp(
-          theme: AppTheme.current,
-          locale: const Locale('pt', 'BR'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: ProjectPage(id: id),
         ),
       ),
     );
@@ -137,6 +167,63 @@ void main() {
       (await SharedPreferences.getInstance()).getInt('project.tab.p'),
       1,
     );
+  });
+
+  testAt('dictates into the notes, a paragraph each time, saved as typed', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final saved = <String>[];
+    when(
+      () => repository.update(any(), notes: any(named: 'notes')),
+    ).thenAnswer((call) async {
+      final notes = call.namedArguments[#notes] as String;
+      saved.add(notes);
+      // The server's echo of what was saved.
+      return [project.copyWith(notes: notes)];
+    });
+    final recognizer = _FakeRecognizer();
+    final dictation = DictationCubit(recognizer: recognizer);
+    addTearDown(dictation.close);
+    await pump(tester, dictation: dictation);
+
+    // Lunna's bar and the microphone that dictates, at the foot of Notas.
+    expect(find.byType(NotesDock), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Pergunte')), findsOneWidget);
+
+    await tester.tap(find.byTooltip(l10n.dictationStart));
+    await tester.pump();
+    recognizer.say('Paleta em tons de terra');
+    await tester.pump(const Duration(seconds: 1));
+
+    TextEditingController notes() => tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((it) => it.controller)
+        .whereType<LiveTextController>()
+        .single;
+    expect(notes().text, 'Paleta em tons de terra');
+    expect(saved, ['Paleta em tons de terra']);
+
+    // The echo lands mid-dictation and takes nothing away.
+    recognizer.say('Paleta em tons de terra e verde');
+    await tester.pump();
+    expect(notes().text, 'Paleta em tons de terra e verde');
+
+    await tester.tap(find.bySemanticsLabel(l10n.dictationStop));
+    await tester.pump(const Duration(seconds: 1));
+    expect(saved.last, 'Paleta em tons de terra e verde');
+
+    // A second recording is a paragraph of its own.
+    await tester.tap(find.byTooltip(l10n.dictationStart));
+    await tester.pump();
+    recognizer.say('Revisar com a Ana');
+    await tester.pump();
+    expect(
+      notes().text,
+      'Paleta em tons de terra e verde\n\nRevisar com a Ana',
+    );
+    await tester.tap(find.bySemanticsLabel(l10n.dictationStop));
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testAt('draws the project in Tempo\'s stages, and nothing else of the day', (

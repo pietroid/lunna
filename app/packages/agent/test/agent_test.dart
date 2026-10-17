@@ -234,10 +234,43 @@ void main() {
         any(),
         conversationId: any(named: 'conversationId'),
         day: any(named: 'day'),
+        about: any(named: 'about'),
       ),
     ).thenAnswer((_) async => (conversationId: 'c2', reply: reply));
 
     setUp(() => repository = _MockRepository());
+
+    test('every turn of a conversation opened on a page is about it', () async {
+      answers(_reply);
+      when(
+        () => repository.conversations(before: any(named: 'before')),
+      ).thenAnswer((_) async => []);
+      final cubit = AgentCubit(repository: repository, now: () => start)
+        ..open(about: const AgentSubject.project('p1'));
+      await cubit.send('O que falta?');
+      await cubit.send('E depois?');
+      cubit.open();
+      await cubit.send('Oi');
+
+      verify(
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+          about: const AgentSubject.project('p1'),
+        ),
+      ).called(2);
+      verify(
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+        ),
+      ).called(1);
+      expect(const AgentSubject.project('p1').toJson(), {'projectId': 'p1'});
+      expect(const AgentSubject.task('t1').toJson(), {'taskId': 't1'});
+      await cubit.close();
+    });
 
     blocTest<AgentCubit, AgentState>(
       'says what the user said, then what the agent answered',

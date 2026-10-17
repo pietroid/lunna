@@ -217,6 +217,23 @@ void main() {
       });
     });
 
+    test('dictation has no limit', () {
+      _onFakeTime((async) {
+        final recognizer = _FakeRecognizer();
+        final cubit = DictationCubit(recognizer: recognizer);
+
+        unawaited(cubit.start());
+        async.flushMicrotasks();
+        recognizer.say('Um ditado comprido');
+        async.elapse(const Duration(minutes: 5));
+
+        expect(cubit.state.status, VoiceStatus.listening);
+        expect(cubit.state.elapsed, const Duration(minutes: 5));
+        expect(recognizer.stops, 0);
+        unawaited(cubit.close());
+      });
+    });
+
     test('cancel drops everything', () {
       _onFakeTime((async) {
         final recognizer = _FakeRecognizer();
@@ -628,6 +645,243 @@ void main() {
       );
     });
   });
+
+  group('LiveTextController', () {
+    testWidgets('draws the words still open to revision in ink3', (
+      tester,
+    ) async {
+      final notes = LiveTextController(text: 'Pão');
+      await tester.pumpWidget(
+        _app(Scaffold(body: TextField(controller: notes))),
+      );
+
+      notes.write(
+        'Pão\n\nLevar sacolas',
+        live: const TextRange(start: 11, end: 18),
+      );
+      await tester.pump();
+      final span = notes.buildTextSpan(
+        context: tester.element(find.byType(TextField)),
+        withComposing: false,
+      );
+      final parts = span.children!.cast<TextSpan>();
+      expect(parts.map((it) => it.text), ['Pão\n\nLevar ', 'sacolas', '']);
+      expect(parts[1].style?.color, AppColors.ink3);
+      expect(notes.selection, const TextSelection.collapsed(offset: 18));
+
+      notes.settle();
+      expect(notes.live, isNull);
+      expect(
+        notes
+            .buildTextSpan(
+              context: tester.element(find.byType(TextField)),
+              withComposing: false,
+            )
+            .children,
+        isNull,
+      );
+    });
+  });
+
+  group('NotesDock', () {
+    setUpAll(() {
+      registerFallbackValue(<AgentEntry>[]);
+      registerFallbackValue(const TimelineRequested());
+    });
+
+    late AgentRepository repository;
+    late _FakeRecognizer recognizer;
+    late VoiceCubit asking;
+    late LiveTextController notes;
+
+    Future<void> pumpDock(WidgetTester tester) async {
+      repository = _answering();
+      recognizer = _FakeRecognizer();
+      notes = LiveTextController(text: 'Comprar pão');
+      addTearDown(notes.dispose);
+      final timeline = _MockTimelineBloc();
+      when(() => timeline.state).thenReturn(const TimelineState());
+
+      await tester.pumpWidget(
+        RepositoryProvider<AgentRepository>.value(
+          value: repository,
+          child: RepositoryProvider<VoiceRecognizer>.value(
+            value: recognizer,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (_) => AgentCubit(repository: repository),
+                ),
+                BlocProvider<TimelineBloc>.value(value: timeline),
+                BlocProvider(
+                  create: (_) => asking = VoiceCubit(recognizer: recognizer),
+                  lazy: false,
+                ),
+              ],
+              child: _app(
+                Scaffold(
+                  body: Stack(
+                    children: [
+                      TextField(controller: notes, maxLines: null),
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: NotesDock(
+                          notes: notes,
+                          about: const AgentSubject.task('t1'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    Future<void> dictate(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('Ditar nas anotações'));
+      await settle(tester);
+    }
+
+    testWidgets('writes the words into the notes as a new paragraph', (
+      tester,
+    ) async {
+      await pumpDock(tester);
+      await dictate(tester);
+      expect(find.byType(VoiceBar), findsOneWidget);
+
+      recognizer.say('Levar sacolas');
+      await tester.pump();
+      expect(notes.text, 'Comprar pão\n\nLevar sacolas');
+      expect(notes.live, const TextRange(start: 13, end: 26));
+
+      recognizer.say('Levar sacolas', done: true);
+      await tester.pump();
+      expect(notes.live, isNull);
+
+      await tester.tap(find.bySemanticsLabel('Parar de ditar'));
+      await settle(tester);
+      expect(notes.text, 'Comprar pão\n\nLevar sacolas');
+      expect(notes.live, isNull);
+      expect(find.byType(VoiceBar), findsNothing);
+      expect(find.byTooltip('Ditar nas anotações'), findsOneWidget);
+    });
+
+    testWidgets('stop keeps the words still being heard', (tester) async {
+      await pumpDock(tester);
+      await dictate(tester);
+      recognizer.say('Ligar para');
+      await tester.pump();
+
+      await tester.tap(find.bySemanticsLabel('Parar de ditar'));
+      await settle(tester);
+      expect(notes.text, 'Comprar pão\n\nLigar para');
+      expect(notes.live, isNull);
+      expect(recognizer.stops, 1);
+    });
+
+    testWidgets('a session the platform ends carries on the same paragraph', (
+      tester,
+    ) async {
+      await pumpDock(tester);
+      await dictate(tester);
+      recognizer.say('Levar');
+      await tester.pump();
+
+      recognizer.end();
+      await tester.pump();
+      recognizer.say('sacolas');
+      await tester.pump();
+
+      expect(recognizer.sessions, 2);
+      expect(notes.text, 'Comprar pão\n\nLevar sacolas');
+    });
+
+    testWidgets('discarding takes the paragraph back out', (tester) async {
+      await pumpDock(tester);
+      await dictate(tester);
+      recognizer.say('Isto não');
+      await tester.pump();
+
+      await tester.tap(find.bySemanticsLabel('Descartar este parágrafo'));
+      await settle(tester);
+      expect(notes.text, 'Comprar pão');
+      expect(notes.live, isNull);
+      expect(recognizer.cancels, 1);
+    });
+
+    testWidgets('a refused microphone says why', (tester) async {
+      await pumpDock(tester);
+      recognizer.availability = VoiceAvailability.denied;
+
+      await dictate(tester);
+      expect(
+        find.textContaining('não tem acesso ao microfone'),
+        findsOneWidget,
+      );
+      expect(notes.text, 'Comprar pão');
+      expect(find.byType(VoiceBar), findsNothing);
+    });
+
+    testWidgets('the agent taking the microphone stops dictation, keeping it', (
+      tester,
+    ) async {
+      await pumpDock(tester);
+      await dictate(tester);
+      recognizer.say('Levar sacolas');
+      await tester.pump();
+
+      await asking.start();
+      await settle(tester);
+      expect(notes.text, 'Comprar pão\n\nLevar sacolas');
+      expect(notes.live, isNull);
+      expect(asking.state.status, VoiceStatus.listening);
+    });
+
+    testWidgets('steps aside while the keyboard is up', (tester) async {
+      await pumpDock(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pump();
+
+      expect(find.byTooltip('Ditar nas anotações'), findsNothing);
+    });
+
+    testWidgets('the conversation it opens is about the page', (tester) async {
+      await pumpDock(tester);
+
+      await tester.tap(find.bySemanticsLabel(RegExp('Pergunte')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AgentSheet), findsOneWidget);
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(AgentSheet),
+          matching: find.byType(TextField),
+        ),
+        'Resume isso',
+      );
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Enviar'));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+          about: const AgentSubject.task('t1'),
+        ),
+      ).called(1);
+    });
+  });
 }
 
 AgentRepository _answering() {
@@ -637,6 +891,7 @@ AgentRepository _answering() {
       any(),
       conversationId: any(named: 'conversationId'),
       day: any(named: 'day'),
+      about: any(named: 'about'),
     ),
   ).thenAnswer(
     (_) async =>

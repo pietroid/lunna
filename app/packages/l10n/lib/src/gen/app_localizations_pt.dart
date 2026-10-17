@@ -1086,4 +1086,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String dragHintMoveTo(String when) {
     return 'Para $when';
   }
+
+  @override
+  String get dictationStart => 'Ditar nas anotações';
+
+  @override
+  String get dictationStop => 'Parar de ditar';
+
+  @override
+  String get dictationDiscard => 'Descartar este parágrafo';
 }

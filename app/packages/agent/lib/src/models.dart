@@ -1,5 +1,29 @@
 import 'package:equatable/equatable.dart';
 
+/// {@template agent_subject}
+/// What a conversation is about, when it is opened from a page rather than
+/// from Tempo: a task's, or a project's. The agent reads it, with its notes,
+/// and "isso" means it.
+/// {@endtemplate}
+class AgentSubject extends Equatable {
+  /// The task [id], from its page.
+  const AgentSubject.task(String id) : taskId = id, projectId = null;
+
+  /// The project [id], from its page.
+  const AgentSubject.project(String id) : projectId = id, taskId = null;
+
+  final String? taskId;
+  final String? projectId;
+
+  Map<String, String> toJson() => {
+    'taskId': ?taskId,
+    'projectId': ?projectId,
+  };
+
+  @override
+  List<Object?> get props => [taskId, projectId];
+}
+
 /// What one change of a plan does.
 enum PlanChangeKind {
   /// A new task, at an hour.

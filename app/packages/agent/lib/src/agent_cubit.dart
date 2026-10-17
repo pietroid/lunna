@@ -107,6 +107,9 @@ class AgentCubit extends Cubit<AgentState> {
   /// The day the last turn was about, for [retry].
   DateTime? _day;
 
+  /// The page this conversation was opened from, when not Tempo.
+  AgentSubject? _about;
+
   /// Whether the past has been asked for yet.
   bool _asked = false;
 
@@ -116,8 +119,10 @@ class AgentCubit extends Cubit<AgentState> {
   /// Starts a new conversation, putting the one being had with the past.
   ///
   /// A conversation still being answered is left as it is: the answer is on
-  /// its way to it.
-  void open() {
+  /// its way to it. [about] is the page it is opened from, which every turn
+  /// of it is about.
+  void open({AgentSubject? about}) {
+    _about = about;
     if (!state.busy && state.entries.isNotEmpty) {
       emit(
         AgentState(
@@ -191,6 +196,7 @@ class AgentCubit extends Cubit<AgentState> {
         entries,
         conversationId: state.conversationId,
         day: day,
+        about: _about,
       );
       emit(
         state.copyWith(

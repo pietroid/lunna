@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,8 +26,10 @@ class App extends StatelessWidget {
           // One block of time, opened from the timeline.
           GoRoute(
             path: '/evento/:id',
-            builder: (context, state) =>
-                EventPage(id: state.pathParameters['id']!),
+            builder: (context, state) => EventPage(
+              id: state.pathParameters['id']!,
+              dock: NotesDock.task,
+            ),
           ),
           // The routines: what happens every day, and on which days.
           GoRoute(

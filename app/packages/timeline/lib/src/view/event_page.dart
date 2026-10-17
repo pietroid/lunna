@@ -30,10 +30,14 @@ import 'package:timeline/src/widgets/widgets.dart';
 /// first, so the two can never disagree. A finished task is no longer on
 /// the timeline, so whoever opens one hands it in ([finished]): its page
 /// shows when it was done, and only its name and notes still change.
+///
+/// At the foot of the notes floats whatever [dock] draws: the agent's bar
+/// and the microphone that dictates into them, which this package does not
+/// know of.
 /// {@endtemplate}
 class EventPage extends StatelessWidget {
   /// {@macro event_page}
-  const EventPage({required this.id, this.finished, super.key});
+  const EventPage({required this.id, this.finished, this.dock, super.key});
 
   /// The card's id: the task's for a task, the event's for an event.
   final String id;
@@ -41,6 +45,9 @@ class EventPage extends StatelessWidget {
   /// The task as it was when it was finished, for one the timeline no
   /// longer draws. Its [TimelineEvent.startTime] is when it was done.
   final TimelineEvent? finished;
+
+  /// What floats at the foot of the notes, given the notes to write into.
+  final NotesDockBuilder? dock;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +100,11 @@ class EventPage extends StatelessWidget {
                           Expanded(
                             // Keyed by the block, so the field never carries
                             // one block's text over to another.
-                            child: _Notes(key: ValueKey(card.id), card: card),
+                            child: _Notes(
+                              key: ValueKey(card.id),
+                              card: card,
+                              dock: card.isInteractive ? dock : null,
+                            ),
                           ),
                         ],
                       ),
@@ -414,9 +425,10 @@ class _Tappable extends StatelessWidget {
 /// gesture. The server's copy only replaces the field's while the user is not
 /// in it, so a save landing mid-sentence never moves the cursor.
 class _Notes extends StatefulWidget {
-  const _Notes({required this.card, super.key});
+  const _Notes({required this.card, this.dock, super.key});
 
   final TimelineEvent card;
+  final NotesDockBuilder? dock;
 
   @override
   State<_Notes> createState() => _NotesState();
@@ -425,8 +437,9 @@ class _Notes extends StatefulWidget {
 class _NotesState extends State<_Notes> {
   static const _debounce = Duration(milliseconds: 800);
 
-  late final _controller = TextEditingController(text: widget.card.notes);
+  late final _controller = LiveTextController(text: widget.card.notes);
   final _focus = FocusNode();
+  final _scroll = ScrollController();
   late final TimelineBloc _bloc = context.read<TimelineBloc>();
   Timer? _timer;
 
@@ -439,20 +452,42 @@ class _NotesState extends State<_Notes> {
     _focus.addListener(() {
       if (!_focus.hasFocus) _save();
     });
+    _controller.addListener(_onChanged);
   }
 
   @override
   void didUpdateWidget(_Notes oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_focus.hasFocus && widget.card.notes != _controller.text) {
-      _controller.text = widget.card.notes;
+    // Only notes changed somewhere else replace these: the server's echo of
+    // what was saved here is not one, nor anything while it is dictated.
+    if (!_focus.hasFocus &&
+        _controller.live == null &&
+        widget.card.notes != _saved) {
       _saved = widget.card.notes;
+      _controller.text = widget.card.notes;
     }
   }
 
-  void _onChanged(String _) {
+  /// Typed or dictated, the notes are saved a moment after they stop
+  /// changing; dictated words keep the end of the notes in sight.
+  void _onChanged() {
+    if (_controller.text == _saved) return;
     _timer?.cancel();
     _timer = Timer(_debounce, _save);
+    if (_controller.live != null) _followEnd();
+  }
+
+  void _followEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scroll.hasClients) return;
+      unawaited(
+        _scroll.animateTo(
+          _scroll.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        ),
+      );
+    });
   }
 
   void _save() {
@@ -469,23 +504,26 @@ class _NotesState extends State<_Notes> {
     _save();
     _controller.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
+    final dock = widget.dock;
+    final notes = SingleChildScrollView(
+      controller: _scroll,
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.s6,
         AppSpacing.s4,
         AppSpacing.s6,
-        AppSpacing.s8,
+        // Room to scroll the last line clear of the dock.
+        dock == null ? AppSpacing.s8 : kNotesDockClearance,
       ),
       child: TextField(
         controller: _controller,
         focusNode: _focus,
         enabled: widget.card.isInteractive,
-        onChanged: _onChanged,
         maxLines: null,
         minLines: 6,
         keyboardType: TextInputType.multiline,
@@ -496,6 +534,25 @@ class _NotesState extends State<_Notes> {
           hintStyle: AppTypography.body.copyWith(color: AppColors.ink3),
         ),
       ),
+    );
+    if (dock == null) return notes;
+
+    return Stack(
+      children: [
+        Positioned.fill(child: notes),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: kFloatingActionButtonMargin,
+          child: Center(
+            child: dock(
+              context,
+              _controller,
+              widget.card.isTask ? widget.card.id : null,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

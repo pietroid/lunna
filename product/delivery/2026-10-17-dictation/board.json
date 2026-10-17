@@ -1,0 +1,54 @@
+{
+  "title": "Dictation into notes, and Lunna at the foot of them",
+  "screens": [
+    {
+      "png": "img/1.png",
+      "title": "A task's notes",
+      "why": "Tempo's dock comes to the notes: Lunna's bar, and a mic where the + was.",
+      "pins": [
+        {"id": "A", "x": 150, "y": 774, "label": "Lunna's bar", "text": "Tempo's bar as it is, 'Pergunte à Lunna…'. Tapped, it opens the conversation, which is told about this task."},
+        {"id": "B", "x": 276, "y": 774, "label": "Small mic asks", "text": "Inside the bar, beside the crescent: talks to Lunna, exactly as on Tempo (press or hold)."},
+        {"id": "C", "x": 346, "y": 770, "label": "Big mic writes", "text": "The AppFab in the +'s place, Phosphor microphone: plain speech to text into the notes, never to Lunna. Tap to start, tap stop."},
+        {"id": "D", "x": 362, "y": 230, "label": "Typing unchanged", "text": "The notes are still a plain field. While the keyboard is up the dock steps aside."}
+      ]
+    },
+    {
+      "png": "img/2.png",
+      "title": "Dictating",
+      "why": "Plain speech to text, streamed straight into the note as it is heard.",
+      "pins": [
+        {"id": "E", "x": 10, "y": 290, "label": "New paragraph", "text": "Each recording is a paragraph of its own, after a blank line at the end of the notes."},
+        {"id": "F", "x": 372, "y": 312, "label": "Live words", "text": "Words the recognizer can still revise are ink3, settled ones ink. Saved as they settle (same 800 ms debounce as typing)."},
+        {"id": "G", "x": 42, "y": 772, "label": "Same recorder", "text": "Lunna's VoiceBar: trash, breathing dot, timer, live wave. Trash takes back only this paragraph."},
+        {"id": "H", "x": 345, "y": 772, "label": "Stop keeps", "text": "Stop: the words stay, the dock comes back. No 1-minute limit: it runs until stopped."}
+      ]
+    },
+    {
+      "png": "img/5.png",
+      "title": "Asking Lunna by voice",
+      "why": "The small mic is Tempo's recorder: words rise in a card, not into the note.",
+      "pins": [
+        {"id": "I", "x": 200, "y": 664, "label": "Words for Lunna", "text": "The question rises above the bar, as on Tempo; tap it to open the conversation. The note is untouched."},
+        {"id": "J", "x": 345, "y": 772, "label": "Stop asks", "text": "Stop opens the conversation with the words in the field, selected (one minute at most, as on Tempo)."}
+      ]
+    },
+    {
+      "png": "img/3.png",
+      "title": "A project's notes",
+      "why": "The same dock on Notas; Tarefas keeps Lunna's bar and the +.",
+      "pins": [
+        {"id": "K", "x": 150, "y": 774, "label": "About the project", "text": "The conversation knows this project, its notes and its tasks."},
+        {"id": "L", "x": 250, "y": 181, "label": "Notas only", "text": "Before, nothing floated over the notes. Now Notas has the mic; Tarefas keeps the + that writes a task."}
+      ]
+    },
+    {
+      "png": "img/4.png",
+      "title": "A second take",
+      "why": "Speak again later: a new paragraph under the last one.",
+      "pins": [
+        {"id": "M", "x": 10, "y": 301, "label": "Earlier take", "text": "An earlier dictation is ordinary text now, edited like anything typed."},
+        {"id": "N", "x": 10, "y": 393, "label": "Follows the end", "text": "The new paragraph; the page scrolls to keep the words in sight as they arrive."}
+      ]
+    }
+  ]
+}

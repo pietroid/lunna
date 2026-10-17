@@ -191,6 +191,13 @@ in place and saves them through `PATCH /api/tasks/:id` or
 `PATCH /api/events/:id` a moment after typing stops, on blur, and when the
 page closes.
 
+A task's notes and a project's have the agent's bar at their foot, and
+beside it a microphone that **dictates**: plain speech to text, straight
+into the notes, each recording a paragraph of its own, saved like typing.
+The bar's own microphone still asks the agent, which then knows the page
+it was opened on (`about`). See "Dictation" in
+[product/spec/agent.md](./product/spec/agent.md).
+
 ## Tasks and events
 
 Two kinds of card:

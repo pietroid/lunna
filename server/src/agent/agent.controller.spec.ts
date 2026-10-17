@@ -39,16 +39,18 @@ const ZONE = 'America/Sao_Paulo';
 const NOW = new Date('2026-03-10T13:00:00Z');
 const TOMORROW = '2026-03-11';
 
+const USER = {
+  id: 'test-user',
+  email: 'test@example.com',
+  name: 'Test',
+  timeZone: ZONE,
+  dayStart: DEFAULT_WORK_DAY.start,
+  dayEnd: DEFAULT_WORK_DAY.end,
+};
+
 class StubSessionGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    context.switchToHttp().getRequest<{ user: unknown }>().user = {
-      id: 'test-user',
-      email: 'test@example.com',
-      name: 'Test',
-      timeZone: ZONE,
-      dayStart: DEFAULT_WORK_DAY.start,
-      dayEnd: DEFAULT_WORK_DAY.end,
-    };
+    context.switchToHttp().getRequest<{ user: unknown }>().user = USER;
     return true;
   }
 }
@@ -642,6 +644,82 @@ describe('the agent', () => {
     expect(context).toContain('- amanhã = Wed 2026-03-11');
     expect(context).toContain(`showing ${TOMORROW}`);
     expect(context).toMatch(/Request: Oi$/);
+  });
+
+  it('tells the model which task the person is on, with its notes', async () => {
+    const id = ((await task('Escrever relatório', 60)).body as Timeline)
+      .tasks[0].id;
+    await request(app.getHttpServer())
+      .patch(`/tasks/${id}`)
+      .send({ notes: 'Começar pelos números.\n\nMandar até sexta.' });
+    model.steps = [say('Certo.')];
+
+    const turn = await post('/agent/turn', {
+      messages: [{ role: 'user', text: 'Quanto tempo isso leva?' }],
+      about: { taskId: id },
+    });
+
+    expect(turn.status).toBe(201);
+    const context = model.seen[0][model.seen[0].length - 1].content;
+    expect(context).toMatch(
+      /The person is on this task’s page:\n {2}t1 · Escrever relatório · task/,
+    );
+    expect(context).toContain(
+      '  Começar pelos números.\n  \n  Mandar até sexta.',
+    );
+    expect(context).toMatch(/Request: Quanto tempo isso leva\?$/);
+  });
+
+  it('tells the model which project the person is on, with its tasks', async () => {
+    const projects = app.get(ProjectStore);
+    const tasks = app.get(TaskStore);
+    const project = await projects.insert(USER, {
+      title: 'Mudança',
+      deadline: '2026-04-01',
+    });
+    await projects.update(USER, { ...project, notes: 'Caixas no sábado.' });
+    const id = ((await task('Orçar frete', 30, true)).body as Timeline)
+      .backlog[0].id;
+    await tasks.update(USER, {
+      ...(await tasks.get(USER, id))!,
+      projectId: project.id,
+    });
+    model.steps = [say('Certo.')];
+
+    await post('/agent/turn', {
+      messages: [{ role: 'user', text: 'O que falta?' }],
+      about: { projectId: project.id },
+    });
+
+    const context = model.seen[0][model.seen[0].length - 1].content;
+    expect(context).toContain(
+      'The person is on the page of the project “Mudança”, due 2026-04-01.\nNotes:\n  Caixas no sábado.\nIts tasks:\n  b1 · Orçar frete · backlog task · 30 min',
+    );
+  });
+
+  it('refuses a subject that is not there, or is not one', async () => {
+    const missing = await post('/agent/turn', {
+      messages: [{ role: 'user', text: 'Oi' }],
+      about: { taskId: '00000000-0000-4000-8000-000000000000' },
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.body).toMatchObject({
+      kind: 'refused',
+      message: 'Não encontrei essa tarefa.',
+    });
+
+    for (const about of [
+      { taskId: 'nope' },
+      { taskId: '00000000-0000-4000-8000-000000000000', projectId: 'x' },
+      'tarefa',
+    ]) {
+      const bad = await post('/agent/turn', {
+        messages: [{ role: 'user', text: 'Oi' }],
+        about,
+      });
+      expect(bad.status).toBe(400);
+    }
+    expect(model.seen).toHaveLength(0);
   });
 
   it('reads other days by the word the person used', async () => {

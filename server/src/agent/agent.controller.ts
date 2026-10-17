@@ -20,6 +20,7 @@ import {
   AgentMessage,
   AgentReply,
   AgentService,
+  Subject,
   Suggestion,
 } from './agent.service';
 import { AgentError, failure } from './agent.errors';
@@ -52,7 +53,12 @@ export class AgentController {
   async turn(
     @CurrentUser() user: AuthUser,
     @Body()
-    dto: { conversationId?: unknown; messages?: unknown; day?: unknown },
+    dto: {
+      conversationId?: unknown;
+      messages?: unknown;
+      day?: unknown;
+      about?: unknown;
+    },
   ): Promise<AgentReply> {
     const trace = Trace.start(user.id, 'agent');
     try {
@@ -69,6 +75,7 @@ export class AgentController {
         optionalConversation(dto.conversationId),
         requireMessages(dto.messages),
         typeof dto.day === 'string' ? dto.day : undefined,
+        optionalSubject(dto.about),
         trace,
       );
     } catch (error) {
@@ -191,4 +198,29 @@ export function optionalConversation(raw: unknown): string | undefined {
   }
 
   return raw.toLowerCase();
+}
+
+/**
+ * What the conversation is about, when it was opened from a page: a task's
+ * (`{ taskId }`) or a project's (`{ projectId }`).
+ */
+export function optionalSubject(raw: unknown): Subject | undefined {
+  if (raw === undefined || raw === null) return undefined;
+
+  const about = raw as { taskId?: unknown; projectId?: unknown };
+  const { taskId, projectId } = about;
+  if (
+    typeof raw !== 'object' ||
+    (taskId === undefined) === (projectId === undefined)
+  ) {
+    throw new BadRequestException('about must be { taskId } or { projectId }');
+  }
+  const id = taskId ?? projectId;
+  if (typeof id !== 'string' || !UUID.test(id)) {
+    throw new BadRequestException('about must name a UUID');
+  }
+
+  return taskId !== undefined
+    ? { taskId: id.toLowerCase() }
+    : { projectId: id.toLowerCase() };
 }

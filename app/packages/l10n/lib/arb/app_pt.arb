@@ -306,8 +306,12 @@
   "eventDoneOn": "Feita {day}, às {time}",
   "@eventDoneOn": {
     "placeholders": {
-      "day": { "type": "String" },
-      "time": { "type": "String" }
+      "day": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
     }
   },
   "routineDaily": "Todo dia",
@@ -841,5 +845,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dictationStart": "Ditar nas anotações",
+  "dictationStop": "Parar de ditar",
+  "dictationDiscard": "Descartar este parágrafo"
 }

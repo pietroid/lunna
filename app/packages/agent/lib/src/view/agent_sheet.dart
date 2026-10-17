@@ -25,13 +25,14 @@ Future<void> showAgentSheet(
   BuildContext context, {
   DateTime? day,
   String? draft,
+  AgentSubject? about,
 }) {
   final agent = context.read<AgentCubit>();
   final repository = context.read<AgentRepository>();
   final timeline = context.read<TimelineBloc>();
   final voice = context.read<VoiceCubit>();
   // Every opening is a new conversation; the last one goes above it.
-  agent.open();
+  agent.open(about: about);
 
   return showModalBottomSheet<void>(
     context: context,

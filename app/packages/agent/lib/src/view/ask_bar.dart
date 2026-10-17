@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:agent/src/models.dart';
 import 'package:agent/src/view/agent_sheet.dart';
 import 'package:agent/src/view/voice_bar.dart';
 import 'package:agent/src/voice/voice_cubit.dart';
@@ -22,13 +23,17 @@ import 'package:l10n/l10n.dart';
 /// {@endtemplate}
 class AskDock extends StatefulWidget {
   /// {@macro ask_dock}
-  const AskDock({required this.fab, this.day, super.key});
+  const AskDock({required this.fab, this.day, this.about, super.key});
 
   /// The + beside the bar.
   final Widget fab;
 
   /// The day Tempo is showing, which the conversation is about.
   final DateTime? Function()? day;
+
+  /// The page the dock is on, when not Tempo: the task or the project the
+  /// conversation is about.
+  final AgentSubject? about;
 
   @override
   State<AskDock> createState() => _AskDockState();
@@ -39,8 +44,12 @@ class _AskDockState extends State<AskDock> {
 
   late final _hold = VoiceHold(onRelease: () => unawaited(_stop()));
 
-  Future<void> _open({String? draft}) =>
-      showAgentSheet(context, day: widget.day?.call(), draft: draft);
+  Future<void> _open({String? draft}) => showAgentSheet(
+    context,
+    day: widget.day?.call(),
+    draft: draft,
+    about: widget.about,
+  );
 
   /// Starts recording here; a microphone that is refused or missing opens
   /// the conversation instead, whose composer says why.
@@ -90,7 +99,7 @@ class _AskDockState extends State<AskDock> {
                     children: [
                       _Heard(voice: voice, onOpen: () => unawaited(_open())),
                       const SizedBox(height: AppSpacing.s2),
-                      _Pill(
+                      AskPill(
                         child: VoiceBar(
                           voice: voice,
                           onStop: () => unawaited(_stop()),
@@ -148,7 +157,7 @@ class AskBar extends StatelessWidget {
       label: context.l10n.agentAsk(AppBrand.id),
       child: GestureDetector(
         onTap: onOpen,
-        child: _Pill(
+        child: AskPill(
           padding: const EdgeInsets.only(
             left: AppSpacing.s4,
             right: AppSpacing.s2,
@@ -182,9 +191,11 @@ class AskBar extends StatelessWidget {
 }
 
 /// The surface the bar and the recorder are drawn on.
-class _Pill extends StatelessWidget {
-  const _Pill({
+class AskPill extends StatelessWidget {
+  /// Creates the pill.
+  const AskPill({
     required this.child,
+    super.key,
     this.padding = const EdgeInsets.symmetric(horizontal: AppSpacing.s2),
   });
 

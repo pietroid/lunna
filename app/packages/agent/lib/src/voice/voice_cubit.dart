@@ -111,11 +111,17 @@ String _join(String a, String b) =>
 /// {@endtemplate}
 class VoiceCubit extends Cubit<VoiceState> {
   /// {@macro voice_cubit}
-  VoiceCubit({required this._recognizer}) : super(const VoiceState());
+  ///
+  /// [limit] is the longest recording; null runs until the user stops it,
+  /// as dictation does, a session the platform ends being followed by
+  /// another.
+  VoiceCubit({required this._recognizer, this._limit = VoiceCubit.limit})
+    : super(const VoiceState());
 
   final VoiceRecognizer _recognizer;
+  final Duration? _limit;
 
-  /// The longest recording, which is iOS's own.
+  /// The longest recording for the agent, which is iOS's own.
   static const limit = Duration(minutes: 1);
 
   /// How many levels the wave keeps.
@@ -228,7 +234,8 @@ class VoiceCubit extends Cubit<VoiceState> {
     if (startedAt == null || state.status != VoiceStatus.listening) return;
 
     final elapsed = clock.now().difference(startedAt);
-    if (elapsed >= limit) {
+    final limit = _limit;
+    if (limit != null && elapsed >= limit) {
       emit(state.copyWith(elapsed: limit));
       _halt();
     } else {
@@ -299,4 +306,14 @@ class VoiceCubit extends Cubit<VoiceState> {
     if (state.status.recording) await _recognizer.cancel();
     return super.close();
   }
+}
+
+/// {@template dictation_cubit}
+/// A recording that writes into notes rather than to the agent: no limit,
+/// and a type of its own, so the agent's recording ([VoiceCubit]) is still
+/// found above it.
+/// {@endtemplate}
+class DictationCubit extends VoiceCubit {
+  /// {@macro dictation_cubit}
+  DictationCubit({required super.recognizer}) : super(limit: null);
 }

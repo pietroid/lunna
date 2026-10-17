@@ -25,6 +25,7 @@ import { CalendarUser } from '../../calendar/calendar.types';
 import { Trace } from '../../common/trace';
 import { EventLayoutService } from '../../events/event-layout.service';
 import { TimelineService } from '../../events/timeline.service';
+import { MemoryProjectStore } from '../../projects/project.store';
 import { MemoryTaskStore } from '../../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../../time/work-hours';
 import { instantOf, isoIn } from '../../time/zone';
@@ -146,6 +147,7 @@ async function runCase(
     layout,
     calendar,
     tasks,
+    new MemoryProjectStore(),
     new MemoryConversationStore(),
   );
   const trace = Trace.start(USER.id, 'eval');
@@ -200,6 +202,7 @@ async function runCase(
         USER,
         undefined,
         [{ role: 'user', text: c.said }],
+        undefined,
         undefined,
         trace,
         now,
