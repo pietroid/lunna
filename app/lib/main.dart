@@ -82,6 +82,12 @@ Future<void> main() async {
           BlocProvider<AgentCubit>(
             create: (_) => AgentCubit(repository: agentRepository),
           ),
+          // One recording for the app, so one started on Tempo's bar
+          // carries on in the conversation.
+          BlocProvider<VoiceCubit>(
+            create: (context) =>
+                VoiceCubit(recognizer: context.read<VoiceRecognizer>()),
+          ),
           BlocProvider<TimelineBloc>(
             create: (_) {
               final bloc = TimelineBloc(repository: timelineRepository);

@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:clock/clock.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:timeline/timeline.dart';
 
 /// A recognizer the test speaks through.
 class _FakeRecognizer implements VoiceRecognizer {
@@ -54,6 +56,9 @@ class _FakeRecognizer implements VoiceRecognizer {
 }
 
 class _MockRepository extends Mock implements AgentRepository {}
+
+class _MockTimelineBloc extends MockBloc<TimelineBlocEvent, TimelineState>
+    implements TimelineBloc {}
 
 final _now = DateTime(2026, 10, 15, 9, 41);
 
@@ -278,59 +283,67 @@ void main() {
   group('AgentSheet', () {
     setUpAll(() => registerFallbackValue(<AgentEntry>[]));
 
-    Future<(_FakeRecognizer, AgentCubit)> pumpSheet(
+    Future<(_FakeRecognizer, AgentCubit, VoiceCubit)> pumpSheet(
       WidgetTester tester, {
-      bool listen = false,
+      bool recording = false,
+      String? draft,
     }) async {
-      final repository = _MockRepository();
-      when(
-        () => repository.turn(
-          any(),
-          conversationId: any(named: 'conversationId'),
-          day: any(named: 'day'),
-        ),
-      ).thenAnswer(
-        (_) async =>
-            (conversationId: 'c1', reply: const AgentReply(text: 'Pronto.')),
-      );
-      when(
-        () => repository.conversations(before: any(named: 'before')),
-      ).thenAnswer((_) async => []);
+      final repository = _answering();
       final recognizer = _FakeRecognizer();
       final agent = AgentCubit(repository: repository);
+      // Made in the tree, so it is closed with it.
+      late VoiceCubit voice;
 
       await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('pt', 'BR'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          theme: AppTheme.current,
-          home: Scaffold(
-            body: MultiBlocProvider(
-              providers: [
-                BlocProvider.value(value: agent),
-                BlocProvider(
-                  create: (_) => VoiceCubit(recognizer: recognizer),
-                ),
-              ],
-              child: AgentSheet(listen: listen),
-            ),
+        _app(
+          MultiBlocProvider(
+            providers: [
+              BlocProvider.value(value: agent),
+              BlocProvider(
+                create: (_) => voice = VoiceCubit(recognizer: recognizer),
+                lazy: false,
+              ),
+            ],
+            child: Scaffold(body: AgentSheet(draft: draft)),
           ),
         ),
       );
+      // A recording begun on Tempo's bar, as the sheet opened.
+      if (recording) await voice.start();
       await tester.pump();
 
-      return (recognizer, agent);
+      return (recognizer, agent, voice);
     }
 
-    testWidgets('the microphone records into the composer and sends', (
+    TextField field(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField));
+
+    testWidgets('opens empty, on the field', (tester) async {
+      await pumpSheet(tester);
+
+      expect(field(tester).focusNode!.hasFocus, isTrue);
+      expect(field(tester).controller!.text, isEmpty);
+    });
+
+    testWidgets('opens with a draft in the field, selected', (tester) async {
+      await pumpSheet(tester, draft: 'Encaixa estudo');
+
+      final controller = field(tester).controller!;
+      expect(controller.text, 'Encaixa estudo');
+      expect(
+        controller.selection,
+        const TextSelection(baseOffset: 0, extentOffset: 14),
+      );
+      expect(field(tester).focusNode!.hasFocus, isTrue);
+    });
+
+    testWidgets('stop puts the words in the field, selected; send sends', (
       tester,
     ) async {
-      final (recognizer, agent) = await pumpSheet(tester);
+      final (recognizer, agent, _) = await pumpSheet(tester);
 
       await tester.tap(find.bySemanticsLabel('Falar'));
       await tester.pump();
-      expect(find.text('Ouvindo'), findsOneWidget);
       expect(
         find.text('Pode falar. Eu escrevo enquanto você fala.'),
         findsOneWidget,
@@ -340,6 +353,21 @@ void main() {
       await tester.pump();
       expect(find.textContaining('O que tenho amanhã?'), findsOneWidget);
 
+      await tester.tap(find.bySemanticsLabel('Parar e revisar'));
+      await tester.pump();
+      await tester.pump();
+
+      // Stopping never sends.
+      expect(agent.state.entries, isEmpty);
+      expect(recognizer.stops, 1);
+      final controller = field(tester).controller!;
+      expect(controller.text, 'O que tenho amanhã?');
+      expect(
+        controller.selection,
+        const TextSelection(baseOffset: 0, extentOffset: 19),
+      );
+      expect(field(tester).focusNode!.hasFocus, isTrue);
+
       await tester.tap(find.bySemanticsLabel('Enviar'));
       await tester.pumpAndSettle();
 
@@ -347,40 +375,41 @@ void main() {
       expect(said.text, 'O que tenho amanhã?');
       expect(said.voice, isNotNull);
       expect(find.text('por voz · 0:00'), findsOneWidget);
-      expect(find.text('Ouvindo'), findsNothing);
     });
 
-    testWidgets('opens recording when asked to', (tester) async {
-      final (recognizer, _) = await pumpSheet(tester, listen: true);
+    testWidgets('held, the microphone stops as it is let go', (tester) async {
+      final (recognizer, agent, _) = await pumpSheet(tester);
+
+      final finger = await tester.startGesture(
+        tester.getCenter(find.bySemanticsLabel('Falar')),
+      );
+      await tester.pump();
+      recognizer.say('Encaixa estudo');
+      await tester.pump(VoiceHold.hold);
+      await finger.up();
+      await tester.pump();
+      await tester.pump();
+
+      expect(recognizer.stops, 1);
+      expect(agent.state.entries, isEmpty);
+      expect(field(tester).controller!.text, 'Encaixa estudo');
+    });
+
+    testWidgets('a recording begun on Tempo carries on in the sheet', (
+      tester,
+    ) async {
+      final (recognizer, _, voice) = await pumpSheet(tester, recording: true);
+      recognizer.say('Encaixa estudo');
       await tester.pump();
 
       expect(recognizer.sessions, 1);
-      expect(find.text('Ouvindo'), findsOneWidget);
-    });
-
-    testWidgets('tapping the words hands them to the keyboard', (
-      tester,
-    ) async {
-      final (recognizer, agent) = await pumpSheet(tester, listen: true);
-      await tester.pump();
-      recognizer.say('Encaixa estudo');
-      await tester.pump();
-      await tester.pump();
-
-      await tester.tap(
-        find.textContaining('Encaixa estudo', findRichText: true),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text('Ouvindo'), findsNothing);
-      final field = tester.widget<TextField>(find.byType(TextField));
-      expect(field.controller!.text, 'Encaixa estudo');
-      expect(agent.state.entries, isEmpty);
+      expect(voice.state.status, VoiceStatus.listening);
+      expect(find.textContaining('Encaixa estudo'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
     });
 
     testWidgets('discarding leaves nothing behind', (tester) async {
-      final (recognizer, agent) = await pumpSheet(tester, listen: true);
-      await tester.pump();
+      final (recognizer, agent, _) = await pumpSheet(tester, recording: true);
       recognizer.say('Esquece');
       await tester.pump();
 
@@ -388,14 +417,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(recognizer.cancels, 1);
-      expect(find.text('Ouvindo'), findsNothing);
+      expect(field(tester).controller!.text, isEmpty);
       expect(agent.state.entries, isEmpty);
     });
 
     testWidgets('a refused microphone says so and is no longer offered', (
       tester,
     ) async {
-      final (recognizer, _) = await pumpSheet(tester);
+      final (recognizer, _, _) = await pumpSheet(tester);
       recognizer.availability = VoiceAvailability.denied;
 
       await tester.tap(find.bySemanticsLabel('Falar'));
@@ -408,4 +437,221 @@ void main() {
       expect(find.bySemanticsLabel('Falar'), findsNothing);
     });
   });
+
+  group('AskDock', () {
+    setUpAll(() {
+      registerFallbackValue(<AgentEntry>[]);
+      registerFallbackValue(const TimelineRequested());
+    });
+
+    Future<(_FakeRecognizer, VoiceCubit)> pumpDock(WidgetTester tester) async {
+      final repository = _answering();
+      final recognizer = _FakeRecognizer();
+      late VoiceCubit voice;
+      final timeline = _MockTimelineBloc();
+      when(() => timeline.state).thenReturn(const TimelineState());
+
+      await tester.pumpWidget(
+        RepositoryProvider<AgentRepository>.value(
+          value: repository,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => AgentCubit(repository: repository)),
+              BlocProvider<TimelineBloc>.value(value: timeline),
+              BlocProvider(
+                create: (_) => voice = VoiceCubit(recognizer: recognizer),
+                lazy: false,
+              ),
+            ],
+            child: _app(
+              const Scaffold(
+                floatingActionButton: AskDock(
+                  fab: SizedBox.square(dimension: 56),
+                ),
+                floatingActionButtonLocation:
+                    FloatingActionButtonLocation.centerFloat,
+              ),
+            ),
+          ),
+        ),
+      );
+      return (recognizer, voice);
+    }
+
+    /// Lets the dock and the sheet move, which never settle while the
+    /// recording's dot breathes.
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    Future<void> record(WidgetTester tester, _FakeRecognizer recognizer) async {
+      await tester.tap(find.bySemanticsLabel('Falar'));
+      await settle(tester);
+      recognizer.say('Encaixa estudo amanhã');
+      await tester.pump();
+    }
+
+    testWidgets('the microphone records on the spot, no sheet', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+
+      await record(tester, recognizer);
+
+      expect(voice.state.status, VoiceStatus.listening);
+      expect(find.byType(AgentSheet), findsNothing);
+      expect(find.byType(AskBar), findsNothing);
+      expect(find.byType(VoiceBar), findsOneWidget);
+      expect(find.textContaining('Encaixa estudo amanhã'), findsOneWidget);
+      expect(find.text('Ouvindo'), findsOneWidget);
+    });
+
+    testWidgets('held, the microphone records until it is let go', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+
+      final finger = await tester.startGesture(
+        tester.getCenter(find.bySemanticsLabel('Falar')),
+      );
+      await tester.pump();
+      // Recording as the finger lands, the bar already the recorder.
+      expect(voice.state.status, VoiceStatus.listening);
+      await settle(tester);
+      expect(find.byType(VoiceBar), findsOneWidget);
+      recognizer.say('Encaixa estudo amanhã');
+
+      await finger.up();
+      await tester.pumpAndSettle();
+
+      expect(recognizer.stops, 1);
+      expect(find.byType(AgentSheet), findsOneWidget);
+      final controller = tester
+          .widget<TextField>(find.byType(TextField))
+          .controller!;
+      expect(controller.text, 'Encaixa estudo amanhã');
+      expect(controller.selection.end, controller.text.length);
+    });
+
+    testWidgets('a quick tap keeps recording after the finger leaves', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+
+      await record(tester, recognizer);
+      await settle(tester);
+
+      expect(voice.state.status, VoiceStatus.listening);
+      expect(recognizer.stops + recognizer.cancels, 0);
+      expect(find.byType(AgentSheet), findsNothing);
+    });
+
+    testWidgets('stop opens the conversation with the words selected', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+      await record(tester, recognizer);
+
+      await tester.tap(find.bySemanticsLabel('Parar e revisar'));
+      await tester.pumpAndSettle();
+
+      expect(voice.state.status, VoiceStatus.idle);
+      expect(find.byType(AgentSheet), findsOneWidget);
+      final controller = tester
+          .widget<TextField>(find.byType(TextField))
+          .controller!;
+      expect(controller.text, 'Encaixa estudo amanhã');
+      expect(controller.selection.start, 0);
+      expect(controller.selection.end, controller.text.length);
+    });
+
+    testWidgets('discard brings the bar and the + back', (tester) async {
+      final (recognizer, voice) = await pumpDock(tester);
+      await record(tester, recognizer);
+
+      await tester.tap(find.bySemanticsLabel('Descartar'));
+      await tester.pumpAndSettle();
+
+      expect(recognizer.cancels, 1);
+      expect(voice.state.status, VoiceStatus.idle);
+      expect(find.byType(AskBar), findsOneWidget);
+      expect(find.byType(VoiceBar), findsNothing);
+    });
+
+    testWidgets('the words open the conversation; the recording goes on', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+      await record(tester, recognizer);
+
+      await tester.tap(find.bySemanticsLabel(RegExp('^Abrir a conversa')));
+      await settle(tester);
+
+      expect(find.byType(AgentSheet), findsOneWidget);
+      expect(voice.state.status, VoiceStatus.listening);
+      expect(recognizer.stops + recognizer.cancels, 0);
+      expect(
+        find.descendant(
+          of: find.byType(AgentSheet),
+          matching: find.byType(VoiceBar),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('at the limit it says it stopped listening', (tester) async {
+      final (recognizer, _) = await pumpDock(tester);
+      await record(tester, recognizer);
+
+      await tester.pump(VoiceCubit.limit);
+      await tester.pump();
+
+      expect(find.text('Parei de ouvir no limite de 1 minuto'), findsOneWidget);
+      expect(find.byType(VoiceBar), findsOneWidget);
+    });
+
+    testWidgets('a refused microphone opens the conversation, saying why', (
+      tester,
+    ) async {
+      final (recognizer, _) = await pumpDock(tester);
+      recognizer.availability = VoiceAvailability.denied;
+
+      await tester.tap(find.bySemanticsLabel('Falar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AgentSheet), findsOneWidget);
+      expect(
+        find.textContaining('não tem acesso ao microfone'),
+        findsOneWidget,
+      );
+    });
+  });
 }
+
+AgentRepository _answering() {
+  final repository = _MockRepository();
+  when(
+    () => repository.turn(
+      any(),
+      conversationId: any(named: 'conversationId'),
+      day: any(named: 'day'),
+    ),
+  ).thenAnswer(
+    (_) async =>
+        (conversationId: 'c1', reply: const AgentReply(text: 'Pronto.')),
+  );
+  when(
+    () => repository.conversations(before: any(named: 'before')),
+  ).thenAnswer((_) async => []);
+  return repository;
+}
+
+Widget _app(Widget home) => MaterialApp(
+  locale: const Locale('pt', 'BR'),
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  theme: AppTheme.current,
+  home: home,
+);

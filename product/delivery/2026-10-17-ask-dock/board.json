@@ -1,0 +1,21 @@
+{"screens":[
+ {"png":"img/1.png","title":"Tempo: same layout","why":"The bar and the + stay; the row is centred and the list ends clear of it.","pins":[
+  {"id":"A","x":195,"y":695,"label":"One centred row","text":"Bar and + as one row, centred on the column (centerFloat), both 56 px tall so their middles line up."},
+  {"id":"B","x":277,"y":695,"label":"🎤 records here","text":"Tap starts recording on the spot; no sheet opens."},
+  {"id":"C","x":195,"y":560,"label":"Room at the end","text":"List padding = bottom bar + safe area + 16 + 56 + 24 (was a fixed 112), so the last card and its + scroll above the row."}]},
+ {"png":"img/2.png","title":"Talking on Tempo","why":"The bar opens across the + into a WhatsApp-style recorder; the words rise above it as heard.","pins":[
+  {"id":"D","x":110,"y":592,"label":"Words as heard","text":"Settled in ink, still being revised in grey, red caret. Card on surface with the bar's shadow."},
+  {"id":"E","x":352,"y":592,"label":"↑ into the chat","text":"Tapping the card opens the conversation; the recording carries on there (one shared VoiceCubit)."},
+  {"id":"F","x":43,"y":690,"label":"🗑 discard","text":"Drops the recording; the bar and + come back."},
+  {"id":"G","x":200,"y":690,"label":"● 0:03 + wave","text":"Breathing red dot, timer, live bars centred on a line: the voice-note look."},
+  {"id":"H","x":345,"y":690,"label":"■ tap again = stop","text":"Where the mic was. Stops and opens the chat with the words in the field."}]},
+ {"png":"img/3.png","title":"Still talking, in the chat","why":"Same recorder, in the composer's place; the words sit where they'll be sent from.","pins":[
+  {"id":"I","x":224,"y":680,"label":"Draft bubble","text":"The words in a fill bubble on the right, live, until stopped."},
+  {"id":"J","x":120,"y":770,"label":"Same VoiceBar","text":"One widget for Tempo and the chat; the mic in the composer starts it too."}]},
+ {"png":"img/4.png","title":"Stopped: text, selected","why":"Nothing is sent by surprise: the words land in the field, all selected, keyboard up.","pins":[
+  {"id":"K","x":160,"y":760,"label":"Preselected","text":"Send as is, fix a word, or type over everything."},
+  {"id":"L","x":348,"y":765,"label":"↑ send","text":"The one accent; sends with the spoken length kept ('por voz · 0:03')."}]},
+ {"png":"img/5.png","title":"Bar tapped: straight to typing","why":"No greeting, no suggestion chips: the sheet opens on the focused field.","pins":[
+  {"id":"M","x":195,"y":450,"label":"Nothing suggested","text":"The welcome and its four chips are gone; past conversations still pull down from above."},
+  {"id":"N","x":40,"y":770,"label":"Focused","text":"Keyboard comes up with the sheet; the mic in the field records like the one on Tempo."}]}
+]}

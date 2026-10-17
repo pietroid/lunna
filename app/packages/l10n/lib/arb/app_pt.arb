@@ -464,12 +464,6 @@
       }
     }
   },
-  "agentGreeting": "Como posso arrumar seu dia?",
-  "agentGreetingHint": "Peça para encaixar, mover ou reorganizar o que quiser. Nada muda sem você aplicar.",
-  "agentChipAfternoon": "Organiza minha tarde",
-  "agentChipStudy": "Encaixa 2h de estudo amanhã",
-  "agentChipLate": "Atrasei 30 min, refaz o dia",
-  "agentChipTomorrow": "O que tenho amanhã?",
   "agentInputHint": "Pergunte ou peça algo…",
   "agentReplyHint": "Responder…",
   "agentThinking": "Olhando seu dia…",
@@ -631,7 +625,8 @@
   "agentVoiceStopped": "Parei de ouvir no limite de 1 minuto",
   "agentVoiceHint": "Pode falar. Eu escrevo enquanto você fala.",
   "agentVoiceDiscard": "Descartar",
-  "agentVoiceEdit": "Corrigir o texto",
+  "agentVoiceStop": "Parar e revisar",
+  "agentVoiceOpen": "Abrir a conversa",
   "agentVoiceVia": "por voz · {length}",
   "@agentVoiceVia": {
     "placeholders": {

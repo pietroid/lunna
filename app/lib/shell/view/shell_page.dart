@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
@@ -60,6 +59,11 @@ class _ShellPageState extends State<ShellPage> {
   }
 
   void _onSelected(int index) {
+    // A recording started on Tempo's bar is drawn only there; leaving Tempo
+    // drops it rather than keep listening out of sight.
+    if (index != _timelineIndex) {
+      unawaited(context.read<VoiceCubit>().cancel());
+    }
     if (index == _projectsIndex) {
       unawaited(context.read<ProjectsCubit>().load());
     }
@@ -100,7 +104,7 @@ class _ShellPageState extends State<ShellPage> {
             children: const [HomePage(), ProjectsPage(), MenuPage()],
           ),
           floatingActionButton: _index == _timelineIndex
-              ? _AskAndWrite(
+              ? AskDock(
                   // The conversation is about the day Tempo is showing.
                   day: () => _aim.value?.at,
                   fab: AppFab(
@@ -114,7 +118,10 @@ class _ShellPageState extends State<ShellPage> {
                       : l10n.shellWriteDown,
                   onPressed: () => unawaited(_onFabPressed()),
                 ),
-          floatingActionButtonLocation: AppFab.location,
+          // On Tempo the bar and the + are one row, centred on the column.
+          floatingActionButtonLocation: _index == _timelineIndex
+              ? FloatingActionButtonLocation.centerFloat
+              : AppFab.location,
           bottomNavigationBar: AppBottomBar(
             currentIndex: _index,
             onSelected: _onSelected,
@@ -134,38 +141,6 @@ class _ShellPageState extends State<ShellPage> {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// The agent's bar and the +, side by side, on Tempo.
-///
-/// The + still writes something down in one tap; the bar beside it is
-/// where a conversation starts. Both float where the + always did, across
-/// the column the content is drawn in.
-class _AskAndWrite extends StatelessWidget {
-  const _AskAndWrite({required this.day, required this.fab});
-
-  final DateTime? Function() day;
-
-  final Widget fab;
-
-  @override
-  Widget build(BuildContext context) {
-    final width = math.min(
-      MediaQuery.sizeOf(context).width,
-      AppSpacing.maxContentWidth,
-    );
-
-    return SizedBox(
-      width: width - 2 * kFloatingActionButtonMargin,
-      child: Row(
-        children: [
-          Expanded(child: AskBar(day: day)),
-          const SizedBox(width: AppSpacing.s3),
-          fab,
-        ],
       ),
     );
   }

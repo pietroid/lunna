@@ -250,6 +250,10 @@ class _TimelineListState extends State<TimelineList> {
 
   final ScrollController _scroll = ScrollController();
 
+  /// How tall the row floating at the foot of the screen is: the + and the
+  /// bar beside it.
+  static const _footRow = 56.0;
+
   /// One key per card, so the laid-out list can be measured.
   final _cardKeys = <String, GlobalKey>{};
 
@@ -1314,12 +1318,18 @@ class _TimelineListState extends State<TimelineList> {
                     physics: dragging == null && _seam == null
                         ? null
                         : const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                       AppSpacing.s6,
                       0,
                       AppSpacing.s6,
-                      // Room under the last card so the bar never covers it.
-                      AppSpacing.s16 + AppSpacing.s12,
+                      // Room under the last card for everything at the foot
+                      // of the screen: the bottom bar (in the padding, since
+                      // the body runs under it), the row floating over it,
+                      // and a breath, so the end of the list scrolls clear.
+                      MediaQuery.paddingOf(context).bottom +
+                          kFloatingActionButtonMargin +
+                          _footRow +
+                          AppSpacing.s6,
                     ),
                     children: _rows(state, dragging),
                   ),

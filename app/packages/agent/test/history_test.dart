@@ -102,7 +102,7 @@ void main() {
     ) async {
       await pump(tester);
 
-      expect(find.text('Como posso arrumar seu dia?'), findsOneWidget);
+      expect(find.text('Pergunte ou peça algo…'), findsOneWidget);
       expect(find.text('Conversas anteriores'), findsOneWidget);
       expect(find.text('Coloca dentista às 15h').hitTestable(), findsNothing);
     });

@@ -12,5 +12,6 @@ export 'src/view/ask_bar.dart';
 export 'src/view/failure_note.dart';
 export 'src/view/quick_replies.dart';
 export 'src/view/suggestion_card.dart';
+export 'src/view/voice_bar.dart';
 export 'src/voice/voice_cubit.dart';
 export 'src/voice/voice_recognizer.dart';

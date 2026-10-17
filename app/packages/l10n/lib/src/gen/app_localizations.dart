@@ -1097,42 +1097,6 @@ abstract class AppLocalizations {
   /// **'{brand, select, lunna{Sugestão da Lunna} other{Sugestão do Focus}}'**
   String agentSuggestionLabel(String brand);
 
-  /// No description provided for @agentGreeting.
-  ///
-  /// In pt, this message translates to:
-  /// **'Como posso arrumar seu dia?'**
-  String get agentGreeting;
-
-  /// No description provided for @agentGreetingHint.
-  ///
-  /// In pt, this message translates to:
-  /// **'Peça para encaixar, mover ou reorganizar o que quiser. Nada muda sem você aplicar.'**
-  String get agentGreetingHint;
-
-  /// No description provided for @agentChipAfternoon.
-  ///
-  /// In pt, this message translates to:
-  /// **'Organiza minha tarde'**
-  String get agentChipAfternoon;
-
-  /// No description provided for @agentChipStudy.
-  ///
-  /// In pt, this message translates to:
-  /// **'Encaixa 2h de estudo amanhã'**
-  String get agentChipStudy;
-
-  /// No description provided for @agentChipLate.
-  ///
-  /// In pt, this message translates to:
-  /// **'Atrasei 30 min, refaz o dia'**
-  String get agentChipLate;
-
-  /// No description provided for @agentChipTomorrow.
-  ///
-  /// In pt, this message translates to:
-  /// **'O que tenho amanhã?'**
-  String get agentChipTomorrow;
-
   /// No description provided for @agentInputHint.
   ///
   /// In pt, this message translates to:
@@ -1451,11 +1415,17 @@ abstract class AppLocalizations {
   /// **'Descartar'**
   String get agentVoiceDiscard;
 
-  /// No description provided for @agentVoiceEdit.
+  /// No description provided for @agentVoiceStop.
   ///
   /// In pt, this message translates to:
-  /// **'Corrigir o texto'**
-  String get agentVoiceEdit;
+  /// **'Parar e revisar'**
+  String get agentVoiceStop;
+
+  /// No description provided for @agentVoiceOpen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Abrir a conversa'**
+  String get agentVoiceOpen;
 
   /// No description provided for @agentVoiceVia.
   ///

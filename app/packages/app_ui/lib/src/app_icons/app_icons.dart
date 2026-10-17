@@ -123,6 +123,9 @@ class AppIcons {
   /// Runs a paused block again.
   static const play = AppIconData.phosphor(PhosphorIconsFill.play);
 
+  /// Stops a recording, keeping what was said.
+  static const stop = AppIconData.phosphor(PhosphorIconsFill.stop);
+
   /// Adds time.
   static const plus = AppIconData.phosphor(PhosphorIconsRegular.plus);
 

@@ -104,7 +104,10 @@ only the conversation being had; the past reaches it only through
 sight until it is pulled down, dimmed and read only, each under the day and
 hour it began, their plans one line (aplicado, desfeito, não aplicado).
 
-On the app, the ask bar sits beside the + on Tempo and opens the sheet.
+On the app, the ask bar and the + are one row, centred at the foot of
+Tempo (`AskDock`); the lists leave room under their last card for it.
+Tapping the bar opens the sheet empty, on the field, keyboard up: no
+welcome and no suggested questions.
 The suggestion is drawn above the list, and "Agora não" rests it for 24
 hours on the device. Applying replaces the day
 (`TimelineReplaced(undoable:)`); the cards it changed are drawn like any
@@ -136,17 +139,30 @@ recognizer through `speech_to_text`, in pt-BR: on the device where it has
 Portuguese, in Apple's or Google's cloud where it does not. The audio never
 reaches our server.
 
-The microphone on the ask bar opens the sheet already recording
-(`showAgentSheet(listen: true)`); in the sheet, an empty composer offers it.
-While recording, `VoiceCubit` writes the words into the composer as they are
-heard (settled in ink, still provisional in ink3). Silence never sends: a
-session the platform ends after a pause (Android) is followed by another,
-and their words are joined; one that ends within a second having heard
-nothing failed (no microphone, as on a simulator) and is not restarted.
-`SpeechVoiceRecognizer` runs one plugin call at a time, and waits a moment
-after a session ends before the next: the iOS plugin crashes when two
-calls touch the audio engine at once. The recording ends on ↑ (send), × (discard),
-tapping the words (to correct them by keyboard) or at one minute. A message
+The microphone on the ask bar records on the spot, with no sheet: the row
+becomes the recorder (`VoiceBar`: discard, a breathing dot, the time, the
+live wave, stop), and the words rise above it in a card as they are heard
+(settled in ink, still provisional in ink3). In the sheet, an empty
+composer offers the microphone and draws the same recorder. There is one
+recording for the app (`VoiceCubit`, provided in `main.dart`), so tapping
+the card opens the sheet with the recording carrying on, and closing the
+sheet leaves it on Tempo; leaving Tempo for another tab discards it.
+
+The microphone records as soon as a finger lands on it. A quick tap
+leaves it recording until stop; held for 0.4 s or longer, letting go is the
+stop (`VoiceHold`, caught above the microphone, since the recorder replaces
+it while the finger is down). If the permission dialog takes the finger, the
+recording goes on as if tapped. Either way, **stop never sends**. It puts the
+words in the field, all selected, keyboard up, to be sent, fixed or typed
+over (from Tempo it opens the sheet on them, `showAgentSheet(draft:)`).
+The trash discards; at one minute it stops on its own and says so. Silence
+never sends: a session the platform ends after a pause (Android) is
+followed by another, and their words are joined; one that ends within a
+second having heard nothing failed (no microphone, as on a simulator) and
+is not restarted. `SpeechVoiceRecognizer` runs one plugin call at a time,
+and waits a moment after a session ends before the next: the iOS plugin
+crashes when two calls touch the audio engine at once. A message
 that was spoken carries `UserEntry.voice`, its length, shown as "por voz",
 and kept on the device. A refused microphone, or a device with no
-recognizer, is said in the composer and the microphone is no longer offered.
+recognizer, is said in the composer and the microphone is no longer offered
+there; tapped on Tempo's bar, it opens the sheet to say so.

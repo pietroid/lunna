@@ -631,24 +631,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get agentGreeting => 'Como posso arrumar seu dia?';
-
-  @override
-  String get agentGreetingHint => 'Peça para encaixar, mover ou reorganizar o que quiser. Nada muda sem você aplicar.';
-
-  @override
-  String get agentChipAfternoon => 'Organiza minha tarde';
-
-  @override
-  String get agentChipStudy => 'Encaixa 2h de estudo amanhã';
-
-  @override
-  String get agentChipLate => 'Atrasei 30 min, refaz o dia';
-
-  @override
-  String get agentChipTomorrow => 'O que tenho amanhã?';
-
-  @override
   String get agentInputHint => 'Pergunte ou peça algo…';
 
   @override
@@ -860,7 +842,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentVoiceDiscard => 'Descartar';
 
   @override
-  String get agentVoiceEdit => 'Corrigir o texto';
+  String get agentVoiceStop => 'Parar e revisar';
+
+  @override
+  String get agentVoiceOpen => 'Abrir a conversa';
 
   @override
   String agentVoiceVia(String length) {
