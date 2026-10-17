@@ -1,0 +1,25 @@
+
+## 2258bb8e  "<command-message>feature</command-message> <command-name>/feature</command-name> <command-"
+turns 101 (subagent 0) | in 21.06M (cacheRead 20.77M, cacheWrite 291k, raw 0k) | out 134k | ratio 158:1
+context: first turn 56k, mean 209k, max 322k
+tool results (chars ≈ tokens×4): Bash:sed 29× 24ktok | Read 10× 20ktok 9img | Bash:grep 17× 10ktok | Bash:cat 8× 5ktok | Bash:ls 14× 3ktok | Bash:flutter test 5× 2ktok | Bash:flutter analyze 5× 0ktok | Bash:git status 1× 0ktok | Bash:git diff 1× 0ktok | Bash:find 2× 0ktok | Write 5× 0ktok | mcp__usage-bars__session_cost 5× 0ktok
+
+## 6bc7df0a  "<command-message>feature</command-message> <command-name>/feature</command-name> <command-"
+turns 83 (subagent 0) | in 15.65M (cacheRead 15.37M, cacheWrite 280k, raw 0k) | out 121k | ratio 130:1
+context: first turn 55k, mean 189k, max 282k
+tool results (chars ≈ tokens×4): Bash:cat 18× 21ktok | Bash:sed 21× 20ktok | Bash:grep 12× 8ktok | Bash:ls 14× 2ktok | mcp__usage-bars__session_cost 8× 0ktok | Bash:flutter build 3× 0ktok | Bash:npm test 1× 0ktok | Edit 2× 0ktok | Write 2× 0ktok | Bash:flutter analyze 1× 0ktok | Bash:npx eslint 1× 0ktok | Read 7× 0ktok 7img
+
+## aaf4aa9f  "<command-message>design-proposal</command-message> <command-name>/design-proposal</command"
+turns 109 (subagent 0) | in 21.10M (cacheRead 20.80M, cacheWrite 305k, raw 0k) | out 119k | ratio 177:1
+context: first turn 53k, mean 194k, max 306k
+tool results (chars ≈ tokens×4): Bash:sed 35× 34ktok | Bash:cat 12× 20ktok | Bash:grep 16× 6ktok | Bash:ls 18× 4ktok | Bash:git log 2× 1ktok | Bash:find 3× 1ktok | Bash:npx jest 2× 1ktok | Bash:flutter test 1× 1ktok | Bash:flutter analyze 4× 0ktok | Write 5× 0ktok | Bash:git diff 1× 0ktok | mcp__usage-bars__session_cost 6× 0ktok
+
+## c0ad9a09  "based on last delivery now design what it would take to have a recording of live voice /de"
+turns 102 (subagent 0) | in 15.38M (cacheRead 15.19M, cacheWrite 194k, raw 0k) | out 87k | ratio 178:1
+context: first turn 49k, mean 151k, max 224k
+tool results (chars ≈ tokens×4): Bash:ls 21× 14ktok | Bash:cat 7× 6ktok | Bash:grep 16× 5ktok | Bash:sed 19× 5ktok | Read 7× 4ktok 6img | Bash:flutter test 3× 1ktok | Bash:flutter build 2× 0ktok | mcp__usage-bars__session_cost 4× 0ktok | Bash:git ls 1× 0ktok | Bash:find 6× 0ktok | Bash:git status 1× 0ktok | Write 4× 0ktok
+
+## 8d641b5c  "Create a simple design to add agentic experience. Do just a mockup and send me the prints."
+turns 139 (subagent 0) | in 30.80M (cacheRead 30.48M, cacheWrite 320k, raw 0k) | out 132k | ratio 233:1
+context: first turn 47k, mean 222k, max 346k
+tool results (chars ≈ tokens×4): Bash:sed 25× 22ktok | Bash:cat 24× 16ktok | Bash:grep 14× 7ktok | Bash:ls 22× 3ktok | Bash:git show 5× 2ktok | Bash:git log 1× 1ktok | Bash:flutter test 3× 1ktok | Bash:flutter analyze 6× 1ktok | Bash:npx eslint 2× 1ktok | Bash:find 2× 1ktok | Write 11× 0ktok | Bash:git status 1× 0ktok

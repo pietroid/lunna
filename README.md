@@ -19,3 +19,6 @@ and a web image per brand.
 - [MIGRATION.md](./MIGRATION.md): moving to two brands on one backend.
 - [AGENTS.md](./AGENTS.md): how the code is organised and the rules of the
   timeline.
+- [product/](./product): research RFCs and one record per delivered feature.
+- [.tool/](./.tool): internal tools (open and comment on those docs, mockup
+  prints).

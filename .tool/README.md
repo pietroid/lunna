@@ -1,0 +1,102 @@
+# Internal tools
+
+Scripts for working on Lunna/Focus, not part of the app or the server.
+Node ≥ 22 and nothing to install. Run them from the repo root.
+
+Each one does in one call what used to take several, and prints only what
+matters (paths, ✓/✗, the lines of a failure). That's the point: an agent
+re-reads the whole conversation on every call, so fewer calls and shorter
+output are what make a session cheap.
+
+| Tool | One line |
+|------|----------|
+| `check` | CI's checks on what changed, one line per step |
+| `preview` | Build a preview entry point in both brands, screenshot it, lay out the board |
+| `cost` | What a Claude Code session cost, per message, from its transcript |
+| `doc` | List, open and comment on the Markdown under `product/` |
+
+## `check`: what CI runs, on what changed
+
+```bash
+.tool/check                  # what changed against HEAD (untracked included)
+.tool/check --all            # everything, as CI does
+.tool/check --brands lunna   # one brand only, while iterating
+```
+
+The server's eslint, tsc and tests (under `TZ=UTC`, as CI) run beside the
+app's `flutter analyze` and the tests of each changed package under both
+brands. A change to `app_ui` or `l10n` tests every package. Each step
+prints `✓ name (12s)`, or `✗` with the lines that explain it and its log.
+
+## `preview`: prints of a preview entry point
+
+```bash
+.tool/preview <slug> 1 2 3 [--brands lunna,focus] [--out dir] [--board board.json] [--no-build]
+```
+
+Builds `app/lib/<slug>_preview.dart` (or `app/lib/<slug>.dart`) for each
+brand at once, screenshots each scene (`?s=<n>`) as a 390×844 phone into
+`<out>/<brand>/<n>.png` plus `strip.png`, and with `--board` lays out the
+annotated board in `<out>/board/`. A failed build prints its errors.
+
+## `cost`: what a session cost
+
+```bash
+.tool/cost                 # the session running now
+.tool/cost --usd 7.42      # with its running USD (from usage-bars), before it ends
+.tool/cost --list          # recent sessions, to pick an earlier one
+.tool/cost 2258bb8e        # that one
+.tool/cost --from 20:40    # only from that hour on
+```
+
+Reads `~/.claude/projects/<this repo>/<session>.jsonl` and prints a
+Markdown table, one row per message from you: when, how long, turns, peak
+context, tokens in (cache reads in brackets), tokens out (thinking in
+brackets), USD. The transcript gets its total USD when the session ends;
+before that pass `--usd`. The total is spread over the rows by the usual
+price ratios (cache read 0.1× input, cache write 1.25× or 2×, output 5×).
+
+Reading it: tokens in ≈ turns × context. A late turn in a long session reads
+several times what an early one does, so the expensive rows are the ones
+with many turns at a high peak.
+
+## `doc`: the Markdown under `product/`
+
+```bash
+.tool/doc ls [words]                 # docs, newest first, with their open questions
+.tool/doc open [file|words]          # open it as a page you can comment on
+.tool/doc notes [file|words] [--open]  # print only the notes (--open: unanswered Qs)
+```
+
+A doc is named by its path or by words from its path (`.tool/doc open agent
+reliab`); a topic's `README.md` wins over its notes, then the newest
+match, and no name at all means the newest doc.
+
+`open` starts `annotate.mjs` for that file in the background and opens the
+browser. A second `open` of the same file reuses the page already running,
+and a server nobody has looked at for 20 minutes exits by itself.
+
+On the page, hover a block and press **+**, or select some text, to leave a
+**Q**, **Learn**, **Decision** or **Note**. It is written into the file
+itself, as a blockquote under that block:
+
+```markdown
+> **Q:** _“the quoted text”_ — why not cache the whole prompt?
+
+> **A:** The answer, written by whoever answers it.
+```
+
+So the notes live in git with the doc, and an agent reads them with
+`.tool/doc notes <doc> --open` instead of reading the whole document. The
+page redraws whenever the file changes, from any editor.
+
+## `mockup/`: the pieces under `preview`
+
+Used by `preview` and the `/create` skill (`.claude/skills/create/SKILL.md`).
+macOS and Google Chrome.
+
+| Script | What it does |
+|--------|--------------|
+| `shoot-flutter.sh <web_build> <out> <scene>…` | Screenshots a Flutter web build as a 390×844 phone, one `<n>.png` per `?s=<n>` scene, plus `strip.png` |
+| `shoot.mjs` | One screenshot over the DevTools protocol; used by `shoot-flutter.sh` |
+| `board.mjs <board.json> <out>` | Lays the screenshots out as an annotated board with lettered pins: `board.png` and `screen1..n.png` |

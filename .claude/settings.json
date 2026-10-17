@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.tool/doc:*)",
+      "Bash(.tool/check:*)",
+      "Bash(.tool/preview:*)",
+      "Bash(.tool/cost:*)",
+      "Bash(.tool/mockup/shoot-flutter.sh:*)",
+      "Bash(node .tool/mockup/board.mjs:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter build web:*)",
+      "Bash(flutter gen-l10n:*)",
+      "Bash(npm test:*)",
+      "Bash(npx tsc --noEmit:*)",
+      "Bash(npx eslint:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)"
+    ]
+  }
+}

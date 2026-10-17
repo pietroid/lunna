@@ -100,8 +100,13 @@ server/
     time/               work hours, zones, the scheduler
   drizzle/              generated SQL migrations (committed)
 deploy/                 docker-compose.yml, nginx.conf, web.Dockerfile
-delivery/               one folder per delivered feature: prompt, design, notes
-_product/record/        product notes (time-system.md)
+product/
+  spec/                 feature specs moved out of this file (agent, projects)
+  delivery/             one folder per delivered feature: prompt, design, notes
+  improvements/         one folder per /improve run: what changed, evidence, references
+  research/             one folder per topic: the RFC (README.md), data/, code/, reports/, notes/
+.tool/                  internal tools: check (CI on what changed), preview (prints),
+                        cost (session tokens), doc (open/annotate Markdown)
 ```
 
 ## Auth
@@ -401,39 +406,11 @@ greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
 
 ### Projects
 
-A project (`project` table) is a subject that outlives a day: a name,
-notes, an optional **deadline** (a day, `YYYY-MM-DD`, due by its end) and
-`done_at`. Its bar is time, from `created_at` to the deadline, never tasks.
-
-**A project's task is an ordinary task** with `project_id`, and it starts
-**parked** (`task.parked`): `TaskStore.pending` leaves it out, so the queue,
-the backlog, the layout, reminders and the agent never see it. A project
-with twenty tasks does not drop twenty on the backlog. Letting one out puts
-it at the end of the backlog, then, for the queue or an hour, moves it
-through `EventLayoutService` as a drag would; from there it is a task like
-any other. Back into the project takes it off the day, except one that has
-begun (refused, in Portuguese). Removing a project removes what only it
-could see and lets the rest belong to no project.
-
-The app files a project's tasks the way Lista files the day, in the same
-cards: *Só no projeto*, *Fazer em breve* (with the hours the timeline gives
-them on the same read), *Depois eu priorizo*, *N feitas*. Tapping a card
-asks where it goes (`PlaceSheet`, an hour included); dragging it into
-another stage moves it there, and dropping it on a parked card takes that
-card's place. A move tells the timeline to read itself again
-(`ProjectsCubit.onDayChanged`). Projetos reads itself again whenever it comes
-to the front.
-
-| Route | What it does |
-|-------|--------------|
-| `GET /projects` | `{ projects }`: each with `tasks: [{ id, title, minutes, place, at?, doneAt? }]` |
-| `POST /projects` | `{ title, deadline? }` |
-| `PATCH /projects/:id` | `{ title?, notes?, deadline? (day or null), done? }` |
-| `DELETE /projects/:id` | parked tasks go with it; the rest stay |
-| `POST /projects/:id/tasks` | `{ title, minutes }`, parked at the end |
-| `POST /projects/:id/tasks/:taskId/place` | `{ place: project\|backlog\|queue\|scheduled\|done, at?, index? }` |
-
-Every route answers with every project.
+A project is a subject that outlives a day (a name, notes, a deadline). Its
+tasks are ordinary tasks, **parked** off the day (`task.parked`) until let
+out. The routes, the stages and the rules are in
+[product/spec/projects.md](./product/spec/projects.md): read it before
+touching `server/src/projects/` or `app/packages/projects/`.
 
 ### Reminders
 
@@ -447,86 +424,13 @@ plan into local notifications, so reminders arrive without push or network.
 
 ### The agent
 
-The agent (named after the brand: "Pergunte à Lunna", "Pergunte ao
-Focus") reads the day and proposes changes to it. It runs inside the Nest
-server (`server/src/agent/`) and calls a model through OpenRouter
-(`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; with no key, `POST /agent/turn`
-answers 503 and nothing else changes).
-
-**Reads run, writes are only ever proposed.** The model has three tools:
-`read_timeline` (the day, with ids, wall-clock hours and `now`),
-`read_conversations` (earlier conversations, by words or day) and
-`propose_plan`. There is no tool that writes. `propose_plan` checks every
-change against the day (the id exists, nothing begun is moved, nothing goes
-into the past) and files a plan in memory (`PlanStore`, two hours); a bad
-change goes back to the model as an error to answer.
-
-**An hour asked for is kept, and what it pushes is asked about.**
-`propose_plan` lays the day out again as if the plan were made (`rehearse`
-in `timeline.service.ts`, the same `relayout`) and keeps on the plan the
-tasks it would push later (`pushed`). The model is told to keep the hour
-the person named rather than hop to another hour or day, and to ask whether
-pushing is all right; the plan card shows the pushed tasks and its buttons
-become Outro horário / Empurrar. A change that would not get its own hour
-(an anchored task behind one already there, anything on an event) is
-refused, so the model asks instead: nothing pushes an event. The user applies the
-plan, and it is the server that makes each change, through
-`EventLayoutService`, keeping what it needs to undo it. A plan applies
-whole or not at all.
-
-A change is one of `add_task` (anchored at its hour), `move_task` (from
-the queue or the backlog), `add_event`, `move_event`. Nothing is removed.
-
-| Route | What it does |
-|-------|--------------|
-| `POST /agent/turn` | `{ conversationId?, messages, day? }` → `{ conversationId, reply, steps, plan? }`; writes the turn down, changes nothing on the day |
-| `GET /agent/conversations?before=&limit=` | earlier conversations, most recent first, for the person to read back |
-| `GET /agent/suggestion` | the first backlog task that fits in the room left today, as a plan; no model |
-| `POST /agent/plans/:id/apply?days=` | the timeline, plus `touched`: the ids it changed |
-| `POST /agent/plans/:id/undo?days=` | the timeline; the plan can be applied again |
-
-**A conversation is its own context.** Every turn is written to
-`agent_message` (`ConversationStore`: Postgres, memory in tests), keyed by a
-`conversationId` the server hands out on the first turn. The model is sent
-only the conversation being had; the past reaches it only through
-`read_conversations`. Each opening of the sheet starts a new conversation
-(`AgentCubit.open`); the ones before are above it in the same list, out of
-sight until it is pulled down, dimmed and read only, each under the day and
-hour it began, their plans one line (aplicado, desfeito, não aplicado).
-
-On the app, the ask bar sits beside the + on Tempo and opens the sheet.
-The suggestion is drawn above the list, and "Agora não" rests it for 24
-hours on the device. Applying replaces the day
-(`TimelineReplaced(undoable:)`); the cards it changed are drawn like any
-others. **Desfazer** (`UndoChip`) sits on the Lista/Calendário row while
-`TimelineState.undoable` holds the plan: it does not time out, and any
-change made by hand forgets it, since undoing restores the cards as they
-were before the plan.
-
-#### Voice
-
-The user can speak instead of typing. **Speech becomes text on the phone,
-and only the text reaches the agent**: a spoken request is an ordinary
-`POST /agent/turn`, and nothing on the server knows it was spoken.
-`VoiceRecognizer` (`packages/agent/lib/src/voice/`) is the platform's own
-recognizer through `speech_to_text`, in pt-BR: on the device where it has
-Portuguese, in Apple's or Google's cloud where it does not. The audio never
-reaches our server.
-
-The microphone on the ask bar opens the sheet already recording
-(`showAgentSheet(listen: true)`); in the sheet, an empty composer offers it.
-While recording, `VoiceCubit` writes the words into the composer as they are
-heard (settled in ink, still provisional in ink3). Silence never sends: a
-session the platform ends after a pause (Android) is followed by another,
-and their words are joined; one that ends within a second having heard
-nothing failed (no microphone, as on a simulator) and is not restarted.
-`SpeechVoiceRecognizer` runs one plugin call at a time, and waits a moment
-after a session ends before the next: the iOS plugin crashes when two
-calls touch the audio engine at once. The recording ends on ↑ (send), × (discard),
-tapping the words (to correct them by keyboard) or at one minute. A message
-that was spoken carries `UserEntry.voice`, its length, shown as "por voz",
-and kept on the device. A refused microphone, or a device with no
-recognizer, is said in the composer and the microphone is no longer offered.
+It reads the day and proposes changes to it: **reads run, writes are only
+ever proposed**, the user applies a plan whole, the server makes it through
+`EventLayoutService` and can undo it. Voice becomes text on the phone and
+reaches the server as an ordinary turn. The tools, the plan rules, the
+routes, the conversations and voice are in
+[product/spec/agent.md](./product/spec/agent.md): read it before touching
+`server/src/agent/` or `app/packages/agent/`.
 
 ## Commands
 

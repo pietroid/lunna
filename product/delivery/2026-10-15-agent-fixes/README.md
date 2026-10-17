@@ -1,6 +1,6 @@
 # Agent fixes: plain cards, a lasting undo, separate conversations, kept hours
 
-Delivered 2026-10-15. Covers both brands. Six fixes to the agent shipped the same day (`delivery/2026-10-15-agent`).
+Delivered 2026-10-15. Covers both brands. Six fixes to the agent shipped the same day (`product/delivery/2026-10-15-agent`).
 
 ## 1. The prompt
 

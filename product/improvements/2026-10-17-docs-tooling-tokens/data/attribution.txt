@@ -1,0 +1,23 @@
+## 2258bb8e
+turns 101, in 21.06M (attributed 21.06M)
+ 27%   5.63M  fixed prefix (system, tools, skills, AGENTS.md)
+ 19%   4.03M  model output: thinking, text, commands
+ 19%   4.02M  result: Bash: read/search code
+ 15%   3.10M  result: Read
+ 10%   2.06M  model output: writing code
+  5%   1.08M  result: images (screenshots)
+  3%   0.65M  result: Bash: build/test/shoot
+  1%   0.21M  result: Bash: other
+
+## 8d641b5c
+turns 139, in 30.80M (attributed 30.80M)
+ 21%   6.54M  fixed prefix (system, tools, skills, AGENTS.md)
+ 21%   6.54M  result: Bash: read/search code
+ 18%   5.44M  model output: writing code
+ 15%   4.70M  result: user messages + reminders
+ 12%   3.59M  model output: thinking, text, commands
+  5%   1.59M  result: images (screenshots)
+  4%   1.28M  result: Bash: other
+  2%   0.65M  result: Bash: build/test/shoot
+  1%   0.37M  result: Bash: edit scripts
+

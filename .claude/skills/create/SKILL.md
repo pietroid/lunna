@@ -1,17 +1,29 @@
 ---
-name: feature
-description: /feature - take a feature for Lunna/Focus from idea to delivery, fast - an annotated mockup drawn by the real Flutter app, with PNG prints; iterate on feedback, then (when asked) build it in the server and app, screenshot the real build in both brands, and record everything in a delivery/ folder. Use when asked for a design proposal, a mockup, "prints", "how would X look", or to implement and deliver a feature that was mocked.
+name: create
+description: /create - take a feature for Lunna/Focus from idea to delivery, fast - an annotated mockup drawn by the real Flutter app, with PNG prints; iterate on feedback, then, once approved, hand off and build it in a fresh session (`/create build <slug>`) in the server and app, screenshot the real build in both brands, and record everything in a product/delivery/ folder. Use when asked for a design proposal, a mockup, "prints", "how would X look", or to implement and deliver a feature that was mocked.
 ---
 
-# Feature: proposal → delivery
+# Create: proposal → delivery
 
-The flow has four phases. Stop after each one, send what it produced, and
-only go on when the user asks ("great, now make the changes", "build it").
-Phases 1–2 should be fast (ASAP means one preview entry point and one
-build-and-shoot pass).
-Phase 3 is real engineering. Phase 4 always closes a build.
+The flow has four phases in **two sessions**. Stop after each phase, send
+what it produced, and only go on when the user asks. Phases 1–2 (design)
+should be fast: one preview entry point, one `.tool/preview` per round.
+Phases 3–4 (build) are real engineering, and Phase 4 always closes a build.
 
-Worked example of the whole flow: `delivery/2026-10-15-agent/README.md`.
+**The design session ends at approval.** When the user approves the
+design ("great, now make the changes", "build it"), don't build in that
+session: write the hand-off (end of Phase 2) and tell the user to run
+`/clear` and then `/create build <slug>`. Every turn re-reads the whole
+conversation, so a build that starts at ~55k of context instead of the
+~150k the design left behind costs a third less. The draft delivery README
+carries everything across.
+
+`/create build <slug>` (or "build <slug>" in the arguments) starts at Phase 3,
+from `product/delivery/*-<slug>/README.md`.
+
+Worked example of the whole flow: `product/delivery/2026-10-15-agent/README.md`.
+The tools this skill runs are in `.tool/` (see `.tool/README.md`): `preview`,
+`check`, `cost`, `doc`.
 
 ## Speed
 
@@ -25,18 +37,25 @@ same quality. Every round trip and every re-read costs both.
   parallel. Read several files in one call; read only the lines you need.
 - **Never re-read** a file you just wrote or edited, or one already in the
   conversation. Don't re-run a passing check to "make sure".
-- **Run long things in the background** (`flutter build web`, `npm test`,
-  `flutter test`) and write the next thing (specs, the README) meanwhile.
-  Build both brands at the same time.
+- **One call per routine step.** `.tool/preview` builds, shoots and lays
+  out the board; `.tool/check` runs CI's checks on what changed and prints
+  only failures. Never run their pieces by hand, and never read a log they
+  didn't point at.
+- **Run long things in the background** (`.tool/preview`, `.tool/check`)
+  and write the next thing (specs, `board.json`, the README) meanwhile.
 - **Verify narrowly first, broadly once.** While iterating, run the one spec
-  or package you touched; the full matrix (both brands, every touched
-  package, `npm test`) once, at the end.
+  or package you touched (`flutter test -r failures-only <file>`); the
+  full `.tool/check` once, at the end.
+- **Write with Edit or Write**, not long edit scripts in Bash: a script
+  repeats the code it replaces, and it all stays in context.
 - **No subagents** unless the user asks: they start cold and re-read
   everything.
 - **Short messages.** Progress lines while working, one compact report at the
   end of a phase. Don't narrate options you won't take.
 - **One fix pass.** Render, look, fix everything you saw in one go,
   re-render once. Don't polish what the user hasn't seen yet.
+- **Look at the strip, not every shot.** One `strip.png` per brand shows
+  every scene; open a single shot only to place pins.
 
 Quality is not negotiable: the pins still state every decision, the specs
 still cover the rules, both brands are still checked.
@@ -44,28 +63,20 @@ still cover the rules, both brands are still checked.
 ## Cost and time
 
 Every delivery records what it cost, in dollars and tokens, and how long it
-took. The `usage-bars` mod (`~/.claude/mods/usage-bars`) gives Claude a
-tool, `mcp__usage-bars__session_cost`, that answers
-`{ usd, tokens: { input, output, cacheRead, cacheWrite, total }, at }`: this
-session's running cost and the tokens its turns used so far (main loop and
-subagents alike).
+took, from the session transcript: `.tool/cost` prints a Markdown table with
+one row per user message (when, how long, turns, peak context, tokens in
+with the cache reads, tokens out with the thinking, USD) and the totals. It
+costs one call and needs no readings along the way.
 
-- **Read it when a phase starts and when it ends**, in the same message as
-  the phase's first and last other calls (it costs nothing), and keep the
-  readings in a running table (phase, start, end, duration, USD, tokens in,
-  tokens out).
-  The difference between two readings is what the work between them cost;
-  their `at` timestamps give its wall-clock time.
-- Report tokens simply, as two columns: **in** (`input + cacheRead +
-  cacheWrite`, everything the model read) and **out** (`output`, everything
-  it wrote), e.g. "960k in, 9.7k out". Round to k/M. No split beyond that.
-- When the user asks to count from a given moment ("from now to the end"),
-  take a reading right then and count from it.
-- The figure is the session's, so it includes the talk around the work. Say
-  so in the table instead of trying to split it.
-- If the tool isn't listed (the mod isn't loaded), or answers without
-  `tokens` (an older mod), ask the user to run `/cost` at the same points
-  and paste it, and record those.
+- USD comes from the transcript once the session has ended. While it runs,
+  pass the running total: call `mcp__usage-bars__session_cost` and run
+  `.tool/cost --usd <usd>`. Without either, the USD column is a dash; say so.
+- Run it at the end of each session: at the hand-off for the design session
+  (into the draft README), at the end of Phase 4 for the build session.
+  `.tool/cost --list` finds an earlier session's id.
+- In the README, merge rows into phases if that reads better, keep the
+  totals, and add the two sessions together. The figures include the talk
+  around the work, and wall-clock time includes the user's pauses; say so.
 
 ## Phase 1: Mockup and prints
 
@@ -93,22 +104,40 @@ decisions stated, not just pretty screens.
    - Accent on one primary action per screen.
    - **No generic AI iconography.** No sparkles, magic wands or robots. The agent is the brand's crescent without the check (`AppIcons.agent`). Anything new gets a brand-derived or Phosphor icon, named in a pin; a new brand icon is an SVG in `app/brands/<brand>/` on the 64-unit grid.
 4. **Build and shoot.**
-   - Start the build in the background (about 50 s):
-     `flutter build web -t lib/<slug>_preview.dart --dart-define=BRAND=lunna --no-tree-shake-icons -o <scratchpad>/preview-lunna`.
-     Write `board.json` while it builds.
-   - `.claude/skills/feature/shoot-flutter.sh <scratchpad>/preview-lunna <scratchpad>/shots 1 2 3 4` gives one `<n>.png` per scene.
+   - `.tool/preview <slug> 1 2 3 4 --out <scratchpad>/design` (background, about a minute) builds Lunna and shoots each scene: `<out>/lunna/<n>.png` and `strip.png`. Write `board.json` while it runs.
    - `board.json` (in the scratchpad) lists each screen's `png`, `title`, `why` and `pins` (`id`, `x`, `y` in logical px on the 390×844 shot, the pin's centre; `label`, `text`). Read the shots to place the pins.
-   - `node .claude/skills/feature/board.mjs <board.json> <out_dir>` writes `board.png` and `screen1..n.png` (2x), with the pins and their notes.
+   - `node .tool/mockup/board.mjs <board.json> <out>/board` writes `board.png` and `screen1..n.png` (2x), with the pins and their notes. On later rounds, `.tool/preview … --board <board.json>` does all three in one call.
 5. **Look at the prints** (Read `board.png`) before sending: overflow stripes, grey boxes (a build exception), pins off their target or over text, clipped text. Fix and re-shoot once.
 6. **Send** the absolute paths of `board.png` and each screen, a short list of the decisions (entry point, icon, placement, the main rule of the flow), and any open questions. The preview entry point and the new widgets stay uncommitted; if the proposal is dropped, delete them.
 
 ## Phase 2: Iterate
 
-Feedback usually arrives as one-liners ("button location, icon, etc.", "remove that ugly icon"). Change the widgets, rebuild (background), re-shoot only the scenes that changed, move the pins, re-run `board.mjs`, look, re-send. An icon that changes becomes a real asset (SVG in `app/brands/<brand>/`, wired through `AppIcons`), never a stand-in.
+Feedback usually arrives as one-liners ("button location, icon, etc.", "remove that ugly icon"). Change the widgets, re-run `.tool/preview` (background) with only the scenes that changed, move the pins, look, re-send. When only pins moved, re-run `board.mjs` alone. An icon that changes becomes a real asset (SVG in `app/brands/<brand>/`, wired through `AppIcons`), never a stand-in.
+
+**Hand-off, when the user approves.** Write the draft
+`product/delivery/<YYYY-MM-DD>-<slug>/README.md` with sections 1 and 2 done
+(below, Phase 4), the approved board in `img/mockup-board.png` and
+`board.json` next to it, and a **Build brief** section that Phase 3 starts
+from and Phase 4 removes:
+
+- the preview entry point and every file Phase 1 wrote or changed
+  (uncommitted, kept for the build);
+- what the build must do on the server and in the app, as a short list;
+- the decisions taken in conversation that aren't in the pins;
+- the open questions;
+- the design session's `.tool/cost` table.
+
+Then stop, and tell the user, in two lines: the README path, and
+"run `/clear`, then `/create build <slug>`".
 
 ## Phase 3: Build it
 
-Only when asked. Read `AGENTS.md` first. It is the spec of how the day works, and the build must respect it.
+Starts a new session with `/create build <slug>`. Read the draft README
+(`product/delivery/*-<slug>/README.md`, its Build brief first) and the files
+it lists, and nothing of the design you can take from it. `AGENTS.md` is
+already in context: it is the spec of how the day works, and the build must
+respect it. Read also the `product/spec/<feature>.md` of any feature the
+build touches (the agent, projects).
 
 1. **Look for prior art.** The sibling repo `../focus` is the original Focus app and often already has the feature (it had the agent: OpenRouter client, tool loop, "reads run, writes are proposed"). Port its approach rather than reinvent it. Read the git history of this repo for what was removed and why (`git log --stat`).
 2. **Ask only real forks.** Use AskUserQuestion for decisions that are genuinely the user's (which model provider, a new container vs inside the server, a paid dependency), with a recommended option first. Don't ask what the code or `AGENTS.md` already answers.
@@ -124,29 +153,31 @@ Only when asked. Read `AGENTS.md` first. It is the spec of how the day works, an
    - Colours come from tokens. Add a token (in both brands) rather than branching on the brand.
    - A modal sheet is its own route: hand it the blocs and repositories it reads (`BlocProvider.value`). A grey box in a release build is a build exception, very often this.
    - Inside a `BlocBuilder` builder, read `bloc.state`; `context.select` there throws.
-5. **Verify:**
-   - Server: `npx tsc --noEmit`, `npx eslint`, `npm test`.
-   - App: `flutter analyze`, then `flutter test` in every touched package under **both** `--dart-define=BRAND=focus` and `BRAND=lunna` (CI does the same).
+5. **Verify** with `.tool/check` (background): CI's checks on what changed,
+   the server's eslint, tsc and tests, `flutter analyze`, and every touched
+   package's tests under both brands, one line per step. A failure prints
+   the lines that explain it and the log's path; read more of the log only
+   if those aren't enough.
    - If a test is flaky, stash your tracked changes and rerun it to prove it isn't yours.
 
 ## Phase 4: Prints of the real build, and the delivery folder
 
 1. **Screenshot the finished build**, through the same entry point:
    - Bring `app/lib/<slug>_preview.dart` up to the final code: its fakes now stand in for the real repositories (canned replies behind the real cubits), `DemoTimelineRepository` for the day, `?s=<n>` per scene (open the sheet, send a message, apply a plan).
-   - Build both brands at once, in the background: `flutter build web -t lib/<slug>_preview.dart --dart-define=BRAND=<brand> --no-tree-shake-icons -o <scratchpad>/preview-<brand>`.
-   - Shoot it: `.claude/skills/feature/shoot-flutter.sh <web_dir> <out_dir> 1 2 3 4` gives `<n>.png` per scene and `strip.png`.
-   - Read the strips: they catch real bugs (the grey sheet above was one).
+   - `.tool/preview <slug> 1 2 3 4 --brands lunna,focus --out <scratchpad>/build` (background) builds both brands at once and shoots them: `<out>/<brand>/strip.png`, one `<n>.png` per scene.
+   - Read the two strips: they catch real bugs (the grey sheet above was one).
    - **Delete the preview entry point** afterwards; it is not committed.
-2. **Write `delivery/<YYYY-MM-DD>-<slug>/README.md`**, one Markdown document, with images in `img/` next to it:
+2. **Finish `product/delivery/<YYYY-MM-DD>-<slug>/README.md`**, one Markdown document, with images in `img/` next to it. Sections 1 and 2 are there from the hand-off; replace the Build brief with sections 3–5:
    1. **The prompt**: every user message of the request, verbatim and in order, plus answers given to questions.
    2. **The design**: the board as approved (`img/mockup-board.png`, plus `board.json`), the references, the decisions table matching the pins, and the icon.
    3. **What was built**: strips of the real build in both brands, the contract (the rule that matters), the server files and routes, the app pieces, the tests (with counts, and any flaky test named), and **where the build differs from the mockup** and why.
    4. **How to turn it on**: env vars, commands, and what happens without them.
-   5. **Cost and time**: the readings table from the Cost and time section
-      above (phase, start and end time, duration, start and end reading, spent
-      in USD, tokens in, tokens out) and the totals. Wall-clock time includes the user's pauses
-      between messages; say so. Note where each figure
-      came from (the tool or a pasted `/cost`), and any spend outside Claude
-      that the build caused (e.g. OpenRouter calls), or that there was none.
-3. Add a short section for the feature to `AGENTS.md` (what it does, its contract, its routes), and its folders to the Layout block.
-4. Report in a few lines: what it cost (USD, tokens in, tokens out) and how long it took, what works, what was verified and how, the deviations, what wasn't tested (e.g. "never run against a real model"), and the delivery path. Don't commit unless asked.
+   5. **Cost and time**: the `.tool/cost` tables of both sessions (see Cost
+      and time above), and the totals of the two. Say where USD came from,
+      and any spend outside Claude that the build caused (e.g. OpenRouter
+      calls), or that there was none.
+3. Write the feature's spec (what it does, its contract, its routes) in `product/spec/<feature>.md`, and give it a short pointer section in `AGENTS.md` (the one rule that matters, the folders it owns, the link) plus its folders in the Layout block. `AGENTS.md` is in every session's context, so it keeps only what most tasks need; a rule every task must respect still goes there in full.
+4. Report in a few lines: what it cost (USD, tokens in, tokens out) and how long it took, what works, what was verified and how, the deviations, what wasn't tested (e.g. "never run against a real model"), and the delivery path. Then open it for the user, in the background:
+   `.tool/doc open <slug>` (it serves the README as a page they can comment
+   on; their notes land in the file, and `.tool/doc notes <slug> --open`
+   reads back only the unanswered questions). Don't commit unless asked.
