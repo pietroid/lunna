@@ -772,7 +772,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentChangePushed => 'empurrada';
 
   @override
-  String get agentPush => 'Empurrar';
+  String get agentPush => 'Mover';
 
   @override
   String get agentOtherTime => 'Outro horário';
@@ -788,6 +788,61 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentFailure => 'Algo deu errado. Tente de novo.';
+
+  @override
+  String get agentFailureModelDown => 'Não consegui falar com o modelo agora, nem tentando duas vezes.';
+
+  @override
+  String get agentFailureModelEmpty => 'O modelo respondeu em branco, duas vezes.';
+
+  @override
+  String get agentFailureDrift => 'Seu dia mudou desde esse plano e ele não cabe mais. Peça de novo.';
+
+  @override
+  String get agentFailureOffline => 'Sem conexão com o servidor.';
+
+  @override
+  String get agentFailureBug => 'Algo deu errado do meu lado. Ficou registrado.';
+
+  @override
+  String get agentRetry => 'Tentar de novo';
+
+  @override
+  String get agentDetails => 'Detalhes';
+
+  @override
+  String agentTrace(String id) {
+    return 'Código $id';
+  }
+
+  @override
+  String agentPlaceBetween(String after, String before) {
+    return 'entre $after e $before';
+  }
+
+  @override
+  String agentPlaceAfter(String after) {
+    return 'depois de $after';
+  }
+
+  @override
+  String agentPlaceBefore(String before) {
+    return 'antes de $before';
+  }
+
+  @override
+  String get agentPlaceEnd => 'no fim da fila';
+
+  @override
+  String agentAssumed(String what) {
+    return 'Assumi $what';
+  }
+
+  @override
+  String get agentAssumedToday => 'que é para hoje';
+
+  @override
+  String get agentAssumedEnd => 'o fim da fila';
 
   @override
   String get agentVoiceStart => 'Falar';

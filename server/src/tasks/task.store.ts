@@ -151,6 +151,11 @@ export class MemoryTaskStore extends TaskStore {
     return Promise.resolve(toTask(stored));
   }
 
+  /** Puts [task] in [user]'s list as it is, id and all. */
+  seed(user: CalendarUser, task: Task): void {
+    this._tasks.set(task.id, { ...task, userId: user.id });
+  }
+
   insert(user: CalendarUser, task: NewTask): Promise<Task> {
     const stored = {
       id: randomUUID(),

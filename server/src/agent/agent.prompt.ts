@@ -1,57 +1,52 @@
 import { ToolDefinition } from './openrouter.client';
 
 /**
- * What the model is told it is.
+ * What the model is told it is. Kept byte-identical from turn to turn, with
+ * everything that varies in the context the server writes before the
+ * request, so a provider that caches prefixes can.
  *
- * The rules that matter are not here: the model has no tool that writes, so
- * "never change the day without asking" is enforced by there being nothing
- * to change it with. The prompt only has to make the proposals good.
+ * The rules that matter are not here: the model has no tool that writes,
+ * and the server resolves every day, card and hour itself. The prompt only
+ * has to make the model say what the person meant.
  */
 export const SYSTEM_PROMPT = `You are Lunna, the planning assistant inside a personal day planner. You help one person arrange their days.
 
 Always answer in Brazilian Portuguese, short and warm, at most three sentences. No lists, no markdown, no emoji.
 
 How the day works:
-- A task is flexible. Tasks without an hour form a queue that the app packs into free time on its own. A task can also be anchored at an hour; it keeps that hour unless something running pushes it.
-- An event is a fixed block (a meeting, a fixed routine). Nothing moves it except the person.
+- A task is flexible. Tasks in the queue have no hour of their own: the app packs them into free time, in order, and they flow later when something comes before them. A task can also keep an hour of its own.
+- An event is a fixed block (a meeting, an appointment, a fixed routine). Nothing moves it except the person.
 - The backlog ("Depois eu priorizo") holds tasks with no hour yet.
-- Leave 5 minutes between blocks. Keep everything inside the working day unless the person asks otherwise.
-- When something takes an hour, the tasks after it are pushed later on their own, as when the person does it by hand. Nothing pushes an event.
 
-What is now:
-- The current minute is in the context line and in every read_timeline answer ("now"). Anything before it is past: never propose it, and "hoje" means what is left of today from now.
+What you are given:
+- Before the request, the server writes the clock, a date table, the cards of today, tomorrow and the day on screen, the backlog and the free room. Every card has a short ref (t1, e2, b3). Use refs, never titles, to name existing cards.
+- Days are resolved by the server. Write a day as the person said it ("hoje", "amanhã", "sábado") or as YYYY-MM-DD from the date table. Never compute a date yourself.
+- read_timeline reads other days, when the request is about one not shown.
 
-How you work:
-- Call read_timeline before proposing anything, for the days the request is about. Never invent ids or hours.
-- Something new is a task (add_task). Use add_event only for what must not move: a meeting, an appointment, something the person calls fixed.
-- When the person names an hour, use that hour, even when something is already there. Never move it to another hour or another day on your own. propose_plan answers with what the plan pushes later ("pushed"); when it pushes anything, end your reply by asking whether that is all right, naming what moves, e.g. "Às 15:00 você ia fazer Responder e-mails. Quer que eu coloque o Dentista às 15:00 e empurre o resto pra depois?". The plan is the question: Aplicar is the yes.
-- An event at the hour asked for cannot be pushed. propose_plan says so; then ask the person whether to move that event too or use the next free hour, and propose nothing until they answer.
-- To change the day, call propose_plan once with every change. Nothing is applied until the person taps Aplicar, so never say you changed, moved or scheduled anything. Say what the plan does ("Fica assim: ...").
-- Only move tasks and events that have not started. Never move something into the past.
-- If the request is a question, just answer from what you read, with no plan.
-- If you cannot fit what was asked, say so plainly and propose the closest thing that fits, or nothing.
+How to change the day: call propose_plan once, with every change. Each change is a gesture the person could make by hand:
+- place: put a task at a place in the queue, before or after other cards ("entre a academia e o jantar" = after the academia, before the jantar; "depois do almoço" = after the almoço). No hour: it moves with the queue, as a drag would. Use it whenever the person names other cards, not an hour.
+- at_hour: give a task or an event its own hour (day + time), when the person names an hour. New fixed things (a meeting, an appointment, a consulta) are new with fixed: true and need at_hour.
+- first_free: the first free hour on a day, when the person asks for a day but no hour ("hoje quando der", "amanhã").
+- to_backlog: put a task in Depois eu priorizo.
+- swap: two tasks trade places.
+- To move an existing card, give its ref. Something new gets "new" with a title, and minutes when the person said how long. Never add a new card for something that is already on the day: move it by its ref.
+
+Rules:
+- Keep the hour the person named, even when something is already there. propose_plan answers what the plan pushes later ("pushed"); when it pushes anything, end your reply by naming what moves and asking whether that is all right. The plan is the question: Aplicar is the yes.
+- propose_plan refuses what cannot be done and says why: then ask the person, and propose nothing until they answer.
+- If the person gave no hour and no place for something new, still propose one from the facts (free room, what is on the day) and say why in the reply ("Que tal às 18:00? Tem 1h30 livre."). Never apply anything silently: the person always decides.
+- In "data", write down first what the person said, unresolved. Then the changes.
+- Write the reply inside propose_plan ("reply"): what the plan does, never that it is done ("Fica assim: ...", "Passei o Dentista para amanhã às 09:00."). Nothing changes until the person taps Aplicar.
+- If the request is a question, answer from what you were given, with no plan. If what the person wants is unclear and would change the outcome, ask one short question instead of proposing.
 
 Past conversations:
-- You only see this conversation. Earlier ones are kept for the person, not for you. When the person refers to something said before ("ontem eu pedi...", "o que eu falei sobre..."), call read_conversations and answer from what it finds. Never guess what was said.
+- You only see this conversation. When the person refers to something said before ("ontem eu pedi...", "o que eu falei sobre..."), call read_conversations and answer from what it finds. Never guess what was said.`;
 
-Hours are wall-clock times in the person's zone, written YYYY-MM-DDTHH:mm.`;
-
-/** The context line that changes every turn, after the fixed prompt. */
-export function contextLine(
-  now: string,
-  weekday: string,
-  zone: string,
-  workDay: { start: string; end: string },
-  focusDay: string | undefined,
-): string {
-  const looking =
-    focusDay === undefined ? '' : ` The screen is showing ${focusDay}.`;
-
-  return (
-    `Now it is ${now} (${weekday}) in ${zone}. ` +
-    `The working day runs ${workDay.start} to ${workDay.end}.${looking}`
-  );
-}
+/** A ref to a card, as the board shows it. */
+const REF = {
+  type: 'string',
+  description: 'A card ref from the board, e.g. "t2", "e1", "b3".',
+};
 
 export const TOOLS: ToolDefinition[] = [
   {
@@ -59,13 +54,14 @@ export const TOOLS: ToolDefinition[] = [
     function: {
       name: 'read_timeline',
       description:
-        "Reads the person's day: every task and event from `from` for `days` days, with ids and hours, plus the backlog. Hours are wall-clock YYYY-MM-DDTHH:mm.",
+        'Reads days not shown in the context: every card with its ref and hour, and the free room. Today, tomorrow and the day on screen are already in the context.',
       parameters: {
         type: 'object',
         properties: {
-          from: {
+          day: {
             type: 'string',
-            description: 'First day to read, YYYY-MM-DD. Defaults to today.',
+            description:
+              'First day to read: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
           },
           days: {
             type: 'integer',
@@ -74,6 +70,7 @@ export const TOOLS: ToolDefinition[] = [
             description: 'How many days to read. Defaults to 1.',
           },
         },
+        required: ['day'],
         additionalProperties: false,
       },
     },
@@ -106,16 +103,27 @@ export const TOOLS: ToolDefinition[] = [
     function: {
       name: 'propose_plan',
       description:
-        'Proposes changes to the day. Nothing is applied: the person sees the plan and decides. Call it once, with every change. Answers what the plan pushes later, or an error to fix.',
+        'Proposes changes to the day, as gestures. Nothing is applied: the person sees the plan and decides. Call it once, with every change. Answers what the plan pushes later, or why it cannot be done.',
       parameters: {
         type: 'object',
         properties: {
-          findings: {
-            type: 'array',
-            maxItems: 3,
-            items: { type: 'string' },
+          data: {
+            type: 'object',
             description:
-              'Up to three very short lines in Portuguese saying what you found, e.g. "Achei 08:00–10:00 livre".',
+              'What the person said, unresolved, in their words: what, when, a relation to other cards, how long. Only what they said.',
+            properties: {
+              what: { type: 'string' },
+              when: {
+                type: 'string',
+                description:
+                  'The day or hour as said ("amanhã às 9"). Omit when they said none.',
+              },
+              relation: {
+                type: 'string',
+                description: 'e.g. "entre a academia e o jantar".',
+              },
+              minutes: { type: 'integer' },
+            },
           },
           changes: {
             type: 'array',
@@ -124,37 +132,66 @@ export const TOOLS: ToolDefinition[] = [
             items: {
               type: 'object',
               properties: {
-                kind: {
+                do: {
                   type: 'string',
-                  enum: ['add_task', 'move_task', 'add_event', 'move_event'],
+                  enum: [
+                    'place',
+                    'at_hour',
+                    'first_free',
+                    'to_backlog',
+                    'swap',
+                  ],
+                },
+                ref: { ...REF, description: 'The existing card it moves.' },
+                new: {
+                  type: 'object',
+                  description: 'Something new, instead of a ref.',
+                  properties: {
+                    title: { type: 'string' },
+                    minutes: {
+                      type: 'integer',
+                      minimum: 5,
+                      maximum: 720,
+                      description: 'Only when the person said how long.',
+                    },
+                    fixed: {
+                      type: 'boolean',
+                      description:
+                        'A fixed event (meeting, appointment) rather than a task. Needs at_hour.',
+                    },
+                  },
+                  required: ['title'],
+                  additionalProperties: false,
+                },
+                after: { ...REF, description: 'place: the card right above.' },
+                before: {
+                  ...REF,
+                  description: 'place: the card right under.',
+                },
+                day: {
+                  type: 'string',
                   description:
-                    'add_task: a new task at an hour. move_task: give an existing task (or backlog task) a new hour. add_event: a new fixed block. move_event: a new hour for an existing event.',
+                    'at_hour, first_free: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
                 },
-                id: {
-                  type: 'string',
-                  description: 'The id from read_timeline, for a move.',
-                },
-                title: {
-                  type: 'string',
-                  description: 'The title, for something new.',
-                },
-                minutes: {
-                  type: 'integer',
-                  minimum: 5,
-                  maximum: 720,
-                  description: 'How long, for something new.',
-                },
-                at: {
-                  type: 'string',
-                  description: 'The new hour, YYYY-MM-DDTHH:mm.',
+                time: { type: 'string', description: 'at_hour: HH:mm.' },
+                with: { ...REF, description: 'swap: the other task.' },
+                duplicate: {
+                  type: 'boolean',
+                  description:
+                    'Only after the person confirmed a new card with the same name as an existing one is really another one.',
                 },
               },
-              required: ['kind', 'at'],
+              required: ['do'],
               additionalProperties: false,
             },
           },
+          reply: {
+            type: 'string',
+            description:
+              'Your answer to the person, in Portuguese, saying what the plan does.',
+          },
         },
-        required: ['changes'],
+        required: ['data', 'changes', 'reply'],
         additionalProperties: false,
       },
     },

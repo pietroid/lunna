@@ -125,6 +125,8 @@ sudo mkdir -p /opt/lunna && sudo chown "$USER" /opt/lunna
 #   LUNNA_TIMEZONE=America/Sao_Paulo
 #   OPENROUTER_API_KEY=<key>    # the agent; empty turns it off
 #   OPENROUTER_MODEL=<model with tool calls>
+#   OPENROUTER_FALLBACK_MODELS=  # optional, comma-separated
+#   OPENROUTER_REASONING=low     # optional
 #   LUNNA_HTTP_PORT=8080
 #   FOCUS_HTTP_PORT=8081
 chmod 600 /opt/lunna/.env

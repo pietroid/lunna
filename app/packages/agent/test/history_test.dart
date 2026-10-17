@@ -125,7 +125,7 @@ void main() {
   });
 
   group('PlanCard', () {
-    testWidgets('a plan that pushes asks: Outro horário or Empurrar', (
+    testWidgets('a plan that pushes asks: Outro horário or Mover', (
       tester,
     ) async {
       final plan = _plan(
@@ -158,7 +158,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('1 mudança · 1 empurrada'), findsOneWidget);
-      expect(find.text('Empurrar'), findsOneWidget);
+      expect(find.text('Mover'), findsOneWidget);
       await tester.tap(find.text('Outro horário'));
       expect(adjusted, isTrue);
     });

@@ -12,12 +12,16 @@ enum PlanChangeKind {
   addEvent,
 
   /// A fixed block given another hour.
-  moveEvent;
+  moveEvent,
+
+  /// A task put in Depois eu priorizo, or written down there: no hour.
+  toBacklog;
 
   static PlanChangeKind fromWire(String? value) => switch (value) {
     'add_task' => addTask,
     'add_event' => addEvent,
     'move_event' => moveEvent,
+    'to_backlog' => toBacklog,
     _ => moveTask,
   };
 
@@ -37,23 +41,27 @@ class PlanChange extends Equatable {
     required this.kind,
     required this.title,
     required this.minutes,
-    required this.at,
+    this.at,
     this.id,
     this.before,
     this.routine = false,
+    this.place,
   });
 
   factory PlanChange.fromJson(Map<String, dynamic> json) {
+    final at = json['at'] as String?;
     final before = json['before'] as String?;
+    final place = json['place'] as Map<String, dynamic>?;
 
     return PlanChange(
       kind: PlanChangeKind.fromWire(json['kind'] as String?),
       id: json['id'] as String?,
       title: json['title'] as String? ?? '',
       minutes: (json['minutes'] as num?)?.toInt() ?? 0,
-      at: DateTime.parse(json['at'] as String).toLocal(),
+      at: at == null ? null : DateTime.parse(at).toLocal(),
       before: before == null ? null : DateTime.parse(before).toLocal(),
       routine: json['routine'] as bool? ?? false,
+      place: place == null ? null : PlanPlace.fromJson(place),
     );
   }
 
@@ -66,8 +74,8 @@ class PlanChange extends Equatable {
 
   final int minutes;
 
-  /// The hour it will have.
-  final DateTime at;
+  /// The hour it will have. Null in the backlog, which has none.
+  final DateTime? at;
 
   /// The hour it had, for a move. Null when it came from the backlog.
   final DateTime? before;
@@ -75,10 +83,81 @@ class PlanChange extends Equatable {
   /// Whether it is a day of a routine.
   final bool routine;
 
-  DateTime get end => at.add(Duration(minutes: minutes));
+  /// The place in the queue it takes, when it takes one rather than an hour
+  /// of its own: [at] is then only where the queue packs it today.
+  final PlanPlace? place;
+
+  DateTime? get end => at?.add(Duration(minutes: minutes));
 
   @override
-  List<Object?> get props => [kind, id, title, minutes, at, before, routine];
+  List<Object?> get props => [
+    kind,
+    id,
+    title,
+    minutes,
+    at,
+    before,
+    routine,
+    place,
+  ];
+}
+
+/// {@template plan_place}
+/// A place in the queue, named by the cards around it, as a drag between
+/// them would leave it. Neither named: the end of the queue.
+/// {@endtemplate}
+class PlanPlace extends Equatable {
+  /// {@macro plan_place}
+  const PlanPlace({this.after, this.before});
+
+  factory PlanPlace.fromJson(Map<String, dynamic> json) => PlanPlace(
+    after: json['after'] as String?,
+    before: json['before'] as String?,
+  );
+
+  /// The title of the card right above it.
+  final String? after;
+
+  /// The title of the card right under it.
+  final String? before;
+
+  @override
+  List<Object?> get props => [after, before];
+}
+
+/// What a plan took without being told, which its card names.
+enum PlanAssumptionKind {
+  /// How long it takes.
+  minutes,
+
+  /// That it is for today.
+  today,
+
+  /// That it goes at the end of the queue.
+  endOfQueue;
+
+  static PlanAssumptionKind? fromWire(String? value) => switch (value) {
+    'minutes' => minutes,
+    'today' => today,
+    'end_of_queue' => endOfQueue,
+    _ => null,
+  };
+}
+
+/// {@template plan_assumption}
+/// One thing a plan took without being told: never silent.
+/// {@endtemplate}
+class PlanAssumption extends Equatable {
+  /// {@macro plan_assumption}
+  const PlanAssumption(this.kind, {this.minutes});
+
+  final PlanAssumptionKind kind;
+
+  /// The length taken, for [PlanAssumptionKind.minutes].
+  final int? minutes;
+
+  @override
+  List<Object?> get props => [kind, minutes];
 }
 
 /// {@template pushed_task}
@@ -124,6 +203,7 @@ class AgentPlan extends Equatable {
     required this.id,
     required this.changes,
     this.pushed = const [],
+    this.assumed = const [],
   });
 
   factory AgentPlan.fromJson(Map<String, dynamic> json) => AgentPlan(
@@ -134,6 +214,13 @@ class AgentPlan extends Equatable {
     pushed: (json['pushed'] as List<dynamic>? ?? [])
         .map((it) => PushedTask.fromJson(it as Map<String, dynamic>))
         .toList(),
+    assumed: [
+      for (final it
+          in (json['assumed'] as List<dynamic>? ?? [])
+              .cast<Map<String, dynamic>>())
+        if (PlanAssumptionKind.fromWire(it['kind'] as String?) case final kind?)
+          PlanAssumption(kind, minutes: (it['minutes'] as num?)?.toInt()),
+    ],
   );
 
   final String id;
@@ -143,8 +230,32 @@ class AgentPlan extends Equatable {
   /// What applying it pushes later, which the person is asked about.
   final List<PushedTask> pushed;
 
+  /// What it took without being told.
+  final List<PlanAssumption> assumed;
+
   @override
-  List<Object?> get props => [id, changes, pushed];
+  List<Object?> get props => [id, changes, pushed, assumed];
+}
+
+/// {@template quick_reply}
+/// An answer the agent offers, ready to tap: its plan, made with no other
+/// turn. The label is the server's, in Portuguese.
+/// {@endtemplate}
+class QuickReply extends Equatable {
+  /// {@macro quick_reply}
+  const QuickReply({required this.label, required this.plan});
+
+  factory QuickReply.fromJson(Map<String, dynamic> json) => QuickReply(
+    label: json['label'] as String? ?? '',
+    plan: AgentPlan.fromJson(json['plan'] as Map<String, dynamic>),
+  );
+
+  final String label;
+
+  final AgentPlan plan;
+
+  @override
+  List<Object?> get props => [label, plan];
 }
 
 /// {@template agent_reply}
@@ -152,7 +263,12 @@ class AgentPlan extends Equatable {
 /// {@endtemplate}
 class AgentReply extends Equatable {
   /// {@macro agent_reply}
-  const AgentReply({required this.text, this.steps = const [], this.plan});
+  const AgentReply({
+    required this.text,
+    this.steps = const [],
+    this.plan,
+    this.options = const [],
+  });
 
   factory AgentReply.fromJson(Map<String, dynamic> json) {
     final plan = json['plan'] as Map<String, dynamic>?;
@@ -161,6 +277,9 @@ class AgentReply extends Equatable {
       text: json['reply'] as String? ?? '',
       steps: (json['steps'] as List<dynamic>? ?? []).cast<String>(),
       plan: plan == null ? null : AgentPlan.fromJson(plan),
+      options: (json['options'] as List<dynamic>? ?? [])
+          .map((it) => QuickReply.fromJson(it as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -171,8 +290,15 @@ class AgentReply extends Equatable {
 
   final AgentPlan? plan;
 
+  /// The answers offered to tap, when the agent asks, or offers another way
+  /// beside [plan].
+  final List<QuickReply> options;
+
+  /// Every plan the reply can make: its own, then its options'.
+  Iterable<AgentPlan> get plans => [?plan, for (final it in options) it.plan];
+
   @override
-  List<Object?> get props => [text, steps, plan];
+  List<Object?> get props => [text, steps, plan, options];
 }
 
 /// {@template agent_suggestion}
@@ -239,16 +365,24 @@ final class UserEntry extends AgentEntry {
 /// What the agent answered, and where its plan stands.
 final class ReplyEntry extends AgentEntry {
   /// {@macro agent_entry}
-  const ReplyEntry(this.reply, {this.status = PlanStatus.pending});
+  const ReplyEntry(
+    this.reply, {
+    this.status = PlanStatus.pending,
+    this.chosen,
+  });
 
   final AgentReply reply;
 
   final PlanStatus status;
 
-  ReplyEntry withStatus(PlanStatus status) => ReplyEntry(reply, status: status);
+  /// The plan [status] is about, once one of [AgentReply.plans] was taken.
+  final String? chosen;
+
+  ReplyEntry withStatus(PlanStatus status, {String? chosen}) =>
+      ReplyEntry(reply, status: status, chosen: chosen ?? this.chosen);
 
   @override
-  List<Object?> get props => [reply, status];
+  List<Object?> get props => [reply, status, chosen];
 }
 
 /// {@template past_conversation}

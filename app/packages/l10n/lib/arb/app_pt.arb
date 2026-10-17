@@ -567,12 +567,65 @@
     }
   },
   "agentChangePushed": "empurrada",
-  "agentPush": "Empurrar",
+  "agentPush": "Mover",
   "agentOtherTime": "Outro horário",
   "agentOtherTimeDraft": "Prefiro outro horário: ",
   "agentSuggestionAccept": "Encaixar",
   "agentSuggestionDismiss": "Agora não",
   "agentFailure": "Algo deu errado. Tente de novo.",
+  "agentFailureModelDown": "Não consegui falar com o modelo agora, nem tentando duas vezes.",
+  "agentFailureModelEmpty": "O modelo respondeu em branco, duas vezes.",
+  "agentFailureDrift": "Seu dia mudou desde esse plano e ele não cabe mais. Peça de novo.",
+  "agentFailureOffline": "Sem conexão com o servidor.",
+  "agentFailureBug": "Algo deu errado do meu lado. Ficou registrado.",
+  "agentRetry": "Tentar de novo",
+  "agentDetails": "Detalhes",
+  "agentTrace": "Código {id}",
+  "@agentTrace": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPlaceBetween": "entre {after} e {before}",
+  "@agentPlaceBetween": {
+    "placeholders": {
+      "after": {
+        "type": "String"
+      },
+      "before": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPlaceAfter": "depois de {after}",
+  "@agentPlaceAfter": {
+    "placeholders": {
+      "after": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPlaceBefore": "antes de {before}",
+  "@agentPlaceBefore": {
+    "placeholders": {
+      "before": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPlaceEnd": "no fim da fila",
+  "agentAssumed": "Assumi {what}",
+  "@agentAssumed": {
+    "placeholders": {
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "agentAssumedToday": "que é para hoje",
+  "agentAssumedEnd": "o fim da fila",
   "agentVoiceStart": "Falar",
   "agentVoiceListening": "Ouvindo",
   "agentVoiceStopped": "Parei de ouvir no limite de 1 minuto",

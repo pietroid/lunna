@@ -3,21 +3,11 @@ import { CalendarEvent } from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
 
 /**
- * What the agent may do to the day, and nothing else.
- *
- * Four kinds of change, each one a thing the user can already do by hand:
- * write a task down at an hour, give a task an hour, write a fixed block
- * down, give a fixed block another hour. The agent never removes anything,
- * and never touches what has begun.
+ * How a change reads on the plan card. What the agent may do is [Gesture]:
+ * this is only what the card draws.
  */
-export type ChangeKind = 'add_task' | 'move_task' | 'add_event' | 'move_event';
-
-export const CHANGE_KINDS: readonly ChangeKind[] = [
-  'add_task',
-  'move_task',
-  'add_event',
-  'move_event',
-];
+export type ChangeKind =
+  'add_task' | 'move_task' | 'add_event' | 'move_event' | 'to_backlog';
 
 /** One line of a plan, as the app draws it. */
 export interface PlanChange {
@@ -26,13 +16,58 @@ export interface PlanChange {
   id?: string;
   title: string;
   minutes: number;
-  /** ISO 8601, the hour it will have. */
-  at: string;
+  /** ISO 8601, the hour it will have. Absent for the backlog. */
+  at?: string;
   /** ISO 8601, the hour it had, for a move. Absent from the backlog. */
   before?: string;
   /** Whether it is a day of a routine. */
   routine: boolean;
+  /**
+   * The place in the queue it takes, by the titles of the cards around it,
+   * when it takes one rather than an hour: [at] is then only where the queue
+   * packs it now. Neither named is the end of the queue.
+   */
+  place?: { after?: string; before?: string };
 }
+
+/** Something new a gesture writes down. */
+export interface NewThing {
+  title: string;
+  minutes: number;
+  /** Whether it is a fixed block (an event) rather than a task. */
+  fixed: boolean;
+}
+
+/**
+ * One change, as the gesture a person could have made by hand, with every
+ * reference already resolved to an id. It is what the dry run makes and what
+ * Aplicar makes, through the same code, so the two cannot disagree.
+ *
+ * - `place`: a place in the queue, by the cards around it, as a drop between
+ *   them. Under a card that keeps an hour it is that card's end plus the
+ *   pause, as a drop right under it is.
+ * - `at_hour`: an hour of its own (an anchor for a task, the hour itself for
+ *   a fixed block), as a drop in free room.
+ * - `to_backlog`: into Depois eu priorizo, at its end.
+ * - `swap`: two tasks trade places, as a long drag onto another card.
+ */
+export type Gesture =
+  | {
+      do: 'place';
+      id?: string;
+      new?: NewThing;
+      after?: string;
+      before?: string;
+    }
+  | { do: 'at_hour'; id?: string; new?: NewThing; at: string }
+  | { do: 'to_backlog'; id?: string; new?: NewThing }
+  | { do: 'swap'; id: string; with: string };
+
+/** What a plan took without being told, which its card names. */
+export type Assumption =
+  | { kind: 'minutes'; minutes: number }
+  | { kind: 'today' }
+  | { kind: 'end_of_queue' };
 
 /**
  * A task the plan does not name that would start later because of it: the
@@ -65,11 +100,19 @@ export type Undo =
 export interface Plan {
   id: string;
   userId: string;
-  /** Short lines the user sees ticked off: what the agent found. */
-  findings: string[];
+  /** What it makes, in order. */
+  gestures: Gesture[];
+  /** How the card draws it. */
   changes: PlanChange[];
   /** What the plan pushes later, for the person to see before applying. */
   pushed: Pushed[];
+  /** What it took without being told. */
+  assumed: Assumption[];
+  /**
+   * The plan whose card this one was offered beside, when it is a quick
+   * reply: applying it is what became of that answer.
+   */
+  group?: string;
   createdAt: number;
   /** Set once applied: how to take it back, and the ids it touched. */
   applied?: { undo: Undo[]; touched: string[] };
@@ -91,18 +134,14 @@ export class PlanStore {
 
   put(
     userId: string,
-    findings: string[],
-    changes: PlanChange[],
-    pushed: Pushed[] = [],
+    made: Pick<Plan, 'gestures' | 'changes' | 'pushed' | 'assumed'>,
   ): Plan {
     this._prune();
 
     const plan: Plan = {
       id: randomUUID(),
       userId,
-      findings,
-      changes,
-      pushed,
+      ...made,
       createdAt: this._now(),
     };
     this._plans.set(plan.id, plan);
@@ -117,6 +156,20 @@ export class PlanStore {
     if (this._now() - plan.createdAt > PLAN_TTL_MS) return undefined;
 
     return plan;
+  }
+
+  /**
+   * Whether another answer to the same question was already applied: a
+   * quick reply beside [plan], or the plan a quick reply was offered beside.
+   */
+  answered(plan: Plan): boolean {
+    const group = plan.group ?? plan.id;
+    for (const other of this._plans.values()) {
+      if (other.id === plan.id || other.applied === undefined) continue;
+      if (other.id === group || other.group === group) return true;
+    }
+
+    return false;
   }
 
   private _prune(): void {

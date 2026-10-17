@@ -3,10 +3,10 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Param,
   Post,
   Query,
-  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
@@ -22,8 +22,8 @@ import {
   AgentService,
   Suggestion,
 } from './agent.service';
+import { AgentError, failure } from './agent.errors';
 import { Conversation } from './conversation.store';
-import { ModelUnavailableError } from './openrouter.client';
 
 /** How long a conversation the app may send, in messages. */
 const MAX_MESSAGES = 40;
@@ -54,14 +54,16 @@ export class AgentController {
     @Body()
     dto: { conversationId?: unknown; messages?: unknown; day?: unknown },
   ): Promise<AgentReply> {
-    if (!this.agent.configured) {
-      throw new ServiceUnavailableException(
-        'A Lunna ainda não está conectada a um modelo.',
-      );
-    }
-
     const trace = Trace.start(user.id, 'agent');
     try {
+      if (!this.agent.configured) {
+        throw new AgentError(
+          'model_down',
+          'A Lunna ainda não está conectada a um modelo.',
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+
       return await this.agent.turn(
         owner(user),
         optionalConversation(dto.conversationId),
@@ -70,13 +72,7 @@ export class AgentController {
         trace,
       );
     } catch (error) {
-      if (error instanceof ModelUnavailableError) {
-        trace.warn('agent.unavailable', { error: error.message });
-        throw new ServiceUnavailableException(
-          'Não consegui falar com a Lunna agora. Tente de novo em instantes.',
-        );
-      }
-      throw error;
+      throw failure(error, trace);
     }
   }
 
@@ -120,13 +116,13 @@ export class AgentController {
     @Param('id') id: string,
     @Query('days') days?: string,
   ): Promise<Timeline & { touched: string[] }> {
-    const touched = await this.agent.apply(
-      owner(user),
-      id,
-      Trace.start(user.id, id),
-    );
-
-    return { ...(await this._day(user, days)), touched };
+    const trace = Trace.start(user.id, id);
+    try {
+      const touched = await this.agent.apply(owner(user), id, trace);
+      return { ...(await this._day(user, days)), touched };
+    } catch (error) {
+      throw failure(error, trace);
+    }
   }
 
   @Post('plans/:id/undo')
@@ -135,9 +131,13 @@ export class AgentController {
     @Param('id') id: string,
     @Query('days') days?: string,
   ): Promise<Timeline> {
-    await this.agent.undo(owner(user), id, Trace.start(user.id, id));
-
-    return this._day(user, days);
+    const trace = Trace.start(user.id, id);
+    try {
+      await this.agent.undo(owner(user), id, trace);
+      return await this._day(user, days);
+    } catch (error) {
+      throw failure(error, trace);
+    }
   }
 
   private async _day(user: AuthUser, days?: string): Promise<Timeline> {

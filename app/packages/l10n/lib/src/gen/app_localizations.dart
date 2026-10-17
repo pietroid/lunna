@@ -1298,7 +1298,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentPush.
   ///
   /// In pt, this message translates to:
-  /// **'Empurrar'**
+  /// **'Mover'**
   String get agentPush;
 
   /// No description provided for @agentOtherTime.
@@ -1330,6 +1330,96 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Algo deu errado. Tente de novo.'**
   String get agentFailure;
+
+  /// No description provided for @agentFailureModelDown.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não consegui falar com o modelo agora, nem tentando duas vezes.'**
+  String get agentFailureModelDown;
+
+  /// No description provided for @agentFailureModelEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'O modelo respondeu em branco, duas vezes.'**
+  String get agentFailureModelEmpty;
+
+  /// No description provided for @agentFailureDrift.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu dia mudou desde esse plano e ele não cabe mais. Peça de novo.'**
+  String get agentFailureDrift;
+
+  /// No description provided for @agentFailureOffline.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem conexão com o servidor.'**
+  String get agentFailureOffline;
+
+  /// No description provided for @agentFailureBug.
+  ///
+  /// In pt, this message translates to:
+  /// **'Algo deu errado do meu lado. Ficou registrado.'**
+  String get agentFailureBug;
+
+  /// No description provided for @agentRetry.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tentar de novo'**
+  String get agentRetry;
+
+  /// No description provided for @agentDetails.
+  ///
+  /// In pt, this message translates to:
+  /// **'Detalhes'**
+  String get agentDetails;
+
+  /// No description provided for @agentTrace.
+  ///
+  /// In pt, this message translates to:
+  /// **'Código {id}'**
+  String agentTrace(String id);
+
+  /// No description provided for @agentPlaceBetween.
+  ///
+  /// In pt, this message translates to:
+  /// **'entre {after} e {before}'**
+  String agentPlaceBetween(String after, String before);
+
+  /// No description provided for @agentPlaceAfter.
+  ///
+  /// In pt, this message translates to:
+  /// **'depois de {after}'**
+  String agentPlaceAfter(String after);
+
+  /// No description provided for @agentPlaceBefore.
+  ///
+  /// In pt, this message translates to:
+  /// **'antes de {before}'**
+  String agentPlaceBefore(String before);
+
+  /// No description provided for @agentPlaceEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'no fim da fila'**
+  String get agentPlaceEnd;
+
+  /// No description provided for @agentAssumed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Assumi {what}'**
+  String agentAssumed(String what);
+
+  /// No description provided for @agentAssumedToday.
+  ///
+  /// In pt, this message translates to:
+  /// **'que é para hoje'**
+  String get agentAssumedToday;
+
+  /// No description provided for @agentAssumedEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'o fim da fila'**
+  String get agentAssumedEnd;
 
   /// No description provided for @agentVoiceStart.
   ///

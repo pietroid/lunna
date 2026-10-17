@@ -1,6 +1,7 @@
 import 'package:agent/src/agent_cubit.dart';
 import 'package:agent/src/agent_repository.dart';
 import 'package:agent/src/models.dart';
+import 'package:agent/src/view/failure_note.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -29,7 +30,7 @@ Future<bool> applyAgentPlan(BuildContext context, AgentPlan plan) async {
   } on AgentFailure catch (failure) {
     agent.markPlan(plan.id, PlanStatus.pending);
     messenger.showSnackBar(
-      SnackBar(content: Text(failure.message ?? l10n.agentFailure)),
+      SnackBar(content: Text(agentFailureText(l10n, failure))),
     );
 
     return false;

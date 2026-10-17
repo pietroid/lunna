@@ -1,4 +1,5 @@
 import 'package:agent/agent.dart';
+import 'package:api_client/api_client.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,11 +50,86 @@ void main() {
       final changes = reply.plan!.changes;
       expect(changes.first.kind, PlanChangeKind.addTask);
       expect(changes.first.kind.adds, isTrue);
-      expect(changes.first.end.difference(changes.first.at).inMinutes, 120);
+      expect(changes.first.end!.difference(changes.first.at!).inMinutes, 120);
       expect(changes.last.kind, PlanChangeKind.moveEvent);
       expect(changes.last.kind.fixed, isTrue);
       expect(changes.last.before, isNotNull);
       expect(changes.last.routine, isTrue);
+    });
+
+    test('reads a doubt: one question, an answer to tap for each reading', () {
+      final reply = AgentReply.fromJson(const {
+        'reply': 'Você já tem Dentista hoje às 16:00. É esse, ou é outro?',
+        'steps': ['Já existe Dentista · bloco fixo · hoje 16:00'],
+        'options': [
+          {
+            'label': 'Mover o de hoje',
+            'plan': {
+              'id': 'p1',
+              'changes': [
+                {
+                  'kind': 'move_event',
+                  'id': 'e1',
+                  'title': 'Dentista',
+                  'minutes': 60,
+                  'at': '2026-10-17T12:00:00.000Z',
+                  'before': '2026-10-16T19:00:00.000Z',
+                  'routine': false,
+                },
+              ],
+            },
+          },
+          {
+            'label': 'Deixar para depois',
+            'plan': {
+              'id': 'p2',
+              'changes': [
+                {
+                  'kind': 'to_backlog',
+                  'title': 'Treinar',
+                  'minutes': 30,
+                  'routine': false,
+                },
+              ],
+              'assumed': [
+                {'kind': 'minutes', 'minutes': 30},
+                {'kind': 'today'},
+                {'kind': 'something_new'},
+              ],
+            },
+          },
+        ],
+      });
+
+      expect(reply.plan, isNull);
+      expect(reply.options.map((it) => it.label), [
+        'Mover o de hoje',
+        'Deixar para depois',
+      ]);
+      expect(reply.plans.map((it) => it.id), ['p1', 'p2']);
+      final backlog = reply.options.last.plan;
+      expect(backlog.changes.single.kind, PlanChangeKind.toBacklog);
+      expect(backlog.changes.single.at, isNull);
+      expect(backlog.assumed, const [
+        PlanAssumption(PlanAssumptionKind.minutes, minutes: 30),
+        PlanAssumption(PlanAssumptionKind.today),
+      ]);
+    });
+
+    test('reads a place in the queue, by the cards around it', () {
+      final change = PlanChange.fromJson(const {
+        'kind': 'add_task',
+        'title': 'Revisar proposta',
+        'minutes': 45,
+        'at': '2026-10-16T20:05:00.000Z',
+        'routine': false,
+        'place': {'after': 'Academia', 'before': 'Jantar'},
+      });
+
+      expect(
+        change.place,
+        const PlanPlace(after: 'Academia', before: 'Jantar'),
+      );
     });
 
     test('reads what a plan pushes later', () {
@@ -110,6 +186,42 @@ void main() {
         const UserEntry('Passa a academia', voice: Duration(seconds: 4)),
         const ReplyEntry(_reply, status: PlanStatus.undone),
       ]);
+    });
+  });
+
+  group('AgentFailure.from', () {
+    DioException refused(Map<String, dynamic> body) => DioException(
+      requestOptions: RequestOptions(),
+      response: Response(
+        requestOptions: RequestOptions(),
+        statusCode: 409,
+        data: body,
+      ),
+    );
+
+    test('reads the kind and the trace the server sends', () {
+      final failure = AgentFailure.from(
+        refused({'message': 'O dia mudou', 'kind': 'drift', 'traceId': 't1'}),
+      );
+
+      expect(failure.kind, AgentFailureKind.drift);
+      expect(failure.traceId, 't1');
+      expect(failure.message, 'O dia mudou');
+    });
+
+    test('is offline when the server never answered', () {
+      final failure = AgentFailure.from(
+        DioException(requestOptions: RequestOptions()),
+      );
+
+      expect(failure.kind, AgentFailureKind.offline);
+    });
+
+    test('is ours to fix when the kind is unknown', () {
+      expect(
+        AgentFailure.from(refused({'message': 'x'})).kind,
+        AgentFailureKind.bug,
+      );
     });
   });
 
@@ -206,6 +318,25 @@ void main() {
       ],
     );
 
+    blocTest<AgentCubit, AgentState>(
+      'asks again for the turn that failed, once',
+      setUp: () => answers(_reply),
+      build: () => AgentCubit(repository: repository, now: () => start),
+      seed: () => AgentState(
+        entries: const [UserEntry('Oi')],
+        startedAt: start,
+        failure: const AgentFailure(null, AgentFailureKind.modelDown),
+      ),
+      act: (cubit) => cubit.retry(),
+      verify: (cubit) {
+        expect(cubit.state.entries, const [
+          UserEntry('Oi'),
+          ReplyEntry(_reply),
+        ]);
+        expect(cubit.state.failure, isNull);
+      },
+    );
+
     test(
       'opening starts a new conversation and puts the last one above',
       () async {
@@ -292,12 +423,16 @@ void main() {
       act: (cubit) => cubit.markPlan('p1', PlanStatus.undone),
       expect: () => [
         AgentState(
-          entries: const [ReplyEntry(_reply, status: PlanStatus.undone)],
+          entries: const [
+            ReplyEntry(_reply, status: PlanStatus.undone, chosen: 'p1'),
+          ],
           past: [
             PastConversation(
               id: 'c1',
               startedAt: start,
-              entries: const [ReplyEntry(_reply, status: PlanStatus.undone)],
+              entries: const [
+                ReplyEntry(_reply, status: PlanStatus.undone, chosen: 'p1'),
+              ],
             ),
           ],
         ),

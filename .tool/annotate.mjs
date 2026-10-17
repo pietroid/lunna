@@ -11,7 +11,7 @@
 import { createServer } from 'node:http';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { basename, resolve } from 'node:path';
+import { basename, dirname, extname, resolve, sep } from 'node:path';
 
 const file = process.argv[2] && resolve(process.argv[2]);
 const port = Number(process.argv[3] ?? 4321);
@@ -91,6 +91,35 @@ function send(res, status, body, type = 'application/json') {
   res.end(type === 'application/json' ? JSON.stringify(body) : body);
 }
 
+// What sits next to the Markdown (img/, data/, board.json) is served as is,
+// so the images the document points at show. Nothing outside its folder.
+const TYPES = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.json': 'application/json',
+  '.md': 'text/markdown; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+};
+const root = dirname(file);
+
+function serveFile(url, res) {
+  let path;
+  try {
+    path = resolve(root, '.' + decodeURIComponent(url.split('?')[0]));
+  } catch {
+    return false;
+  }
+  const type = TYPES[extname(path).toLowerCase()];
+  if (!type || !path.startsWith(root + sep) || !existsSync(path)) return false;
+  res.writeHead(200, { 'content-type': type });
+  res.end(readFileSync(path));
+  return true;
+}
+
 let lastSeen = Date.now();
 setInterval(() => {
   if (Date.now() - lastSeen > IDLE_MINUTES * 60_000) process.exit(0);
@@ -114,6 +143,7 @@ createServer((req, res) => {
     });
     return;
   }
+  if (req.method === 'GET' && serveFile(req.url, res)) return;
   send(res, 404, { error: 'not found' });
 }).listen(port, '127.0.0.1', () => {
   console.log(`${basename(file)} → http://localhost:${port}`);
@@ -150,6 +180,7 @@ const PAGE = /* html */ `<!doctype html>
   header b { color: var(--ink); font-weight: 600; }
   #counts { margin-left: auto; display: flex; gap: 10px; }
   main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
+  main img { max-width: 100%; height: auto; border-radius: 8px; }
   .block { position: relative; border-radius: 10px; padding: 2px 10px; margin: 0 -10px; }
   .block:hover { background: var(--fill); }
   .block > :first-child { margin-top: 8px; }

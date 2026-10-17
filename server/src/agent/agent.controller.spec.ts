@@ -29,6 +29,7 @@ import {
 import {
   ChatMessage,
   ModelOutcome,
+  ModelUnavailableError,
   OpenRouterClient,
 } from './openrouter.client';
 
@@ -84,6 +85,14 @@ function call(name: string, args: object): ModelOutcome {
 
 function say(content: string): Step {
   return () => ({ kind: 'final', content });
+}
+
+/** The ref the board gave the card titled [title], in what the model read. */
+function refOf(messages: ChatMessage[], title: string): string {
+  const read = messages.map((it) => it.content).join('\n');
+  const found = new RegExp(`\\b([teb]\\d+) · ${title} ·`).exec(read);
+  if (found === null) throw new Error(`No ref for "${title}"`);
+  return found[1];
 }
 
 /** What the last tool answered, as the model reads it. */
@@ -162,38 +171,43 @@ describe('the agent', () => {
   const ask = (text: string) =>
     post('/agent/turn', { messages: [{ role: 'user', text }] });
 
+  const task = (title: string, minutes: number, backlog = false) =>
+    post('/tasks', { title, minutes, backlog });
+
+  const event = (title: string, start: string, minutes = 60) =>
+    post('/events', {
+      title,
+      durationMinutes: minutes,
+      startTime: new Date(start).toISOString(),
+    });
+
   /** Scripts the plan in the mockup: two hours of study, e-mails after. */
   function scriptStudyPlan(): void {
     model.steps = [
-      () => call('read_timeline', { from: TOMORROW }),
-      (messages) => {
-        const read = lastTool(messages) as {
-          items: { id: string; title: string }[];
-          backlog: { id: string; title: string }[];
-        };
-        const emails = [...read.items, ...read.backlog].find(
-          (it) => it.title === 'Responder e-mails',
-        );
-
-        return call('propose_plan', {
-          findings: ['Achei 08:00–10:00 livre'],
+      (messages) =>
+        call('propose_plan', {
+          data: { what: 'estudo', when: 'amanhã de manhã', minutes: 120 },
           changes: [
             {
-              kind: 'add_task',
-              title: 'Estudo: Flutter',
-              minutes: 120,
-              at: `${TOMORROW}T08:00`,
+              do: 'at_hour',
+              new: { title: 'Estudo: Flutter', minutes: 120 },
+              day: 'amanhã',
+              time: '08:00',
             },
-            { kind: 'move_task', id: emails?.id, at: `${TOMORROW}T10:05` },
+            {
+              do: 'at_hour',
+              ref: refOf(messages, 'Responder e-mails'),
+              day: TOMORROW,
+              time: '10:05',
+            },
           ],
-        });
-      },
-      say('Fica assim amanhã: estudo às 08:00 e e-mails depois.'),
+          reply: 'Fica assim amanhã: estudo às 08:00 e e-mails depois.',
+        }),
     ];
   }
 
   it('proposes a plan and changes nothing until it is applied', async () => {
-    await post('/tasks', { title: 'Responder e-mails', minutes: 30 });
+    await task('Responder e-mails', 30, true);
     scriptStudyPlan();
 
     const turn = await ask('Encaixa 2h de estudo amanhã de manhã');
@@ -201,11 +215,16 @@ describe('the agent', () => {
 
     expect(turn.status).toBe(201);
     expect(reply.reply).toContain('Fica assim');
-    expect(reply.steps).toEqual(['Olhei amanhã', 'Achei 08:00–10:00 livre']);
+    expect(reply.steps).toEqual([
+      'Amanhã é qua 11/03',
+      'Achei Responder e-mails · tarefa · Depois eu priorizo',
+    ]);
     expect(reply.plan?.changes.map((it) => it.kind)).toEqual([
       'add_task',
       'move_task',
     ]);
+    // Nothing pushed: the plan is the answer, in one call.
+    expect(model.seen).toHaveLength(1);
 
     const before = await day();
     expect(before.tasks.map((it) => it.title)).not.toContain('Estudo: Flutter');
@@ -213,7 +232,7 @@ describe('the agent', () => {
   });
 
   it('applies a plan whole, and undoes it whole', async () => {
-    await post('/tasks', { title: 'Responder e-mails', minutes: 30 });
+    await task('Responder e-mails', 30, true);
     scriptStudyPlan();
     const plan = ((await ask('Encaixa 2h de estudo')).body as AgentReply).plan!;
 
@@ -231,8 +250,15 @@ describe('the agent', () => {
     expect(emails?.startTime).toBe(
       new Date(`${TOMORROW}T10:05:00-03:00`).toISOString(),
     );
+    // The card showed what applying made.
+    expect(plan.changes.map((it) => it.at)).toEqual([
+      study?.startTime,
+      emails?.startTime,
+    ]);
 
-    expect((await post(`/agent/plans/${plan.id}/apply`)).status).toBe(409);
+    const twice = await post(`/agent/plans/${plan.id}/apply`);
+    expect(twice.status).toBe(409);
+    expect((twice.body as { kind: string }).kind).toBe('refused');
 
     const undone = (await post(`/agent/plans/${plan.id}/undo?days=3`))
       .body as Timeline;
@@ -250,14 +276,179 @@ describe('the agent', () => {
     ]);
   });
 
+  it('puts a task between two others as a place in the queue, as a drag does', async () => {
+    await task('Ler artigo', 30);
+    await task('Responder e-mails', 30);
+    model.steps = [
+      (messages) =>
+        call('propose_plan', {
+          data: { what: 'revisar proposta', relation: 'entre' },
+          changes: [
+            {
+              do: 'place',
+              new: { title: 'Revisar proposta', minutes: 45 },
+              after: refOf(messages, 'Ler artigo'),
+              before: refOf(messages, 'Responder e-mails'),
+            },
+          ],
+          reply: 'Fica entre os dois.',
+        }),
+      (messages) => {
+        expect(lastTool(messages).pushed).toEqual([
+          {
+            title: 'Responder e-mails',
+            from: 'hoje 10:35',
+            to: 'hoje 11:25',
+          },
+        ]);
+        return { kind: 'final', content: 'Os e-mails descem. Pode ser?' };
+      },
+    ];
+
+    const reply = (await ask('Revisar proposta entre o artigo e os e-mails'))
+      .body as AgentReply;
+    const change = reply.plan!.changes[0];
+    expect(change.kind).toBe('add_task');
+    expect(change.place).toEqual({
+      after: 'Ler artigo',
+      before: 'Responder e-mails',
+    });
+    expect(change.at).toBe(new Date('2026-03-10T10:35:00-03:00').toISOString());
+    expect(reply.reply).toBe('Os e-mails descem. Pode ser?');
+
+    const after = (await post(`/agent/plans/${reply.plan!.id}/apply?days=3`))
+      .body as Timeline;
+    expect(after.tasks.map((it) => [it.title, it.notBefore])).toEqual([
+      ['Ler artigo', undefined],
+      ['Revisar proposta', undefined],
+      ['Responder e-mails', undefined],
+    ]);
+  });
+
+  it('moves a fixed block to another day by its ref, naming the day', async () => {
+    await event('Dentista', '2026-03-10T16:00:00-03:00');
+    model.steps = [
+      (messages) =>
+        call('propose_plan', {
+          data: { what: 'dentista', when: 'amanhã às 9' },
+          changes: [
+            {
+              do: 'at_hour',
+              ref: refOf(messages, 'Dentista'),
+              day: 'amanhã',
+              time: '09:00',
+            },
+          ],
+          reply: 'Passei o Dentista para amanhã às 09:00.',
+        }),
+    ];
+
+    const reply = (await ask('Passa o dentista pra amanhã às 9'))
+      .body as AgentReply;
+
+    expect(reply.steps).toEqual([
+      'Achei Dentista · bloco fixo · hoje 16:00',
+      'Amanhã é qua 11/03',
+    ]);
+    expect(reply.plan?.changes[0]).toMatchObject({
+      kind: 'move_event',
+      at: new Date(`${TOMORROW}T09:00:00-03:00`).toISOString(),
+      before: new Date('2026-03-10T16:00:00-03:00').toISOString(),
+    });
+    expect(model.seen).toHaveLength(1);
+  });
+
+  it('asks once when something new is named like a card already there', async () => {
+    await event('Dentista', '2026-03-10T16:00:00-03:00');
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          data: { what: 'dentista', when: 'amanhã às 9' },
+          changes: [
+            {
+              do: 'at_hour',
+              new: { title: 'dentista', minutes: 60, fixed: true },
+              day: 'amanhã',
+              time: '09:00',
+            },
+          ],
+          reply: 'Marquei.',
+        }),
+    ];
+
+    const reply = (await ask('Marca dentista amanhã às 9')).body as AgentReply;
+
+    expect(model.seen).toHaveLength(1);
+    expect(reply.plan).toBeUndefined();
+    expect(reply.reply).toBe(
+      'Você já tem Dentista hoje às 16:00. É esse que vai para amanhã às 09:00, ou é outro compromisso?',
+    );
+    expect(reply.steps).toContain(
+      'Já existe Dentista · bloco fixo · hoje 16:00',
+    );
+    expect(reply.options.map((it) => it.label)).toEqual([
+      'Mover o de hoje',
+      'É outro, marcar mais um',
+    ]);
+
+    const [move, other] = reply.options;
+    const after = (await post(`/agent/plans/${move.plan.id}/apply?days=3`))
+      .body as Timeline;
+    expect(
+      after.cards
+        .filter((it) => it.title === 'Dentista')
+        .map((it) => it.startTime),
+    ).toEqual([new Date(`${TOMORROW}T09:00:00-03:00`).toISOString()]);
+
+    // One answer is taken: the other is not made as well.
+    const both = await post(`/agent/plans/${other.plan.id}/apply`);
+    expect(both.status).toBe(409);
+  });
+
+  it('proposes an hour for something new with no hour said, and offers the backlog', async () => {
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          data: { what: 'treinar' },
+          changes: [{ do: 'first_free', new: { title: 'Treinar' } }],
+          reply: 'Que tal agora às 10:00? Está livre.',
+        }),
+    ];
+
+    const reply = (await ask('Preciso treinar')).body as AgentReply;
+
+    expect(reply.plan?.changes[0]).toMatchObject({
+      kind: 'add_task',
+      minutes: 30,
+      at: NOW.toISOString(),
+    });
+    expect(reply.plan?.assumed).toEqual([
+      { kind: 'minutes', minutes: 30 },
+      { kind: 'today' },
+    ]);
+    expect(reply.options.map((it) => it.label)).toEqual(['Deixar para depois']);
+    expect(reply.options[0].plan.changes[0].kind).toBe('to_backlog');
+
+    const after = (
+      await post(`/agent/plans/${reply.options[0].plan.id}/apply?days=3`)
+    ).body as Timeline;
+    expect(after.backlog.map((it) => it.title)).toEqual(['Treinar']);
+    expect(after.tasks).toEqual([]);
+    expect((await post(`/agent/plans/${reply.plan!.id}/apply`)).status).toBe(
+      409,
+    );
+  });
+
   it('hands a bad proposal back to the model instead of filing it', async () => {
     model.steps = [
       () =>
         call('propose_plan', {
-          changes: [{ kind: 'move_task', id: 'nope', at: `${TOMORROW}T09:00` }],
+          data: {},
+          changes: [{ do: 'at_hour', ref: 't9', day: 'amanhã', time: '09:00' }],
+          reply: 'Feito.',
         }),
       (messages) => {
-        expect(lastTool(messages).error).toContain('No task');
+        expect(lastTool(messages).error).toContain('No card "t9"');
         return { kind: 'final', content: 'Não achei essa tarefa.' };
       },
     ];
@@ -272,25 +463,171 @@ describe('the agent', () => {
     model.steps = [
       () =>
         call('propose_plan', {
+          data: {},
           changes: [
             {
-              kind: 'add_task',
-              title: 'Ontem',
-              minutes: 30,
-              at: '2026-03-09T09:00',
+              do: 'at_hour',
+              new: { title: 'Ontem', minutes: 30 },
+              day: 'hoje',
+              time: '09:00',
             },
           ],
+          reply: 'Feito.',
         }),
       (messages) => {
-        expect(lastTool(messages).error).toContain('in the past');
+        expect(lastTool(messages).error).toContain('already passed');
         return { kind: 'final', content: 'Esse horário já passou.' };
       },
     ];
 
-    expect(((await ask('Ontem às 9')).body as AgentReply).plan).toBeUndefined();
+    expect(((await ask('Hoje às 9')).body as AgentReply).plan).toBeUndefined();
   });
 
-  it('tells the model when it is and what the screen shows', async () => {
+  it('refuses a task at an hour an event keeps, so the model asks', async () => {
+    await event('Reunião', '2026-03-10T15:00:00-03:00');
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          data: {},
+          changes: [
+            {
+              do: 'at_hour',
+              new: { title: 'Ligar pro banco', minutes: 30 },
+              day: 'hoje',
+              time: '15:00',
+            },
+          ],
+          reply: 'Feito.',
+        }),
+      (messages) => {
+        expect(lastTool(messages).error).toContain('"Reunião"');
+        expect(lastTool(messages).error).toContain('never pushed');
+        return { kind: 'final', content: 'Às 15:00 tem a Reunião.' };
+      },
+    ];
+
+    expect(
+      ((await ask('Banco às 15h')).body as AgentReply).plan,
+    ).toBeUndefined();
+  });
+
+  it('refuses a fixed block on top of another, so the model asks', async () => {
+    await event('Reunião', '2026-03-10T15:00:00-03:00');
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          data: {},
+          changes: [
+            {
+              do: 'at_hour',
+              new: { title: 'Ligar pro banco', minutes: 30, fixed: true },
+              day: 'hoje',
+              time: '15:00',
+            },
+          ],
+          reply: 'Feito.',
+        }),
+      (messages) => {
+        expect(lastTool(messages).error).toContain('two things at once');
+        return {
+          kind: 'final',
+          content: 'Às 15:00 tem a Reunião. Outro horário?',
+        };
+      },
+    ];
+
+    expect(
+      ((await ask('Banco às 15h')).body as AgentReply).plan,
+    ).toBeUndefined();
+  });
+
+  it('shows what a plan pushes later, as the queue would', async () => {
+    await task('Revisar proposta', 60);
+    await task('Responder e-mails', 30);
+    model.steps = [
+      () =>
+        call('propose_plan', {
+          data: { what: 'dentista', when: '10:30' },
+          changes: [
+            {
+              do: 'at_hour',
+              new: { title: 'Dentista', minutes: 60, fixed: true },
+              day: 'hoje',
+              time: '10:30',
+            },
+          ],
+          reply: 'Dentista às 10:30.',
+        }),
+      (messages) => {
+        expect(lastTool(messages).pushed).toEqual([
+          { title: 'Revisar proposta', from: 'hoje 10:00', to: 'hoje 11:35' },
+          { title: 'Responder e-mails', from: 'hoje 11:05', to: 'hoje 12:40' },
+        ]);
+        return {
+          kind: 'final',
+          content: 'Quer que eu coloque o Dentista às 10:30 e mova o resto?',
+        };
+      },
+    ];
+
+    const plan = ((await ask('Dentista às 10:30')).body as AgentReply).plan!;
+    expect(plan.pushed.map((it) => it.title)).toEqual([
+      'Revisar proposta',
+      'Responder e-mails',
+    ]);
+
+    // Applied, the day is what the plan showed.
+    const after = (await post(`/agent/plans/${plan.id}/apply?days=3`))
+      .body as Timeline;
+    expect(after.tasks.map((it) => [it.title, it.startTime])).toEqual([
+      ['Revisar proposta', plan.pushed[0].at],
+      ['Responder e-mails', plan.pushed[1].at],
+    ]);
+  });
+
+  it('says what kind of failure it was, with the trace', async () => {
+    model.steps = [
+      () => {
+        throw new ModelUnavailableError('down', 502);
+      },
+    ];
+    const down = await ask('Oi');
+    expect(down.status).toBe(503);
+    expect(down.body).toMatchObject({ kind: 'model_down' });
+    expect((down.body as { traceId: string }).traceId).toMatch(/\w+/);
+
+    // The day changed under a plan: Aplicar says so, and makes nothing.
+    await task('Responder e-mails', 30);
+    scriptStudyPlanFor('Responder e-mails');
+    const plan = ((await ask('Move os e-mails')).body as AgentReply).plan!;
+    const emails = (await day()).tasks[0];
+    await request(app.getHttpServer()).delete(`/tasks/${emails.id}`);
+
+    const drift = await post(`/agent/plans/${plan.id}/apply`);
+    expect(drift.status).toBe(409);
+    expect(drift.body).toMatchObject({ kind: 'drift' });
+  });
+
+  /** A plan that gives [title] an hour tomorrow. */
+  function scriptStudyPlanFor(title: string): void {
+    model.steps = [
+      (messages) =>
+        call('propose_plan', {
+          data: {},
+          changes: [
+            {
+              do: 'at_hour',
+              ref: refOf(messages, title),
+              day: 'amanhã',
+              time: '09:00',
+            },
+          ],
+          reply: 'Amanhã às 09:00.',
+        }),
+    ];
+  }
+
+  it('tells the model when it is, which day is which, and what the screen shows', async () => {
     model.steps = [say('Oi!')];
 
     await post('/agent/turn', {
@@ -298,10 +635,29 @@ describe('the agent', () => {
       day: TOMORROW,
     });
 
-    const context = model.seen[0][1].content;
-    expect(context).toContain('2026-03-10T10:00');
-    expect(context).toContain('Tuesday');
+    const context = model.seen[0][model.seen[0].length - 1].content;
+    expect(context).toContain('Now: Tue 2026-03-10 10:00 (America/Sao_Paulo)');
+    expect(context).toContain('- amanhã = Wed 2026-03-11');
     expect(context).toContain(`showing ${TOMORROW}`);
+    expect(context).toMatch(/Request: Oi$/);
+  });
+
+  it('reads other days by the word the person used', async () => {
+    await event('Reunião de pauta', '2026-03-13T14:00:00-03:00');
+    model.steps = [
+      () => call('read_timeline', { day: 'sexta' }),
+      (messages) => {
+        const read = lastTool(messages).day as string;
+        expect(read).toContain('2026-03-13');
+        expect(read).toMatch(
+          /e1 · Reunião de pauta · fixed event · sex 13\/03 14:00–15:00/,
+        );
+        return { kind: 'final', content: 'Sexta tem a reunião às 14:00.' };
+      },
+    ];
+
+    const reply = (await ask('O que tem sexta?')).body as AgentReply;
+    expect(reply.steps).toEqual(['Olhei sex 13/03']);
   });
 
   it('suggests fitting the first backlog task into today', async () => {
@@ -377,10 +733,11 @@ describe('the agent', () => {
     expect(other.conversationId).not.toBe(first.conversationId);
 
     // A new conversation starts with nothing of the old one.
-    const told = model.seen[model.seen.length - 1];
-    expect(told.filter((it) => it.role !== 'system')).toEqual([
-      { role: 'user', content: 'Outra coisa' },
-    ]);
+    const told = model.seen[model.seen.length - 1].filter(
+      (it) => it.role !== 'system',
+    );
+    expect(told).toHaveLength(1);
+    expect(told[0].content).toMatch(/Request: Outra coisa$/);
 
     const past = await history();
     expect(past.map((it) => it.messages.length)).toEqual([2, 4]);
@@ -418,7 +775,7 @@ describe('the agent', () => {
   });
 
   it('keeps what became of each plan in the history', async () => {
-    await post('/tasks', { title: 'Responder e-mails', minutes: 30 });
+    await task('Responder e-mails', 30, true);
     scriptStudyPlan();
     const plan = ((await ask('Encaixa 2h de estudo')).body as AgentReply).plan!;
 
@@ -452,112 +809,13 @@ describe('the agent', () => {
     expect(reply.steps).toEqual(['Procurei nas conversas: "ACADEMIA"']);
   });
 
-  it('tells the model the minute it is in every read', async () => {
-    model.steps = [
-      () => call('read_timeline', {}),
-      (messages) => {
-        expect(lastTool(messages).now).toBe('2026-03-10T10:00');
-        return { kind: 'final', content: 'Ok.' };
-      },
-    ];
-
-    await ask('Como está meu dia?');
-  });
-
-  it('shows what a plan pushes later, as the queue would', async () => {
-    await post('/tasks', {
-      title: 'Revisar proposta',
-      minutes: 60,
-      backlog: false,
-    });
-    await post('/tasks', {
-      title: 'Responder e-mails',
-      minutes: 30,
-      backlog: false,
-    });
-    model.steps = [
-      () =>
-        call('propose_plan', {
-          changes: [
-            {
-              kind: 'add_event',
-              title: 'Dentista',
-              minutes: 60,
-              at: '2026-03-10T10:30',
-            },
-          ],
-        }),
-      (messages) => {
-        expect(lastTool(messages).pushed).toEqual([
-          {
-            title: 'Revisar proposta',
-            from: '2026-03-10T10:00',
-            to: '2026-03-10T11:35',
-          },
-          {
-            title: 'Responder e-mails',
-            from: '2026-03-10T11:05',
-            to: '2026-03-10T12:40',
-          },
-        ]);
-        return {
-          kind: 'final',
-          content: 'Quer que eu coloque o Dentista às 10:30 e empurre o resto?',
-        };
-      },
-    ];
-
-    const plan = ((await ask('Dentista às 10:30')).body as AgentReply).plan!;
-    expect(plan.pushed.map((it) => it.title)).toEqual([
-      'Revisar proposta',
-      'Responder e-mails',
-    ]);
-
-    // Applied, the day is what the plan showed.
-    const after = (await post(`/agent/plans/${plan.id}/apply?days=3`))
-      .body as Timeline;
-    expect(after.tasks.map((it) => [it.title, it.startTime])).toEqual([
-      ['Revisar proposta', plan.pushed[0].at],
-      ['Responder e-mails', plan.pushed[1].at],
-    ]);
-  });
-
-  it('refuses a task at an hour an event keeps, so the model asks', async () => {
-    await post('/events', {
-      title: 'Reunião',
-      durationMinutes: 60,
-      startTime: new Date('2026-03-10T15:00:00-03:00').toISOString(),
-    });
-    model.steps = [
-      () =>
-        call('propose_plan', {
-          changes: [
-            {
-              kind: 'add_task',
-              title: 'Ligar pro banco',
-              minutes: 30,
-              at: '2026-03-10T15:00',
-            },
-          ],
-        }),
-      (messages) => {
-        expect(lastTool(messages).error).toContain('"Reunião"');
-        expect(lastTool(messages).error).toContain('never pushed');
-        return { kind: 'final', content: 'Às 15:00 tem a Reunião.' };
-      },
-    ];
-
-    expect(
-      ((await ask('Banco às 15h')).body as AgentReply).plan,
-    ).toBeUndefined();
-  });
-
   it('says so when no model is configured', async () => {
     model.configured = false;
 
     const response = await ask('Oi');
 
     expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({ kind: 'model_down' });
     expect((response.body as { message: string }).message).toContain(
       'não está conectada',
     );

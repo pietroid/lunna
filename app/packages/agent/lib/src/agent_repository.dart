@@ -9,24 +9,70 @@ import 'package:timeline/timeline.dart';
 /// {@endtemplate}
 class AgentFailure implements Exception {
   /// {@macro agent_failure}
-  const AgentFailure([this.message]);
+  const AgentFailure([
+    this.message,
+    this.kind = AgentFailureKind.bug,
+    this.traceId,
+  ]);
 
   factory AgentFailure.from(Object error) {
     if (error is AgentFailure) return error;
     if (error is! DioException) return const AgentFailure();
 
     final data = error.response?.data;
-    final message = data is Map<String, dynamic> ? data['message'] : null;
+    final body = data is Map<String, dynamic>
+        ? data
+        : const <String, dynamic>{};
+    final message = body['message'];
 
     return AgentFailure(
       message is String && message.isNotEmpty ? message : null,
+      error.response == null
+          ? AgentFailureKind.offline
+          : AgentFailureKind.fromWire(body['kind'] as String?),
+      body['traceId'] as String?,
     );
   }
 
+  /// The server's own words, which say best what a refusal was.
   final String? message;
+
+  final AgentFailureKind kind;
+
+  /// The turn's trace on the server, for whoever looks into it.
+  final String? traceId;
 
   @override
   String toString() => message ?? 'AgentFailure';
+}
+
+/// What kind of thing went wrong, each said its own way.
+enum AgentFailureKind {
+  /// The model did not answer, even asked twice.
+  modelDown,
+
+  /// The model answered with nothing, twice.
+  modelEmpty,
+
+  /// The server would not do it, and says why in its message.
+  refused,
+
+  /// The day changed since the plan, and the plan no longer fits it.
+  drift,
+
+  /// The server never answered.
+  offline,
+
+  /// Anything else: ours to fix.
+  bug;
+
+  static AgentFailureKind fromWire(String? value) => switch (value) {
+    'model_down' => modelDown,
+    'model_empty' => modelEmpty,
+    'refused' => refused,
+    'drift' => drift,
+    _ => bug,
+  };
 }
 
 /// {@template agent_repository}

@@ -4,7 +4,9 @@ import 'package:agent/src/agent_cubit.dart';
 import 'package:agent/src/agent_repository.dart';
 import 'package:agent/src/models.dart';
 import 'package:agent/src/view/apply_plan.dart';
+import 'package:agent/src/view/failure_note.dart';
 import 'package:agent/src/view/plan_card.dart';
+import 'package:agent/src/view/quick_replies.dart';
 import 'package:agent/src/voice/voice_cubit.dart';
 import 'package:agent/src/voice/voice_recognizer.dart';
 import 'package:app_ui/app_ui.dart';
@@ -416,11 +418,9 @@ class _Current extends StatelessWidget {
                     if (state.failure case final failure?)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.s2),
-                        child: Text(
-                          failure.message ?? l10n.agentFailure,
-                          style: AppTypography.label.copyWith(
-                            color: AppColors.dangerInk,
-                          ),
+                        child: FailureNote(
+                          failure: failure,
+                          onRetry: context.read<AgentCubit>().retry,
                         ),
                       ),
                   ],
@@ -669,6 +669,7 @@ class _Answer extends StatelessWidget {
   Widget build(BuildContext context) {
     final reply = entry.reply;
     final plan = reply.plan;
+    final tookOption = entry.chosen != null && entry.chosen != plan?.id;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.s5),
@@ -700,7 +701,7 @@ class _Answer extends StatelessWidget {
           if (plan != null && onAdjust == null) ...[
             const SizedBox(height: AppSpacing.s3),
             PlanLine(plan: plan, status: entry.status),
-          ] else if (plan != null) ...[
+          ] else if (plan != null && !tookOption) ...[
             const SizedBox(height: AppSpacing.s3),
             PlanCard(
               plan: plan,
@@ -709,6 +710,23 @@ class _Answer extends StatelessWidget {
               onApply: () async {
                 final navigator = Navigator.of(context);
                 if (await applyAgentPlan(context, plan)) navigator.pop();
+              },
+            ),
+          ],
+          // Offered beside the plan or instead of it; gone once the plan is.
+          if (reply.options.isNotEmpty &&
+              onAdjust != null &&
+              (entry.chosen == null || tookOption)) ...[
+            const SizedBox(height: AppSpacing.s3),
+            QuickReplies(
+              options: reply.options,
+              status: entry.status,
+              chosen: entry.chosen,
+              onPick: (option) async {
+                final navigator = Navigator.of(context);
+                if (await applyAgentPlan(context, option.plan)) {
+                  navigator.pop();
+                }
               },
             ),
           ],

@@ -104,6 +104,9 @@ class AgentCubit extends Cubit<AgentState> {
 
   final DateTime Function() _now;
 
+  /// The day the last turn was about, for [retry].
+  DateTime? _day;
+
   /// Whether the past has been asked for yet.
   bool _asked = false;
 
@@ -171,6 +174,7 @@ class AgentCubit extends Cubit<AgentState> {
   Future<void> send(String text, {DateTime? day, Duration? voice}) async {
     final said = text.trim();
     if (said.isEmpty || state.busy) return;
+    _day = day;
 
     final entries = [...state.entries, UserEntry(said, voice: voice)];
     emit(
@@ -200,12 +204,26 @@ class AgentCubit extends Cubit<AgentState> {
     }
   }
 
+  /// Asks again for the turn that failed: the last thing said, unanswered.
+  Future<void> retry() async {
+    if (state.busy || state.failure == null) return;
+    if (state.entries.lastOrNull case final UserEntry said) {
+      emit(
+        state.copyWith(
+          entries: state.entries.sublist(0, state.entries.length - 1),
+        ),
+      );
+      await send(said.text, day: _day, voice: said.voice);
+    }
+  }
+
   /// Where the plan [planId] stands now, wherever it was proposed.
   void markPlan(String planId, PlanStatus status) {
     List<AgentEntry> marked(List<AgentEntry> entries) => [
       for (final entry in entries)
-        if (entry is ReplyEntry && entry.reply.plan?.id == planId)
-          entry.withStatus(status)
+        if (entry is ReplyEntry &&
+            entry.reply.plans.any((it) => it.id == planId))
+          entry.withStatus(status, chosen: planId)
         else
           entry,
     ];

@@ -87,8 +87,9 @@ app/
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
   src/
-    agent/              the agent: OpenRouter client, tools, plans,
-                        conversations (ConversationStore)
+    agent/              the agent: OpenRouter client, tools, the board
+                        (refs, dates), gestures and the dry run, plans,
+                        conversations (ConversationStore), evals/
     auth/               Better Auth instance + SessionGuard
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
     db/                 Drizzle schema + pool + boot-time migrations
@@ -426,8 +427,14 @@ plan into local notifications, so reminders arrive without push or network.
 
 It reads the day and proposes changes to it: **reads run, writes are only
 ever proposed**, the user applies a plan whole, the server makes it through
-`EventLayoutService` and can undo it. Voice becomes text on the phone and
-reaches the server as an ordinary turn. The tools, the plan rules, the
+`EventLayoutService` and can undo it. **Every change the agent proposes is a
+gesture the person could have made by hand** (a place in the queue, an
+hour, the backlog, a swap), and leaves the day as that gesture would: the
+model names cards by short refs and days as said, the server resolves
+them, runs the plan on a sandbox copy of the day, and asks the doubts it
+can see itself. Voice becomes text on the phone and reaches the server as
+an ordinary turn. Agent changes are measured with `npm run eval:agent`
+(real model, costs money, never in CI). The tools, the plan rules, the
 routes, the conversations and voice are in
 [product/spec/agent.md](./product/spec/agent.md): read it before touching
 `server/src/agent/` or `app/packages/agent/`.

@@ -1,0 +1,145 @@
+{
+  "title": "Lunna, um agente confiável",
+  "screens": [
+    {
+      "png": "/private/tmp/claude-501/-Users-pietro-Documents-pietroid-dev-lunna/4ccf0415-a20c-4da2-9611-857ffdcc3fa4/scratchpad/design/lunna/1.png",
+      "title": "1 · The day, said and drawn",
+      "why": "Dates are resolved by the server; a wrong day shows before Aplicar.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 330,
+          "y": 486,
+          "label": "Facts, not guesses",
+          "text": "Steps are the server's facts: what 'amanhã' is, which card 'o dentista' matched (by short ref, never a UUID). Same ticked line as today."
+        },
+        {
+          "id": "B",
+          "x": 215,
+          "y": 600,
+          "label": "Header = resolved day",
+          "text": "The card's header is the day the change lands on, in words."
+        },
+        {
+          "id": "C",
+          "x": 290,
+          "y": 659,
+          "label": "Both days on a cross-day move",
+          "text": "When a move changes day, both ends name it (sáb 16:00 → dom 09:00); same-day moves stay hour-only."
+        }
+      ]
+    },
+    {
+      "png": "/private/tmp/claude-501/-Users-pietro-Documents-pietroid-dev-lunna/4ccf0415-a20c-4da2-9611-857ffdcc3fa4/scratchpad/design/lunna/2.png",
+      "title": "2 · Between = a drag",
+      "why": "Every agent change is a gesture the person could make by hand.",
+      "pins": [
+        {
+          "id": "D",
+          "x": 345,
+          "y": 557,
+          "label": "A place, not an hour",
+          "text": "A 'place' change says where in the queue (entre Academia e Jantar) instead of 'nova tarefa'. No anchor: it moves with the queue like a dragged card."
+        },
+        {
+          "id": "E",
+          "x": 270,
+          "y": 623,
+          "label": "Pushes from the dry run",
+          "text": "What it pushes comes from running the plan on an in-memory copy of the day with the same code Aplicar runs, so plan and apply can't disagree."
+        },
+        {
+          "id": "F",
+          "x": 195,
+          "y": 665,
+          "label": "Named default",
+          "text": "Anything taken without being told (length, today, end of queue) is a quiet line with the pen, right above Ajustar. Never silent."
+        }
+      ]
+    },
+    {
+      "png": "/private/tmp/claude-501/-Users-pietro-Documents-pietroid-dev-lunna/4ccf0415-a20c-4da2-9611-857ffdcc3fa4/scratchpad/design/lunna/3.png",
+      "title": "3 · A doubt, asked once",
+      "why": "The server spots the duplicate; the agent asks before any plan.",
+      "pins": [
+        {
+          "id": "G",
+          "x": 330,
+          "y": 609,
+          "label": "Duplicate caught in code",
+          "text": "A 'new' card whose title matches one in the horizon blocks the plan. No plan card: the question replaces it."
+        },
+        {
+          "id": "H",
+          "x": 370,
+          "y": 716,
+          "label": "Quick replies",
+          "text": "Each pill carries its own plan; a tap applies it with no other model call. Neutral ink, no accent: equal choices. Once taken, it becomes one ticked line."
+        },
+        {
+          "id": "I",
+          "x": 200,
+          "y": 809,
+          "label": "Free text stays",
+          "text": "The composer is the fallback. How often a doubt is answered here instead of a tap is logged: it tells us the options missed."
+        }
+      ]
+    },
+    {
+      "png": "/private/tmp/claude-501/-Users-pietro-Documents-pietroid-dev-lunna/4ccf0415-a20c-4da2-9611-857ffdcc3fa4/scratchpad/design/lunna/4.png",
+      "title": "4 · No hour given",
+      "why": "Suggest from facts and ask; nothing implicit is applied.",
+      "pins": [
+        {
+          "id": "J",
+          "x": 215,
+          "y": 358,
+          "label": "Why this hour",
+          "text": "The facts behind the proposal (free room, nothing similar today) are the steps; the reply says why and asks 'Pode ser?'."
+        },
+        {
+          "id": "K",
+          "x": 80,
+          "y": 462,
+          "label": "One call",
+          "text": "A clean plan ends the turn: the model writes this reply inside propose_plan, so 3 model calls become 1."
+        },
+        {
+          "id": "L",
+          "x": 195,
+          "y": 730,
+          "label": "Deixar para depois",
+          "text": "The backlog is a quick reply under the card, not a silent default. Aplicar keeps the accent."
+        }
+      ]
+    },
+    {
+      "png": "/private/tmp/claude-501/-Users-pietro-Documents-pietroid-dev-lunna/4ccf0415-a20c-4da2-9611-857ffdcc3fa4/scratchpad/design/lunna/5.png",
+      "title": "5 · Honest errors",
+      "why": "Each failure says what it was, and the way out.",
+      "pins": [
+        {
+          "id": "M",
+          "x": 200,
+          "y": 632,
+          "label": "Typed failure",
+          "text": "Model down, empty answer, refusal (server's words), day moved on, offline, or ours: each its own Portuguese line. The server retries once before this."
+        },
+        {
+          "id": "N",
+          "x": 205,
+          "y": 734,
+          "label": "Tentar de novo",
+          "text": "Resends the last request; hidden for a refusal, where retrying gives the same answer."
+        },
+        {
+          "id": "O",
+          "x": 255,
+          "y": 734,
+          "label": "Detalhes",
+          "text": "Reveals the turn's trace code, selectable, for a bug report."
+        }
+      ]
+    }
+  ]
+}
