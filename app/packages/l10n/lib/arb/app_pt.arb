@@ -224,6 +224,12 @@
   },
   "eventGone": "Esse bloco não está mais no dia.",
   "eventNotesHint": "Anotações",
+  "eventWhenLabel": "Horário",
+  "eventLengthLabel": "Duração",
+  "eventProjectLabel": "Projeto",
+  "eventNoProject": "Nenhum",
+  "eventNotesLabel": "Notas",
+  "eventMarkDone": "Marcar como feita",
   "restTip01": "Respire fundo. Três vezes, devagar.",
   "restTip02": "Levante, alongue as costas e olhe pela janela.",
   "restTip03": "Beba um copo d’água antes de continuar.",
@@ -647,6 +653,9 @@
   "agentVoiceDiscard": "Descartar",
   "agentVoiceStop": "Parar e revisar",
   "agentVoiceOpen": "Abrir a conversa",
+  "agentVoiceSlideCancel": "Deslize para cancelar",
+  "agentVoiceLock": "Gravar sem segurar",
+  "agentVoiceSend": "Enviar",
   "agentVoiceVia": "por voz · {length}",
   "@agentVoiceVia": {
     "placeholders": {
@@ -736,6 +745,8 @@
     }
   },
   "projectNotesTab": "Notas",
+  "projectDeadlineLabel": "Prazo",
+  "projectProgressLabel": "Feitas",
   "projectNotesHint": "Escreva o que quiser sobre o projeto…",
   "projectAddTask": "Nova tarefa",
   "projectTasksDone": "{count, plural, =1{1 feita} other{{count} feitas}}",

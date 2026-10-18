@@ -100,8 +100,8 @@ class _AgentSheetState extends State<AgentSheet> {
   final _focus = FocusNode();
   final _scroll = ScrollController();
 
-  /// Letting go of a held microphone stops it.
-  late final _hold = VoiceHold(onRelease: () => unawaited(_stop()));
+  /// Letting go of a held microphone sends what was said.
+  late final _hold = VoiceHold(onRelease: () => unawaited(_say()));
 
   /// How long the text in the field took to say, when it was spoken and then
   /// corrected by hand.
@@ -154,6 +154,16 @@ class _AgentSheetState extends State<AgentSheet> {
     _fill(take.text);
     _spoken = take.length;
     _focus.requestFocus();
+  }
+
+  /// Stops hearing and sends the words as they were heard.
+  Future<void> _say() async {
+    final voice = context.read<VoiceCubit>();
+    if (voice.state.status == VoiceStatus.preparing) return;
+    final take = await voice.take();
+    if (take == null || !mounted) return;
+
+    _send(take.text, take.length);
   }
 
   /// Puts [text] in the field, all of it selected.

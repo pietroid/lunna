@@ -394,7 +394,7 @@ void main() {
       expect(find.text('por voz · 0:00'), findsOneWidget);
     });
 
-    testWidgets('held, the microphone stops as it is let go', (tester) async {
+    testWidgets('held, letting go sends what was said', (tester) async {
       final (recognizer, agent, _) = await pumpSheet(tester);
 
       final finger = await tester.startGesture(
@@ -408,8 +408,10 @@ void main() {
       await tester.pump();
 
       expect(recognizer.stops, 1);
-      expect(agent.state.entries, isEmpty);
-      expect(field(tester).controller!.text, 'Encaixa estudo');
+      final said = agent.state.entries.first as UserEntry;
+      expect(said.text, 'Encaixa estudo');
+      expect(said.voice, isNotNull);
+      expect(field(tester).controller!.text, isEmpty);
     });
 
     testWidgets('a recording begun on Tempo carries on in the sheet', (
@@ -525,31 +527,78 @@ void main() {
       expect(find.text('Ouvindo'), findsOneWidget);
     });
 
-    testWidgets('held, the microphone records until it is let go', (
-      tester,
+    Future<TestGesture> hold(
+      WidgetTester tester,
+      _FakeRecognizer recognizer,
     ) async {
-      final (recognizer, voice) = await pumpDock(tester);
-
       final finger = await tester.startGesture(
         tester.getCenter(find.bySemanticsLabel('Falar')),
       );
       await tester.pump();
-      // Recording as the finger lands, the bar already the recorder.
-      expect(voice.state.status, VoiceStatus.listening);
-      await settle(tester);
-      expect(find.byType(VoiceBar), findsOneWidget);
+      await tester.pump(VoiceHold.hold);
       recognizer.say('Encaixa estudo amanhã');
+      await tester.pump();
+      return finger;
+    }
+
+    bool held(WidgetTester tester) =>
+        tester.widget<AskRecorder>(find.byType(AskRecorder)).held;
+
+    testWidgets('held, letting go sends: the conversation opens on it', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+
+      final finger = await hold(tester, recognizer);
+      // Recording as the finger lands, the bar the held recorder.
+      expect(voice.state.status, VoiceStatus.listening);
+      expect(held(tester), isTrue);
+      expect(find.text('Deslize para cancelar'), findsOneWidget);
 
       await finger.up();
-      await tester.pumpAndSettle();
+      await settle(tester);
 
       expect(recognizer.stops, 1);
       expect(find.byType(AgentSheet), findsOneWidget);
-      final controller = tester
-          .widget<TextField>(find.byType(TextField))
-          .controller!;
-      expect(controller.text, 'Encaixa estudo amanhã');
-      expect(controller.selection.end, controller.text.length);
+      final agent = tester
+          .element(find.byType(AgentSheet))
+          .read<AgentCubit>();
+      final said = agent.state.entries.first as UserEntry;
+      expect(said.text, 'Encaixa estudo amanhã');
+      expect(said.voice, isNotNull);
+    });
+
+    testWidgets('held, sliding left drops the recording', (tester) async {
+      final (recognizer, voice) = await pumpDock(tester);
+
+      final finger = await hold(tester, recognizer);
+      await finger.moveBy(const Offset(-120, 0));
+      await tester.pump();
+      await finger.up();
+      await settle(tester);
+
+      expect(recognizer.cancels, 1);
+      expect(voice.state.status, VoiceStatus.idle);
+      expect(find.byType(AgentSheet), findsNothing);
+      expect(find.byType(AskBar), findsOneWidget);
+    });
+
+    testWidgets('held, sliding up locks it on without the finger', (
+      tester,
+    ) async {
+      final (recognizer, voice) = await pumpDock(tester);
+
+      final finger = await hold(tester, recognizer);
+      await finger.moveBy(const Offset(0, -100));
+      await tester.pump();
+      await finger.up();
+      await settle(tester);
+
+      expect(voice.state.status, VoiceStatus.listening);
+      expect(recognizer.stops + recognizer.cancels, 0);
+      expect(find.byType(AgentSheet), findsNothing);
+      expect(held(tester), isFalse);
+      expect(find.byType(VoiceBar), findsOneWidget);
     });
 
     testWidgets('a quick tap keeps recording after the finger leaves', (
@@ -565,23 +614,24 @@ void main() {
       expect(find.byType(AgentSheet), findsNothing);
     });
 
-    testWidgets('stop opens the conversation with the words selected', (
+    testWidgets('send, where the + was, sends what was said', (
       tester,
     ) async {
       final (recognizer, voice) = await pumpDock(tester);
       await record(tester, recognizer);
 
-      await tester.tap(find.bySemanticsLabel('Parar e revisar'));
-      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Enviar'));
+      await settle(tester);
 
       expect(voice.state.status, VoiceStatus.idle);
       expect(find.byType(AgentSheet), findsOneWidget);
-      final controller = tester
-          .widget<TextField>(find.byType(TextField))
-          .controller!;
-      expect(controller.text, 'Encaixa estudo amanhã');
-      expect(controller.selection.start, 0);
-      expect(controller.selection.end, controller.text.length);
+      final agent = tester
+          .element(find.byType(AgentSheet))
+          .read<AgentCubit>();
+      expect(
+        (agent.state.entries.first as UserEntry).text,
+        'Encaixa estudo amanhã',
+      );
     });
 
     testWidgets('discard brings the bar and the + back', (tester) async {
@@ -597,7 +647,7 @@ void main() {
       expect(find.byType(VoiceBar), findsNothing);
     });
 
-    testWidgets('the words open the conversation; the recording goes on', (
+    testWidgets('the words open the conversation with them in the field', (
       tester,
     ) async {
       final (recognizer, voice) = await pumpDock(tester);
@@ -607,14 +657,14 @@ void main() {
       await settle(tester);
 
       expect(find.byType(AgentSheet), findsOneWidget);
-      expect(voice.state.status, VoiceStatus.listening);
-      expect(recognizer.stops + recognizer.cancels, 0);
+      expect(voice.state.status, VoiceStatus.idle);
+      final agent = tester
+          .element(find.byType(AgentSheet))
+          .read<AgentCubit>();
+      expect(agent.state.entries, isEmpty);
       expect(
-        find.descendant(
-          of: find.byType(AgentSheet),
-          matching: find.byType(VoiceBar),
-        ),
-        findsOneWidget,
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'Encaixa estudo amanhã',
       );
     });
 
@@ -846,13 +896,30 @@ void main() {
       expect(asking.state.status, VoiceStatus.listening);
     });
 
-    testWidgets('steps aside while the keyboard is up', (tester) async {
+    testWidgets('stays put while the keyboard is up', (tester) async {
       await pumpDock(tester);
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);
       addTearDown(tester.view.resetViewInsets);
       await tester.pump();
 
-      expect(find.byTooltip('Ditar nas anotações'), findsNothing);
+      expect(find.byTooltip('Ditar nas anotações'), findsOneWidget);
+    });
+
+    testWidgets('while typing, writes the paragraph at the cursor', (
+      tester,
+    ) async {
+      await pumpDock(tester);
+      notes.notes = 'Comprar pão\nLevar lixo';
+      await tester.showKeyboard(find.byType(TextField));
+      notes.selection = const TextSelection.collapsed(offset: 11);
+      await tester.pump();
+
+      await dictate(tester);
+      recognizer.say('Ligar para a Ana');
+      await tester.pump();
+
+      expect(notes.text, 'Comprar pão\n\nLigar para a Ana\n\nLevar lixo');
+      expect(notes.selection.baseOffset, 29);
     });
 
     testWidgets('the conversation it opens is about the page', (tester) async {

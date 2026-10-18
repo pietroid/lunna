@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:agent/src/voice/voice_cubit.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
@@ -8,32 +10,62 @@ import 'package:l10n/l10n.dart';
 ///
 /// The microphone starts recording as soon as a finger lands on it
 /// ([press]). Let go at once and it was a tap: the recording carries on
-/// until stop. Held for [hold] or longer, letting go ([release]) is the stop.
+/// until it is sent. Still down after [hold], it is held ([held], and
+/// [onHeld] to redraw), and letting go ([release]) sends it.
 ///
 /// The microphone is swapped for the recorder while the finger is still
 /// down, so the release is caught above both, by whatever draws them.
 /// {@endtemplate}
 class VoiceHold {
   /// {@macro voice_hold}
-  VoiceHold({required this.onRelease});
+  VoiceHold({required this.onRelease, this.onHeld});
 
-  /// What letting go after a hold does: stop, as the stop button would.
+  /// What letting go after a hold does: send, as the send button would.
   final VoidCallback onRelease;
+
+  /// Called once a press has lasted long enough to be a hold.
+  final VoidCallback? onHeld;
 
   /// How long a press must last to be a hold rather than a tap.
   static const hold = Duration(milliseconds: 400);
 
   DateTime? _pressedAt;
+  Timer? _timer;
+  bool _held = false;
+
+  /// Whether a finger is holding the microphone down.
+  bool get held => _held;
 
   /// A finger landed on the microphone.
-  void press() => _pressedAt = clock.now();
+  void press() {
+    _pressedAt = clock.now();
+    _timer?.cancel();
+    _timer = Timer(hold, () {
+      if (_pressedAt == null) return;
+      _held = true;
+      onHeld?.call();
+    });
+  }
+
+  /// Forgets the finger without sending: the recording was dropped, or
+  /// locked to go on without it.
+  void abandon() {
+    _pressedAt = null;
+    _timer?.cancel();
+    _held = false;
+  }
 
   /// A finger left the screen, wherever it was.
   void release() {
     final pressedAt = _pressedAt;
     _pressedAt = null;
-    if (pressedAt != null && clock.now().difference(pressedAt) >= hold) {
+    _timer?.cancel();
+    final wasHeld = _held;
+    _held = false;
+    if (pressedAt != null &&
+        (wasHeld || clock.now().difference(pressedAt) >= hold)) {
       onRelease();
+      onHeld?.call();
     }
   }
 }
@@ -50,15 +82,18 @@ class VoiceBar extends StatelessWidget {
   /// {@macro voice_bar}
   const VoiceBar({
     required this.voice,
-    required this.onStop,
     required this.onDiscard,
+    this.onStop,
     this.stopLabel,
     this.discardLabel,
     super.key,
   });
 
   final VoiceState voice;
-  final VoidCallback onStop;
+
+  /// Stops and keeps the words; null leaves the button out, for a bar whose
+  /// way out is beside it (the agent's send, where the + was).
+  final VoidCallback? onStop;
   final VoidCallback onDiscard;
 
   /// What the two buttons say to a screen reader, when not the composer's.
@@ -80,7 +115,7 @@ class VoiceBar extends StatelessWidget {
           onTap: onDiscard,
         ),
         const SizedBox(width: AppSpacing.s1),
-        _Dot(live: live),
+        VoiceDot(live: live),
         const SizedBox(width: AppSpacing.s2),
         Text(
           _clock(voice.elapsed),
@@ -94,14 +129,15 @@ class VoiceBar extends StatelessWidget {
           child: VoiceWave(levels: voice.levels, quiet: !live),
         ),
         const SizedBox(width: AppSpacing.s3),
-        VoiceRound(
-          label: stopLabel ?? l10n.agentVoiceStop,
-          icon: AppIcons.stop,
-          fill: AppColors.accent,
-          ink: AppColors.onAccent,
-          size: 40,
-          onTap: onStop,
-        ),
+        if (onStop != null)
+          VoiceRound(
+            label: stopLabel ?? l10n.agentVoiceStop,
+            icon: AppIcons.stop,
+            fill: AppColors.accent,
+            ink: AppColors.onAccent,
+            size: 40,
+            onTap: onStop,
+          ),
       ],
     );
   }
@@ -259,16 +295,18 @@ class VoiceWave extends StatelessWidget {
 }
 
 /// The red dot of a live recording, breathing; grey once it has stopped.
-class _Dot extends StatefulWidget {
-  const _Dot({required this.live});
+class VoiceDot extends StatefulWidget {
+  /// Creates the dot.
+  const VoiceDot({required this.live, super.key});
 
   final bool live;
 
   @override
-  State<_Dot> createState() => _DotState();
+  State<VoiceDot> createState() => _VoiceDotState();
 }
 
-class _DotState extends State<_Dot> with SingleTickerProviderStateMixin {
+class _VoiceDotState extends State<VoiceDot>
+    with SingleTickerProviderStateMixin {
   late final _breath = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),

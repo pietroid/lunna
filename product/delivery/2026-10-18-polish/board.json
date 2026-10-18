@@ -1,0 +1,37 @@
+{ "screens": [
+ { "png": "img/1.png", "title": "1 · A tarefa, com rótulos", "why": "A página parecia pelada e o ✓ no canto parecia 'salvar'.",
+   "pins": [
+    {"id":"A","x":77,"y":32,"label":"Círculo antes do nome","text":"Concluir vira o círculo de checklist (Things, Todoist). Toque: preenche em vermelho com ✓ e fecha. Sai o ✓ solto da fileira de botões."},
+    {"id":"B","x":12,"y":118,"label":"Rótulos","text":"Horário, Duração, Projeto, numa coluna em ink3 de 84px; o valor ao lado continua tocável (abre o seletor)."},
+    {"id":"C","x":300,"y":160,"label":"Projeto","text":"AppTag novo: ícone de pastas + nome, fundo fillStrong, sem borda. 'Nenhum' em ink3 quando não tem. Tocar para escolher o projeto fica para a build."},
+    {"id":"D","x":150,"y":200,"label":"Controles","text":"▶ −15 +15 ficam, sem o ✓."},
+    {"id":"E","x":372,"y":345,"label":"Link sem buraco","text":"O cartão tem 4px de respiro em cima e embaixo, com ou sem texto depois. Hoje, sem texto, a linha vazia herda a altura do cartão."},
+    {"id":"F","x":12,"y":272,"label":"Notas","text":"Rótulo 'Notas' em cima do campo, igual aos outros."}
+ ]},
+ { "png": "img/2.png", "title": "2 · Digitando, o microfone fica", "why": "Ao tocar no texto o microfone sumia.",
+   "pins": [
+    {"id":"A","x":372,"y":470,"label":"Doca sobre o teclado","text":"A barra e o microfone não somem nem mudam de forma: sobem junto com o teclado. Dá para digitar e ditar sem fechar o teclado."},
+    {"id":"B","x":345,"y":540,"label":"Dita no cursor","text":"Com o campo ativo, o ditado entra onde está o cursor, não no fim das notas."},
+    {"id":"C","x":372,"y":305,"label":"Backspace em 2 tempos","text":"1º backspace na linha de baixo seleciona o cartão (anel vermelho); o 2º apaga. Qualquer outra tecla tira a seleção."}
+ ]},
+ { "png": "img/3.png", "title": "3 · Segurando o microfone", "why": "Como no WhatsApp: segura, fala, solta e já foi.",
+   "pins": [
+    {"id":"A","x":312,"y":700,"label":"Mic cresce sob o dedo","text":"O mic de 40px vira um círculo de 72px no mesmo centro; o + some (opacidade), sem animação de troca."},
+    {"id":"B","x":300,"y":630,"label":"Cadeado","text":"Arrastar para cima trava: segue gravando sem o dedo (vira a tela 3b: lixeira, tempo, onda, e o + vira enviar ↑)."},
+    {"id":"C","x":120,"y":712,"label":"Deslize para cancelar","text":"Arrastar para a esquerda descarta. Ponto vermelho + tempo à esquerda."},
+    {"id":"D","x":238,"y":596,"label":"Palavras ao vivo","text":"Sobem acima da barra; a barra não sai do lugar. Tocar nelas abre a conversa com o texto no campo, para editar antes."},
+    {"id":"E","x":225,"y":346,"label":"Projeto no cartão","text":"Só na Lista: o AppTag do projeto sob o título. No Calendário, não (o cartão tem a altura do seu tempo)."},
+    {"id":"F","x":10,"y":728,"label":"Barra parada","text":"Mesma posição, mesmo tamanho em todo estado: repouso, segurando, travada, ditando. Sai o AnimatedSize/AnimatedSwitcher."}
+ ]},
+ { "png": "img/4.png", "title": "4 · Soltou: enviado", "why": "Soltar o dedo manda, sem ter que tocar de novo.",
+   "pins": [
+    {"id":"A","x":372,"y":650,"label":"Já enviado","text":"Soltar abre a conversa com a mensagem já dita ('por voz · 0:06'). Nada para no campo."},
+    {"id":"B","x":12,"y":760,"label":"Pensando","text":"A Lunna responde direto. Tocar (não segurar) no mic continua gravando até o enviar ↑."}
+ ]},
+ { "png": "img/5.png", "title": "5 · O projeto, igual à tarefa", "why": "Mesmo círculo, mesmos rótulos.",
+   "pins": [
+    {"id":"A","x":79,"y":32,"label":"Círculo","text":"Concluir projeto é o círculo; tocar de novo reabre. Sai o ✓ da fileira."},
+    {"id":"B","x":12,"y":100,"label":"Prazo · Feitas","text":"Linhas com rótulo; 'Dar um prazo' em vermelho quando não tem."},
+    {"id":"C","x":250,"y":130,"label":"±1 dia na barra","text":"Os botões de prazo passam para o lado da barra do tempo, que é o que eles mudam."}
+ ]}
+]}

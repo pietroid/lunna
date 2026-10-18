@@ -197,7 +197,8 @@ page closes.
 
 A task's notes and a project's have the agent's bar at their foot, and
 beside it a microphone that **dictates**: plain speech to text, straight
-into the notes, each recording a paragraph of its own, saved like typing.
+into the notes, each recording a paragraph of its own (at the cursor while
+typing), saved like typing.
 The bar's own microphone still asks the agent, which then knows the page
 it was opened on (`about`). See "Dictation" in
 [product/spec/agent.md](./product/spec/agent.md).
@@ -240,7 +241,9 @@ calendar's free stretches are cut from. `tasks` is every task with an hour,
 the running one first and then the rest by their hours (`inOrder`), however
 far ahead the queue reaches. `backlog` is
 the backlog in its order, with no hours (`section: 'backlog'`). `cards` is
-everything the calendar draws from now to the end of day N. Every write
+everything the calendar draws from now to the end of day N. A task of a
+project carries `project: { id, title }` in all three, and Lista and the
+event page name it (`AppTag`). Every write
 under `/api/tasks` and `/api/events` takes the same `?days=` and answers
 with the same shape.
 

@@ -215,6 +215,24 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventNotesHint => 'Anotações';
 
   @override
+  String get eventWhenLabel => 'Horário';
+
+  @override
+  String get eventLengthLabel => 'Duração';
+
+  @override
+  String get eventProjectLabel => 'Projeto';
+
+  @override
+  String get eventNoProject => 'Nenhum';
+
+  @override
+  String get eventNotesLabel => 'Notas';
+
+  @override
+  String get eventMarkDone => 'Marcar como feita';
+
+  @override
   String get restTip01 => 'Respire fundo. Três vezes, devagar.';
 
   @override
@@ -868,6 +886,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentVoiceOpen => 'Abrir a conversa';
 
   @override
+  String get agentVoiceSlideCancel => 'Deslize para cancelar';
+
+  @override
+  String get agentVoiceLock => 'Gravar sem segurar';
+
+  @override
+  String get agentVoiceSend => 'Enviar';
+
+  @override
   String agentVoiceVia(String length) {
     return 'por voz · $length';
   }
@@ -986,6 +1013,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get projectNotesTab => 'Notas';
+
+  @override
+  String get projectDeadlineLabel => 'Prazo';
+
+  @override
+  String get projectProgressLabel => 'Feitas';
 
   @override
   String get projectNotesHint => 'Escreva o que quiser sobre o projeto…';

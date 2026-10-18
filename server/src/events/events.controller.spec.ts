@@ -162,6 +162,7 @@ describe('the day', () => {
   let app: INestApplication<App>;
   let store: MemoryCalendarStore;
   let taskStore: MemoryTaskStore;
+  let projectStore: MemoryProjectStore;
 
   /** Whoever the stub guard signs in. */
   const owner = { id: 'test-user', timeZone: ZONE };
@@ -186,6 +187,7 @@ describe('the day', () => {
 
     store = moduleRef.get(CalendarStore);
     taskStore = moduleRef.get(TaskStore);
+    projectStore = moduleRef.get(ProjectStore);
 
     app = moduleRef.createNestApplication();
     await app.init();
@@ -279,6 +281,35 @@ describe('the day', () => {
       fixed: true,
     });
   }
+
+  describe('a task of a project', () => {
+    it('names its project wherever it is drawn', async () => {
+      const project = await projectStore.insert(owner, { title: 'Mudança' });
+      await add('Caixas', 30, { projectId: project.id });
+      const response = await shelve('Sem projeto', 30);
+      await post('/tasks', {
+        title: 'Fita',
+        minutes: 15,
+        projectId: project.id,
+      });
+      const after = await request(app.getHttpServer())
+        .get('/timeline')
+        .expect(200);
+
+      const named = { id: project.id, title: 'Mudança' };
+      expect(tasks(after).map((it) => [it.title, it.project])).toEqual([
+        ['Caixas', named],
+      ]);
+      expect(cards(after).map((it) => [it.title, it.project])).toEqual([
+        ['Caixas', named],
+      ]);
+      expect(backlog(after).map((it) => [it.title, it.project])).toEqual([
+        ['Sem projeto', undefined],
+        ['Fita', named],
+      ]);
+      expect(backlog(response)[0]).not.toHaveProperty('project');
+    });
+  });
 
   describe('the backlog', () => {
     it('is where a task written down goes, with no hour', async () => {

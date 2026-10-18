@@ -69,7 +69,27 @@ class EventPage extends StatelessWidget {
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         titleSpacing: 0,
-        title: card == null ? null : _Title(card: card),
+        title: card == null
+            ? null
+            : Row(
+                children: [
+                  if (card.isInteractive)
+                    AppDoneCircle(
+                      done: done,
+                      label: context.l10n.eventMarkDone,
+                      // A finished task stays finished from here.
+                      onChanged: done
+                          ? null
+                          : (_) {
+                              context.read<TimelineBloc>().add(
+                                EventFinished(card.id),
+                              );
+                              unawaited(Navigator.of(context).maybePop());
+                            },
+                    ),
+                  Expanded(child: _Title(card: card)),
+                ],
+              ),
         actions: [
           if (card != null && card.isInteractive && !done)
             AppIconButton(
@@ -195,11 +215,13 @@ class _TitleState extends State<_Title> {
   }
 }
 
-/// When the block is, how long it takes, and the buttons.
+/// When the block is, how long it takes, which project it is of, and the
+/// buttons.
 ///
-/// The same lines whether or not it is running. Running only adds the
-/// progress bar, which is the one thing that is true of a running block and
-/// of nothing else.
+/// Each a labelled row, the label on the left in ink3, so the page reads as
+/// a card's properties rather than a line of loose words. The same rows
+/// whether or not it is running. Running only adds the progress bar, which
+/// is the one thing that is true of a running block and of nothing else.
 class _Summary extends StatelessWidget {
   const _Summary({required this.card, required this.done});
 
@@ -210,47 +232,97 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final now = clock.now();
     final running = !done && card.isRunningAt(now);
     final controls = card.isInteractive && !done ? _controls(context) : null;
+    final editable = card.isInteractive && !done;
+    final started = !card.startTime.isAfter(now);
+    final project = card.projectTitle;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.s6,
-        0,
+        AppSpacing.s1,
         AppSpacing.s6,
         AppSpacing.s4,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _When(card: card, done: done),
-          const SizedBox(height: AppSpacing.s2),
-          if (running && !card.isBacklog)
-            NowProgress(card: card, trailing: controls)
-          else
-            Row(
+          _Property(
+            label: l10n.eventWhenLabel,
+            child: Row(
               children: [
+                if (card.fixed) ...[
+                  const AppIcon(
+                    iconData: AppIcons.pin,
+                    size: AppSpacing.s4,
+                    color: AppColors.ink3,
+                  ),
+                  const SizedBox(width: AppSpacing.s1),
+                ],
+                // Nothing in the backlog has an hour to show, and what is
+                // done says when it was.
+                if (!card.isBacklog && !done) ...[
+                  _Tappable(
+                    text: _startLabel(l10n, card.startTime, now),
+                    // Anything not begun can be given an hour. A task then
+                    // keeps it, and the queue flows around it.
+                    onTap: editable && !started && !card.started
+                        ? () => _pickStart(context)
+                        : null,
+                  ),
+                  const SizedBox(width: AppSpacing.s2),
+                ],
                 Expanded(
                   child: Text(
                     done
-                        ? context.l10n.eventDoneOn(
+                        ? l10n.eventDoneOn(
                             AppWheelPicker.dayLabel(
-                              context.l10n,
+                              l10n,
                               card.startTime,
                               now: now,
                             ).toLowerCase(),
                             hhmm(card.startTime),
                           )
                         : card.isBacklog
-                        ? context.l10n.eventInBacklog
-                        : _startsIn(context.l10n, card.startTime, now),
+                        ? l10n.eventInBacklog
+                        : _startsIn(l10n, card.startTime, now),
                     style: AppTypography.label.copyWith(color: AppColors.ink2),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                ?controls,
               ],
             ),
+          ),
+          _Property(
+            label: l10n.eventLengthLabel,
+            child: _Tappable(
+              text: durationLabel(l10n, card.workMinutes),
+              onTap: editable ? () => _pickDuration(context) : null,
+            ),
+          ),
+          if (card.isTask)
+            _Property(
+              label: l10n.eventProjectLabel,
+              child: project == null
+                  ? Text(
+                      l10n.eventNoProject,
+                      style: AppTypography.labelStrong.copyWith(
+                        color: AppColors.ink3,
+                      ),
+                    )
+                  : AppTag(text: project),
+            ),
+          if (running && !card.isBacklog) ...[
+            const SizedBox(height: AppSpacing.s3),
+            NowProgress(card: card, trailing: controls),
+          ] else if (controls != null) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Align(alignment: Alignment.centerLeft, child: controls),
+          ],
         ],
       ),
     );
@@ -259,6 +331,8 @@ class _Summary extends StatelessWidget {
   Widget _controls(BuildContext context) {
     final bloc = context.read<TimelineBloc>();
 
+    // Done is the circle before the name, so the row has no check of its
+    // own: a check in the corner of an editor reads as "save".
     return EventControls(
       card: card,
       onPauseToggled: () => bloc.add(EventPauseToggled(card.id)),
@@ -267,11 +341,26 @@ class _Summary extends StatelessWidget {
       // begins at its hour, and has nothing to ask.
       onStarted: card.isTask ? () => bloc.add(EventStarted(card.id)) : null,
       onAdjusted: (minutes) => unawaited(adjustTime(context, card, minutes)),
-      onDone: () async {
-        bloc.add(EventFinished(card.id));
-        await Navigator.of(context).maybePop();
-      },
     );
+  }
+
+  /// "14:30", or "amanhã 09:00" when it is not today.
+  static String _startLabel(
+    AppLocalizations l10n,
+    DateTime start,
+    DateTime now,
+  ) {
+    final days = DateTime(
+      start.year,
+      start.month,
+      start.day,
+    ).difference(DateTime(now.year, now.month, now.day)).inDays;
+
+    return switch (days) {
+      <= 0 => hhmm(start),
+      1 => l10n.eventTomorrowAt(hhmm(start)),
+      _ => l10n.eventDayAt(start.day, start.month, hhmm(start)),
+    };
   }
 
   /// "Começa em 25 min", or the hour when it is further off than that.
@@ -289,71 +378,6 @@ class _Summary extends StatelessWidget {
     return switch (days) {
       <= 0 => l10n.eventStartsAt(hhmm(start)),
       1 => l10n.eventStartsTomorrowAt(hhmm(start)),
-      _ => l10n.eventDayAt(start.day, start.month, hhmm(start)),
-    };
-  }
-}
-
-/// The hour and the length, each opening its picker.
-class _When extends StatelessWidget {
-  const _When({required this.card, this.done = false});
-
-  final TimelineEvent card;
-
-  /// Whether it is a finished task, whose hour and length are what happened.
-  final bool done;
-
-  @override
-  Widget build(BuildContext context) {
-    final started = !card.startTime.isAfter(clock.now());
-    final editable = card.isInteractive && !done;
-
-    return Row(
-      children: [
-        if (card.fixed) ...[
-          const AppIcon(
-            iconData: AppIcons.pin,
-            size: AppSpacing.s4,
-            color: AppColors.ink3,
-          ),
-          const SizedBox(width: AppSpacing.s1),
-        ],
-        // Nothing in the backlog has an hour to show, and what is done
-        // says when it was below.
-        if (!card.isBacklog && !done) ...[
-          _Tappable(
-            text: _startLabel(context.l10n, card.startTime),
-            // Anything not begun can be given an hour. A task then keeps
-            // it, and the queue flows around it.
-            onTap: editable && !started && !card.started
-                ? () => _pickStart(context)
-                : null,
-          ),
-          Text(
-            ' · ',
-            style: AppTypography.label.copyWith(color: AppColors.ink3),
-          ),
-        ],
-        _Tappable(
-          text: durationLabel(context.l10n, card.workMinutes),
-          onTap: editable ? () => _pickDuration(context) : null,
-        ),
-      ],
-    );
-  }
-
-  /// "14:30", or "amanhã 09:00" when it is not today.
-  static String _startLabel(AppLocalizations l10n, DateTime start) {
-    final now = clock.now();
-    final days = DateTime(
-      start.year,
-      start.month,
-      start.day,
-    ).difference(DateTime(now.year, now.month, now.day)).inDays;
-
-    return switch (days) {
-      <= 0 => hhmm(start),
-      1 => l10n.eventTomorrowAt(hhmm(start)),
       _ => l10n.eventDayAt(start.day, start.month, hhmm(start)),
     };
   }
@@ -387,6 +411,38 @@ class _When extends StatelessWidget {
 
   static int _roundedToFive(int minutes) =>
       ((minutes / 5).round() * 5).clamp(5, 24 * 60);
+}
+
+/// One labelled row of the summary: the label in ink3 on the left, in a
+/// column of its own, and what it says beside it.
+class _Property extends StatelessWidget {
+  const _Property({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  static const _labelWidth = 84.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppSpacing.s8 + 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: _labelWidth,
+            child: Text(
+              label,
+              style: AppTypography.label.copyWith(color: AppColors.ink3),
+            ),
+          ),
+          Expanded(
+            child: Align(alignment: Alignment.centerLeft, child: child),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// A piece of the time line that opens a picker, when it can.
@@ -519,21 +575,16 @@ class _NotesState extends State<_Notes> {
         // Room to scroll the last line clear of the dock.
         dock == null ? AppSpacing.s8 : kNotesDockClearance,
       ),
-      child: TextField(
-        controller: _controller,
-        focusNode: _focus,
-        enabled: widget.card.isInteractive,
-        maxLines: null,
-        minLines: 6,
-        keyboardType: TextInputType.multiline,
-        textCapitalization: TextCapitalization.sentences,
-        style: AppTypography.body,
-        // A link's card is a line of its own, taller than the text's.
-        strutStyle: StrutStyle.disabled,
-        decoration: InputDecoration.collapsed(
-          hintText: context.l10n.eventNotesHint,
-          hintStyle: AppTypography.body.copyWith(color: AppColors.ink3),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.eventNotesLabel,
+            style: AppTypography.label.copyWith(color: AppColors.ink3),
+          ),
+          const SizedBox(height: AppSpacing.s2),
+          _field(context),
+        ],
       ),
     );
     if (dock == null) return notes;
@@ -554,6 +605,25 @@ class _NotesState extends State<_Notes> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _field(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focus,
+      enabled: widget.card.isInteractive,
+      maxLines: null,
+      minLines: 6,
+      keyboardType: TextInputType.multiline,
+      textCapitalization: TextCapitalization.sentences,
+      style: AppTypography.body,
+      // A link's card is a line of its own, taller than the text's.
+      strutStyle: StrutStyle.disabled,
+      decoration: InputDecoration.collapsed(
+        hintText: context.l10n.eventNotesHint,
+        hintStyle: AppTypography.body.copyWith(color: AppColors.ink3),
+      ),
     );
   }
 }

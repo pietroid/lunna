@@ -401,6 +401,42 @@ abstract class AppLocalizations {
   /// **'Anotações'**
   String get eventNotesHint;
 
+  /// No description provided for @eventWhenLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Horário'**
+  String get eventWhenLabel;
+
+  /// No description provided for @eventLengthLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Duração'**
+  String get eventLengthLabel;
+
+  /// No description provided for @eventProjectLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Projeto'**
+  String get eventProjectLabel;
+
+  /// No description provided for @eventNoProject.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhum'**
+  String get eventNoProject;
+
+  /// No description provided for @eventNotesLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Notas'**
+  String get eventNotesLabel;
+
+  /// No description provided for @eventMarkDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Marcar como feita'**
+  String get eventMarkDone;
+
   /// No description provided for @restTip01.
   ///
   /// In pt, this message translates to:
@@ -1445,6 +1481,24 @@ abstract class AppLocalizations {
   /// **'Abrir a conversa'**
   String get agentVoiceOpen;
 
+  /// No description provided for @agentVoiceSlideCancel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Deslize para cancelar'**
+  String get agentVoiceSlideCancel;
+
+  /// No description provided for @agentVoiceLock.
+  ///
+  /// In pt, this message translates to:
+  /// **'Gravar sem segurar'**
+  String get agentVoiceLock;
+
+  /// No description provided for @agentVoiceSend.
+  ///
+  /// In pt, this message translates to:
+  /// **'Enviar'**
+  String get agentVoiceSend;
+
   /// No description provided for @agentVoiceVia.
   ///
   /// In pt, this message translates to:
@@ -1582,6 +1636,18 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Notas'**
   String get projectNotesTab;
+
+  /// No description provided for @projectDeadlineLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Prazo'**
+  String get projectDeadlineLabel;
+
+  /// No description provided for @projectProgressLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feitas'**
+  String get projectProgressLabel;
 
   /// No description provided for @projectNotesHint.
   ///

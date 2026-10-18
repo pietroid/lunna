@@ -133,7 +133,25 @@ class _ProjectPageState extends State<ProjectPage> {
               onPressed: () => Navigator.of(context).maybePop(),
             ),
             titleSpacing: 0,
-            title: project == null ? null : _Title(project: project),
+            title: project == null
+                ? null
+                : Row(
+                    children: [
+                      AppDoneCircle(
+                        done: project.isDone,
+                        label: project.isDone
+                            ? context.l10n.projectReopen
+                            : context.l10n.projectDone,
+                        onChanged: (done) => unawaited(
+                          context.read<ProjectsCubit>().setDone(
+                            project.id,
+                            done: done,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: _Title(project: project)),
+                    ],
+                  ),
             actions: [
               if (project != null)
                 AppIconButton(
@@ -312,90 +330,84 @@ class _Summary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => unawaited(_pickDeadline(context)),
-                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.s1,
-                  ),
-                  child: Text(
-                    dated
-                        ? deadlineLabel(l10n, project, now)
-                        : l10n.projectGiveDeadline,
-                    style: AppTypography.labelStrong.copyWith(
-                      color: AppColors.ink,
+          _Property(
+            label: l10n.projectDeadlineLabel,
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () => unawaited(_pickDeadline(context)),
+                  borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.s1,
+                    ),
+                    child: Text(
+                      dated
+                          ? deadlineLabel(l10n, project, now)
+                          : l10n.projectGiveDeadline,
+                      style: AppTypography.labelStrong.copyWith(
+                        color: dated ? AppColors.ink : AppColors.accent,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (project.tasks.isNotEmpty) ...[
-                Text(
-                  ' · ',
-                  style: AppTypography.label.copyWith(color: AppColors.ink3),
-                ),
-                Text(
-                  l10n.projectTaskCount(
-                    project.doneCount,
-                    project.tasks.length,
-                  ),
-                  style: AppTypography.labelStrong.copyWith(
-                    color: AppColors.ink2,
+                const SizedBox(width: AppSpacing.s2),
+                Expanded(
+                  child: Text(
+                    project.isDone
+                        ? l10n.projectDoneOn(
+                            AppWheelPicker.dayLabel(
+                              l10n,
+                              project.doneAt!,
+                              now: now,
+                            ).toLowerCase(),
+                          )
+                        : dated
+                        ? remaining ?? ''
+                        : '',
+                    style: AppTypography.label.copyWith(
+                      color: overdue ? AppColors.dangerInk : AppColors.ink2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
-            ],
+            ),
           ),
-          const SizedBox(height: AppSpacing.s2),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  project.isDone
-                      ? l10n.projectDoneOn(
-                          AppWheelPicker.dayLabel(
-                            l10n,
-                            project.doneAt!,
-                            now: now,
-                          ).toLowerCase(),
-                        )
-                      : remaining ?? l10n.projectNoDeadline,
-                  style: AppTypography.label.copyWith(
-                    color: overdue ? AppColors.dangerInk : AppColors.ink2,
+          if (project.tasks.isNotEmpty)
+            _Property(
+              label: l10n.projectProgressLabel,
+              child: Text(
+                l10n.projectTaskCount(project.doneCount, project.tasks.length),
+                style: AppTypography.labelStrong.copyWith(color: AppColors.ink),
+              ),
+            ),
+          // The bar is its time, and beside it the buttons that move the
+          // deadline a day either way.
+          if (dated)
+            Row(
+              children: [
+                Expanded(
+                  child: ProjectBar(project: project, now: now),
+                ),
+                if (!project.isDone) ...[
+                  const SizedBox(width: AppSpacing.s2),
+                  _Action(
+                    tooltip: l10n.projectLessDay,
+                    onTap: (project.daysLeftAt(now) ?? 0) > 0
+                        ? () => cubit.shiftDeadline(project.id, -1)
+                        : null,
+                    child: _Days(l10n.projectMinusDay),
                   ),
-                ),
-              ),
-              if (dated && !project.isDone) ...[
-                _Action(
-                  tooltip: l10n.projectLessDay,
-                  onTap: (project.daysLeftAt(now) ?? 0) > 0
-                      ? () => cubit.shiftDeadline(project.id, -1)
-                      : null,
-                  child: _Days(l10n.projectMinusDay),
-                ),
-                _Action(
-                  tooltip: l10n.projectMoreDay,
-                  onTap: () => cubit.shiftDeadline(project.id, 1),
-                  child: _Days(l10n.projectPlusDay),
-                ),
+                  _Action(
+                    tooltip: l10n.projectMoreDay,
+                    onTap: () => cubit.shiftDeadline(project.id, 1),
+                    child: _Days(l10n.projectPlusDay),
+                  ),
+                ],
               ],
-              _Action(
-                tooltip: project.isDone ? l10n.projectReopen : l10n.projectDone,
-                onTap: () => cubit.setDone(project.id, done: !project.isDone),
-                child: AppIcon(
-                  iconData: project.isDone ? AppIcons.undo : AppIcons.check,
-                  size: AppSpacing.s4,
-                  color: AppColors.ink2,
-                ),
-              ),
-            ],
-          ),
-          if (dated) ...[
-            const SizedBox(height: AppSpacing.s2),
-            ProjectBar(project: project, now: now),
-          ],
+            ),
         ],
       ),
     );
@@ -414,6 +426,35 @@ class _Summary extends StatelessWidget {
     await cubit.setDeadline(
       project.id,
       DateTime(picked.year, picked.month, picked.day),
+    );
+  }
+}
+
+/// One labelled row of the summary, as on a task's page.
+class _Property extends StatelessWidget {
+  const _Property({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  static const _labelWidth = 84.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: AppSpacing.s8 + 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: _labelWidth,
+            child: Text(
+              label,
+              style: AppTypography.label.copyWith(color: AppColors.ink3),
+            ),
+          ),
+          Expanded(child: child),
+        ],
+      ),
     );
   }
 }

@@ -64,12 +64,20 @@ void main() {
       expect(notes.selection.baseOffset, 2);
     });
 
-    test('backspace at the start of the line under a card takes the card', () {
+    test('backspace under a card selects it; a second takes it', () {
       final notes = LiveTextController(text: 'a\n$_url\nb')
+        ..selection = const TextSelection.collapsed(offset: 4)
         ..value = const TextEditingValue(
           text: 'a\n${_c}b',
           selection: TextSelection.collapsed(offset: 3),
         );
+      expect(notes.text, 'a\n$_c\nb');
+      expect(notes.selection.baseOffset, 3);
+
+      notes.value = const TextEditingValue(
+        text: 'a\n\nb',
+        selection: TextSelection.collapsed(offset: 2),
+      );
       expect(notes.text, 'a\nb');
       expect(notes.selection.baseOffset, 2);
     });

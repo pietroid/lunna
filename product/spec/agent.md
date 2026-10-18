@@ -218,14 +218,26 @@ recording for the app (`VoiceCubit`, provided in `main.dart`), so tapping
 the card opens the sheet with the recording carrying on, and closing the
 sheet leaves it on Tempo; leaving Tempo for another tab discards it.
 
-The microphone records as soon as a finger lands on it. A quick tap
-leaves it recording until stop; held for 0.4 s or longer, letting go is the
-stop (`VoiceHold`, caught above the microphone, since the recorder replaces
-it while the finger is down). If the permission dialog takes the finger, the
-recording goes on as if tapped. Either way, **stop never sends**. It puts the
-words in the field, all selected, keyboard up, to be sent, fixed or typed
-over (from Tempo it opens the sheet on them, `showAgentSheet(draft:)`).
-The trash discards; at one minute it stops on its own and says so. Silence
+The microphone records as soon as a finger lands on it, the way WhatsApp
+records a voice message (`VoiceHold`, caught above the microphone, since
+the recorder replaces it while the finger is down):
+
+- **Held** (0.4 s or longer), the bar stays where it is, the same size,
+  with nothing animated between states. Inside it the microphone swells to
+  72 px on its own centre, the + beside it goes invisible (keeping its
+  room), a dot and the time sit on the left with "← Deslize para cancelar",
+  and a lock waits above (`AskRecorder`). **Letting go sends**: the
+  conversation opens with the message already said. Sliding 100 px left
+  drops it; sliding 80 px up locks it, recording on without the finger
+  (`VoiceHold.abandon`). The microphone and the hint follow the finger.
+  In the sheet's composer, letting go of a hold sends too.
+- **Tapped** (or locked), the bar is the recorder and the + becomes send
+  (↑). The words above it open the conversation with them in the field,
+  unsent, to be fixed first (`showAgentSheet(draft:)`). In the sheet, stop
+  puts the words in the field, all selected, keyboard up.
+
+If the permission dialog takes the finger, the recording goes on as if
+tapped. The trash discards; at one minute it stops on its own and says so. Silence
 never sends: a session the platform ends after a pause (Android) is
 followed by another, and their words are joined; one that ends within a
 second having heard nothing failed (no microphone, as on a simulator) and
@@ -245,8 +257,8 @@ is on Tempo, a microphone (`AppFab`, `AppIcons.microphone`) that writes what
 is said straight into the notes: **the small microphone inside the bar asks
 the agent, the big one beside it writes.**
 
-- Each recording is a paragraph of its own, after a blank line at the end
-  of the notes. The words appear as they are heard; the ones the recognizer
+- Each recording is a paragraph of its own, a blank line on each side: at
+  the cursor while the notes have the keyboard, at the end otherwise. The words appear as they are heard; the ones the recognizer
   may still revise are drawn in ink3 (`LiveTextController.live`, in
   `app_ui`). They are saved like typing: 800 ms after they stop changing,
   through the notes' usual route. Nothing on the server knows they were
@@ -258,8 +270,8 @@ the agent, the big one beside it writes.**
 - One microphone: dictating cancels the agent's recording, and the agent's
   starting stops dictation, keeping what was said. A refused microphone, or
   no recognizer, is said in a snackbar.
-- The dock steps aside while the keyboard is up (read off the `View`, since
-  the Scaffold takes the insets out of its body's `MediaQuery`). The notes
+- The dock never steps aside: with the keyboard up it sits on it, the same
+  shape, so one can type and dictate in the same breath. The notes
   only take the server's copy when it differs from what they last saved and
   nothing is being dictated, so neither the echo of a save nor a refresh
   undoes words still arriving. Leaving the page saves what was heard.

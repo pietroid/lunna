@@ -37,6 +37,7 @@ class EventTile extends StatelessWidget {
     this.hidden = false,
     this.lifted = false,
     this.landing,
+    this.showProject = false,
     this.actionsKey,
     this.onPauseToggled,
     this.onAdjusted,
@@ -64,6 +65,9 @@ class EventTile extends StatelessWidget {
   /// The hours it would have if it were let go now, which the copy under the
   /// finger reads in place of its own.
   final ({DateTime start, DateTime end})? landing;
+
+  /// Whether the project the task is of goes under its title.
+  final bool showProject;
 
   /// Put on the row of buttons, so the list's own gesture can leave a tap on
   /// one of them alone.
@@ -133,6 +137,16 @@ class EventTile extends StatelessWidget {
               ),
             ],
           ),
+          if (showProject && card.projectTitle != null) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppTag(
+                text: card.projectTitle!,
+                fill: _isNow ? AppColors.fill : AppColors.fillStrong,
+              ),
+            ),
+          ],
           if (_isNow) ...[
             const SizedBox(height: AppSpacing.s2),
             NowProgress(card: card, trailing: _actions()),
@@ -183,7 +197,7 @@ class EventTile extends StatelessWidget {
       onStarted: onStarted,
       onSnoozed: onSnoozed,
       onAdjusted: onAdjusted!,
-      onDone: onDone!,
+      onDone: onDone,
     );
   }
 
@@ -225,7 +239,7 @@ class EventControls extends StatelessWidget {
   const EventControls({
     required this.card,
     required this.onAdjusted,
-    required this.onDone,
+    this.onDone,
     this.onPauseToggled,
     this.onStarted,
     this.onSnoozed,
@@ -247,8 +261,9 @@ class EventControls extends StatelessWidget {
   /// Asks for fifteen minutes more, or fewer when negative.
   final ValueChanged<int> onAdjusted;
 
-  /// Marks it done.
-  final VoidCallback onDone;
+  /// Marks it done. Null leaves the check out, for a page that ticks the
+  /// block off by the circle before its name.
+  final VoidCallback? onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -314,15 +329,16 @@ class EventControls extends StatelessWidget {
             style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
           ),
         ),
-        _Action(
-          tooltip: context.l10n.controlDone,
-          onTap: onDone,
-          child: const AppIcon(
-            iconData: AppIcons.check,
-            size: AppSpacing.s4,
-            color: AppColors.ink2,
+        if (onDone != null)
+          _Action(
+            tooltip: context.l10n.controlDone,
+            onTap: onDone,
+            child: const AppIcon(
+              iconData: AppIcons.check,
+              size: AppSpacing.s4,
+              color: AppColors.ink2,
+            ),
           ),
-        ),
       ],
     );
   }

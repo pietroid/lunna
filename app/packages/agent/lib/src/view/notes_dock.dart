@@ -15,15 +15,16 @@ import 'package:l10n/l10n.dart';
 /// and beside it, where the + is on Tempo, a microphone that dictates.
 ///
 /// Dictating is not talking to the agent. The words go straight into
-/// [notes] as they are heard, each recording a paragraph of its own at the
-/// end, the words the recognizer may still revise drawn in ink3. Stopping
+/// [notes] as they are heard, each recording a paragraph of its own (at
+/// the cursor while the notes are being typed in, at the end otherwise),
+/// the words the recognizer may still revise drawn in ink3. Stopping
 /// keeps them; discarding takes that paragraph back out. The recording runs
 /// until it is stopped, so one can speak freely.
 ///
 /// The bar keeps its own microphone, which talks to the agent as it does on
 /// Tempo ([AskDock]): the small one inside the bar asks, the big one beside
-/// it writes. While the keyboard is up the dock steps aside, since the notes
-/// are being typed.
+/// it writes. The dock never moves or changes shape: with the keyboard up it
+/// sits on top of it, so one can type and dictate in the same breath.
 ///
 /// There is one microphone: dictating stops the agent's recording, and the
 /// agent's starting stops dictation, keeping its words. A microphone that is
@@ -84,22 +85,16 @@ class _NotesDockView extends StatefulWidget {
   State<_NotesDockView> createState() => _NotesDockViewState();
 }
 
-class _NotesDockViewState extends State<_NotesDockView>
-    with WidgetsBindingObserver {
-  static const _duration = Duration(milliseconds: 220);
-
-  /// Whether the keyboard is up. Read off the view, since the page's
-  /// Scaffold takes the insets out of what it hands its body.
-  bool _typing = false;
-
-  /// The notes as they were when this recording began, which its paragraph
-  /// is written after.
+class _NotesDockViewState extends State<_NotesDockView> {
+  /// The notes as they were when this recording began, split where its
+  /// paragraph goes: at the cursor while the notes are being typed in, at
+  /// the end otherwise.
   String? _before;
+  String _after = '';
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     final voice = context.read<DictationCubit>().state;
     if (voice.status.recording) {
       _begin();
@@ -107,27 +102,23 @@ class _NotesDockViewState extends State<_NotesDockView>
     }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _typing = View.of(context).viewInsets.bottom > 0;
+  void _begin() {
+    final text = widget.notes.text;
+    final at = _typing ? widget.notes.selection.start : -1;
+    final split = at < 0 || at > text.length ? text.length : at;
+    _before = text.substring(0, split).trimRight();
+    _after = text.substring(split).trimLeft();
   }
 
-  @override
-  void didChangeMetrics() {
-    final typing = View.of(context).viewInsets.bottom > 0;
-    if (typing != _typing) setState(() => _typing = typing);
+  /// Whether the notes have the keyboard.
+  bool get _typing {
+    final focused = FocusManager.instance.primaryFocus?.context;
+    final field = focused?.findAncestorWidgetOfExactType<EditableText>();
+    return field?.controller == widget.notes;
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  void _begin() => _before = widget.notes.text.trimRight();
-
-  /// The paragraph so far, after what was there, a blank line between.
+  /// The paragraph so far, between what was there, a blank line on each
+  /// side.
   void _write(VoiceState voice) {
     final before = _before;
     if (before == null) return;
@@ -137,14 +128,22 @@ class _NotesDockViewState extends State<_NotesDockView>
     final hearing = voice.hearing.trim();
     final gap = heard.isNotEmpty && hearing.isNotEmpty ? ' ' : '';
     final settled = '$head$heard$gap';
-    final text = '$settled$hearing';
+    final said = '$settled$hearing';
 
     widget.notes.write(
-      text,
+      '$said${_tail()}',
       live: hearing.isEmpty
           ? null
-          : TextRange(start: settled.length, end: text.length),
+          : TextRange(start: settled.length, end: said.length),
+      cursor: said.length,
     );
+  }
+
+  String _tail() => _after.isEmpty ? '' : '\n\n$_after';
+
+  void _end() {
+    _before = null;
+    _after = '';
   }
 
   Future<void> _start() async {
@@ -158,7 +157,7 @@ class _NotesDockViewState extends State<_NotesDockView>
     await dictation.start();
     if (!mounted || dictation.state.status.offered) return;
 
-    _before = null;
+    _end();
     messenger
       ?..hideCurrentSnackBar()
       ..showSnackBar(
@@ -178,14 +177,17 @@ class _NotesDockViewState extends State<_NotesDockView>
       _write(VoiceState(heard: take.text));
     }
     widget.notes.settle();
-    _before = null;
+    _end();
   }
 
   Future<void> _discard() async {
     final before = _before;
-    _before = null;
+    final after = _after;
+    _end();
     await context.read<DictationCubit>().cancel();
-    if (before != null) widget.notes.write(before);
+    if (before == null) return;
+    final head = before.isEmpty || after.isEmpty ? before : '$before\n\n';
+    widget.notes.write('$head$after', cursor: head.length);
   }
 
   @override
@@ -193,7 +195,6 @@ class _NotesDockViewState extends State<_NotesDockView>
     final width =
         math.min(MediaQuery.sizeOf(context).width, AppSpacing.maxContentWidth) -
         2 * kFloatingActionButtonMargin;
-    final asking = context.watch<VoiceCubit>().state.status.recording;
     final voice = context.watch<DictationCubit>().state;
     final recording = voice.status.recording;
     final l10n = context.l10n;
@@ -217,35 +218,30 @@ class _NotesDockViewState extends State<_NotesDockView>
           },
         ),
       ],
-      child: Visibility(
-        visible: recording || asking || !_typing,
-        maintainState: true,
+      // Swapped in place, with no animation: the bar is where the finger
+      // expects it, every time. A tap on it is a tap inside the notes, which
+      // keep the keyboard and the cursor dictation writes at.
+      child: TextFieldTapRegion(
         child: SizedBox(
           width: width,
-          child: AnimatedSwitcher(
-            duration: _duration,
-            switchInCurve: Curves.easeOutCubic,
-            child: recording
-                ? AskPill(
-                    key: const ValueKey('dictating'),
-                    child: VoiceBar(
-                      voice: voice,
-                      stopLabel: l10n.dictationStop,
-                      discardLabel: l10n.dictationDiscard,
-                      onStop: () => unawaited(_stop()),
-                      onDiscard: () => unawaited(_discard()),
-                    ),
-                  )
-                : AskDock(
-                    key: const ValueKey('resting'),
-                    about: widget.about,
-                    fab: AppFab(
-                      iconData: AppIcons.microphone,
-                      tooltip: l10n.dictationStart,
-                      onPressed: () => unawaited(_start()),
-                    ),
+          child: recording
+              ? AskPill(
+                  child: VoiceBar(
+                    voice: voice,
+                    stopLabel: l10n.dictationStop,
+                    discardLabel: l10n.dictationDiscard,
+                    onStop: () => unawaited(_stop()),
+                    onDiscard: () => unawaited(_discard()),
                   ),
-          ),
+                )
+              : AskDock(
+                  about: widget.about,
+                  fab: AppFab(
+                    iconData: AppIcons.microphone,
+                    tooltip: l10n.dictationStart,
+                    onPressed: () => unawaited(_start()),
+                  ),
+                ),
         ),
       ),
     );

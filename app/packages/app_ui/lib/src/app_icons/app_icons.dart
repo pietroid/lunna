@@ -36,6 +36,9 @@ class AppIcons {
     PhosphorIconsRegular.microphone,
   );
 
+  /// A recording that goes on without the finger on it.
+  static const lock = AppIconData.phosphor(PhosphorIconsRegular.lockSimple);
+
   /// The microphone is out of reach: refused, or not on this device.
   static const microphoneSlash = AppIconData.phosphor(
     PhosphorIconsRegular.microphoneSlash,

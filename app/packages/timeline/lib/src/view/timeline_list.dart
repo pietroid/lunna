@@ -1977,6 +1977,9 @@ class _TimelineListState extends State<TimelineList> {
     return EventTile(
       card: card,
       landing: landing,
+      // Lista has the height to say which project a task is of; the
+      // calendar draws cards to the scale of their time.
+      showProject: _isList,
       pressed: card.id == _pressed || card.id == _swap,
       // The card in the air is drawn over the list, so the one left behind
       // only holds its place open.

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:agent/src/agent_cubit.dart';
 import 'package:agent/src/models.dart';
 import 'package:agent/src/view/agent_sheet.dart';
 import 'package:agent/src/view/voice_bar.dart';
@@ -14,12 +15,18 @@ import 'package:l10n/l10n.dart';
 /// Tempo.
 ///
 /// The + writes something down in one tap; the bar beside it is where a
-/// conversation starts. Its microphone records right here: the bar opens
-/// across the + into the recorder, with the words rising above it as they
-/// are heard. Stopping (the stop button, or letting go of a held
-/// microphone) opens the conversation with them in the field, selected;
-/// the words themselves open it while still recording, and the recording
-/// carries on there.
+/// conversation starts. Its microphone records right here, the way a voice
+/// message is recorded in WhatsApp, and the bar never moves or changes size
+/// while it does: what changes is drawn inside it.
+///
+/// - **Held**, the microphone swells under the finger, the bar says how long
+///   it has been and "deslize para cancelar", a lock waits above, and the
+///   words rise over it as they are heard. Letting go **sends** them: the
+///   conversation opens with them already said. Sliding left drops them;
+///   sliding up to the lock keeps recording without the finger.
+/// - **Tapped** (or locked), the bar is the recorder, and the + beside it
+///   becomes the send button. The words above it open the conversation with
+///   them in the field, for whoever wants to change them before sending.
 /// {@endtemplate}
 class AskDock extends StatefulWidget {
   /// {@macro ask_dock}
@@ -40,9 +47,43 @@ class AskDock extends StatefulWidget {
 }
 
 class _AskDockState extends State<AskDock> {
-  static const _duration = Duration(milliseconds: 220);
+  late final _hold = VoiceHold(
+    onHeld: () => setState(() {}),
+    onRelease: () => unawaited(_send()),
+  );
 
-  late final _hold = VoiceHold(onRelease: () => unawaited(_stop()));
+  /// How far left a held finger slides to drop the recording.
+  static const cancelAt = 100.0;
+
+  /// How far up a held finger slides to lock the recording on.
+  static const lockAt = 80.0;
+
+  /// Where the finger landed, and how far it has slid since.
+  Offset? _down;
+  Offset _slide = Offset.zero;
+
+  void _move(PointerMoveEvent event) {
+    final down = _down;
+    if (down == null || !_hold.held) return;
+    final slide = event.position - down;
+    if (slide.dx <= -cancelAt) {
+      _letGo();
+      unawaited(context.read<VoiceCubit>().cancel());
+    } else if (slide.dy <= -lockAt) {
+      // Locked: the recording goes on as if the microphone had been tapped.
+      _letGo();
+    } else {
+      setState(() => _slide = slide);
+    }
+  }
+
+  void _letGo() {
+    _hold.abandon();
+    setState(() {
+      _down = null;
+      _slide = Offset.zero;
+    });
+  }
 
   Future<void> _open({String? draft}) => showAgentSheet(
     context,
@@ -61,14 +102,35 @@ class _AskDockState extends State<AskDock> {
     await _open();
   }
 
-  Future<void> _stop() async {
+  /// Ends the recording and says what was heard: the conversation opens on
+  /// it, already sent.
+  Future<void> _send() async {
     final voice = context.read<VoiceCubit>();
+    final agent = context.read<AgentCubit>();
     // Still asking for the microphone (the first time, a dialog took the
     // finger): the recording goes on as if tapped.
     if (voice.state.status == VoiceStatus.preparing) return;
     final take = await voice.take();
     if (take == null || !mounted) return;
-    await _open(draft: take.text);
+    final sheet = _open();
+    unawaited(
+      agent.send(take.text, day: widget.day?.call(), voice: take.length),
+    );
+    await sheet;
+  }
+
+  /// Ends the recording and opens the conversation with its words in the
+  /// field, to be changed before they are sent.
+  Future<void> _review() async {
+    final take = await context.read<VoiceCubit>().take();
+    if (!mounted) return;
+    await _open(draft: take?.text);
+  }
+
+  void _release() {
+    _down = null;
+    _slide = Offset.zero;
+    _hold.release();
   }
 
   @override
@@ -77,52 +139,274 @@ class _AskDockState extends State<AskDock> {
         math.min(MediaQuery.sizeOf(context).width, AppSpacing.maxContentWidth) -
         2 * kFloatingActionButtonMargin;
     final voice = context.watch<VoiceCubit>().state;
-    final recording = voice.status.recording;
 
     return Listener(
+      onPointerDown: (event) => _down = event.position,
+      onPointerMove: _move,
       // Wherever the finger is let go, the microphone it held is gone.
-      onPointerUp: (_) => _hold.release(),
-      onPointerCancel: (_) => _hold.release(),
+      onPointerUp: (_) => _release(),
+      onPointerCancel: (_) => _release(),
       child: SizedBox(
         width: width,
-        child: AnimatedSize(
-          duration: _duration,
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.bottomCenter,
-          child: AnimatedSwitcher(
-            duration: _duration,
-            switchInCurve: Curves.easeOutCubic,
-            child: recording
-                ? Column(
-                    key: const ValueKey('recording'),
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _Heard(voice: voice, onOpen: () => unawaited(_open())),
-                      const SizedBox(height: AppSpacing.s2),
-                      AskPill(
-                        child: VoiceBar(
-                          voice: voice,
-                          onStop: () => unawaited(_stop()),
-                          onDiscard: () =>
-                              unawaited(context.read<VoiceCubit>().cancel()),
-                        ),
-                      ),
-                    ],
-                  )
-                : Row(
-                    key: const ValueKey('resting'),
-                    children: [
-                      Expanded(
-                        child: AskBar(
-                          onOpen: () => unawaited(_open()),
-                          onListen: () => unawaited(_listen()),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.s3),
-                      widget.fab,
-                    ],
+        child: voice.status.recording
+            ? AskRecorder(
+                voice: voice,
+                held: _hold.held,
+                slide: _slide,
+                onSend: () => unawaited(_send()),
+                onDiscard: () => unawaited(context.read<VoiceCubit>().cancel()),
+                onReview: () => unawaited(_review()),
+              )
+            : Row(
+                children: [
+                  Expanded(
+                    child: AskBar(
+                      onOpen: () => unawaited(_open()),
+                      onListen: () => unawaited(_listen()),
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.s3),
+                  widget.fab,
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// {@template ask_recorder}
+/// The dock while it records: the same bar in the same place, and the +
+/// beside it, whatever the recording asks of them.
+///
+/// [held] draws a finger still on the microphone: the microphone swollen
+/// under it, the lock above, the hint to slide away. Otherwise the bar is
+/// the recorder (the way out, the time, the level) and the + is send.
+/// {@endtemplate}
+class AskRecorder extends StatelessWidget {
+  /// {@macro ask_recorder}
+  const AskRecorder({
+    required this.voice,
+    required this.held,
+    required this.onSend,
+    required this.onDiscard,
+    required this.onReview,
+    this.slide = Offset.zero,
+    super.key,
+  });
+
+  final VoiceState voice;
+
+  /// Whether a finger is holding the microphone down.
+  final bool held;
+
+  /// How far the held finger has slid from where it landed: the microphone
+  /// follows it, left towards cancelling or up towards the lock.
+  final Offset slide;
+
+  final VoidCallback onSend;
+  final VoidCallback onDiscard;
+
+  /// Opens the conversation with the words in the field, unsent.
+  final VoidCallback onReview;
+
+  /// How big the microphone swells under the finger.
+  static const _swollen = 72.0;
+
+  /// Where the bar's own microphone sits, from the dock's right edge: past
+  /// the +, its gap, and the bar's inner padding.
+  static const double _micFromRight = 56 + AppSpacing.s3 + AppSpacing.s2 + 20;
+
+  /// The slide left, and the slide up, whichever leads; the other is held.
+  double get _dx =>
+      slide.dx.abs() >= -slide.dy ? slide.dx.clamp(-100.0, 0.0) : 0;
+  double get _dy =>
+      -slide.dy > slide.dx.abs() ? -slide.dy.clamp(-80.0, 0.0) : 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              // Held, the lock has the column over the microphone.
+              padding: EdgeInsets.only(
+                right: held ? _micFromRight + 20 + AppSpacing.s2 : 0,
+              ),
+              child: _Heard(voice: voice, onOpen: onReview),
+            ),
+            const SizedBox(height: AppSpacing.s3),
+            Row(
+              children: [
+                Expanded(
+                  child: AskPill(
+                    padding: const EdgeInsets.only(
+                      left: AppSpacing.s2,
+                      right: AppSpacing.s4,
+                    ),
+                    child: held
+                        ? _HeldRow(voice: voice, slide: slide.dx)
+                        : VoiceBar(voice: voice, onDiscard: onDiscard),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s3),
+                // The + is where the recording goes: send, or, held, room
+                // for the microphone the finger is on.
+                Opacity(
+                  opacity: held ? 0 : 1,
+                  child: AppFab(
+                    iconData: AppIcons.arrowUp,
+                    tooltip: l10n.agentVoiceSend,
+                    onPressed: held ? () {} : onSend,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        if (held) ...[
+          // The lock, a slide up away.
+          const Positioned(
+            right: _micFromRight - 20,
+            bottom: AskBar.height + AppSpacing.s3,
+            child: _Lock(),
           ),
+          // The microphone under the finger, following it one way at a time.
+          Positioned(
+            right: _micFromRight - _swollen / 2 - _dx,
+            bottom: (AskBar.height - _swollen) / 2 + _dy,
+            child: Container(
+              width: _swollen,
+              height: _swollen,
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: 24,
+                    offset: Offset(0, 8),
+                    spreadRadius: -6,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: AppIcon(
+                  iconData: AppIcons.microphone,
+                  size: 30,
+                  color: AppColors.onAccent,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The bar while the microphone is held: the dot and the time on the left,
+/// and the way out, a slide to the left.
+class _HeldRow extends StatelessWidget {
+  const _HeldRow({required this.voice, this.slide = 0});
+
+  final VoiceState voice;
+
+  /// How far left the finger has slid, which the hint follows and fades on.
+  final double slide;
+
+  @override
+  Widget build(BuildContext context) {
+    final seconds = voice.elapsed.inSeconds;
+
+    return Row(
+      children: [
+        const SizedBox(width: AppSpacing.s3),
+        const VoiceDot(live: true),
+        const SizedBox(width: AppSpacing.s2),
+        Text(
+          '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}',
+          style: AppTypography.label.copyWith(
+            color: AppColors.ink,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        Expanded(
+          child: Opacity(
+            opacity: (1 + slide / 100).clamp(0, 1),
+            child: Transform.translate(
+              offset: Offset(slide.clamp(-100, 0), 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const AppIcon(
+                    iconData: AppIcons.back,
+                    size: 14,
+                    color: AppColors.ink3,
+                  ),
+                  const SizedBox(width: 2),
+                  Flexible(
+                    child: Text(
+                      context.l10n.agentVoiceSlideCancel,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.ink2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // Room for the microphone swollen over the bar's end.
+        const SizedBox(width: AskRecorder._swollen - AppSpacing.s3),
+      ],
+    );
+  }
+}
+
+/// The lock over the held microphone: slid up to, the recording goes on
+/// without the finger.
+class _Lock extends StatelessWidget {
+  const _Lock();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: context.l10n.agentVoiceLock,
+      child: Container(
+        width: 40,
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+          border: Border.all(color: AppColors.line),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.shadow,
+              blurRadius: 20,
+              offset: Offset(0, 6),
+              spreadRadius: -8,
+            ),
+          ],
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppIcon(iconData: AppIcons.lock, size: 18, color: AppColors.ink2),
+            SizedBox(height: AppSpacing.s1),
+            AppIcon(
+              iconData: AppIcons.earlier,
+              size: 14,
+              color: AppColors.ink3,
+            ),
+          ],
         ),
       ),
     );

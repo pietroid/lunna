@@ -89,6 +89,8 @@ export class TimelineCard {
   notBefore?: string;
   /** Which days it repeats on, when it is an instance of a routine. */
   routine?: RoutineDays;
+  /** The project a task belongs to, named so the card can say so. */
+  project?: CardProject;
 }
 
 /**
@@ -97,6 +99,12 @@ export class TimelineCard {
  * It has an order and a length and no hour, so it carries none of a card's
  * hours. It reaches the calendar only once it is dragged into the queue.
  */
+/** The project a task belongs to, as a card names it. */
+export interface CardProject {
+  id: string;
+  title: string;
+}
+
 export class BacklogCard {
   id: string;
   kind: 'task';
@@ -109,6 +117,7 @@ export class BacklogCard {
   notes: string;
   /** Which days it repeats on, when it is a day of a routine. */
   routine?: RoutineDays;
+  project?: CardProject;
 }
 
 /**

@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { CalendarService } from '../calendar/calendar.service';
 import {
   CalendarEvent,
   CalendarUser,
   RoutineDays,
 } from '../calendar/calendar.types';
+import { ProjectStore } from '../projects/project.store';
 import { relayout } from '../time/scheduling';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
@@ -19,7 +20,12 @@ import {
   WorkDay,
 } from '../time/work-hours';
 import { addDaysIn, atMinuteIn, startOfDayIn, Zone } from '../time/zone';
-import { BacklogCard, Timeline, TimelineCard } from './entities/event.entity';
+import {
+  BacklogCard,
+  CardProject,
+  Timeline,
+  TimelineCard,
+} from './entities/event.entity';
 import { dayOf, intervalOf, sectionOf } from './event-sections';
 
 /** How many days the calendar draws when the screen does not say. */
@@ -70,6 +76,8 @@ export interface Day {
   placed: Map<string, Interval>;
   /** Which days each routine repeats on, by routine id. */
   routines: Map<string, RoutineDays>;
+  /** The title of each of the person's projects, by project id. */
+  projects: Map<string, string>;
 }
 
 /**
@@ -85,6 +93,8 @@ export class TimelineService {
   constructor(
     private readonly _calendar: CalendarService,
     private readonly _tasks: TaskStore,
+    // Absent on a sandbox copy of the day, whose cards then name no project.
+    @Optional() private readonly _projects?: ProjectStore,
   ) {}
 
   /** The zone every hour on this person's day is measured in. */
@@ -108,6 +118,9 @@ export class TimelineService {
     const until = startOfDayIn(addDaysIn(now, days, zone), zone);
     const routines = new Map(
       (await this._calendar.routines(user)).map((it) => [it.id, it.days]),
+    );
+    const projects = new Map(
+      ((await this._projects?.list(user)) ?? []).map((it) => [it.id, it.title]),
     );
 
     let reach = until;
@@ -186,6 +199,7 @@ export class TimelineService {
       live,
       placed,
       routines,
+      projects,
     };
   }
 
@@ -337,6 +351,7 @@ function taskCard(day: Day, task: Task): TimelineCard | undefined {
     awaitingStart: awaiting,
     notBefore: live === undefined ? task.notBefore : undefined,
     routine: routineOf(day, task),
+    project: projectOf(day, task),
   };
 }
 
@@ -350,6 +365,7 @@ function backlogCard(day: Day, task: Task): BacklogCard {
     workMinutes: task.minutes,
     notes: task.notes,
     routine: routineOf(day, task),
+    project: projectOf(day, task),
   };
 }
 
@@ -357,6 +373,12 @@ function routineOf(day: Day, task: Task): RoutineDays | undefined {
   return task.routineId === undefined
     ? undefined
     : day.routines.get(task.routineId);
+}
+
+function projectOf(day: Day, task: Task): CardProject | undefined {
+  if (task.projectId === undefined) return undefined;
+  const title = day.projects.get(task.projectId);
+  return title === undefined ? undefined : { id: task.projectId, title };
 }
 
 function eventCard(day: Day, event: CalendarEvent): TimelineCard | undefined {

@@ -17,8 +17,9 @@ import 'package:flutter/rendering.dart';
 /// [AppLinkCard] as wide as the field. Pasting a link, or pressing return
 /// after one, makes it a card and puts the cursor on the line under it.
 /// Typing next to a card moves to a line of its own, so no two things share
-/// its row. One backspace after a card, or at the start of the line under
-/// it, takes the card and its line away.
+/// its row. A backspace at the start of the line under a card selects it
+/// (the caret right after it, drawn as a ring); a second takes the card and
+/// its line away.
 ///
 /// The field must not hold its lines to the text's height
 /// (`strutStyle: StrutStyle.disabled`), or a card overlaps the lines around
@@ -69,13 +70,13 @@ class LiveTextController extends TextEditingController {
     return card;
   }
 
-  /// Replaces the text and marks [live] in it, without moving the cursor
-  /// off the end.
-  void write(String text, {TextRange? live}) {
+  /// Replaces the text and marks [live] in it, the cursor at [cursor], or
+  /// at the end.
+  void write(String text, {TextRange? live, int? cursor}) {
     _live = live;
     value = TextEditingValue(
       text: text,
-      selection: TextSelection.collapsed(offset: text.length),
+      selection: TextSelection.collapsed(offset: cursor ?? text.length),
     );
   }
 
@@ -112,6 +113,21 @@ class LiveTextController extends TextEditingController {
     var end = a.length - s;
     // Cards come only from links: one pasted from another field is dropped.
     final inserted = b.substring(p, b.length - s).replaceAll(card, '');
+
+    // A backspace at the start of the line under a card selects the card
+    // first; the next one takes it.
+    if (end - start == 1 &&
+        inserted.isEmpty &&
+        old.selection.isCollapsed &&
+        old.selection.baseOffset == end &&
+        a[start] == '\n' &&
+        start > 0 &&
+        a[start - 1] == card) {
+      return TextEditingValue(
+        text: a,
+        selection: TextSelection.collapsed(offset: start),
+      );
+    }
 
     if (end > start) {
       // The line break under a card is part of it.
@@ -270,6 +286,9 @@ class LiveTextController extends TextEditingController {
       from = i + 1;
     }
     words(text.length);
+    // An empty last line under a card would take the card's height; a
+    // character with no width gives it the text's.
+    if (text.endsWith('$card\n')) children.add(const TextSpan(text: '\u200B'));
     return TextSpan(style: style, children: children);
   }
 }

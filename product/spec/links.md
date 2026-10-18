@@ -18,9 +18,13 @@ once by the server and kept for everyone.
   the cursor on the line under it. Typing beside a card moves the text to a
   line of its own: a card never shares its row, and two cards never share
   one.
-- One backspace right after a card (it is ringed in `accent` then), or at
-  the start of the line under it, takes the card and its line away. Undo is
-  the keyboard's.
+- A backspace at the start of the line under a card selects it (the caret
+  right after it, the card ringed in `accent`) and deletes nothing; a
+  second backspace takes the card and its line away. Any other key
+  deselects. Undo is the keyboard's.
+- A card has the same small gap above and below, whether text follows it
+  or not: an empty last line under a card gets a zero-width character in
+  the drawn span, so it is a line of text tall rather than the card's.
 
 ## In the app
 

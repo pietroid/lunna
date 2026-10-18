@@ -35,6 +35,21 @@ Widget _notes(LiveTextController controller, LinkPreviews previews) =>
 
 void main() {
   group('AppLinkCard in the notes', () {
+    testWidgets('the empty line under a card is as tall as a line of text', (
+      tester,
+    ) async {
+      Future<double> height(String text) async {
+        await tester.pumpWidget(
+          _notes(LiveTextController(text: text), _Previews()),
+        );
+        return tester.getSize(find.byType(TextField)).height;
+      }
+
+      final empty = await height('$_url\n');
+      final typed = await height('$_url\nx');
+      expect(empty, typed);
+    });
+
     testWidgets('pulses until its preview comes, then draws it', (
       tester,
     ) async {
