@@ -2,14 +2,15 @@ import 'dart:async';
 
 import 'package:agent/agent.dart';
 import 'package:api_client/api_client.dart';
+import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lunna/app/app.dart';
 import 'package:lunna/auth_token_provider.dart';
 import 'package:lunna/bootstrap.dart';
 import 'package:lunna/config.dart';
+import 'package:lunna/links/api_link_previews.dart';
 import 'package:lunna/notifications/background_refresh.dart';
 import 'package:notifications/notifications.dart';
 import 'package:projects/projects.dart';
@@ -39,6 +40,10 @@ Future<void> main() async {
   final agentRepository = AgentRepository(apiClient: apiClient);
   final routinesRepository = RoutinesRepository(apiClient: apiClient);
   final projectsRepository = ProjectsRepository(apiClient: apiClient);
+  final linkPreviews = ApiLinkPreviews(
+    apiClient: apiClient,
+    apiBaseUrl: kApiBaseUrl,
+  );
   final notificationScheduler = NotificationScheduler(
     repository: NotificationsRepository(apiClient: apiClient),
   );
@@ -105,7 +110,11 @@ Future<void> main() async {
             ),
           ),
         ],
-        child: App(initialLocation: initialLocation),
+        // Above the router, so the notes of every page draw their links.
+        child: LinkPreviewScope(
+          previews: linkPreviews,
+          child: App(initialLocation: initialLocation),
+        ),
       ),
     ),
   );

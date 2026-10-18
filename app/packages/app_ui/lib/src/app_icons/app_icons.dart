@@ -158,4 +158,12 @@ class AppIcons {
   static const resize = AppIconData.phosphor(
     PhosphorIconsRegular.arrowsVertical,
   );
+
+  /// A link with no picture of its own, on its card in the notes.
+  static const link = AppIconData.phosphor(PhosphorIconsRegular.link);
+
+  /// Opens somewhere outside the app: a link card's browser.
+  static const external = AppIconData.phosphor(
+    PhosphorIconsRegular.arrowUpRight,
+  );
 }

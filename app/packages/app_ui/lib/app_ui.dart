@@ -20,6 +20,7 @@ export 'src/widgets/app_card.dart';
 export 'src/widgets/app_day_clock.dart';
 export 'src/widgets/app_fab.dart';
 export 'src/widgets/app_icon_button.dart';
+export 'src/widgets/app_link_card.dart';
 export 'src/widgets/app_list_item.dart';
 export 'src/widgets/app_minute_builder.dart';
 export 'src/widgets/app_prompt_sheet.dart';

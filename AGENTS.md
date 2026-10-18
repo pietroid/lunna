@@ -75,7 +75,8 @@ app/
   brands/               per-brand icons, splash and web assets (+ README)
   env/                  <brand>.<env>.json defines (examples committed)
   tool/brand_web.sh     stamps a brand on a web build
-  lib/                  shell, home (Tempo), routines page, landing, demo
+  lib/                  shell, home (Tempo), routines page, landing, demo,
+                        links (the real LinkPreviews)
   packages/
     agent/              the agent: ask bar, sheet, plan card, suggestion, voice
     api_client/         Dio + bearer token interceptor
@@ -94,6 +95,7 @@ server/
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
     db/                 Drizzle schema + pool + boot-time migrations
     events/             the timeline routes, the read model, the layout rules
+    links/              link previews: the guarded page fetcher, the image proxy
     tasks/              TaskStore (Postgres) over the task table
     notifications/      the reminder plan, derived from the calendar
     projects/           ProjectStore (+ its module), the projects and where their tasks are
@@ -197,6 +199,14 @@ into the notes, each recording a paragraph of its own, saved like typing.
 The bar's own microphone still asks the agent, which then knows the page
 it was opened on (`about`). See "Dictation" in
 [product/spec/agent.md](./product/spec/agent.md).
+
+A link on a line of its own in the notes is drawn as a **link card**
+(picture, title, site; a tap opens the browser). **The notes stay text**:
+the card is the URL on its own line, and pages read and write
+`LiveTextController.notes`, never `.text`. The server reads each link's
+page once, for everyone (`link_preview`), never from an address that is
+not public, and proxies the pictures for the web. See
+[product/spec/links.md](./product/spec/links.md).
 
 ## Tasks and events
 

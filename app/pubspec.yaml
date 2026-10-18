@@ -33,6 +33,7 @@ dependencies:
     path: packages/projects
   timeline:
     path: packages/timeline
+  url_launcher: ^6.3.0
   # 0.10 pulls workmanager_apple 0.9.6+, which uses iOS 26 background task
   # types that Xcode 16 cannot compile. Lift once the build is on Xcode 26.
   workmanager: 0.9.2+1

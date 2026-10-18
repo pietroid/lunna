@@ -370,6 +370,23 @@ export const agentMessage = pgTable(
   ],
 );
 
+/**
+ * What a link says about itself: its page's title, its site and its
+ * picture, read once and kept for everyone, since a link's preview is the
+ * same for all who paste it.
+ */
+export const linkPreview = pgTable('link_preview', {
+  /** The link, as the notes write it. */
+  url: text('url').primaryKey(),
+  title: text('title'),
+  site: text('site'),
+  /** The page's picture, at its own address. */
+  image: text('image'),
+  /** The page could not be read; tried again a day later. */
+  failed: boolean('failed').notNull().default(false),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
+});
+
 export const schema = {
   user,
   session,
@@ -380,6 +397,7 @@ export const schema = {
   task,
   event,
   agentMessage,
+  linkPreview,
 };
 
 export type EventRow = typeof event.$inferSelect;
@@ -388,3 +406,4 @@ export type RoutineRow = typeof routine.$inferSelect;
 export type TaskRow = typeof task.$inferSelect;
 export type ProjectRow = typeof project.$inferSelect;
 export type AgentMessageRow = typeof agentMessage.$inferSelect;
+export type LinkPreviewRow = typeof linkPreview.$inferSelect;

@@ -464,14 +464,14 @@ class _NotesState extends State<_Notes> {
         _controller.live == null &&
         widget.card.notes != _saved) {
       _saved = widget.card.notes;
-      _controller.text = widget.card.notes;
+      _controller.notes = widget.card.notes;
     }
   }
 
   /// Typed or dictated, the notes are saved a moment after they stop
   /// changing; dictated words keep the end of the notes in sight.
   void _onChanged() {
-    if (_controller.text == _saved) return;
+    if (_controller.notes == _saved) return;
     _timer?.cancel();
     _timer = Timer(_debounce, _save);
     if (_controller.live != null) _followEnd();
@@ -492,7 +492,7 @@ class _NotesState extends State<_Notes> {
 
   void _save() {
     _timer?.cancel();
-    final notes = _controller.text;
+    final notes = _controller.notes;
     if (notes == _saved) return;
 
     _saved = notes;
@@ -529,6 +529,8 @@ class _NotesState extends State<_Notes> {
         keyboardType: TextInputType.multiline,
         textCapitalization: TextCapitalization.sentences,
         style: AppTypography.body,
+        // A link's card is a line of its own, taller than the text's.
+        strutStyle: StrutStyle.disabled,
         decoration: InputDecoration.collapsed(
           hintText: context.l10n.eventNotesHint,
           hintStyle: AppTypography.body.copyWith(color: AppColors.ink3),

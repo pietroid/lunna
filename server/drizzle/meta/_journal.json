@@ -57,6 +57,13 @@
       "when": 1792273519679,
       "tag": "0007_drop_parked",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792281544244,
+      "tag": "0008_link_preview",
+      "breakpoints": true
     }
   ]
 }

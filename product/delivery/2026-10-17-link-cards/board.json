@@ -1,0 +1,103 @@
+{
+ "title": "Links in notes become cards",
+ "screens": [
+  {
+   "png": "img/1.png",
+   "title": "Links, read",
+   "why": "A link on its own line is drawn as a card: picture, title, site.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 73,
+     "y": 236,
+     "label": "A row of its own",
+     "text": "The card is a paragraph, as wide as the notes. The page's picture on the left, its title (2 lines), then the site in ink3."
+    },
+    {
+     "id": "B",
+     "x": 333,
+     "y": 236,
+     "label": "Tap opens outside",
+     "text": "The whole card is one tap to the browser, outside the app. Arrow-up-right (Phosphor) says it leaves."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 318,
+     "label": "Saved as text",
+     "text": "In the notes the card is just the link on its own line: the server, the agent and the other brand read a URL. Title and picture are kept by the server, read once."
+    }
+   ]
+  },
+  {
+   "png": "img/2.png",
+   "title": "Pasting a link",
+   "why": "Paste, and it is a loading card at once; the cursor moves under it.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 73,
+     "y": 480,
+     "label": "Loading card",
+     "text": "Just pasted: the picture and two title bars pulse (fillStrong to a touch of ink3), the host already shown under them. Title and picture take their place when the server answers; a link it cannot read keeps its URL as the title (screen 4)."
+    },
+    {
+     "id": "B",
+     "x": 200,
+     "y": 540,
+     "label": "Cursor goes under",
+     "text": "Pasting, or pressing return after a typed link, makes the card and puts the cursor on the line below. Typing beside a card moves to a line of its own."
+    }
+   ]
+  },
+  {
+   "png": "img/3.png",
+   "title": "Backspace on a card",
+   "why": "The cursor right after a card rings it; one backspace removes it.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 362,
+     "y": 381,
+     "label": "Ring = next to go",
+     "text": "With the cursor right after the card, it gets an accent ring: one backspace takes the card and its line. So does backspace at the start of the line under it."
+    }
+   ]
+  },
+  {
+   "png": "img/4.png",
+   "title": "Nothing to show",
+   "why": "A link with no picture, or that could not be read, still is a card.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 73,
+     "y": 236,
+     "label": "No picture",
+     "text": "The link icon in a fillStrong tile, the title as read."
+    },
+    {
+     "id": "B",
+     "x": 73,
+     "y": 358,
+     "label": "Not readable",
+     "text": "Private or broken: the link itself as the title, for good, and still one tap to open."
+    }
+   ]
+  },
+  {
+   "png": "img/5.png",
+   "title": "After backspace",
+   "why": "The card's paragraph goes with it; the text closes up.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 318,
+     "label": "Line and card gone",
+     "text": "No empty line left behind. Undo is the keyboard's. Same rules in a project's notes (one controller for both)."
+    }
+   ]
+  }
+ ]
+}

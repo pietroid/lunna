@@ -13,6 +13,7 @@ class AppSkeleton extends StatefulWidget {
     this.width,
     this.height = AppSpacing.s4,
     this.radius = AppSpacing.s2,
+    this.onFill = false,
     super.key,
   });
 
@@ -25,9 +26,20 @@ class AppSkeleton extends StatefulWidget {
   /// The placeholder's corner radius.
   final double radius;
 
+  /// Whether it sits on a [AppColors.fill] surface (a card) rather than the
+  /// page, so it pulses darker, from fillStrong towards ink3.
+  final bool onFill;
+
   @override
   State<AppSkeleton> createState() => _AppSkeletonState();
 }
+
+/// The darkest a skeleton on a fill gets: enough to read on a card.
+final Color _onFillPeak = Color.lerp(
+  AppColors.fillStrong,
+  AppColors.ink3,
+  0.4,
+)!;
 
 class _AppSkeletonState extends State<AppSkeleton>
     with SingleTickerProviderStateMixin {
@@ -52,8 +64,8 @@ class _AppSkeletonState extends State<AppSkeleton>
           height: widget.height,
           decoration: BoxDecoration(
             color: Color.lerp(
-              AppColors.fill,
-              AppColors.fillStrong,
+              widget.onFill ? AppColors.fillStrong : AppColors.fill,
+              widget.onFill ? _onFillPeak : AppColors.fillStrong,
               Curves.easeInOut.transform(_controller.value),
             ),
             borderRadius: BorderRadius.circular(widget.radius),
