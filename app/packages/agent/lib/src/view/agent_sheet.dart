@@ -10,6 +10,7 @@ import 'package:agent/src/view/quick_replies.dart';
 import 'package:agent/src/view/voice_bar.dart';
 import 'package:agent/src/voice/voice_cubit.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
@@ -242,7 +243,7 @@ class _AgentSheetState extends State<AgentSheet> {
                                 ),
                                 if (state.past.isNotEmpty)
                                   _Divider(
-                                    l10n.agentHistoryNow(DateTime.now()),
+                                    l10n.agentHistoryNow(clock.now()),
                                     accent: true,
                                   ),
                                 for (final conversation in state.past)
@@ -482,7 +483,7 @@ class _Past extends StatelessWidget {
 
 /// "Hoje · 14:12", "Ontem, quarta-feira · 18:40", "seg., 12 de out. · 09:10".
 String _startedText(AppLocalizations l10n, DateTime at) {
-  final now = DateTime.now();
+  final now = clock.now();
   final today = DateTime(now.year, now.month, now.day);
   final day = DateTime(at.year, at.month, at.day);
   final ago = today.difference(day).inHours ~/ 24;

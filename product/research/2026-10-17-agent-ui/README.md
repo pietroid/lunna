@@ -1,8 +1,16 @@
 # RFC: The agent answers in UI, speaks the app's words, and reaches projects
 
-2026-10-17 · Status: proposed · Scope: `server/src/agent/`, `app/packages/agent/`,
-`server/src/projects/` · Follows
+2026-10-17 · Status: proposed, not yet built · Scope: `server/src/agent/`,
+`app/packages/agent/`, `server/src/projects/` · Follows
 [2026-10-16-agent-reliability](../2026-10-16-agent-reliability/README.md)
+
+**Revised 2026-10-17** after `d515d68` (parking dropped: a project's
+tasks are ordinary backlog tasks) and `e88e08e` (the bar at the foot of a
+task's and a project's notes, sending `about`). §5.4 is rewritten for
+projects without parking. New: §5.6, create, edit and delete for tasks
+and projects as gestures; §5.7, a conversation opened on a page has
+that page's context and that page's history. Rows 9 and 11–15 of §3 are
+new or rewritten.
 
 ## 1. Thesis
 
@@ -37,12 +45,24 @@ ids, paths or layout. The app renders surfaces with the widgets it already
 has.
 
 Projects fit the same shape. The board gets a one-line index of open
-projects, and `read_cards` (one tool for projects and notes) reads one on demand: the "just in
-time" pattern. Project writes become gestures in the same plan and the
-same sandbox (let a task out, park it, add one, append to the notes). So
-the agent reads and writes projects, still only by proposing. Notes work
-the same way on every card, tasks and blocks included: one read tool and
-one append gesture.
+projects, and `read_cards` (one tool for projects and notes) reads one on
+demand: the "just in time" pattern. **Everything the person can do by
+hand to a task or a project becomes a gesture in the same plan and the
+same sandbox**: write it down, rename it, change its length, append to
+its notes, tick it off, delete it, and for projects create, edit, set a
+deadline and close. The agent still only proposes. The plan card shows
+each change, a delete included, before Aplicar, and Desfazer takes all of
+it back. That is the agent's own human-in-the-loop gate, so a delete
+needs no second one. It does need an undo that can bring a deleted row
+back (§5.6).
+
+**A conversation opened on a page is about that page, before and after.**
+`about` already puts the task or project into the turn, but the
+conversation is stored without it. So the sheet shows Tempo's history,
+the model can't find what was said about this task last week, and the
+subject's own tasks lose their refs once they fall off the board. The
+fix is to store the subject on the conversation, list and search by it,
+and give the subject's cards their own refs (§5.7).
 
 What is **not** needed: the A2A transport (A2UI rides any JSON channel,
 so our REST answer is enough), letting the model author layouts, RAG over
@@ -72,10 +92,26 @@ app: _Answer (agent_sheet.dart:606)
 - Model: `anthropic/claude-haiku-5.5` was recommended over
   `gemini-3.1-flash-lite` in the last delivery. `tool_choice: 'auto'`,
   temperature 0.3 (`openrouter.client.ts:157`).
-- Projects are invisible to the agent. `TaskStore.pending` leaves out
-  parked tasks (`task.store.ts:74`), so neither the board nor the sandbox
-  (`gestures.ts:39`) ever holds one, and a task let out carries no project
-  on the board (`board.ts:116`).
+- Since `d515d68` there is no parking. A project's tasks are ordinary
+  tasks with `project_id`, mostly in the backlog, so they are on the board
+  and in the sandbox as `b…` refs. But the board shows only the first 30
+  of the backlog (`MAX_BACKLOG`, `board.ts:29`), and no board line names
+  a project (`board.ts` never reads `projectId`). Outside a project's
+  page, projects don't exist for the agent.
+- Since `e88e08e`, a turn can carry `about: { taskId } | { projectId }`
+  (`agent.controller.ts:207`). `_subject` (`agent.service.ts:262`) writes
+  the task's line, or the project's name, deadline, notes and tasks, after
+  the board. A task not on the board gets a line with **no ref**
+  (`agent.service.ts:281`).
+- The only write is `propose_plan`, whose gestures are `place`,
+  `at_hour`, `to_backlog` and `swap` (`plan.ts:54`). There is no rename,
+  length, notes, done or delete gesture. There is nothing for projects
+  either. Undo knows `remove_*` and `restore_*` (`gestures.ts:213`), and
+  `restore_task` is an `update`, so it can't bring back a deleted row
+  (`pg-task.store.ts:122`).
+- Conversations are stored without a subject (`agent_message`,
+  `schema.ts:345`). The app has one `AgentCubit` whose past is one global
+  list, read once (`agent_cubit.dart:143`).
 
 ## 3. Diagnosis
 
@@ -97,8 +133,13 @@ above its card. Four replies are far too few to make a baseline, so phase
 | 6 | It says "o sistema recusou", "backlog", "900 minutos livres" | Refusals are written for the model: in English, with refs and the scheduler's words ("fixed event", "a task that keeps its hour"). The model paraphrases them to the person. The board's spans are in minutes, and its kinds are the scheduler's ("task in the queue") | 22 `Refusal`s, e.g. `agent.service.ts:718,825,850,1077,1096,1107`; `board.ts:363,394` |
 | 7 | A ref in an earlier answer now points at another card | Refs are renumbered every turn by start order, but earlier replies are replayed as text without their board | `board.ts:135`; `agent.service.ts:273` |
 | 8 | Nothing catches either problem | Evals grade the day after Aplicar and whether the agent asked; no check reads the reply. Every case is a single turn | `evals/run.ts:216` |
-| 9 | "What's left in project X?" or "put a task from X tomorrow" can't be done | Parked tasks never reach the board or the sandbox, and projects have no tool. `placeTask('scheduled')` anchors through `editTask`, a second path beside the gestures | `task.store.ts:74`; `gestures.ts:39`; `projects.service.ts:201` |
-| 10 | "What did I write on the Dentista?" or "note on the call to bring the contract" can't be done | Tasks and blocks have `notes` (`task.types.ts:13`, `calendar.types.ts:80`), but the board never carries them, and no gesture writes them. No file in `server/src/agent/` mentions notes | `board.ts:116`; `plan.ts:54` |
+| 9 | From Tempo, "what's left in project X?" or "put a task from X tomorrow" can't be done | Project tasks are on the board now (parking is gone), but no line says which project they belong to, there's no project index, and a 31st backlog task has no ref | `board.ts:29,116`; `agent.service.ts:262` only on a project's page |
+| 10 | From Tempo, "what did I write on the Dentista?" or "note on the call to bring the contract" can't be done | The board never carries notes, and no gesture writes them. Only `_subject` reads notes, and only the open page's | `board.ts:116`; `plan.ts:54`; `agent.service.ts:267` |
+| 11 | On a project's page, "move the third one to tomorrow" fails when the project has many tasks | `_subject` lists a task that is off the board (past the 30th of the backlog, further ahead, done) by title, with no ref. The model can name it but can't act on it | `agent.service.ts:273-282` |
+| 12 | "Rename this", "make it 1h", "tick it off", "delete it", "create a project Mudança with these three tasks" can't be done | The only gestures are where and when. Title, length, done, delete and every project write have no gesture, and the spec says "Nothing is removed" (`product/spec/agent.md`) | `plan.ts:54`; `ChangeKind` at `plan.ts:9` |
+| 13 | A delete the agent proposed couldn't be undone, even if it existed | `restore_task` is `TaskStore.update`, which changes an existing row. A deleted row has nothing to update, and neither store can put a row back with its id | `gestures.ts:220`; `pg-task.store.ts:122` |
+| 14 | Opening the bar on a block's (event's) page gives the agent no context | `NotesDock.task` sends `about` only when the page is a task's; events have no `Subject` kind | `notes_dock.dart:49`; `agent.controller.ts:207` |
+| 15 | On a task's page, the sheet shows Tempo's conversations, and "what did we decide about this last week?" finds nothing | `agent_message` has no subject. `GET /agent/conversations` and `read_conversations` filter by date and words only, and the app reads one global past list once | `schema.ts:345`; `conversation.store.ts:45`; `agent_cubit.dart:143` |
 
 Row 6 is the original bug pattern again: **two audiences, one text.**
 Each refusal is written once, for the model, and the person ends up
@@ -165,7 +206,39 @@ reading it secondhand.
    **For us:** go from 3 tools to 6 at most (`ask`, `show`, and one
    `read_cards` for both project contents and notes), and add project and
    note writes as new gesture kinds inside `propose_plan`, not as new
-   tools.
+   tools. That holds for create, edit and delete too: 7 new gesture kinds
+   inside one tool's `changes[]` enum, not 7 new tools (§5.6).
+8. **Approval goes on the action, not in the prompt. Approval-required
+   calls end the run and wait for a yes or no on the exact arguments.**
+   Microsoft Agent Framework marks a tool `approval_mode="always_require"`.
+   Calling it returns pending `user_input_requests` holding the name and
+   arguments, and the run resumes with an approval response. The model
+   isn't told which tools need approval
+   ([Chaganti, on MS Agent Framework](https://ravichaganti.com/blog/human-in-the-loop-with-function-approvals-in-microsoft-agent-framework/)).
+   **For us:** our whole write path already works this way. Every change
+   is a plan, and Aplicar is the yes. So delete needs no new gate, only a
+   plan row that says plainly it deletes ("Apagar · Dentista"). The
+   server, not the prompt, decides which kinds need it.
+9. **Avoiding harm and being able to undo it are separate properties.**
+   On Agent RedressBench (64 scenarios), guardrails cut unsafe-action
+   labels but produced no redress evidence. Redressability scored 4.58/24
+   with guardrails and 19.21/24 with action traces
+   ([Alqithami & Alzahrani, AIES 2026](https://ojs.aaai.org/index.php/AIES/article/view/43130)).
+   **For us:** a prompt rule like "never delete without asking" is the
+   guardrail. Desfazer that actually brings a deleted task back, plus a
+   plan stored on the conversation, is the redress. Build the undo before
+   offering delete (row 13).
+10. **Thread memory and entity memory are different scopes.** In
+    LangGraph, short-term memory is scoped to one thread. Long-term
+    memories sit in "namespaces", like folders, and can be read from any
+    thread. Semantic memory holds facts, episodic memory holds past events
+    ([LangChain, Memory](https://docs.langchain.com/oss/python/concepts/memory)).
+    **For us:** a conversation is the thread. A task or a project is the
+    namespace: conversations opened on it, and plans that touched it, are
+    its episodic memory. The notes are its semantic memory, and the
+    person writes them. So the agent reads earlier talk about the subject
+    from `agent_message` by subject, and never writes summaries into the
+    notes on its own.
 
 ## 5. Recommendations
 
@@ -264,47 +337,45 @@ The refusals in §5.1 that reach people use the same machinery. "Outside
 the working day" becomes `Choices`: *Amanhã às 07:00* · *Deixar para
 depois*, written by the server.
 
-### 5.4 The agent reads and writes projects (priority 3)
+### 5.4 The agent sees projects from anywhere (priority 3)
+
+Since `d515d68` a project's task is an ordinary task, so most of the old
+§5.4 is gone: no `let_out`, no `park`, no second placing path in
+`ProjectsService`. What's left is for the agent to **know which project a
+card belongs to, and to reach the tasks that aren't on the board.**
 
 The options for awareness:
 
 | Option | What the model sees | Tokens per turn | Verdict |
 |---|---|---|---|
-| A. Everything on the board | every open project, every parked task with a ref, notes | grows with every project; notes unbounded | no |
-| **B. Index on the board + `read_cards`** *(recommended)* | one line per open project: `p2 · Tese · prazo 30/11 · 6 no projeto, 2 no dia`; `read_cards([p2])` gives tasks with refs (`p2.1`…) and notes | ~15 per project | yes: the just-in-time pattern (§4.6) |
+| A. Everything on the board | every open project, every project task with a ref, notes | grows with every project; notes unbounded | no |
+| **B. Index on the board + `read_cards`** *(recommended)* | one line per open project: `p2 · Tese · prazo 30/11 · 6 tarefas, 2 com hora`; `read_cards([p2])` gives its notes and every task with a ref | ~15 per project | yes: the just-in-time pattern (§4.6) |
 | C. Tool only | nothing until it asks | 0 | misses "isso é do projeto X?" turns |
 | D. RAG / search over notes | snippets | small | not needed until notes are long; full-text search later |
 | E. A separate projects agent | — | — | not needed: one person, one domain |
 
-On the day, each card also says its project (`t3 · Capítulo 2 · … · Tese`),
-since `Task.projectId` is already on the row.
+- **Each card names its project** (`b4 · Capítulo 2 · 45 min · Tese`),
+  read from `Task.projectId`, which is already on the row. The `projects`
+  list is one more read per turn (`ProjectStore.list`).
+- **Every task the model is shown gets a ref, wherever it is.** Today a
+  task off the board is shown with no ref (row 11). The fix is
+  `board.reach(tasks)`: it hands out the next ref of the task's kind (a
+  backlog task after the 30th gets `b31`, a task further ahead gets the
+  next `t`, a done one `d1`). It also seeds the task's row into the
+  sandbox, so a gesture on it is made the same way as on any other card.
+  `_subject` and `read_cards` both go through it. This is the stable-refs
+  map of §5.1 in another form: one `id → ref` table per conversation.
+- `read_cards([p2])` answers what `_subject` writes today (name,
+  deadline, notes cut at 2000 characters, tasks), with refs. **The page
+  context and the tool are one function**, so what the model reads about
+  a project is the same whether it opened on its page or asked from
+  Tempo.
+- A done task (`d…`) takes only `edit` and `note` (as its page allows:
+  name and notes only, `projects.md`). The other gestures refuse it,
+  naming it.
+- One component, `ProjectPeek`, for `show { project }`.
 
-Writes stay proposals. They are new gesture kinds inside `propose_plan`,
-made by `make()` on the sandbox and the real day alike:
-
-| Gesture | What it is by hand | Made with |
-|---|---|---|
-| `let_out { ref, then }` | Projetos → a stage, or `PlaceSheet` | unpark (as `ProjectsService._unpark`), then the existing `place`/`at_hour`/`first_free`/`to_backlog`, so the drop rule is the same |
-| `park { ref }` | dragging back into the project | `ProjectsService._park`; refused when begun, as today |
-| `add_to_project { project, new }` | + in the project | `addTask`, parked at the end |
-| `note { project, append }` | typing in the notes | append only, shown in full on the card before Aplicar; never rewrites what is there |
-| `project { project, deadline?, done? }` | the project sheet | `edit` |
-
-What this needs:
-
-- `sandbox()` seeds the parked tasks of the projects a plan names, and a
-  `MemoryProjectStore` (it already exists, `project.store.ts:26`).
-- `Undo` gains `restore_project`.
-- `ProjectsService` calls the same `make()`, so `placeTask('scheduled')`
-  stops anchoring through `editTask` (`projects.service.ts:201`). That
-  removes the second code path from row 9.
-- Two components: `ProjectPeek`, and a `Plan` row for project changes ("→
-  Tese: Capítulo 2 · sai do projeto, amanhã 09:00").
-
-Project notes are one case of §5.5, which covers notes on every card.
-
-Deleting a project is not offered. It is the one destructive project
-action, and a person does it by hand in a few taps.
+Project writes are in §5.6, with the rest of create, edit and delete.
 
 ### 5.5 Notes on every card: tasks, blocks and projects (priority 3, with 5.4)
 

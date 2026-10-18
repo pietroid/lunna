@@ -2,6 +2,7 @@ import 'package:agent/agent.dart';
 import 'package:agent/src/view/plan_card.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:bloc_test/bloc_test.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
@@ -15,7 +16,8 @@ class _MockTimelineBloc extends MockBloc<TimelineBlocEvent, TimelineState>
 
 class _FakeRecognizer extends Fake implements VoiceRecognizer {}
 
-final _now = DateTime.now();
+// Midday, so half an hour ago is still today whatever the zone or hour.
+final _now = DateTime(2026, 10, 15, 12);
 
 AgentPlan _plan(String id, {List<PushedTask> pushed = const []}) => AgentPlan(
   id: id,
@@ -110,17 +112,19 @@ void main() {
     testWidgets('pulled down, shows the past under its hour, read only', (
       tester,
     ) async {
-      await pump(tester);
+      await withClock(Clock.fixed(_now), () async {
+        await pump(tester);
 
-      await tester.drag(find.byType(ListView), const Offset(0, 900));
-      await tester.pumpAndSettle();
+        await tester.drag(find.byType(ListView), const Offset(0, 900));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Coloca dentista às 15h'), findsOneWidget);
-      expect(find.textContaining('Hoje · '), findsOneWidget);
-      expect(find.textContaining('Agora · '), findsOneWidget);
-      expect(find.text('Dentista 15:00 · aplicado'), findsOneWidget);
-      // Read only: the plan is a line, not a card with buttons.
-      expect(find.text('Aplicar'), findsNothing);
+        expect(find.text('Coloca dentista às 15h'), findsOneWidget);
+        expect(find.textContaining('Hoje · '), findsOneWidget);
+        expect(find.textContaining('Agora · '), findsOneWidget);
+        expect(find.text('Dentista 15:00 · aplicado'), findsOneWidget);
+        // Read only: the plan is a line, not a card with buttons.
+        expect(find.text('Aplicar'), findsNothing);
+      });
     });
   });
 
