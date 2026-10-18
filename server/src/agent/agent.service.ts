@@ -11,7 +11,6 @@ import {
 } from '../events/timeline.service';
 import { ProjectStore } from '../projects/project.store';
 import { TaskStore } from '../tasks/task.store';
-import { Task } from '../tasks/task.types';
 import {
   addMinutes,
   DEFAULT_WORK_DAY,
@@ -30,6 +29,17 @@ import {
   Zone,
 } from '../time/zone';
 import { AgentError } from './agent.errors';
+import {
+  A2uiMessage,
+  Block,
+  Choice,
+  legacyOptions,
+  peekCard,
+  peekDay,
+  peekProject,
+  summary,
+  toA2ui,
+} from './answer';
 import { SYSTEM_PROMPT, TOOLS } from './agent.prompt';
 import { Board, BoardCard, HORIZON_DAYS, noonOf } from './board';
 import { ConversationStore, PlanStatus } from './conversation.store';
@@ -41,6 +51,7 @@ import {
   OpenRouterClient,
   ToolCall,
 } from './openrouter.client';
+import { speakable } from './speech';
 import {
   Assumption,
   Gesture,
@@ -87,6 +98,13 @@ export interface QuickReply {
 export interface AgentReply {
   /** The conversation the turn was written into. */
   conversationId: string;
+  /**
+   * The answer as one A2UI surface (`toA2ui`): what the app draws. The
+   * fields after it say the same for builds older than the surface, and
+   * [reply] is also what the conversation keeps.
+   */
+  ui: A2uiMessage[];
+  /** The answer in words: the caption, or a line per block. Never empty. */
   reply: string;
   /** What the server found, one short line each, in the order it found it. */
   steps: string[];
@@ -94,6 +112,16 @@ export interface AgentReply {
   plan?: PlanView;
   /** Answers to tap: a doubt's, or another way beside [plan]. */
   options: QuickReply[];
+}
+
+/** A turn as the service works it out: the reply, plus what only tests and evals read. */
+export interface TurnResult extends AgentReply {
+  /** The surface's blocks, as `ui` encodes them. */
+  blocks: Block[];
+  /** How many refs and scheduler words `speakable` took out of the model's words. */
+  leaks: number;
+  /** What the model wrote for the person, before `speakable`. */
+  raw: string[];
 }
 
 /** A proposal the agent makes without being asked. */
@@ -132,12 +160,32 @@ interface Turn {
   steps: string[];
   calls: number;
   usage: ModelUsage;
+  leaks: number;
+  raw: string[];
 }
 
-/** What propose_plan came to. */
+/** What a plan block came to. */
 type Proposal =
-  | { kind: 'plan'; plan: Plan; options: QuickReply[]; reply: string }
+  | { kind: 'plan'; plan: Plan; options: QuickReply[] }
   | { kind: 'doubt'; reply: string; options: QuickReply[] };
+
+/** A turn's answer, bound: the blocks, and the plans behind them. */
+interface Answered {
+  blocks: Block[];
+  plan?: Plan;
+}
+
+/** At most this many blocks in one answer. */
+const MAX_BLOCKS = 6;
+
+/** At most this many cards in a cards block. */
+const MAX_CARDS = 8;
+
+/** A caption longer than this is not drawn. */
+const MAX_CAPTION = 80;
+
+/** A heading or a choice's label longer than this is cut. */
+const MAX_HEADING = 40;
 
 /** How many model round-trips one turn is allowed. */
 const MAX_ITERATIONS = 4;
@@ -150,6 +198,9 @@ const MAX_FOUND = 20;
 
 /** How long something new takes when nobody said. */
 const DEFAULT_MINUTES = 30;
+
+/** How many conversations' refs are kept in memory. */
+const MAX_CONVERSATIONS_HELD = 500;
 
 /**
  * Lunna's agent: it reads the day and proposes changes to it.
@@ -171,6 +222,8 @@ export class AgentService {
    * plans: answered by typing rather than a tap, the options missed.
    */
   private readonly _asked = new Map<string, string>();
+  /** The refs each conversation was shown, by card id (`Board`). */
+  private readonly _refs = new Map<string, Map<string, string>>();
 
   constructor(
     private readonly _model: OpenRouterClient,
@@ -210,7 +263,7 @@ export class AgentService {
     about: Subject | undefined,
     trace: Trace,
     now = new Date(),
-  ): Promise<AgentReply> {
+  ): Promise<TurnResult> {
     const conversation = conversationId ?? randomUUID();
     const asked = this._asked.get(conversation);
     if (asked !== undefined) {
@@ -255,36 +308,42 @@ export class AgentService {
   }
 
   /**
+   * The refs handed out in [conversationId] so far, by id: the board keeps
+   * them, so "a t2" means the same card on the next turn.
+   */
+  private _refsOf(conversationId: string): Map<string, string> {
+    const known = this._refs.get(conversationId);
+    if (known !== undefined) return known;
+
+    // In memory, like the plans: the oldest conversations go first.
+    if (this._refs.size >= MAX_CONVERSATIONS_HELD) {
+      const [oldest] = this._refs.keys();
+      this._refs.delete(oldest);
+    }
+    const refs = new Map<string, string>();
+    this._refs.set(conversationId, refs);
+
+    return refs;
+  }
+
+  /**
    * What the model reads about the page the person is on: the task or the
-   * project, its notes, and (a project's) its tasks, under their refs when
-   * they are on the board. Refused when there is no such thing.
+   * project, as `read_cards` reads it. Refused when there is no such thing.
    */
   private async _subject(
     user: CalendarUser,
     about: Subject,
     board: Board,
   ): Promise<string> {
-    const notes = (text: string) => {
-      const kept = text.trim().slice(0, MAX_NOTES);
-      return kept === ''
-        ? ['Notes: (none)']
-        : ['Notes:', ...kept.split('\n').map((line) => `  ${line}`)];
-    };
-    const line = (task: Task) => {
-      const card = board.byId(task.id);
-      if (card !== undefined) return board.line(card);
-      const where =
-        task.doneAt !== undefined
-          ? 'done'
-          : task.backlog
-            ? 'backlog task'
-            : 'task further ahead';
-      return `${task.title} · ${where} · ${task.minutes} min`;
-    };
-
     if ('taskId' in about) {
-      const task = await this._tasks.get(user, about.taskId);
-      if (task === undefined) {
+      const card =
+        board.byId(about.taskId) ??
+        (await this._tasks
+          .get(user, about.taskId)
+          .then((task) =>
+            task === undefined ? undefined : board.reach(task),
+          ));
+      if (card === undefined) {
         throw new AgentError(
           'refused',
           'Não encontrei essa tarefa.',
@@ -293,12 +352,11 @@ export class AgentService {
       }
       return [
         'The person is on this task’s page:',
-        `  ${line(task)}`,
-        ...notes(task.notes),
+        ...this._read(board, card.ref),
       ].join('\n');
     }
 
-    const project = await this._projects.get(user, about.projectId);
+    const project = board.projectById(about.projectId);
     if (project === undefined) {
       throw new AgentError(
         'refused',
@@ -306,17 +364,44 @@ export class AgentService {
         HttpStatus.NOT_FOUND,
       );
     }
-    const tasks = (await this._tasks.ofProjects(user)).filter(
-      (task) => task.projectId === project.id,
-    );
     return [
-      `The person is on the page of the project “${project.title}”${project.deadline === undefined ? '' : `, due ${project.deadline}`}${project.doneAt === undefined ? '' : ' (done)'}.`,
-      ...notes(project.notes),
-      'Its tasks:',
-      ...(tasks.length === 0
-        ? ['  (none)']
-        : tasks.map((task) => `  ${line(task)}`)),
+      'The person is on this project’s page:',
+      ...this._read(board, project.ref),
     ].join('\n');
+  }
+
+  /**
+   * One card or project, read whole: its line, its notes and (a project's)
+   * every task under a ref. The page's context and `read_cards` are this
+   * same function, so what the model knows of a project is the same
+   * wherever the person asked from.
+   */
+  private _read(board: Board, ref: string): string[] {
+    const notes = (text: string) => {
+      const kept = text.trim().slice(0, MAX_NOTES);
+      return kept === ''
+        ? ['  Notes: (none)']
+        : ['  Notes:', ...kept.split('\n').map((line) => `    ${line}`)];
+    };
+
+    const project = board.project(ref);
+    if (project !== undefined) {
+      const { title, deadline, doneAt } = project.project;
+      return [
+        `  ${project.ref} · project “${title}”${deadline === undefined ? '' : `, due ${deadline}`}${doneAt === undefined ? '' : ' (done)'}`,
+        ...notes(project.project.notes),
+        '  Its tasks:',
+        ...(project.tasks.length === 0
+          ? ['    (none)']
+          : project.tasks.map(
+              (task) => `    ${board.line(board.reach(task))}`,
+            )),
+      ];
+    }
+
+    const card = board.ref(ref);
+    if (card === undefined) return [`  No card or project ${ref}.`];
+    return [`  ${board.line(card)}`, ...notes(card.notes)];
   }
 
   /** The conversations before [before], most recent first. */
@@ -332,9 +417,17 @@ export class AgentService {
     about: Subject | undefined,
     trace: Trace,
     now: Date,
-  ): Promise<Omit<AgentReply, 'conversationId'>> {
-    const day = await this._timeline.day(user, HORIZON_DAYS, now);
-    const board = new Board(day, this._timeline.view(day));
+  ): Promise<Omit<TurnResult, 'conversationId'>> {
+    const [day, projects, projectTasks] = await Promise.all([
+      this._timeline.day(user, HORIZON_DAYS, now),
+      this._projects.list(user),
+      this._tasks.ofProjects(user),
+    ]);
+    const board = new Board(day, this._timeline.view(day), {
+      refs: this._refsOf(conversationId),
+      projects,
+      projectTasks,
+    });
     const subject =
       about === undefined
         ? ''
@@ -348,6 +441,8 @@ export class AgentService {
       steps: [],
       calls: 0,
       usage: { promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0 },
+      leaks: 0,
+      raw: [],
     };
     const said = history[history.length - 1].text;
 
@@ -363,36 +458,23 @@ export class AgentService {
       },
     ];
 
-    let proposed: Extract<Proposal, { kind: 'plan' }> | undefined;
-    const done = (
-      reply: string,
-      extra: Partial<Omit<AgentReply, 'conversationId' | 'reply'>> = {},
-    ) => {
+    const done = (answered: Answered) => {
       trace.log('agent.turn', {
         calls: turn.calls,
         ...turn.usage,
         ms: trace.elapsedMs,
-        plan: extra.plan !== undefined,
-        options: extra.options?.length ?? 0,
+        blocks: answered.blocks.map((it) => it.kind),
+        leaks: turn.leaks,
       });
-      return {
-        reply,
-        steps: dedupe(turn.steps),
-        options: [],
-        ...extra,
-      };
+      if (turn.leaks > 0) trace.warn('agent.leak', { leaks: turn.leaks });
+      return this._reply(turn, answered);
     };
 
     for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
       const outcome = await this._generate(turn, messages, iteration);
 
       if (outcome.kind === 'final') {
-        return done(
-          outcome.content.trim(),
-          proposed === undefined
-            ? {}
-            : { plan: planView(proposed.plan), options: proposed.options },
-        );
+        return done(this._plain(turn, outcome.content));
       }
 
       messages.push({
@@ -408,24 +490,7 @@ export class AgentService {
           tool_call_id: call.id,
           content: JSON.stringify(result.answer),
         });
-
-        const proposal = result.proposal;
-        if (proposal?.kind === 'doubt') {
-          trace.log('agent.doubt', { options: proposal.options.length });
-          this._asked.set(conversationId, proposal.options[0].plan.id);
-          return done(proposal.reply, { options: proposal.options });
-        }
-        if (proposal?.kind === 'plan') {
-          proposed = proposal;
-          // Nothing pushed: the plan is the answer, and the model already
-          // wrote what to say about it.
-          if (proposal.plan.pushed.length === 0 && proposal.reply !== '') {
-            return done(proposal.reply, {
-              plan: planView(proposal.plan),
-              options: proposal.options,
-            });
-          }
-        }
+        if (result.answered !== undefined) return done(result.answered);
       }
     }
 
@@ -438,7 +503,8 @@ export class AgentService {
         ...messages,
         {
           role: 'system',
-          content: 'Stop calling tools and answer now, in Portuguese.',
+          content:
+            'Stop calling tools and answer now, in Portuguese, in one short sentence.',
         },
       ],
       MAX_ITERATIONS + 1,
@@ -446,11 +512,56 @@ export class AgentService {
     );
 
     return done(
-      closing.kind === 'final' ? closing.content.trim() : 'Fica assim:',
-      proposed === undefined
-        ? {}
-        : { plan: planView(proposed.plan), options: proposed.options },
+      this._plain(
+        turn,
+        closing.kind === 'final'
+          ? closing.content
+          : 'Não consegui montar isso. Pode pedir de outro jeito?',
+      ),
     );
+  }
+
+  /** [answered] as the turn's reply: the surface, and the same in old shapes. */
+  private _reply(
+    turn: Turn,
+    answered: Answered,
+  ): Omit<TurnResult, 'conversationId'> {
+    const { blocks, plan } = answered;
+    const choices = blocks.flatMap((it) =>
+      it.kind === 'choices' ? it.options : [],
+    );
+
+    return {
+      ui: toA2ui(`turn-${randomUUID().slice(0, 8)}`, blocks),
+      reply: summary(turn.board, blocks),
+      steps: dedupe(turn.steps),
+      ...(plan === undefined ? {} : { plan: planView(plan) }),
+      options: legacyOptions(choices),
+      blocks,
+      leaks: turn.leaks,
+      raw: turn.raw,
+    };
+  }
+
+  /** Words the model wrote outside `answer`: a caption with no limit. */
+  private _plain(turn: Turn, content: string): Answered {
+    const text = this._say(turn, content);
+    return {
+      blocks: [
+        {
+          kind: 'caption',
+          text: text === '' ? 'Não entendi. Pode dizer de outro jeito?' : text,
+        },
+      ],
+    };
+  }
+
+  /** [text] as the person may read it, counting what had to be taken out. */
+  private _say(turn: Turn, text: string): string {
+    turn.raw.push(text);
+    const said = speakable(text, turn.board);
+    turn.leaks += said.leaks;
+    return said.text;
   }
 
   private async _generate(
@@ -646,7 +757,7 @@ export class AgentService {
   private async _run(
     turn: Turn,
     call: ToolCall,
-  ): Promise<{ answer: unknown; proposal?: Proposal }> {
+  ): Promise<{ answer: unknown; answered?: Answered }> {
     let args: Record<string, unknown>;
     try {
       args = JSON.parse(call.function.arguments) as Record<string, unknown>;
@@ -679,31 +790,32 @@ export class AgentService {
         turn.steps.push(read.step);
         return { answer: read.snapshot };
       }
-      case 'propose_plan': {
+      case 'read_cards': {
+        const { board } = turn;
+        const refs = (Array.isArray(args.refs) ? args.refs : [])
+          .filter((it): it is string => typeof it === 'string')
+          .slice(0, MAX_CARDS);
+        if (refs.length === 0) {
+          return { answer: { error: 'read_cards needs refs, e.g. ["p1"].' } };
+        }
+        const titles = refs
+          .map((ref) => board.title(ref))
+          .filter((it) => it !== undefined);
+        if (titles.length > 0) turn.steps.push(`Li ${titles.join(', ')}`);
+        return {
+          answer: {
+            cards: refs.flatMap((ref) => this._read(board, ref)).join('\n'),
+          },
+        };
+      }
+      case 'answer': {
         try {
-          const proposal = await this._propose(turn, args);
-          if (proposal.kind === 'doubt') {
-            return { answer: { asked: proposal.reply }, proposal };
+          const answered = await this._compose(turn, args);
+          if ('error' in answered) {
+            turn.trace.log('agent.emptyAnswer', { error: answered.error });
+            return { answer: { error: answered.error } };
           }
-
-          const { board } = turn;
-          return {
-            answer: {
-              ok: true,
-              changes: proposal.plan.changes.map((it) => ({
-                title: it.title,
-                at:
-                  it.at === undefined ? 'backlog' : board.when(new Date(it.at)),
-              })),
-              // What the person will see pushed later, to ask them about.
-              pushed: proposal.plan.pushed.map((it) => ({
-                title: it.title,
-                from: board.when(new Date(it.before)),
-                to: board.when(new Date(it.at)),
-              })),
-            },
-            proposal,
-          };
+          return { answer: { ok: true }, answered };
         } catch (error) {
           if (!(error instanceof Refusal || error instanceof HttpException)) {
             throw error;
@@ -715,6 +827,254 @@ export class AgentService {
       default:
         return { answer: { error: `Unknown tool ${call.function.name}` } };
     }
+  }
+
+  /**
+   * The model's `answer`, bound: each block it chose, filled in from the
+   * board and the dry runs. A plan that fails is refused back to the model,
+   * which answers again; any other block that breaks a limit is dropped and
+   * the rest drawn. Only an answer with nothing left goes back.
+   */
+  private async _compose(
+    turn: Turn,
+    args: Record<string, unknown>,
+  ): Promise<Answered | { error: string }> {
+    const { board, trace } = turn;
+    const dropped: string[] = [];
+    const raw = (Array.isArray(args.blocks) ? args.blocks : []).filter(
+      (it): it is Record<string, unknown> =>
+        typeof it === 'object' && it !== null,
+    );
+    const items = raw.slice(0, MAX_BLOCKS);
+    if (raw.length > MAX_BLOCKS) {
+      dropped.push(`only ${MAX_BLOCKS} blocks are drawn`);
+    }
+
+    // The plan first: the choices beside it answer the same question.
+    const planned = items.find((it) => it.type === 'plan');
+    let plan: Plan | undefined;
+    const beside: Choice[] = [];
+    if (planned !== undefined) {
+      const proposal = await this._propose(turn, planned);
+      if (proposal.kind === 'doubt') {
+        // A doubt replaces the plan, and everything else with it.
+        trace.log('agent.doubt', { options: proposal.options.length });
+        this._asked.set(turn.conversationId, proposal.options[0].plan.id);
+        return {
+          blocks: [
+            { kind: 'caption', text: proposal.reply },
+            {
+              kind: 'choices',
+              options: proposal.options.map((it) => ({
+                label: it.label,
+                plan: it.plan,
+              })),
+            },
+          ],
+        };
+      }
+      plan = proposal.plan;
+      beside.push(
+        ...proposal.options.map((it) => ({ label: it.label, plan: it.plan })),
+      );
+    }
+    const group = plan?.id ?? randomUUID();
+
+    const blocks: Block[] = [];
+    let focus: Block | undefined;
+    for (const item of items) {
+      let block: Block | undefined;
+      switch (item.type) {
+        case 'plan':
+          if (item !== planned) dropped.push('only one plan is drawn');
+          else if (plan !== undefined)
+            block = { kind: 'plan', plan: planView(plan) };
+          break;
+        case 'choices':
+          block = await this._choices(turn, item, group, dropped);
+          break;
+        case 'day':
+          block = this._dayBlock(turn, item, dropped);
+          break;
+        case 'cards':
+          block = this._cardsBlock(turn, item, dropped);
+          break;
+        case 'project': {
+          const project =
+            typeof item.ref === 'string' ? board.project(item.ref) : undefined;
+          if (project === undefined) {
+            dropped.push(`no project ${String(item.ref)}`);
+          } else {
+            block = { kind: 'project', project: peekProject(board, project) };
+          }
+          break;
+        }
+        default:
+          dropped.push(`unknown block type ${String(item.type)}`);
+      }
+      if (block === undefined) continue;
+      blocks.push(block);
+      if (item.focus === true && focus === undefined) focus = block;
+    }
+
+    // Deixar para depois sits beside the plan, with the model's own choices
+    // when it gave some.
+    if (beside.length > 0) {
+      const choices = blocks.find((it) => it.kind === 'choices');
+      if (choices !== undefined) {
+        choices.options.push(...beside.slice(0, 3 - choices.options.length));
+      } else {
+        const at = blocks.findIndex((it) => it.kind === 'plan');
+        blocks.splice(at + 1, 0, { kind: 'choices', options: beside });
+      }
+    }
+
+    let caption: Block | undefined;
+    if (typeof args.caption === 'string' && args.caption.trim() !== '') {
+      const text = this._say(turn, args.caption);
+      if (text.length > MAX_CAPTION) {
+        dropped.push(`the caption is over ${MAX_CAPTION} characters`);
+      } else {
+        caption = { kind: 'caption', text };
+      }
+    }
+
+    if (dropped.length > 0) trace.log('agent.dropped', { dropped });
+    if (blocks.length === 0 && caption === undefined) {
+      return {
+        error: `Nothing could be drawn${dropped.length === 0 ? '' : `: ${dropped.join('; ')}`}. Call answer again.`,
+      };
+    }
+
+    const offered = blocks
+      .flatMap((it) => (it.kind === 'choices' ? it.options : []))
+      .find((it) => it.plan !== undefined);
+    if (offered?.plan !== undefined) {
+      this._asked.set(turn.conversationId, offered.plan.id);
+    }
+
+    return {
+      blocks: [
+        ...(caption === undefined ? [] : [caption]),
+        ...(focus === undefined ? [] : [focus]),
+        ...blocks.filter((it) => it !== focus),
+      ],
+      plan,
+    };
+  }
+
+  /** A choices block: 2–3 answers, each its own dry run or words to say. */
+  private async _choices(
+    turn: Turn,
+    item: Record<string, unknown>,
+    group: string,
+    dropped: string[],
+  ): Promise<Block | undefined> {
+    const raw = (Array.isArray(item.options) ? item.options : []).filter(
+      (it): it is Record<string, unknown> =>
+        typeof it === 'object' && it !== null,
+    );
+    const options: Choice[] = [];
+
+    for (const it of raw.slice(0, 3)) {
+      const label = heading(
+        this._say(turn, typeof it.label === 'string' ? it.label : ''),
+      );
+      if (label === '') {
+        dropped.push('a choice with no label');
+        continue;
+      }
+      const changes = Array.isArray(it.changes) ? it.changes : [];
+      if (changes.length > 0) {
+        try {
+          const drafts = changes.map((change) =>
+            this._draft(turn, change as Record<string, unknown>, false),
+          );
+          for (const draft of drafts) turn.steps.push(...draft.facts);
+          const plan = await this._rehearse(turn, drafts, group);
+          options.push({ label, plan: planView(plan) });
+        } catch (error) {
+          if (!(error instanceof Refusal || error instanceof HttpException)) {
+            throw error;
+          }
+          dropped.push(`choice "${label}": ${error.message}`);
+        }
+      } else if (typeof it.say === 'string' && it.say.trim() !== '') {
+        options.push({ label, say: this._say(turn, it.say).slice(0, 200) });
+      } else {
+        dropped.push(`choice "${label}" needs changes or say`);
+      }
+    }
+
+    if (options.length < 2) {
+      dropped.push('choices need 2 or 3 options that hold');
+      return undefined;
+    }
+    return { kind: 'choices', options };
+  }
+
+  /** A day block: a slice of one day within reach, with its free room. */
+  private _dayBlock(
+    turn: Turn,
+    item: Record<string, unknown>,
+    dropped: string[],
+  ): Block | undefined {
+    const { board } = turn;
+    const said = typeof item.day === 'string' ? item.day.trim() : 'hoje';
+    const day = board.dayOf(said === '' ? 'hoje' : said);
+    if (day === undefined) {
+      dropped.push(`day "${said}" is out of reach`);
+      return undefined;
+    }
+
+    const block = peekDay(
+      board,
+      day,
+      minuteOf(item.from),
+      minuteOf(item.to),
+      item.free !== false,
+    );
+    if (Date.parse(block.from) >= Date.parse(block.to)) {
+      dropped.push(
+        `${said} ${String(item.from)}–${String(item.to)} is outside the working day`,
+      );
+      return undefined;
+    }
+    return block;
+  }
+
+  /** A cards block: up to 8 cards by ref, under the model's heading. */
+  private _cardsBlock(
+    turn: Turn,
+    item: Record<string, unknown>,
+    dropped: string[],
+  ): Block | undefined {
+    const { board } = turn;
+    const refs = (Array.isArray(item.refs) ? item.refs : []).filter(
+      (it): it is string => typeof it === 'string',
+    );
+    const cards = refs
+      .map((ref) => {
+        const card = board.ref(ref);
+        if (card === undefined) dropped.push(`no card ${ref}`);
+        return card;
+      })
+      .filter((it) => it !== undefined)
+      .slice(0, MAX_CARDS);
+    if (cards.length === 0) {
+      dropped.push('a cards block with no card');
+      return undefined;
+    }
+
+    const title =
+      typeof item.title === 'string' && item.title.trim() !== ''
+        ? heading(this._say(turn, item.title))
+        : undefined;
+    return {
+      kind: 'cards',
+      ...(title === undefined || title === '' ? {} : { title }),
+      cards: cards.map((card) => peekCard(board, card, item.notes === true)),
+    };
   }
 
   /**
@@ -746,7 +1106,6 @@ export class AgentService {
     if (doubt !== undefined) return doubt;
 
     const plan = await this._rehearse(turn, drafts);
-    const reply = typeof args.reply === 'string' ? args.reply.trim() : '';
 
     // Something new with no hour said: the hour is the agent's proposal,
     // and the backlog is always one tap away.
@@ -776,7 +1135,7 @@ export class AgentService {
       options.push({ label: 'Deixar para depois', plan: planView(backlog) });
     }
 
-    return { kind: 'plan', plan, options, reply };
+    return { kind: 'plan', plan, options };
   }
 
   /**
@@ -1361,6 +1720,23 @@ function clampInt(
   if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
 
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/** A heading or a label, cut to fit. */
+function heading(text: string): string {
+  const said = text.trim();
+  return said.length <= MAX_HEADING
+    ? said
+    : `${said.slice(0, MAX_HEADING - 1).trimEnd()}…`;
+}
+
+/** "13:30" as minutes after midnight ("24:00" is the end of the day). */
+function minuteOf(value: unknown): number | undefined {
+  if (typeof value !== 'string') return undefined;
+  const time = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (time === null) return undefined;
+  const minute = Number(time[1]) * 60 + Number(time[2]);
+  return Number(time[2]) > 59 || minute > 24 * 60 ? undefined : minute;
 }
 
 function dedupe(lines: string[]): string[] {

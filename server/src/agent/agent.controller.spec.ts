@@ -86,6 +86,18 @@ function call(name: string, args: object): ModelOutcome {
   };
 }
 
+/** The model's answer with one plan block, as `propose_plan` used to take it. */
+function propose(args: {
+  data?: object;
+  changes: object[];
+  reply?: string;
+}): ModelOutcome {
+  return call('answer', {
+    ...(args.reply === undefined ? {} : { caption: args.reply }),
+    blocks: [{ type: 'plan', data: args.data, changes: args.changes }],
+  });
+}
+
 function say(content: string): Step {
   return () => ({ kind: 'final', content });
 }
@@ -102,6 +114,34 @@ function refOf(messages: ChatMessage[], title: string): string {
 function lastTool(messages: ChatMessage[]): Record<string, unknown> {
   const tool = [...messages].reverse().find((it) => it.role === 'tool');
   return JSON.parse(tool?.content ?? '{}') as Record<string, unknown>;
+}
+
+/** The components of a turn's surface, in order, each with its data. */
+function drawn(
+  reply: AgentReply,
+): { component: string; [key: string]: unknown }[] {
+  const components = reply.ui.flatMap((it) =>
+    'updateComponents' in it ? it.updateComponents.components : [],
+  ) as { id: string; component: string; children?: string[] }[];
+  const data = (
+    reply.ui.find((it) => 'updateDataModel' in it) as {
+      updateDataModel: { value: Record<string, unknown> };
+    }
+  ).updateDataModel.value;
+  const root = components.find((it) => it.id === 'root')!;
+
+  return root.children!.map((id) => {
+    const it = components.find((c) => c.id === id)!;
+    return { ...it, data: data[id], items: data[`${id}items`] };
+  });
+}
+
+/** The ref of the project titled [title], in what the model read. */
+function projectRef(messages: ChatMessage[], title: string): string {
+  const read = messages.map((it) => it.content).join('\n');
+  const found = new RegExp(`\\b(p\\d+) · ${title} ·`).exec(read);
+  if (found === null) throw new Error(`No project "${title}"`);
+  return found[1];
 }
 
 beforeAll(() => {
@@ -189,7 +229,7 @@ describe('the agent', () => {
   function scriptStudyPlan(): void {
     model.steps = [
       (messages) =>
-        call('propose_plan', {
+        propose({
           data: { what: 'estudo', when: 'amanhã de manhã', minutes: 120 },
           changes: [
             {
@@ -285,7 +325,7 @@ describe('the agent', () => {
     await task('Responder e-mails', 30);
     model.steps = [
       (messages) =>
-        call('propose_plan', {
+        propose({
           data: { what: 'revisar proposta', relation: 'entre' },
           changes: [
             {
@@ -297,16 +337,6 @@ describe('the agent', () => {
           ],
           reply: 'Fica entre os dois.',
         }),
-      (messages) => {
-        expect(lastTool(messages).pushed).toEqual([
-          {
-            title: 'Responder e-mails',
-            from: 'hoje 10:35',
-            to: 'hoje 11:25',
-          },
-        ]);
-        return { kind: 'final', content: 'Os e-mails descem. Pode ser?' };
-      },
     ];
 
     const reply = (await ask('Revisar proposta entre o artigo e os e-mails'))
@@ -318,7 +348,15 @@ describe('the agent', () => {
       before: 'Responder e-mails',
     });
     expect(change.at).toBe(new Date('2026-03-10T10:35:00-03:00').toISOString());
-    expect(reply.reply).toBe('Os e-mails descem. Pode ser?');
+    // What it pushes is on the card, which asks: one call.
+    expect(reply.reply).toBe('Fica entre os dois.');
+    expect(reply.plan!.pushed.map((it) => [it.title, it.at])).toEqual([
+      [
+        'Responder e-mails',
+        new Date('2026-03-10T11:25:00-03:00').toISOString(),
+      ],
+    ]);
+    expect(model.seen).toHaveLength(1);
 
     const after = (await post(`/agent/plans/${reply.plan!.id}/apply?days=3`))
       .body as Timeline;
@@ -333,7 +371,7 @@ describe('the agent', () => {
     await event('Dentista', '2026-03-10T16:00:00-03:00');
     model.steps = [
       (messages) =>
-        call('propose_plan', {
+        propose({
           data: { what: 'dentista', when: 'amanhã às 9' },
           changes: [
             {
@@ -366,7 +404,7 @@ describe('the agent', () => {
     await event('Dentista', '2026-03-10T16:00:00-03:00');
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: { what: 'dentista', when: 'amanhã às 9' },
           changes: [
             {
@@ -412,7 +450,7 @@ describe('the agent', () => {
   it('proposes an hour for something new with no hour said, and offers the backlog', async () => {
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: { what: 'treinar' },
           changes: [{ do: 'first_free', new: { title: 'Treinar' } }],
           reply: 'Que tal agora às 10:00? Está livre.',
@@ -446,7 +484,7 @@ describe('the agent', () => {
   it('hands a bad proposal back to the model instead of filing it', async () => {
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: {},
           changes: [{ do: 'at_hour', ref: 't9', day: 'amanhã', time: '09:00' }],
           reply: 'Feito.',
@@ -466,7 +504,7 @@ describe('the agent', () => {
   it('refuses an hour in the past', async () => {
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: {},
           changes: [
             {
@@ -491,7 +529,7 @@ describe('the agent', () => {
     await event('Reunião', '2026-03-10T15:00:00-03:00');
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: {},
           changes: [
             {
@@ -519,7 +557,7 @@ describe('the agent', () => {
     await event('Reunião', '2026-03-10T15:00:00-03:00');
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: {},
           changes: [
             {
@@ -550,7 +588,7 @@ describe('the agent', () => {
     await task('Responder e-mails', 30);
     model.steps = [
       () =>
-        call('propose_plan', {
+        propose({
           data: { what: 'dentista', when: '10:30' },
           changes: [
             {
@@ -616,7 +654,7 @@ describe('the agent', () => {
   function scriptStudyPlanFor(title: string): void {
     model.steps = [
       (messages) =>
-        call('propose_plan', {
+        propose({
           data: {},
           changes: [
             {
@@ -665,7 +703,7 @@ describe('the agent', () => {
       /The person is on this task’s page:\n {2}t1 · Escrever relatório · task/,
     );
     expect(context).toContain(
-      '  Começar pelos números.\n  \n  Mandar até sexta.',
+      '    Começar pelos números.\n    \n    Mandar até sexta.',
     );
     expect(context).toMatch(/Request: Quanto tempo isso leva\?$/);
   });
@@ -693,7 +731,11 @@ describe('the agent', () => {
 
     const context = model.seen[0][model.seen[0].length - 1].content;
     expect(context).toContain(
-      'The person is on the page of the project “Mudança”, due 2026-04-01.\nNotes:\n  Caixas no sábado.\nIts tasks:\n  b1 · Orçar frete · backlog task · 30 min',
+      'The person is on this project’s page:\n  p1 · project “Mudança”, due 2026-04-01\n  Notes:\n    Caixas no sábado.\n  Its tasks:\n    b1 · Orçar frete · backlog task · 30 min · project Mudança',
+    );
+    // From anywhere, the board's index names it.
+    expect(context).toContain(
+      'Projects (read_cards with a project ref reads its notes and every task):\n  p1 · Mudança · due 01/04 · 1 open tasks, 0 with an hour',
     );
   });
 
@@ -899,5 +941,261 @@ describe('the agent', () => {
     expect((response.body as { message: string }).message).toContain(
       'não está conectada',
     );
+  });
+  describe('the answer as a surface', () => {
+    it('answers the afternoon as a slice of the day, with two ways to tap', async () => {
+      await task('Ler artigo', 30);
+      await event('Reunião', '2026-03-10T14:00:00-03:00');
+      model.steps = [
+        (messages) =>
+          call('answer', {
+            caption: 'Sua tarde tem duas janelas.',
+            blocks: [
+              { type: 'day', day: 'hoje', from: '13:00', to: '18:00' },
+              {
+                type: 'choices',
+                options: [
+                  {
+                    label: 'Ler às 15:30',
+                    changes: [
+                      {
+                        do: 'at_hour',
+                        ref: refOf(messages, 'Ler artigo'),
+                        day: 'hoje',
+                        time: '15:30',
+                      },
+                    ],
+                  },
+                  { label: 'Só amanhã', say: 'Deixa o artigo para amanhã' },
+                ],
+              },
+            ],
+          }),
+      ];
+
+      const reply = (await ask('Como está minha tarde?')).body as AgentReply;
+
+      expect(reply.ui[0]).toEqual({
+        version: 'v0.9',
+        createSurface: {
+          surfaceId: expect.stringMatching(/^turn-/) as string,
+          catalogId: 'https://lunna.pietroteruya.dev/a2ui/v1/catalog.json',
+        },
+      });
+      const [caption, slice, choices] = drawn(reply);
+      expect(drawn(reply).map((it) => it.component)).toEqual([
+        'Caption',
+        'DayPeek',
+        'Choices',
+      ]);
+      expect(caption.text).toBe('Sua tarde tem duas janelas.');
+      const at = (hhmm: string) =>
+        new Date(`2026-03-10T${hhmm}:00-03:00`).toISOString();
+      expect(slice.items).toEqual([
+        { kind: 'free', title: '', start: at('13:00'), end: at('13:55') },
+        {
+          kind: 'fixed',
+          title: 'Reunião',
+          start: at('14:00'),
+          end: at('15:00'),
+        },
+        { kind: 'free', title: '', start: at('15:05'), end: at('18:00') },
+      ]);
+
+      const [read, later] = choices.data as {
+        label: string;
+        plan?: { id: string };
+        say?: string;
+        action: { event: { name: string; context: object } };
+      }[];
+      expect(read.action.event).toEqual({
+        name: 'choose',
+        context: { planId: read.plan!.id },
+      });
+      expect(later).toMatchObject({
+        say: 'Deixa o artigo para amanhã',
+        action: {
+          event: {
+            name: 'choose',
+            context: { say: 'Deixa o artigo para amanhã' },
+          },
+        },
+      });
+      // Older builds: only what carries a plan, and the caption as the reply.
+      expect(reply.options.map((it) => it.label)).toEqual(['Ler às 15:30']);
+      expect(reply.reply).toBe('Sua tarde tem duas janelas.');
+      expect(model.seen).toHaveLength(1);
+
+      const after = (await post(`/agent/plans/${read.plan!.id}/apply?days=3`))
+        .body as Timeline;
+      expect(
+        after.tasks.find((it) => it.title === 'Ler artigo')?.startTime,
+      ).toBe(at('15:30'));
+    });
+
+    it('draws a project from anywhere: its counts, and what comes next by hour first', async () => {
+      const projects = app.get(ProjectStore);
+      const tasks = app.get(TaskStore);
+      const project = await projects.insert(USER, {
+        title: 'Tese',
+        deadline: '2026-04-30',
+      });
+      const into = async (title: string, backlog: boolean, done = false) => {
+        const body = (await task(title, 45, backlog)).body as Timeline;
+        const id = [...body.tasks, ...body.backlog].find(
+          (it) => it.title === title,
+        )!.id;
+        await tasks.update(USER, {
+          ...(await tasks.get(USER, id))!,
+          projectId: project.id,
+          ...(done ? { doneAt: NOW.toISOString(), backlog: false } : {}),
+        });
+      };
+      await into('Revisar capítulo 1', true, true);
+      await into('Capítulo 2', true);
+      await into('Bibliografia', true);
+      await into('Reunião com orientador', false);
+      model.steps = [
+        (messages) =>
+          call('answer', {
+            blocks: [{ type: 'project', ref: projectRef(messages, 'Tese') }],
+          }),
+      ];
+
+      const reply = (await ask('Como está a Tese?')).body as AgentReply;
+
+      const [peek] = drawn(reply);
+      expect(peek.component).toBe('ProjectPeek');
+      expect(peek.data).toMatchObject({
+        id: project.id,
+        title: 'Tese',
+        deadline: '2026-04-30',
+        done: 1,
+        total: 4,
+      });
+      expect(
+        (peek.data as { next: { title: string; at?: string }[] }).next.map(
+          (it) => [it.title, it.at !== undefined],
+        ),
+      ).toEqual([
+        ['Reunião com orientador', true],
+        ['Capítulo 2', false],
+        ['Bibliografia', false],
+      ]);
+      // No caption: the reply in words is written by the server.
+      expect(reply.reply).toBe('Projeto Tese: 1 de 4 feitas.');
+    });
+
+    it('sends an answer with nothing left to draw back to the model', async () => {
+      await task('Ler artigo', 30);
+      model.steps = [
+        () =>
+          call('answer', {
+            caption:
+              'Uma frase longa demais que não cabe na legenda curta que o cartão tem para ela, e ainda continua por mais um pouco.',
+            blocks: [{ type: 'cards', refs: ['t99'] }],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toMatch(/^Nothing could be drawn: /);
+          return call('answer', {
+            blocks: [
+              {
+                type: 'cards',
+                title: 'Hoje',
+                refs: [refOf(messages, 'Ler artigo')],
+              },
+            ],
+          });
+        },
+      ];
+
+      const reply = (await ask('O que tenho hoje?')).body as AgentReply;
+
+      const [cards] = drawn(reply);
+      expect(cards).toMatchObject({ component: 'Cards', title: 'Hoje' });
+      expect((cards.data as { title: string }[]).map((it) => it.title)).toEqual(
+        ['Ler artigo'],
+      );
+    });
+
+    it('names cards by their titles in what the person reads', async () => {
+      await task('Ler artigo', 30, true);
+      model.steps = [
+        (messages) =>
+          call('answer', {
+            caption: `A ${refOf(messages, 'Ler artigo')} está no backlog.`,
+            blocks: [{ type: 'cards', refs: [refOf(messages, 'Ler artigo')] }],
+          }),
+      ];
+
+      const reply = (await ask('Cadê o artigo?')).body as AgentReply;
+
+      expect(reply.reply).toBe('A Ler artigo está no Depois eu priorizo.');
+    });
+
+    it('keeps a ref on the same card from turn to turn', async () => {
+      await event('Reunião', '2026-03-10T16:00:00-03:00');
+      model.steps = [say('Certo.')];
+      const first = (await ask('Oi')).body as AgentReply;
+      // Earlier than the Reunião: renumbered by hour, it would be e1.
+      await event('Dentista', '2026-03-10T12:00:00-03:00');
+      model.steps = [say('Certo.')];
+
+      await post('/agent/turn', {
+        conversationId: first.conversationId,
+        messages: [
+          { role: 'user', text: 'Oi' },
+          { role: 'assistant', text: 'Certo.' },
+          { role: 'user', text: 'E agora?' },
+        ],
+      });
+
+      const context = model.seen[1][model.seen[1].length - 1].content;
+      expect(context).toContain('e1 · Reunião');
+      expect(context).toContain('e2 · Dentista');
+    });
+
+    it('reaches a task off the board through its project, and moves it like any other', async () => {
+      const projects = app.get(ProjectStore);
+      const tasks = app.get(TaskStore);
+      const project = await projects.insert(USER, { title: 'Mudança' });
+      for (let i = 1; i <= 30; i++) await task(`Coisa ${i}`, 15, true);
+      const body = (await task('Orçar frete', 30, true)).body as Timeline;
+      const id = body.backlog.find((it) => it.title === 'Orçar frete')!.id;
+      await tasks.update(USER, {
+        ...(await tasks.get(USER, id))!,
+        projectId: project.id,
+      });
+      model.steps = [
+        (messages) => {
+          // Past the backlog's first 30, it is not on the board.
+          expect(() => refOf(messages, 'Orçar frete')).toThrow();
+          return call('read_cards', {
+            refs: [projectRef(messages, 'Mudança')],
+          });
+        },
+        (messages) => {
+          expect(lastTool(messages).cards).toContain(
+            'b31 · Orçar frete · backlog task · 30 min · project Mudança',
+          );
+          return propose({
+            data: { what: 'orçar frete', when: 'amanhã às 9' },
+            changes: [
+              { do: 'at_hour', ref: 'b31', day: 'amanhã', time: '09:00' },
+            ],
+          });
+        },
+      ];
+
+      const reply = (await ask('Põe o frete da mudança amanhã às 9'))
+        .body as AgentReply;
+
+      expect(reply.steps).toContain('Li Mudança');
+      const after = (await post(`/agent/plans/${reply.plan!.id}/apply?days=3`))
+        .body as Timeline;
+      expect(
+        after.tasks.find((it) => it.title === 'Orçar frete')?.startTime,
+      ).toBe(new Date(`${TOMORROW}T09:00:00-03:00`).toISOString());
+    });
   });
 });

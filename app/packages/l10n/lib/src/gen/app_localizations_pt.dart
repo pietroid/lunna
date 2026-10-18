@@ -1095,4 +1095,81 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dictationDiscard => 'Descartar este parágrafo';
+
+  @override
+  String get agentApplyDelete => 'Apagar';
+
+  @override
+  String get agentChangeRenamed => 'novo nome';
+
+  @override
+  String get agentChangeLength => 'duração';
+
+  @override
+  String get agentChangeNotes => 'notas';
+
+  @override
+  String get agentChangeDone => 'concluída';
+
+  @override
+  String get agentChangeRemove => 'apagar';
+
+  @override
+  String get agentChangeNewProject => 'novo projeto';
+
+  @override
+  String get agentChangeDeadline => 'prazo';
+
+  @override
+  String get agentChangeProjectDone => 'projeto concluído';
+
+  @override
+  String agentChangeRemoveProject(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'apagar o projeto e $count tarefas',
+      one: 'apagar o projeto e 1 tarefa',
+      zero: 'apagar o projeto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agentFree(String span) {
+    return '$span livre';
+  }
+
+  @override
+  String agentCardsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarefas',
+      one: '1 tarefa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agentProjectDone(int done, int total) {
+    return '$done de $total feitas';
+  }
+
+  @override
+  String get agentProjectNext => 'Próximas';
+
+  @override
+  String agentProjectMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'mais $count',
+      one: 'mais 1',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agentProjectOpen => 'Abrir projeto';
 }

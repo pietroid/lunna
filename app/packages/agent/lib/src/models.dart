@@ -1,3 +1,4 @@
+import 'package:agent/src/surface.dart';
 import 'package:equatable/equatable.dart';
 
 /// {@template agent_subject}
@@ -39,18 +40,50 @@ enum PlanChangeKind {
   moveEvent,
 
   /// A task put in Depois eu priorizo, or written down there: no hour.
-  toBacklog;
+  toBacklog,
+
+  /// A task or a block renamed, or given another length.
+  edit,
+
+  /// Text added at the end of a card's or a project's notes.
+  note,
+
+  /// A task or a block ticked off.
+  done,
+
+  /// A task or a block deleted.
+  remove,
+
+  /// A new project, with the tasks it starts with.
+  addProject,
+
+  /// A project renamed, given another deadline, or closed.
+  editProject,
+
+  /// A project deleted, and the tasks of its backlog with it.
+  removeProject;
 
   static PlanChangeKind fromWire(String? value) => switch (value) {
     'add_task' => addTask,
     'add_event' => addEvent,
     'move_event' => moveEvent,
     'to_backlog' => toBacklog,
+    'edit' => edit,
+    'note' => note,
+    'done' => done,
+    'remove' => remove,
+    'add_project' => addProject,
+    'edit_project' => editProject,
+    'remove_project' => removeProject,
     _ => moveTask,
   };
 
   /// Whether it adds something rather than moving it.
-  bool get adds => this == addTask || this == addEvent;
+  bool get adds => this == addTask || this == addEvent || this == addProject;
+
+  /// Whether it deletes something: drawn first, and the plan's button says
+  /// so.
+  bool get deletes => this == remove || this == removeProject;
 
   /// Whether it is about a fixed block.
   bool get fixed => this == addEvent || this == moveEvent;
@@ -70,6 +103,13 @@ class PlanChange extends Equatable {
     this.before,
     this.routine = false,
     this.place,
+    this.was,
+    this.wasMinutes,
+    this.note,
+    this.project,
+    this.deadline,
+    this.wasDeadline,
+    this.takes = const [],
   });
 
   factory PlanChange.fromJson(Map<String, dynamic> json) {
@@ -111,6 +151,28 @@ class PlanChange extends Equatable {
   /// of its own: [at] is then only where the queue packs it today.
   final PlanPlace? place;
 
+  /// The name it had, when [kind] renames it.
+  final String? was;
+
+  /// The length it had, when [kind] gives it another.
+  final int? wasMinutes;
+
+  /// The text a [PlanChangeKind.note] adds, in full.
+  final String? note;
+
+  /// The project it belongs to.
+  final String? project;
+
+  /// A project's deadline, as the change leaves it.
+  final DateTime? deadline;
+
+  /// A project's deadline before the change.
+  final DateTime? wasDeadline;
+
+  /// What goes with it: the tasks a deleted project takes along, or the ones
+  /// a new project starts with.
+  final List<String> takes;
+
   DateTime? get end => at?.add(Duration(minutes: minutes));
 
   @override
@@ -123,6 +185,13 @@ class PlanChange extends Equatable {
     before,
     routine,
     place,
+    was,
+    wasMinutes,
+    note,
+    project,
+    deadline,
+    wasDeadline,
+    takes,
   ];
 }
 
@@ -267,19 +336,27 @@ class AgentPlan extends Equatable {
 /// {@endtemplate}
 class QuickReply extends Equatable {
   /// {@macro quick_reply}
-  const QuickReply({required this.label, required this.plan});
+  const QuickReply({required this.label, this.plan, this.say});
 
-  factory QuickReply.fromJson(Map<String, dynamic> json) => QuickReply(
-    label: json['label'] as String? ?? '',
-    plan: AgentPlan.fromJson(json['plan'] as Map<String, dynamic>),
-  );
+  factory QuickReply.fromJson(Map<String, dynamic> json) {
+    final plan = json['plan'] as Map<String, dynamic>?;
+    return QuickReply(
+      label: json['label'] as String? ?? '',
+      plan: plan == null ? null : AgentPlan.fromJson(plan),
+      say: json['say'] as String?,
+    );
+  }
 
   final String label;
 
-  final AgentPlan plan;
+  /// The plan a tap applies, with no other turn.
+  final AgentPlan? plan;
+
+  /// Without a plan: what a tap says, as the user's next message.
+  final String? say;
 
   @override
-  List<Object?> get props => [label, plan];
+  List<Object?> get props => [label, plan, say];
 }
 
 /// {@template agent_reply}
@@ -292,11 +369,23 @@ class AgentReply extends Equatable {
     this.steps = const [],
     this.plan,
     this.options = const [],
+    this.blocks = const [],
   });
 
   factory AgentReply.fromJson(Map<String, dynamic> json) {
-    final plan = json['plan'] as Map<String, dynamic>?;
+    final steps = (json['steps'] as List<dynamic>? ?? []).cast<String>();
+    if (json['ui'] case final List<dynamic> ui when ui.isNotEmpty) {
+      final surface = AgentSurface.decode(ui);
+      return AgentReply(
+        text: json['reply'] as String? ?? '',
+        steps: steps,
+        plan: surface.plan,
+        options: surface.options,
+        blocks: surface.blocks,
+      );
+    }
 
+    final plan = json['plan'] as Map<String, dynamic>?;
     return AgentReply(
       text: json['reply'] as String? ?? '',
       steps: (json['steps'] as List<dynamic>? ?? []).cast<String>(),
@@ -318,11 +407,15 @@ class AgentReply extends Equatable {
   /// beside [plan].
   final List<QuickReply> options;
 
+  /// The answer's surface, block by block. Empty for a reply from before
+  /// the catalog, which draws [text], [plan] and [options] as they come.
+  final List<AnswerBlock> blocks;
+
   /// Every plan the reply can make: its own, then its options'.
-  Iterable<AgentPlan> get plans => [?plan, for (final it in options) it.plan];
+  Iterable<AgentPlan> get plans => [?plan, for (final it in options) ?it.plan];
 
   @override
-  List<Object?> get props => [text, steps, plan, options];
+  List<Object?> get props => [text, steps, plan, options, blocks];
 }
 
 /// {@template agent_suggestion}

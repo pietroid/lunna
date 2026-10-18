@@ -1,11 +1,16 @@
 import 'dart:async';
 
 import 'package:agent/src/agent_cubit.dart';
+import 'package:agent/src/agent_links.dart';
 import 'package:agent/src/agent_repository.dart';
 import 'package:agent/src/models.dart';
+import 'package:agent/src/surface.dart';
 import 'package:agent/src/view/apply_plan.dart';
+import 'package:agent/src/view/cards_peek.dart';
+import 'package:agent/src/view/day_peek.dart';
 import 'package:agent/src/view/failure_note.dart';
 import 'package:agent/src/view/plan_card.dart';
+import 'package:agent/src/view/project_peek.dart';
 import 'package:agent/src/view/quick_replies.dart';
 import 'package:agent/src/view/voice_bar.dart';
 import 'package:agent/src/voice/voice_cubit.dart';
@@ -32,6 +37,7 @@ Future<void> showAgentSheet(
   final repository = context.read<AgentRepository>();
   final timeline = context.read<TimelineBloc>();
   final voice = context.read<VoiceCubit>();
+  final links = AgentLinks.of(context);
   // Every opening is a new conversation; the last one goes above it.
   agent.open(about: about);
 
@@ -45,6 +51,7 @@ Future<void> showAgentSheet(
       value: repository,
       child: MultiBlocProvider(
         providers: [
+          RepositoryProvider.value(value: links),
           BlocProvider.value(value: agent),
           BlocProvider.value(value: timeline),
           BlocProvider.value(value: voice),
@@ -435,6 +442,9 @@ class _Current extends StatelessWidget {
                         ReplyEntry() => _Answer(
                           entry: entry,
                           onAdjust: onAdjust,
+                          onSay: identical(entry, state.entries.last)
+                              ? onPick
+                              : null,
                         ),
                       },
                     if (state.busy) const _Thinking(),
@@ -615,84 +625,185 @@ String _clockText(Duration length) {
   return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 }
 
-/// What the agent did and said, and its plan.
+/// What the agent answered: its surface, block by block, and under
+/// Detalhes what it did to get there.
 ///
-/// Without [onAdjust] it belongs to a conversation already over: quieter,
-/// and its plan is one line saying what became of it.
+/// A reply from before the catalog has no blocks: its text, then its plan,
+/// then its choices. Without [onAdjust] it belongs to a conversation
+/// already over: quieter, and its plan is one line saying what became of it.
 class _Answer extends StatelessWidget {
-  const _Answer({required this.entry, this.onAdjust});
+  const _Answer({required this.entry, this.onAdjust, this.onSay});
 
   final ReplyEntry entry;
 
   final ValueChanged<AgentPlan>? onAdjust;
+
+  /// Says a choice's words as the next message; null once the conversation
+  /// has moved past this answer.
+  final ValueChanged<String>? onSay;
 
   @override
   Widget build(BuildContext context) {
     final reply = entry.reply;
     final plan = reply.plan;
     final tookOption = entry.chosen != null && entry.chosen != plan?.id;
+    final past = onAdjust == null;
+    final open = AgentLinks.of(context).openProject;
+    final about = context.read<AgentCubit>().about;
+
+    Widget? planned() => switch (plan) {
+      null => null,
+      _ when past => PlanLine(plan: plan, status: entry.status),
+      _ when tookOption => null,
+      _ => PlanCard(
+        plan: plan,
+        status: entry.status,
+        onAdjust: () => onAdjust!(plan),
+        onApply: () async {
+          final navigator = Navigator.of(context);
+          if (await applyAgentPlan(context, plan)) navigator.pop();
+        },
+      ),
+    };
+
+    // Offered beside the plan or instead of it; gone once the plan is.
+    Widget? choices() =>
+        reply.options.isEmpty || past || (entry.chosen != null && !tookOption)
+        ? null
+        : QuickReplies(
+            options: reply.options,
+            status: entry.status,
+            chosen: entry.chosen,
+            canSay: onSay != null,
+            onPick: (option) async {
+              final plan = option.plan;
+              if (plan == null) {
+                if (option.say case final say?) onSay?.call(say);
+                return;
+              }
+              final navigator = Navigator.of(context);
+              if (await applyAgentPlan(context, plan)) navigator.pop();
+            },
+          );
+
+    Widget caption(String text) => Text(
+      text,
+      style: past
+          ? AppTypography.body.copyWith(color: AppColors.ink2)
+          : AppTypography.body,
+    );
+
+    final blocks = reply.blocks.isEmpty
+        ? [
+            if (reply.text.isNotEmpty) caption(reply.text),
+            planned(),
+            choices(),
+          ]
+        : [
+            for (final block in reply.blocks)
+              switch (block) {
+                CaptionBlock(:final text) => caption(text),
+                PlanBlock() => planned(),
+                ChoicesBlock() => choices(),
+                DayBlock() => DayPeek(block: block),
+                CardsBlock() => CardsPeek(block: block),
+                ProjectBlock(:final project) => ProjectPeek(
+                  project: project,
+                  // On the project's own page, it is already open.
+                  onOpen: open == null || about?.projectId == project.id
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                          open(project.id);
+                        },
+                ),
+              },
+          ];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.s5),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final step in reply.steps)
+          for (final (i, block) in blocks.nonNulls.indexed) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.s3),
+            block,
+          ],
+          if (reply.steps.isNotEmpty) _Details(steps: reply.steps),
+        ],
+      ),
+    );
+  }
+}
+
+/// {@template agent_details}
+/// What the agent did to answer, one line a step ("Achei a Troca 2", "Livre
+/// hoje: 19:00–22:00"), folded under Detalhes: for whoever wonders how, never
+/// in the way of the answer.
+/// {@endtemplate}
+class _Details extends StatefulWidget {
+  const _Details({required this.steps});
+
+  final List<String> steps;
+
+  @override
+  State<_Details> createState() => _DetailsState();
+}
+
+class _DetailsState extends State<_Details> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final quiet = AppTypography.label.copyWith(color: AppColors.ink3);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+          onTap: () => setState(() => _open = !_open),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(context.l10n.agentDetails, style: quiet),
+                const SizedBox(width: AppSpacing.s1),
+                AnimatedRotation(
+                  turns: _open ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 160),
+                  child: const AppIcon(
+                    iconData: AppIcons.unfold,
+                    size: 12,
+                    color: AppColors.ink3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_open)
+          for (final step in widget.steps)
             Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+              padding: const EdgeInsets.only(bottom: AppSpacing.s1),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AppIcon(
-                    iconData: AppIcons.check,
-                    size: 14,
-                    color: AppColors.success,
+                  const Padding(
+                    padding: EdgeInsets.only(top: 3),
+                    child: AppIcon(
+                      iconData: AppIcons.check,
+                      size: 12,
+                      color: AppColors.ink3,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.s2),
-                  Expanded(child: Text(step, style: AppTypography.label)),
+                  Expanded(child: Text(step, style: quiet)),
                 ],
               ),
             ),
-          if (reply.steps.isNotEmpty) const SizedBox(height: AppSpacing.s1),
-          Text(
-            reply.text,
-            style: onAdjust == null
-                ? AppTypography.body.copyWith(color: AppColors.ink2)
-                : AppTypography.body,
-          ),
-          if (plan != null && onAdjust == null) ...[
-            const SizedBox(height: AppSpacing.s3),
-            PlanLine(plan: plan, status: entry.status),
-          ] else if (plan != null && !tookOption) ...[
-            const SizedBox(height: AppSpacing.s3),
-            PlanCard(
-              plan: plan,
-              status: entry.status,
-              onAdjust: () => onAdjust!(plan),
-              onApply: () async {
-                final navigator = Navigator.of(context);
-                if (await applyAgentPlan(context, plan)) navigator.pop();
-              },
-            ),
-          ],
-          // Offered beside the plan or instead of it; gone once the plan is.
-          if (reply.options.isNotEmpty &&
-              onAdjust != null &&
-              (entry.chosen == null || tookOption)) ...[
-            const SizedBox(height: AppSpacing.s3),
-            QuickReplies(
-              options: reply.options,
-              status: entry.status,
-              chosen: entry.chosen,
-              onPick: (option) async {
-                final navigator = Navigator.of(context);
-                if (await applyAgentPlan(context, option.plan)) {
-                  navigator.pop();
-                }
-              },
-            ),
-          ],
-        ],
-      ),
+      ],
     );
   }
 }

@@ -9,18 +9,27 @@ server (`server/src/agent/`) and calls a model through OpenRouter
 (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; with no key, `POST /agent/turn`
 answers 503 and nothing else changes).
 
-**Reads run, writes are only ever proposed.** The model has three tools:
+**Reads run, writes are only ever proposed.** The model has four tools:
 `read_timeline` (days not already in its context), `read_conversations`
-(earlier conversations, by words or day) and `propose_plan`. There is no
-tool that writes. The design behind this is the RFC
+(earlier conversations, by words or day), `read_cards` (a project whole, or
+a card's notes) and `answer`, which ends every turn. There is no tool that
+writes. The design behind this is the RFC
 [2026-10-16-agent-reliability](../research/2026-10-16-agent-reliability/README.md).
 
 **The model says what the person meant; the server schedules.** Every turn
 starts from one read of the day, the **board** (`board.ts`): each card under
-a short ref (`t3` a task, `e1` an event, `b2` the backlog), a date table
-(hoje, amanhã, the next six days, today marked over once its working day
-is), the cards of today, tomorrow, the day on screen and any card the request
-names, the backlog and the free room. It is written as the last user message,
+a short ref (`t3` a task, `e1` an event, `b2` the backlog, `d1` a done task),
+a date table (hoje, amanhã, the next six days, today marked over once its
+working day is), the cards of today, tomorrow, the day on screen and any
+card the request names, the backlog (its first 30), the index of open
+projects (`p2 · Tese · due 30/11 · 6 open tasks, 2 with an hour`), and the
+free room, in the app's lengths ("1h30"). Each card names its project.
+**A ref means the same card for the whole conversation**: the server keeps
+an `id → ref` map per conversation (in memory), and a card it has not shown
+yet gets the next number of its kind. `board.reach(task)` hands a ref to a
+task off the board (the 31st of the backlog, a done one), so `read_cards`
+on a project and the page's context name every task by a ref the gestures
+accept. It is written as the last user message,
 right before the request; the system prompt and tools stay byte-identical.
 The model never sees a UUID, never computes a date and never works out an
 hour from a place.
@@ -42,7 +51,7 @@ steps. Nothing begun is moved, nothing goes into the past, a task's hour
 stays inside the working day, and an event only ever takes an hour. Nothing
 is removed.
 
-**The dry run is the apply.** `propose_plan` makes the gestures on a sandbox
+**The dry run is the apply.** A plan block makes the gestures on a sandbox
 copy of the day (`sandbox`: memory stores seeded from the rows just read, a
 throwaway `EventLayoutService`), reads the day it leaves, and draws the plan
 from it: each change's hour, and `pushed`, the tasks the plan does not name
@@ -74,10 +83,10 @@ its reason in the reply, and a **Deixar para depois** quick reply that puts
 it in the backlog instead. Answers to one question are exclusive: once one
 plan of a group is applied, the others are refused.
 
-**One call when it can.** The model writes its reply inside `propose_plan`;
-when the plan holds and pushes nothing, that reply ends the turn. Refusals
-and pushes go back to it. Each turn logs `agent.turn` on its trace: calls,
-tokens (cached included), cost and ms.
+**One call when it can.** An `answer` whose plan holds ends the turn;
+only a refusal, or an answer with nothing to draw, goes back to the model
+(at most four round trips). Each turn logs `agent.turn` on its trace: calls,
+blocks, leaks, tokens (cached included), cost and ms.
 
 **Failures say what they were.** Every agent route answers an error as
 `{ message, kind, traceId }`: `model_down` (OpenRouter erred or timed out,
@@ -89,7 +98,7 @@ a refusal.
 
 | Route | What it does |
 |-------|--------------|
-| `POST /agent/turn` | `{ conversationId?, messages, day?, about? }` → `{ conversationId, reply, steps, plan?, options }`; writes the turn down, changes nothing on the day |
+| `POST /agent/turn` | `{ conversationId?, messages, day?, about? }` → `{ conversationId, ui, reply, steps, plan?, options }` (`ui` the A2UI surface; the rest for older builds); writes the turn down, changes nothing on the day |
 | `GET /agent/conversations?before=&limit=` | earlier conversations, most recent first, for the person to read back |
 | `GET /agent/suggestion` | the first backlog task that fits in the room left today, as a plan; no model |
 | `POST /agent/plans/:id/apply?days=` | the timeline, plus `touched`: the ids it changed; a plan or a quick reply's plan alike |
@@ -127,13 +136,63 @@ others. **Desfazer** (`UndoChip`) sits on the Lista/Calendário row while
 change made by hand forgets it, since undoing restores the cards as they
 were before the plan.
 
+## The answer is a surface
+
+**The model composes, the server binds.** `answer { caption?, blocks[] }`
+ends every turn. Each block names what to show, never what it says:
+
+| Block | The model chooses | The server fills or checks |
+|---|---|---|
+| `caption` (one) | the words, ≤ 80 chars, only for what the blocks can't show | `speakable`; longer is dropped |
+| `plan { data, changes }` (≤ 1) | the gestures | the dry run, as above; a refusal goes back to the model |
+| `choices { options: [{label, changes? \| say?}] }` (2–3) | labels, and each one's plan or words | each plan its own dry run, exclusive with the plan; a failing one is dropped |
+| `day { day, from?, to?, free? }` | which day and hours | the cards and free stretches of that slice |
+| `cards { refs, title?, notes? }` (≤ 8) | which cards, the order, the heading | title, hour, length, project, notes |
+| `project { ref }` | which project | `ProjectPeek`: counts, deadline, the next 3 open tasks (hour first) |
+| `focus: true` (any, one) | what matters most | drawn first |
+
+At most 6 blocks; a block that breaks a limit is dropped and the rest
+drawn; only an answer left with nothing goes back to the model. Headings
+and labels are cut at 40 characters. A plan that pushes tasks ends the turn
+like any other: the card shows what moves and asks. A doubt replaces the
+answer with its question and its two choices. Plain text from the model
+(it ignored the tool) becomes a caption.
+
+**Nothing the person reads has a ref.** `speakable(text, board)`
+(`speech.ts`) replaces every ref the board knows with its title and
+"backlog" with "Depois eu priorizo", on the caption, headings, labels and
+words to say, and the turn logs `agent.leak` with the count. The prompt asks
+for the same; `speakable` is the guarantee.
+
+**The wire.** `toA2ui` (`answer.ts`) writes one A2UI v0.9 surface per turn
+against our catalog (`https://lunna.pietroteruya.dev/a2ui/v1/catalog.json`):
+`createSurface`, `updateComponents` (a `Column` root, then `Caption`,
+`Plan`, `Choices`, `DayPeek`, `Cards`, `ProjectPeek`, each bound by path to
+its data) and `updateDataModel`. Actions: `apply`/`adjust` on the plan
+(`{planId}`), `choose` on each option (`{planId}` or `{say}`). The app reads
+it in one place, `AgentSurface.decode`, and draws a component it does not
+know as a caption when it has a text. Changing A2UI version is those two
+files. `reply` is still sent, the caption or one line per block written by
+the server: it is what the conversation keeps and what older builds draw,
+with `plan` and `options` (only the plan-carrying choices) for one release.
+
+**In the app.** A choice with a plan applies it, as quick replies did; one
+with `say` sends its words as the person's next message, and only on the
+latest answer. Steps are folded under *Detalhes*. *Abrir projeto* on a
+`ProjectPeek` opens its page through `AgentLinks`, which the shell provides
+(the agent package can't import projects); on that project's own page, and
+on pages pushed over the shell, it is not offered.
+
 ## Evals
 
 `npm run eval:agent -- --model <ids> --k 4 --budget 0.5` (in `server/`) runs
 `src/agent/evals/cases.ts` against a real model through OpenRouter: each case
 a day in memory, a frozen minute, what the person says, and a check on the
-day left after Aplicar (or that it asked, or that it only answered). It
-reports pass^k (cases that passed every run), pass@1, p50/p95 latency, calls
+day left after Aplicar (or that it asked, that it only answered, or that it
+drew a given block). A case may say several things, the turns of one
+conversation. Every run reads the model's raw words for refs and banned
+words (`leak@1`), and fails when one reached the person after `speakable`.
+It reports pass^k (cases that passed every run), pass@1, leak@1, p50/p95 latency, calls
 per turn and cost, and with `--out` keeps the failing transcripts. It stops a
 model once its cost reaches `--budget`. It costs money and is never in CI:
 run it before merging a change to the prompt, the tools or the model. The

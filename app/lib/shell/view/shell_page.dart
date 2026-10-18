@@ -94,6 +94,10 @@ class _ShellPageState extends State<ShellPage> {
       providers: [
         RepositoryProvider<TimelineAim>.value(value: _aim),
         RepositoryProvider<OpenDayHours>.value(value: _openDayHours),
+        // What the agent's answers open: a project's page, from Tempo.
+        RepositoryProvider<AgentLinks>.value(
+          value: AgentLinks(openProject: (id) => openProject(context, id)),
+        ),
       ],
       child: RemindersListener(
         child: Scaffold(

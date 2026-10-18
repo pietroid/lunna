@@ -1,0 +1,48 @@
+calibration: 55.2M units from 2026-10-11T13:00:00.000Z to 2026-10-18T00:51:22.000Z = 68% of the week → 1% ≈ 0.81M units
+
+| kind | runs | median turns | median % of week | p75 % | max % | % of week spent on it (this week) |
+|---|---|---|---|---|---|---|
+| other | 35 | 20 | 0.3 | 2.0 | 10.9 | 35.8 |
+| create-design | 9 | 57 | 1.5 | 3.4 | 4.1 | 20.9 |
+| create-build | 4 | 74 | 2.1 | 5.0 | 5.0 | 8.3 |
+| research | 3 | 33 | 1.1 | 1.4 | 1.4 | 3.0 |
+
+runs this week:
+  2026-10-13 22:18:33  other          6 turns  0.1%
+  2026-10-13 22:19:51  other          85 turns  1.9%
+  2026-10-13 22:42:35  other          142 turns  8.1%
+  2026-10-13 22:44:58  other          20 turns  1.2%
+  2026-10-13 23:13:29  other          5 turns  0.1%
+  2026-10-14 15:48:48  other          37 turns  0.7%
+  2026-10-14 15:55:10  other          19 turns  0.4%
+  2026-10-14 16:19:53  other          133 turns  4.3%
+  2026-10-14 17:15:31  other          6 turns  0.1%
+  2026-10-14 20:28:49  other          37 turns  0.7%
+  2026-10-15 19:18:42  other          139 turns  5.4%
+  2026-10-15 20:05:33  other          3 turns  0.1%
+  2026-10-15 20:26:12  other          102 turns  2.9%
+  2026-10-15 21:03:04  create-design  109 turns  4.0%
+  2026-10-15 22:42:27  other          5 turns  0.1%
+  2026-10-16 19:08:17  other          47 turns  0.9%
+  2026-10-16 19:27:57  create-design  83 turns  3.3%
+  2026-10-16 20:11:14  create-design  101 turns  4.1%
+  2026-10-16 21:56:24  other          12 turns  0.2%
+  2026-10-16 22:03:28  other          55 turns  3.3%
+  2026-10-17 14:30:03  other          6 turns  0.3%
+  2026-10-17 14:46:54  other          55 turns  1.7%
+  2026-10-17 15:33:53  other          9 turns  0.3%
+  2026-10-17 15:43:44  create-design  37 turns  1.1%
+  2026-10-17 15:56:24  create-build   116 turns  5.0%
+  2026-10-17 17:20:09  create-design  99 turns  3.4%
+  2026-10-17 18:04:03  other          42 turns  1.1%
+  2026-10-17 18:08:28  research       33 turns  1.1%
+  2026-10-17 18:31:44  create-design  34 turns  1.0%
+  2026-10-17 18:41:08  create-build   74 turns  2.1%
+  2026-10-17 20:01:42  create-design  50 turns  1.4%
+  2026-10-17 20:19:51  other          75 turns  2.0%
+  2026-10-17 20:38:45  create-design  57 turns  1.5%
+  2026-10-17 20:57:58  create-build   48 turns  1.2%
+  2026-10-17 21:11:54  research       56 turns  1.4%
+  2026-10-17 21:14:46  other          7 turns  0.1%
+  2026-10-17 21:43:56  create-design  43 turns  1.1%
+  2026-10-17 21:48:42  research       22 turns  0.4%

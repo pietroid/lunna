@@ -86,6 +86,12 @@ class AppIcons {
   /// Things, what outlives a single day.
   static const things = AppIconData.phosphor(PhosphorIconsRegular.folders);
 
+  /// Notes, written on a card or a project: what the agent adds to them.
+  static const note = AppIconData.phosphor(PhosphorIconsRegular.notePencil);
+
+  /// Opens what is folded under it, such as the steps behind an answer.
+  static const unfold = AppIconData.phosphor(PhosphorIconsRegular.caretDown);
+
   /// Recommendations, what the agent puts forward on its own.
   static const recommendations = AppIconData.phosphor(
     PhosphorIconsRegular.lightbulb,

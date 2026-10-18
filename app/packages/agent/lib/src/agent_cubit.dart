@@ -110,6 +110,9 @@ class AgentCubit extends Cubit<AgentState> {
   /// The page this conversation was opened from, when not Tempo.
   AgentSubject? _about;
 
+  /// The page this conversation was opened from, when not Tempo.
+  AgentSubject? get about => _about;
+
   /// Whether the past has been asked for yet.
   bool _asked = false;
 

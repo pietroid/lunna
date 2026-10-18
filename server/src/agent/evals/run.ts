@@ -29,7 +29,8 @@ import { MemoryProjectStore } from '../../projects/project.store';
 import { MemoryTaskStore } from '../../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../../time/work-hours';
 import { instantOf, isoIn } from '../../time/zone';
-import { AgentReply, AgentService } from '../agent.service';
+import { AgentMessage, AgentService, TurnResult } from '../agent.service';
+import { leaksRef } from '../speech';
 import { normalize } from '../board';
 import { MemoryConversationStore } from '../conversation.store';
 import {
@@ -64,6 +65,12 @@ interface Run {
   steps?: string[];
   plan?: unknown;
   options?: string[];
+  /** The blocks drawn, by kind. */
+  blocks?: string[];
+  /** Whether the model wrote a ref or a banned word, before `speakable`. */
+  rawLeak: boolean;
+  /** Whether one still reached the person: always a failure. */
+  leaked: boolean;
   transcript?: {
     messages: ChatMessage[];
     outcome?: ModelOutcome;
@@ -138,6 +145,7 @@ async function runCase(
   });
   const client = new RecordingClient(config);
   const tasks = new MemoryTaskStore();
+  const projects = new MemoryProjectStore();
   const calendar = new CalendarService(new MemoryCalendarStore(), config);
   const timeline = new TimelineService(calendar, tasks);
   const layout = new EventLayoutService(timeline, calendar, tasks);
@@ -147,7 +155,7 @@ async function runCase(
     layout,
     calendar,
     tasks,
-    new MemoryProjectStore(),
+    projects,
     new MemoryConversationStore(),
   );
   const trace = Trace.start(USER.id, 'eval');
@@ -160,6 +168,7 @@ async function runCase(
           title,
           minutes,
           backlog: opts.backlog === true,
+          ...(opts.project === undefined ? {} : { projectId: opts.project }),
           ...(opts.at === undefined
             ? {}
             : { notBefore: instant(opts.at).toISOString() }),
@@ -167,6 +176,14 @@ async function runCase(
         trace,
         now,
       );
+    },
+    async project(title, deadline) {
+      return (
+        await projects.insert(USER, {
+          title,
+          ...(deadline === undefined ? {} : { deadline }),
+        })
+      ).id;
     },
     async event(title, at, minutes = 60) {
       await layout.createEvent(
@@ -191,33 +208,57 @@ async function runCase(
     promptTokens: 0,
     completionTokens: 0,
     cachedTokens: 0,
+    rawLeak: false,
+    leaked: false,
   };
   const started = performance.now();
 
   try {
     await c.setup?.(world);
-    let reply: AgentReply | undefined;
+    // Each thing said is a turn of one conversation; the last is checked.
+    const said = typeof c.said === 'string' ? [c.said] : c.said;
+    const history: AgentMessage[] = [];
+    let conversationId: string | undefined;
+    let reply: TurnResult | undefined;
     try {
-      reply = await agent.turn(
-        USER,
-        undefined,
-        [{ role: 'user', text: c.said }],
-        undefined,
-        undefined,
-        trace,
-        now,
-      );
+      for (const text of said) {
+        history.push({ role: 'user', text });
+        reply = await agent.turn(
+          USER,
+          conversationId,
+          [...history],
+          undefined,
+          undefined,
+          trace,
+          now,
+        );
+        conversationId = reply.conversationId;
+        history.push({ role: 'assistant', text: reply.reply });
+        result.rawLeak ||= reply.raw.some(
+          (it) => leaksRef(it) || BANNED.test(it),
+        );
+        result.leaked ||= reply.blocks.some(
+          (it) =>
+            (it.kind === 'caption' && leaks(it.text)) ||
+            (it.kind === 'cards' && leaks(it.title ?? '')) ||
+            (it.kind === 'choices' &&
+              it.options.some((o) => leaks(o.label) || leaks(o.say ?? ''))),
+        );
+      }
     } finally {
       result.ms = Math.round(performance.now() - started);
     }
+    reply = reply!;
     result.reply = reply.reply;
     result.steps = reply.steps;
     result.plan = reply.plan;
     result.options = reply.options.map((it) => it.label);
+    result.blocks = reply.blocks.map((it) => it.kind);
 
+    const choices = reply.blocks.some((it) => it.kind === 'choices');
     const asked =
       reply.plan === undefined &&
-      (reply.options.length > 0 || reply.reply.includes('?'));
+      (choices || reply.options.length > 0 || reply.reply.includes('?'));
     const verdict = (): true | string => {
       switch (c.expect) {
         case 'ask':
@@ -241,7 +282,16 @@ async function runCase(
       }
     };
 
-    let outcome = verdict();
+    const missing =
+      c.drawn !== undefined && !reply.blocks.some((it) => it.kind === c.drawn)
+        ? `no ${c.drawn} block`
+        : undefined;
+    let outcome =
+      missing !== undefined
+        ? missing
+        : result.leaked
+          ? 'a ref or a banned word reached the person'
+          : verdict();
     if (outcome === 'apply') {
       await agent.apply(USER, reply.plan!.id, trace, now);
       outcome =
@@ -266,6 +316,13 @@ async function runCase(
   if (!result.pass) result.transcript = client.calls;
 
   return result;
+}
+
+/** Words the person must never read (the app's glossary, §5.1). */
+const BANNED = /\b(backlog|sistema|servidor|âncora|ancorad[ao])\b/i;
+
+function leaks(text: string): boolean {
+  return leaksRef(text) || BANNED.test(text);
 }
 
 async function stateOf(timeline: TimelineService, now: Date): Promise<State> {
@@ -364,8 +421,8 @@ function percentile(values: number[], p: number): number {
 /** One Markdown row per model, and the failing cases under it. */
 function summarize(reports: ModelReport[], k: number): string {
   const lines = [
-    `| Model | pass^${k} | pass@1 | p50 | p95 | calls/turn | tokens in/turn | cost |`,
-    '|---|---|---|---|---|---|---|---|',
+    `| Model | pass^${k} | pass@1 | leak@1 (raw) | p50 | p95 | calls/turn | tokens in/turn | cost |`,
+    '|---|---|---|---|---|---|---|---|---|',
   ];
   const failures: string[] = [];
 
@@ -383,6 +440,7 @@ function summarize(reports: ModelReport[], k: number): string {
     lines.push(
       `| ${report.model} | ${passedAll}/${complete.length} (${Math.round((100 * passedAll) / Math.max(1, complete.length))}%) | ` +
         `${Math.round((100 * runs.filter((r) => r.pass).length) / Math.max(1, runs.length))}% | ` +
+        `${Math.round((100 * runs.filter((r) => r.rawLeak).length) / Math.max(1, runs.length))}% | ` +
         `${(
           percentile(
             runs.map((r) => r.ms),

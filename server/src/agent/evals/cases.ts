@@ -12,8 +12,10 @@ export interface World {
   task(
     title: string,
     minutes: number,
-    opts?: { at?: string; backlog?: boolean },
+    opts?: { at?: string; backlog?: boolean; project?: string },
   ): Promise<void>;
+  /** A project, answering its id for its tasks' `project`. */
+  project(title: string, deadline?: string): Promise<string>;
   /** A fixed block at "YYYY-MM-DD HH:mm". */
   event(title: string, at: string, minutes?: number): Promise<void>;
 }
@@ -53,9 +55,12 @@ export interface Case {
   why: string;
   /** "YYYY-MM-DD HH:mm" in São Paulo. Friday 15:00 when absent. */
   now?: string;
-  said: string;
+  /** What the person says; several are turns of one conversation. */
+  said: string | string[];
   setup?: (world: World) => Promise<void>;
   expect: Expect;
+  /** A block the answer must draw (`day`, `cards`, `project`…). */
+  drawn?: string;
   /** True, or what was wrong. */
   check?: (state: State) => true | string;
 }
@@ -342,5 +347,64 @@ export const CASES: Case[] = [
     },
     said: 'move a ligação pra amanhã às 9',
     expect: 'ask',
+  },
+  {
+    id: 'afternoon-shown',
+    why: 'a question about the day is answered with the day, not prose (§5.3)',
+    now: `${FRIDAY} 12:00`,
+    setup: async (w) => {
+      await w.event('Reunião', `${FRIDAY} 14:00`);
+      await w.task('Ler artigo', 30, { backlog: true });
+    },
+    said: 'como está minha tarde?',
+    expect: 'answer',
+    drawn: 'day',
+  },
+  {
+    id: 'project-from-tempo',
+    why: 'a project is reached from Tempo, through the index (§5.4)',
+    setup: async (w) => {
+      const tese = await w.project('Tese', '2026-11-30');
+      await w.task('Escrever capítulo 2', 90, { backlog: true, project: tese });
+      await w.task('Revisar bibliografia', 45, {
+        backlog: true,
+        project: tese,
+      });
+    },
+    said: 'põe o capítulo 2 da tese amanhã às 9',
+    expect: 'plan',
+    check: once('Escrever capítulo 2', `${SATURDAY} 09:00`),
+  },
+  {
+    id: 'multi-organize',
+    why: 'an open request, then a pick in words: two turns to one plan (§5.1)',
+    now: `${FRIDAY} 13:00`,
+    setup: async (w) => {
+      await w.task('Troca 2', 60, { backlog: true });
+      await w.task('Ler artigo', 30, { backlog: true });
+    },
+    said: ['organiza minha tarde', 'só a Troca 2, às 15h'],
+    expect: 'plan',
+    check: once('Troca 2', `${FRIDAY} 15:00`),
+  },
+  {
+    id: 'multi-refs',
+    why: 'a card named in an earlier turn keeps its meaning (stable refs)',
+    setup: async (w) => {
+      await w.task('Dentista', 60, { at: `${FRIDAY} 16:00` });
+    },
+    said: ['o que tenho hoje?', 'passa o dentista para amanhã às 10'],
+    expect: 'plan',
+    check: once('Dentista', `${SATURDAY} 10:00`),
+  },
+  {
+    id: 'multi-backlog',
+    why: 'the backlog is named in the app’s words across turns',
+    setup: async (w) => {
+      await w.task('Pagar boleto', 15, { backlog: true });
+    },
+    said: ['o que tem no depois eu priorizo?', 'coloca o boleto hoje às 17h'],
+    expect: 'plan',
+    check: once('Pagar boleto', `${FRIDAY} 17:00`),
   },
 ];

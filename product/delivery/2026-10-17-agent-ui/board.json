@@ -1,0 +1,222 @@
+{
+ "title": "Agent UI · the A2UI catalogue, refined",
+ "screens": [
+  {
+   "png": "img/mockup-1.png",
+   "title": "1 · Day + Cards + Choices",
+   "why": "“organiza minha tarde”: one turn shows the afternoon, what fits, and two ways, no prose question.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 352,
+     "y": 229,
+     "label": "Caption",
+     "text": "Body ink, no bubble, ≤80 chars, only a reason the blocks can't show. Optional."
+    },
+    {
+     "id": "B",
+     "x": 382,
+     "y": 274,
+     "label": "One card shape",
+     "text": "Every block is the same borderless fill (r18): quiet heading left, its count right. No 1px borders anywhere."
+    },
+    {
+     "id": "C",
+     "x": 322,
+     "y": 361,
+     "label": "DayPeek free room",
+     "text": "Free stretches drawn as Tempo draws them (freeEdge/freeFill) with their length; heading carries the total. Heading tap → Tempo on that day."
+    },
+    {
+     "id": "D",
+     "x": 300,
+     "y": 404,
+     "label": "Kind by colour",
+     "text": "Fixed sand, routine blue, running accentSoft, task white. Height loosely to length (36–84pt), so an afternoon fits."
+    },
+    {
+     "id": "E",
+     "x": 200,
+     "y": 517,
+     "label": "Cards",
+     "text": "Heading is the model's; rows say what Lista says: where, length, project. Rows parted by a 2pt seam of the page colour."
+    },
+    {
+     "id": "F",
+     "x": 300,
+     "y": 696,
+     "label": "Choices",
+     "text": "Pills are now fill, not outlined. Equal weight, never the accent; a tap applies that plan, one ticked line remains."
+    },
+    {
+     "id": "G",
+     "x": 95,
+     "y": 732,
+     "label": "Detalhes",
+     "text": "Steps leave the answer: folded under Detalhes ⌄, quiet ink3 ticks when open."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-2.png",
+   "title": "2 · ProjectPeek",
+   "why": "“como está a Tese?”: the Projetos row as it is, then what comes next, then the way in.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 165,
+     "y": 257,
+     "label": "Project row",
+     "text": "Folders glyph (Projetos tab's AppIcons.things) + name in title size. The only block with a larger title: it names a thing, not a slice."
+    },
+    {
+     "id": "B",
+     "x": 382,
+     "y": 257,
+     "label": "Counts",
+     "text": "“2 de 8 feitas”, top right, ink3: the same place as the Projetos row."
+    },
+    {
+     "id": "C",
+     "x": 240,
+     "y": 304,
+     "label": "Deadline + bar",
+     "text": "“até seg, 30 nov · faltam 44 dias”, then the Projetos bar (accent; red once overdue). No deadline: no bar."
+    },
+    {
+     "id": "D",
+     "x": 165,
+     "y": 344,
+     "label": "Próximas · mais 3",
+     "text": "Up to 3 open tasks, those with an hour first; the rest counted, not listed."
+    },
+    {
+     "id": "E",
+     "x": 200,
+     "y": 395,
+     "label": "Same rows as Cards",
+     "text": "PeekCardRow is shared; another day is named (“amanhã 09:00”), backlog says Depois eu priorizo + length."
+    },
+    {
+     "id": "F",
+     "x": 290,
+     "y": 565,
+     "label": "Abrir projeto",
+     "text": "Footer text button in ink, full width: the one way into the page. No accent, the choices below may need it."
+    },
+    {
+     "id": "G",
+     "x": 360,
+     "y": 607,
+     "label": "Focus first",
+     "text": "The model's focus block is simply drawn first; no highlight, so the accent stays for the action."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-3.png",
+   "title": "3 · Notes read, then written",
+   "why": "Reading notes is a Cards block; writing them is a plan row the person reads in full before Aplicar.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 382,
+     "y": 290,
+     "label": "Cards, no heading",
+     "text": "One card with its notes under it (6 lines max). No heading when the model gives none: just the fill."
+    },
+    {
+     "id": "B",
+     "x": 250,
+     "y": 459,
+     "label": "Plan header",
+     "text": "The day it lands on; a plan with no hours says only “N mudanças”."
+    },
+    {
+     "id": "C",
+     "x": 300,
+     "y": 518,
+     "label": "edit",
+     "text": "Pen mark, white square; old name struck → “novo nome”."
+    },
+    {
+     "id": "D",
+     "x": 330,
+     "y": 621,
+     "label": "note",
+     "text": "Note mark (notePencil, new AppIcons.note). Appended text in full in a white inset with a red “+”: the person's own notes, read before written."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-4.png",
+   "title": "4 · The new plan rows",
+   "why": "Every hand gesture gets its own row: length, done, new project, and what gets pushed.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 345,
+     "y": 387,
+     "label": "Length",
+     "text": "Pen: “~~30 min~~ → 1h · duração”."
+    },
+    {
+     "id": "B",
+     "x": 345,
+     "y": 440,
+     "label": "Done",
+     "text": "Check in success ink on white."
+    },
+    {
+     "id": "C",
+     "x": 345,
+     "y": 505,
+     "label": "New project",
+     "text": "Folders in accentSoft (adds = accent family) and the tasks it starts with, as dots."
+    },
+    {
+     "id": "D",
+     "x": 345,
+     "y": 612,
+     "label": "Pushed",
+     "text": "↓ in grey, as today; header counts it. Buttons turn into Outro horário / Mover."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-5.png",
+   "title": "5 · A delete reads as a delete",
+   "why": "“apaga o projeto Mudança”: what goes is named, struck, and the button says Apagar.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 360,
+     "y": 439,
+     "label": "Server caption",
+     "text": "What stays (done tasks keep their history) is said by the server, in Portuguese."
+    },
+    {
+     "id": "B",
+     "x": 50,
+     "y": 525,
+     "label": "Bin in red",
+     "text": "Trash in danger/dangerInk; deletes always sort first in the card; title struck."
+    },
+    {
+     "id": "C",
+     "x": 300,
+     "y": 600,
+     "label": "What goes with it",
+     "text": "Each backlog task that goes, struck, red dots. No ProjectPeek above a delete: the row already names it all."
+    },
+    {
+     "id": "D",
+     "x": 382,
+     "y": 684,
+     "label": "Apagar",
+     "text": "The apply button says Apagar, in dangerInk instead of the accent. Desfazer still takes it all back."
+    }
+   ]
+  }
+ ]
+}

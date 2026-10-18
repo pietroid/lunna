@@ -4,8 +4,9 @@ import 'package:l10n/l10n.dart';
 
 /// {@template quick_replies}
 /// The answers the agent offers, one pill each. A tap makes that answer's
-/// plan, with no other turn; typing something else is always there, in the
-/// composer under them.
+/// plan, with no other turn, or says that answer's words as the next
+/// message; typing something else is always there, in the composer under
+/// them.
 ///
 /// None is the accent: they are choices of equal weight. Once one is made,
 /// the rest go and it stays as one ticked line.
@@ -17,8 +18,13 @@ class QuickReplies extends StatelessWidget {
     required this.status,
     required this.onPick,
     this.chosen,
+    this.canSay = true,
     super.key,
   });
+
+  /// Whether an option that says something can still be said: only on the
+  /// latest answer, since the conversation has moved on from the others.
+  final bool canSay;
 
   final List<QuickReply> options;
 
@@ -31,7 +37,7 @@ class QuickReplies extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final taken = options.where((it) => it.plan.id == chosen).firstOrNull;
+    final taken = options.where((it) => it.plan?.id == chosen).firstOrNull;
     if (taken != null && status == PlanStatus.applied) {
       return Row(
         children: [
@@ -63,8 +69,11 @@ class QuickReplies extends StatelessWidget {
         for (final option in options)
           _Pill(
             label: option.label,
-            busy: status == PlanStatus.applying && option.plan.id == chosen,
-            onTap: status == PlanStatus.pending ? () => onPick(option) : null,
+            busy: status == PlanStatus.applying && option.plan?.id == chosen,
+            onTap:
+                status == PlanStatus.pending && (option.plan != null || canSay)
+                ? () => onPick(option)
+                : null,
           ),
       ],
     );
@@ -83,12 +92,11 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shape = RoundedRectangleBorder(
-      side: const BorderSide(color: AppColors.line),
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
     );
 
     return Material(
-      color: AppColors.surface,
+      color: AppColors.fill,
       shape: shape,
       child: InkWell(
         customBorder: shape,

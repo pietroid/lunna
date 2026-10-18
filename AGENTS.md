@@ -78,7 +78,8 @@ app/
   lib/                  shell, home (Tempo), routines page, landing, demo,
                         links (the real LinkPreviews)
   packages/
-    agent/              the agent: ask bar, sheet, plan card, suggestion, voice
+    agent/              the agent: ask bar, sheet, the answer's surface
+                        (decoder, peeks, plan card), suggestion, voice
     api_client/         Dio + bearer token interceptor
     app_ui/             the design system: AppBrand, theme, tokens, widgets
     auth/               Better Auth client: Google sign-in, token store
@@ -89,7 +90,8 @@ app/
 server/
   src/
     agent/              the agent: OpenRouter client, tools, the board
-                        (refs, dates), gestures and the dry run, plans,
+                        (refs, dates, projects), the answer and its A2UI
+                        (answer.ts, speech.ts), gestures and the dry run, plans,
                         conversations (ConversationStore), evals/
     auth/               Better Auth instance + SessionGuard
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
@@ -452,7 +454,10 @@ hour, the backlog, a swap), and leaves the day as that gesture would: the
 model names cards by short refs and days as said, the server resolves
 them, runs the plan on a sandbox copy of the day, and asks the doubts it
 can see itself. Voice becomes text on the phone and reaches the server as
-an ordinary turn. Agent changes are measured with `npm run eval:agent`
+an ordinary turn. **The model answers with one `answer` tool whose blocks
+name what to show (plan, choices, day, cards, project); the server fills
+every fact and sends one A2UI v0.9 surface (`ui`)**, and nothing the
+person reads carries a ref (`speakable`). Agent changes are measured with `npm run eval:agent`
 (real model, costs money, never in CI). The tools, the plan rules, the
 routes, the conversations and voice are in
 [product/spec/agent.md](./product/spec/agent.md): read it before touching

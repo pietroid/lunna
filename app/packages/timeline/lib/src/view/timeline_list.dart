@@ -10,7 +10,6 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/src/bloc/timeline_bloc.dart';
 import 'package:timeline/src/bloc/timeline_mode_cubit.dart';
 import 'package:timeline/src/models/models.dart';
-import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
 /// A place a card can land, and where it is on the screen.

@@ -848,5 +848,59 @@
   },
   "dictationStart": "Ditar nas anotações",
   "dictationStop": "Parar de ditar",
-  "dictationDiscard": "Descartar este parágrafo"
+  "dictationDiscard": "Descartar este parágrafo",
+  "agentApplyDelete": "Apagar",
+  "agentChangeRenamed": "novo nome",
+  "agentChangeLength": "duração",
+  "agentChangeNotes": "notas",
+  "agentChangeDone": "concluída",
+  "agentChangeRemove": "apagar",
+  "agentChangeNewProject": "novo projeto",
+  "agentChangeDeadline": "prazo",
+  "agentChangeProjectDone": "projeto concluído",
+  "agentChangeRemoveProject": "{count, plural, =0{apagar o projeto} =1{apagar o projeto e 1 tarefa} other{apagar o projeto e {count} tarefas}}",
+  "@agentChangeRemoveProject": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agentFree": "{span} livre",
+  "@agentFree": {
+    "placeholders": {
+      "span": {
+        "type": "String"
+      }
+    }
+  },
+  "agentCardsCount": "{count, plural, =1{1 tarefa} other{{count} tarefas}}",
+  "@agentCardsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agentProjectDone": "{done} de {total} feitas",
+  "@agentProjectDone": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "agentProjectNext": "Próximas",
+  "agentProjectMore": "{count, plural, =1{mais 1} other{mais {count}}}",
+  "@agentProjectMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agentProjectOpen": "Abrir projeto"
 }

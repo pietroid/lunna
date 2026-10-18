@@ -1,5 +1,7 @@
 import { Day } from '../events/timeline.service';
 import { Timeline } from '../events/entities/event.entity';
+import { Project } from '../projects/project.types';
+import { Task } from '../tasks/task.types';
 import {
   addMinutes,
   BLOCK_GAP_MINUTES,
@@ -49,6 +51,33 @@ export interface BoardCard {
   foreign: boolean;
   routine: boolean;
   backlog: boolean;
+  /** Ticked off: reached only through a project, never on the day. */
+  done: boolean;
+  /** The project it belongs to, when it belongs to one. */
+  projectId?: string;
+  notes: string;
+}
+
+/** An open project, as the board's index names it. */
+export interface BoardProject {
+  /** `p2`. */
+  ref: string;
+  project: Project;
+  /** Its tasks, done ones included, in their order. */
+  tasks: Task[];
+}
+
+/** What a board is built with besides the day. */
+export interface BoardOptions {
+  /**
+   * The refs handed out earlier in the conversation, by id. The board keeps
+   * them and writes the new ones in, so a ref means the same card from turn
+   * to turn.
+   */
+  refs?: Map<string, string>;
+  projects?: Project[];
+  /** Every task of a project, done ones included. */
+  projectTasks?: Task[];
 }
 
 const WEEKDAYS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
@@ -92,14 +121,34 @@ const WEEKDAY_WORDS: Record<string, number> = {
 export class Board {
   readonly cards: BoardCard[];
   readonly today: string;
+  /** Every project, oldest first; the index names the open ones. */
+  readonly projects: BoardProject[];
   private readonly _byRef: Map<string, BoardCard>;
+  private readonly _refs: Map<string, string>;
+  /** The rows the cards were read from, for what the timeline leaves out. */
+  private readonly _rows = new Map<
+    string,
+    { notes: string; projectId?: string }
+  >();
+  private readonly _titles: Map<string, string>;
 
   constructor(
     readonly day: Day,
     view: Timeline,
+    options: BoardOptions = {},
   ) {
     const { now, zone } = day;
     this.today = isoDayIn(now, zone);
+    this._refs = options.refs ?? new Map<string, string>();
+    for (const row of [...day.tasks, ...day.backlog, ...day.events]) {
+      this._rows.set(row.id, {
+        notes: row.notes,
+        projectId: 'projectId' in row ? row.projectId : undefined,
+      });
+    }
+    this._titles = new Map(
+      (options.projects ?? []).map((it) => [it.id, it.title]),
+    );
 
     const seen = new Set<string>();
     const tasks = [
@@ -114,6 +163,7 @@ export class Board {
       card: Timeline['cards'][number],
       ref: string,
     ): BoardCard => ({
+      ...this._extra(card.id),
       ref,
       id: card.id,
       kind: card.kind,
@@ -132,10 +182,11 @@ export class Board {
     });
 
     this.cards = [
-      ...tasks.map((card, i) => timed(card, `t${i + 1}`)),
-      ...events.map((card, i) => timed(card, `e${i + 1}`)),
-      ...view.backlog.slice(0, MAX_BACKLOG).map((card, i): BoardCard => ({
-        ref: `b${i + 1}`,
+      ...tasks.map((card) => timed(card, this._assign(card.id, 't'))),
+      ...events.map((card) => timed(card, this._assign(card.id, 'e'))),
+      ...view.backlog.slice(0, MAX_BACKLOG).map((card): BoardCard => ({
+        ...this._extra(card.id),
+        ref: this._assign(card.id, 'b'),
         id: card.id,
         kind: 'task',
         title: card.title,
@@ -148,6 +199,13 @@ export class Board {
       })),
     ];
     this._byRef = new Map(this.cards.map((card) => [card.ref, card]));
+
+    const tasks_ = options.projectTasks ?? [];
+    this.projects = (options.projects ?? []).map((project) => ({
+      ref: this._assign(project.id, 'p'),
+      project,
+      tasks: tasks_.filter((task) => task.projectId === project.id),
+    }));
   }
 
   get zone(): Zone {
@@ -160,6 +218,95 @@ export class Board {
 
   byId(id: string): BoardCard | undefined {
     return this.cards.find((card) => card.id === id);
+  }
+
+  /** The open project under [ref] (`p2`). */
+  project(ref: string): BoardProject | undefined {
+    const said = ref.trim().toLowerCase();
+    return this.projects.find((it) => it.ref === said);
+  }
+
+  projectById(id: string): BoardProject | undefined {
+    return this.projects.find((it) => it.project.id === id);
+  }
+
+  /** The title a ref stands for, a card's or a project's. */
+  title(ref: string): string | undefined {
+    return this.ref(ref)?.title ?? this.project(ref)?.project.title;
+  }
+
+  /**
+   * [task] as a card the model can name, wherever it is: on the board it is
+   * that card; off it (past the backlog's first 30, done) it gets the next
+   * ref of its kind (`b31`, `d1`), kept for the conversation like every
+   * other. A task the board cannot see is still made the same way, since
+   * the sandbox is seeded with every row of the day.
+   */
+  reach(task: Task): BoardCard {
+    const known = this.byId(task.id);
+    if (known !== undefined) return known;
+
+    const placed = this.day.placed.get(task.id);
+    const done = task.doneAt !== undefined;
+    const card: BoardCard = {
+      ref: this._assign(task.id, done ? 'd' : task.backlog ? 'b' : 't'),
+      id: task.id,
+      kind: 'task',
+      title: task.title,
+      ...(placed === undefined || done
+        ? {}
+        : {
+            start: placed.start,
+            end: placed.end,
+            day: isoDayIn(placed.start, this.zone),
+          }),
+      minutes: task.minutes,
+      anchored: task.notBefore !== undefined,
+      started: false,
+      foreign: false,
+      routine: task.routineId !== undefined,
+      backlog: task.backlog && !done,
+      done,
+      projectId: task.projectId,
+      notes: task.notes,
+    };
+    this.cards.push(card);
+    this._byRef.set(card.ref, card);
+
+    return card;
+  }
+
+  /** The name of the project [card] belongs to, when it belongs to one. */
+  projectOf(card: BoardCard): string | undefined {
+    return card.projectId === undefined
+      ? undefined
+      : this._titles.get(card.projectId);
+  }
+
+  /** The ref [id] already has in the conversation, or the next of [kind]. */
+  private _assign(id: string, kind: string): string {
+    const known = this._refs.get(id);
+    if (known !== undefined) return known;
+
+    let next = 1;
+    for (const ref of this._refs.values()) {
+      if (ref.startsWith(kind)) {
+        next = Math.max(next, Number(ref.slice(kind.length)) + 1);
+      }
+    }
+    const ref = `${kind}${next}`;
+    this._refs.set(id, ref);
+
+    return ref;
+  }
+
+  private _extra(id: string): Pick<BoardCard, 'done' | 'projectId' | 'notes'> {
+    const row = this._rows.get(id);
+    return {
+      done: false,
+      ...(row?.projectId === undefined ? {} : { projectId: row.projectId }),
+      notes: row?.notes ?? '',
+    };
   }
 
   /** Whether the working day of [day] ("YYYY-MM-DD") has ended. */
@@ -325,6 +472,13 @@ export class Board {
             .map((card) => `  ${this.line(card)}`)
         : ['  (empty)']),
       '',
+      'Projects (read_cards with a project ref reads its notes and every task):',
+      ...(this.projects.every((it) => it.project.doneAt !== undefined)
+        ? ['  (none)']
+        : this.projects
+            .filter((it) => it.project.doneAt === undefined)
+            .map((it) => `  ${this.projectLine(it)}`)),
+      '',
       'Free room:',
     );
     for (const day of [...shown].sort()) {
@@ -361,17 +515,19 @@ export class Board {
 
   /** "t2 · Academia · task with an hour · 16:00–17:00". */
   line(card: BoardCard): string {
-    const kind = card.backlog
-      ? 'backlog task'
-      : card.kind === 'event'
-        ? card.foreign
-          ? 'event (not Lunna’s, never moved)'
-          : 'fixed event'
-        : card.started
-          ? 'task, running'
-          : card.anchored
-            ? 'task with its own hour'
-            : 'task in the queue';
+    const kind = card.done
+      ? 'done task'
+      : card.backlog
+        ? 'backlog task'
+        : card.kind === 'event'
+          ? card.foreign
+            ? 'event (not Lunna’s, never moved)'
+            : 'fixed event'
+          : card.started
+            ? 'task, running'
+            : card.anchored
+              ? 'task with its own hour'
+              : 'task in the queue';
     const extra = [
       card.routine ? 'routine' : undefined,
       card.started && card.kind === 'event' ? 'started' : undefined,
@@ -380,18 +536,31 @@ export class Board {
       .join(', ');
     const when =
       card.start === undefined
-        ? `${card.minutes} min`
+        ? formatSpan(card.minutes * 60_000)
         : `${this.dayLabel(card.day!)} ${formatTimeIn(card.start, this.zone)}–${formatTimeIn(card.end!, this.zone)}`;
+    const project = this.projectOf(card);
 
-    return `${card.ref} · ${card.title} · ${kind}${extra === '' ? '' : ` (${extra})`} · ${when}`;
+    return `${card.ref} · ${card.title} · ${kind}${extra === '' ? '' : ` (${extra})`} · ${when}${project === undefined ? '' : ` · project ${project}`}`;
   }
 
-  /** "18:00–19:30 (90 min)". */
+  /** "p2 · Tese · due 30/11 · 6 open tasks, 2 with an hour". */
+  projectLine(it: BoardProject): string {
+    const open = it.tasks.filter((task) => task.doneAt === undefined);
+    const timed = open.filter((task) => !task.backlog).length;
+    const due = it.project.deadline;
+    return [
+      it.ref,
+      it.project.title,
+      ...(due === undefined
+        ? []
+        : [`due ${due.slice(8, 10)}/${due.slice(5, 7)}`]),
+      `${open.length} open tasks, ${timed} with an hour`,
+    ].join(' · ');
+  }
+
+  /** "18:00–19:30 (1h30)". */
   span(interval: Interval): string {
-    const minutes = Math.round(
-      (interval.end.getTime() - interval.start.getTime()) / 60_000,
-    );
-    return `${formatTimeIn(interval.start, this.zone)}–${formatTimeIn(interval.end, this.zone)} (${minutes} min)`;
+    return `${formatTimeIn(interval.start, this.zone)}–${formatTimeIn(interval.end, this.zone)} (${formatSpan(interval.end.getTime() - interval.start.getTime())})`;
   }
 
   /** The cards whose titles are close enough to [title] to be the same. */
@@ -475,7 +644,7 @@ function weekdayOf(day: string): number {
 }
 
 /** "3h10", "45 min". */
-function formatSpan(ms: number): string {
+export function formatSpan(ms: number): string {
   const minutes = Math.max(0, Math.round(ms / 60_000));
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;

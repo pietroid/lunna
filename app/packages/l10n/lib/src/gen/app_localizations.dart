@@ -1744,6 +1744,102 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Descartar este parágrafo'**
   String get dictationDiscard;
+
+  /// No description provided for @agentApplyDelete.
+  ///
+  /// In pt, this message translates to:
+  /// **'Apagar'**
+  String get agentApplyDelete;
+
+  /// No description provided for @agentChangeRenamed.
+  ///
+  /// In pt, this message translates to:
+  /// **'novo nome'**
+  String get agentChangeRenamed;
+
+  /// No description provided for @agentChangeLength.
+  ///
+  /// In pt, this message translates to:
+  /// **'duração'**
+  String get agentChangeLength;
+
+  /// No description provided for @agentChangeNotes.
+  ///
+  /// In pt, this message translates to:
+  /// **'notas'**
+  String get agentChangeNotes;
+
+  /// No description provided for @agentChangeDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'concluída'**
+  String get agentChangeDone;
+
+  /// No description provided for @agentChangeRemove.
+  ///
+  /// In pt, this message translates to:
+  /// **'apagar'**
+  String get agentChangeRemove;
+
+  /// No description provided for @agentChangeNewProject.
+  ///
+  /// In pt, this message translates to:
+  /// **'novo projeto'**
+  String get agentChangeNewProject;
+
+  /// No description provided for @agentChangeDeadline.
+  ///
+  /// In pt, this message translates to:
+  /// **'prazo'**
+  String get agentChangeDeadline;
+
+  /// No description provided for @agentChangeProjectDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'projeto concluído'**
+  String get agentChangeProjectDone;
+
+  /// No description provided for @agentChangeRemoveProject.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{apagar o projeto} =1{apagar o projeto e 1 tarefa} other{apagar o projeto e {count} tarefas}}'**
+  String agentChangeRemoveProject(int count);
+
+  /// No description provided for @agentFree.
+  ///
+  /// In pt, this message translates to:
+  /// **'{span} livre'**
+  String agentFree(String span);
+
+  /// No description provided for @agentCardsCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 tarefa} other{{count} tarefas}}'**
+  String agentCardsCount(int count);
+
+  /// No description provided for @agentProjectDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'{done} de {total} feitas'**
+  String agentProjectDone(int done, int total);
+
+  /// No description provided for @agentProjectNext.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximas'**
+  String get agentProjectNext;
+
+  /// No description provided for @agentProjectMore.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{mais 1} other{mais {count}}}'**
+  String agentProjectMore(int count);
+
+  /// No description provided for @agentProjectOpen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Abrir projeto'**
+  String get agentProjectOpen;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

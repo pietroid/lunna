@@ -107,7 +107,7 @@ void main() {
         'Deixar para depois',
       ]);
       expect(reply.plans.map((it) => it.id), ['p1', 'p2']);
-      final backlog = reply.options.last.plan;
+      final backlog = reply.options.last.plan!;
       expect(backlog.changes.single.kind, PlanChangeKind.toBacklog);
       expect(backlog.changes.single.at, isNull);
       expect(backlog.assumed, const [

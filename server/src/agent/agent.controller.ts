@@ -70,7 +70,9 @@ export class AgentController {
         );
       }
 
-      return await this.agent.turn(
+      // The blocks are what `ui` encodes; leaks and raw are for evals.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { blocks, leaks, raw, ...reply } = await this.agent.turn(
         owner(user),
         optionalConversation(dto.conversationId),
         requireMessages(dto.messages),
@@ -78,6 +80,7 @@ export class AgentController {
         optionalSubject(dto.about),
         trace,
       );
+      return reply;
     } catch (error) {
       throw failure(error, trace);
     }

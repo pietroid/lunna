@@ -3,14 +3,21 @@
 library;
 
 export 'src/agent_cubit.dart';
+export 'src/agent_links.dart';
 export 'src/agent_repository.dart';
 export 'src/models.dart';
 export 'src/suggestion_cubit.dart';
+export 'src/surface.dart';
 export 'src/view/agent_sheet.dart';
+export 'src/view/answer_card.dart';
 export 'src/view/apply_plan.dart';
 export 'src/view/ask_bar.dart';
+export 'src/view/cards_peek.dart';
+export 'src/view/day_peek.dart';
 export 'src/view/failure_note.dart';
 export 'src/view/notes_dock.dart';
+export 'src/view/plan_card.dart';
+export 'src/view/project_peek.dart';
 export 'src/view/quick_replies.dart';
 export 'src/view/suggestion_card.dart';
 export 'src/view/voice_bar.dart';
