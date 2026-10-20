@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { CalendarUser } from '../calendar/calendar.types';
-import { NewTask, RoutineTask, Task } from './task.types';
+import { DonePage, NewTask, RoutineTask, Task } from './task.types';
 
 /**
  * Where the tasks are kept.
@@ -46,6 +46,12 @@ export abstract class TaskStore {
     now: Date,
     keep: Set<string>,
   ): Promise<void>;
+
+  /**
+   * The tasks finished, newest first (by [Task.doneAt], then by id), one
+   * page at a time: what the archive in Menu reads.
+   */
+  abstract done(user: CalendarUser, page: DonePage): Promise<Task[]>;
 
   /** One task by id, done or not. */
   abstract get(user: CalendarUser, taskId: string): Promise<Task | undefined>;
@@ -139,6 +145,33 @@ export class MemoryTaskStore extends TaskStore {
     }
 
     return Promise.resolve();
+  }
+
+  done(user: CalendarUser, page: DonePage): Promise<Task[]> {
+    const words = page.query?.toLowerCase();
+    const before = page.before;
+
+    return Promise.resolve(
+      [...this._tasks.values()]
+        .filter(
+          (it) =>
+            it.userId === user.id &&
+            it.doneAt !== undefined &&
+            (before === undefined ||
+              Date.parse(it.doneAt) < Date.parse(before.at) ||
+              (Date.parse(it.doneAt) === Date.parse(before.at) &&
+                it.id < before.id)) &&
+            (words === undefined ||
+              `${it.title}\n${it.notes}`.toLowerCase().includes(words)),
+        )
+        .sort(
+          (a, b) =>
+            Date.parse(b.doneAt ?? '') - Date.parse(a.doneAt ?? '') ||
+            (a.id < b.id ? 1 : -1),
+        )
+        .slice(0, page.limit)
+        .map(toTask),
+    );
   }
 
   get(user: CalendarUser, taskId: string): Promise<Task | undefined> {

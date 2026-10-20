@@ -149,6 +149,60 @@ abstract class AppLocalizations {
   /// **'Seu dia'**
   String get menuDaySection;
 
+  /// No description provided for @menuArchive.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feitas'**
+  String get menuArchive;
+
+  /// No description provided for @menuArchiveHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tudo o que você já concluiu'**
+  String get menuArchiveHint;
+
+  /// No description provided for @archiveSearch.
+  ///
+  /// In pt, this message translates to:
+  /// **'Buscar nas feitas'**
+  String get archiveSearch;
+
+  /// No description provided for @archiveToday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Hoje'**
+  String get archiveToday;
+
+  /// No description provided for @archiveYesterday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ontem'**
+  String get archiveYesterday;
+
+  /// No description provided for @archiveEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada concluído ainda. O que você marcar como feito fica guardado aqui.'**
+  String get archiveEmpty;
+
+  /// No description provided for @archiveNoMatch.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma tarefa feita com essas palavras.'**
+  String get archiveNoMatch;
+
+  /// No description provided for @archiveFailed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para abrir as feitas agora.'**
+  String get archiveFailed;
+
+  /// No description provided for @archiveRetry.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tentar de novo'**
+  String get archiveRetry;
+
   /// No description provided for @menuDayStart.
   ///
   /// In pt, this message translates to:
@@ -430,12 +484,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Notas'**
   String get eventNotesLabel;
-
-  /// No description provided for @eventMarkDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Marcar como feita'**
-  String get eventMarkDone;
 
   /// No description provided for @restTip01.
   ///
@@ -1612,18 +1660,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Um dia a mais'**
   String get projectMoreDay;
-
-  /// No description provided for @projectDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir projeto'**
-  String get projectDone;
-
-  /// No description provided for @projectReopen.
-  ///
-  /// In pt, this message translates to:
-  /// **'Reabrir projeto'**
-  String get projectReopen;
 
   /// No description provided for @projectTasksTab.
   ///

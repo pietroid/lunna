@@ -91,6 +91,19 @@ void main() {
     expect(notes!.text, 'Pão');
   });
 
+  testAt('a task’s page has no way to tick it off', (tester) async {
+    await pump(tester, card('t1', 'task'));
+
+    // Done is said on Tempo, by the running card's ✓.
+    expect(
+      find.byWidgetPredicate(
+        (it) => it is AppIcon && it.iconData == AppIcons.check,
+      ),
+      findsNothing,
+    );
+    expect(find.text('Mercado'), findsWidgets);
+  });
+
   testAt('a fixed block’s dock names no task', (tester) async {
     await pump(tester, card('e1', 'event'));
 

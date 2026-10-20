@@ -71,25 +71,8 @@ class EventPage extends StatelessWidget {
         titleSpacing: 0,
         title: card == null
             ? null
-            : Row(
-                children: [
-                  if (card.isInteractive)
-                    AppDoneCircle(
-                      done: done,
-                      label: context.l10n.eventMarkDone,
-                      // A finished task stays finished from here.
-                      onChanged: done
-                          ? null
-                          : (_) {
-                              context.read<TimelineBloc>().add(
-                                EventFinished(card.id),
-                              );
-                              unawaited(Navigator.of(context).maybePop());
-                            },
-                    ),
-                  Expanded(child: _Title(card: card)),
-                ],
-              ),
+            // The name alone, with no mark before it.
+            : _Title(card: card),
         actions: [
           if (card != null && card.isInteractive && !done)
             AppIconButton(
@@ -331,8 +314,8 @@ class _Summary extends StatelessWidget {
   Widget _controls(BuildContext context) {
     final bloc = context.read<TimelineBloc>();
 
-    // Done is the circle before the name, so the row has no check of its
-    // own: a check in the corner of an editor reads as "save".
+    // The page marks nothing done: a task is ticked off where it runs, on
+    // Tempo. A check in the corner of an editor reads as "save".
     return EventControls(
       card: card,
       onPauseToggled: () => bloc.add(EventPauseToggled(card.id)),

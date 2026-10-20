@@ -16,3 +16,17 @@ String durationLabel(AppLocalizations l10n, int minutes) {
       ? l10n.durationHours(hours)
       : l10n.durationHoursMinutes(hours, rest);
 }
+
+/// The start of [notes] as a card on the calendar reads it: the first line
+/// that says something, with a link on a line of its own skipped (it is
+/// drawn as a card on the page, and an address says nothing at a glance).
+/// Empty when there is nothing to read.
+String notesPreview(String notes) {
+  for (final raw in notes.split('\n')) {
+    final line = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (line.isEmpty) continue;
+    if (RegExp(r'^https?://\S+$').hasMatch(line)) continue;
+    return line;
+  }
+  return '';
+}

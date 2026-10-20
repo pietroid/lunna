@@ -48,6 +48,33 @@ class AppLocalizationsPt extends AppLocalizations {
   String get menuDaySection => 'Seu dia';
 
   @override
+  String get menuArchive => 'Feitas';
+
+  @override
+  String get menuArchiveHint => 'Tudo o que você já concluiu';
+
+  @override
+  String get archiveSearch => 'Buscar nas feitas';
+
+  @override
+  String get archiveToday => 'Hoje';
+
+  @override
+  String get archiveYesterday => 'Ontem';
+
+  @override
+  String get archiveEmpty => 'Nada concluído ainda. O que você marcar como feito fica guardado aqui.';
+
+  @override
+  String get archiveNoMatch => 'Nenhuma tarefa feita com essas palavras.';
+
+  @override
+  String get archiveFailed => 'Não deu para abrir as feitas agora.';
+
+  @override
+  String get archiveRetry => 'Tentar de novo';
+
+  @override
   String get menuDayStart => 'Começa às';
 
   @override
@@ -228,9 +255,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNotesLabel => 'Notas';
-
-  @override
-  String get eventMarkDone => 'Marcar como feita';
 
   @override
   String get restTip01 => 'Respire fundo. Três vezes, devagar.';
@@ -993,12 +1017,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get projectMoreDay => 'Um dia a mais';
-
-  @override
-  String get projectDone => 'Concluir projeto';
-
-  @override
-  String get projectReopen => 'Reabrir projeto';
 
   @override
   String projectTasksTab(int count) {

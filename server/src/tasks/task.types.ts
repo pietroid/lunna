@@ -60,3 +60,16 @@ export interface NewTask {
   /** The project it belongs to. */
   projectId?: string;
 }
+
+/** Which page of the finished tasks to read, newest first. */
+export interface DonePage {
+  /**
+   * Where the page before ended: only tasks finished before [at], or at
+   * [at] with an id below [id], come after it. The first page has none.
+   */
+  before?: { at: string; id: string };
+  /** Words to look for in the title and the notes, any case. */
+  query?: string;
+  /** At most this many. */
+  limit: number;
+}

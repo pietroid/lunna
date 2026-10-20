@@ -25,6 +25,12 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// carries a small mark saying where it came from, and the list above ignores
 /// every gesture on it.
 ///
+/// On the calendar ([preview]) a card also says what its notes start with
+/// and which project it is of, in the room its time already gives it and
+/// never more: a card with room for a second line draws them under the
+/// title, as many lines as fit up to three; a shorter one shows no notes at
+/// all, and marks a project's task with the folders.
+///
 /// It carries no gestures of its own. Tapping and dragging on the timeline
 /// are read by one listener over the whole list, which tells each card how it
 /// is being touched through [pressed], [hidden], and [lifted].
@@ -38,6 +44,7 @@ class EventTile extends StatelessWidget {
     this.lifted = false,
     this.landing,
     this.showProject = false,
+    this.preview = false,
     this.actionsKey,
     this.onPauseToggled,
     this.onAdjusted,
@@ -69,6 +76,13 @@ class EventTile extends StatelessWidget {
   /// Whether the project the task is of goes under its title.
   final bool showProject;
 
+  /// Whether the card says what its notes start with and its project's
+  /// name, within the height it is given (the calendar's).
+  final bool preview;
+
+  /// How tall a card on the calendar must be for a second line.
+  static const _twoLines = 72.0;
+
   /// Put on the row of buttons, so the list's own gesture can leave a tap on
   /// one of them alone.
   final Key? actionsKey;
@@ -93,67 +107,18 @@ class EventTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final body = Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.s4,
-        vertical: AppSpacing.s3,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              // The mark comes before the title, where it reads as "this one
-              // is a meeting" or "this one is pinned", rather than after it,
-              // where it would read as a status the block had earned.
-              if (_mark != null) ...[
-                AppIcon(
-                  iconData: _mark!,
-                  size: AppSpacing.s4,
-                  color: _quiet,
-                ),
-                const SizedBox(width: AppSpacing.s2),
-              ],
-              Expanded(
-                child: Text(
-                  card.title,
-                  style: AppTypography.body.copyWith(
-                    color: card.isPaused ? AppColors.ink2 : AppColors.ink,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s3),
-              Text(
-                // Nothing in the backlog has an hour, only a length, until
-                // it is aimed at the queue.
-                card.isBacklog && landing == null
-                    ? durationLabel(context.l10n, card.workMinutes)
-                    : '${hhmm(landing?.start ?? card.startTime)}–'
-                          '${hhmm(landing?.end ?? card.endTime)}',
-                style: AppTypography.label.copyWith(color: _quiet),
-              ),
-            ],
-          ),
-          if (showProject && card.projectTitle != null) ...[
-            const SizedBox(height: AppSpacing.s2),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppTag(
-                text: card.projectTitle!,
-                fill: _isNow ? AppColors.fill : AppColors.fillStrong,
-              ),
-            ),
-          ],
-          if (_isNow) ...[
-            const SizedBox(height: AppSpacing.s2),
-            NowProgress(card: card, trailing: _actions()),
-          ],
-        ],
-      ),
-    );
+    final body = preview
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              final height = constraints.maxHeight;
+              // Agora is drawn as it needs, so it gets no second line.
+              final lines = height.isFinite && height >= _twoLines
+                  ? ((height - 64) / 18).floor().clamp(1, 3)
+                  : 0;
+              return _body(context, lines: lines);
+            },
+          )
+        : _body(context, lines: 0);
 
     return Opacity(
       opacity: hidden ? 0 : 1,
@@ -181,6 +146,105 @@ class EventTile extends StatelessWidget {
                 child: body,
               )
             : body,
+      ),
+    );
+  }
+
+  /// The card's words: the title and its hours, then, given [lines] of room
+  /// under them, the project and the start of the notes.
+  Widget _body(BuildContext context, {required int lines}) {
+    final notes = preview ? notesPreview(card.notes) : '';
+    final project = preview ? card.projectTitle : null;
+    final under = lines > 0 && (notes.isNotEmpty || project != null);
+    final mark =
+        _mark ??
+        (preview && !under && project != null ? AppIcons.things : null);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.s4,
+        vertical: AppSpacing.s3,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              // The mark comes before the title, where it reads as "this one
+              // is a meeting" or "this one is pinned", rather than after it,
+              // where it would read as a status the block had earned.
+              if (mark != null) ...[
+                AppIcon(
+                  iconData: mark,
+                  size: AppSpacing.s4,
+                  color: _quiet,
+                ),
+                const SizedBox(width: AppSpacing.s2),
+              ],
+              Expanded(
+                child: Text(
+                  card.title,
+                  style: AppTypography.body.copyWith(
+                    color: card.isPaused ? AppColors.ink2 : AppColors.ink,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s3),
+              Text(
+                // Nothing in the backlog has an hour, only a length, until
+                // it is aimed at the queue.
+                card.isBacklog && landing == null
+                    ? durationLabel(context.l10n, card.workMinutes)
+                    : '${hhmm(landing?.start ?? card.startTime)}–'
+                          '${hhmm(landing?.end ?? card.endTime)}',
+                style: AppTypography.label.copyWith(color: _quiet),
+              ),
+            ],
+          ),
+          // The notes go under the title or nowhere: with no room for that
+          // line the card is its title alone.
+          if (under) ...[
+            const SizedBox(height: AppSpacing.s1),
+            Text.rich(
+              TextSpan(
+                children: [
+                  if (project != null)
+                    TextSpan(
+                      text: project,
+                      style: AppTypography.labelStrong.copyWith(
+                        color: _isFixed || card.isRoutine
+                            ? _quiet
+                            : AppColors.ink2,
+                      ),
+                    ),
+                  if (project != null && notes.isNotEmpty)
+                    const TextSpan(text: ' · '),
+                  if (notes.isNotEmpty) TextSpan(text: notes),
+                ],
+              ),
+              style: AppTypography.label.copyWith(color: _quiet),
+              maxLines: lines,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          if (showProject && card.projectTitle != null) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AppTag(
+                text: card.projectTitle!,
+                fill: _isNow ? AppColors.fill : AppColors.fillStrong,
+              ),
+            ),
+          ],
+          if (_isNow) ...[
+            const SizedBox(height: AppSpacing.s2),
+            NowProgress(card: card, trailing: _actions()),
+          ],
+        ],
       ),
     );
   }

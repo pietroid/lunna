@@ -485,7 +485,7 @@ void main() {
             child: _app(
               const Scaffold(
                 floatingActionButton: AskDock(
-                  fab: SizedBox.square(dimension: 56),
+                  fab: SizedBox.square(key: Key('fab'), dimension: 56),
                 ),
                 floatingActionButtonLocation:
                     FloatingActionButtonLocation.centerFloat,
@@ -560,9 +560,7 @@ void main() {
 
       expect(recognizer.stops, 1);
       expect(find.byType(AgentSheet), findsOneWidget);
-      final agent = tester
-          .element(find.byType(AgentSheet))
-          .read<AgentCubit>();
+      final agent = tester.element(find.byType(AgentSheet)).read<AgentCubit>();
       final said = agent.state.entries.first as UserEntry;
       expect(said.text, 'Encaixa estudo amanhã');
       expect(said.voice, isNotNull);
@@ -625,13 +623,47 @@ void main() {
 
       expect(voice.state.status, VoiceStatus.idle);
       expect(find.byType(AgentSheet), findsOneWidget);
-      final agent = tester
-          .element(find.byType(AgentSheet))
-          .read<AgentCubit>();
+      final agent = tester.element(find.byType(AgentSheet)).read<AgentCubit>();
       expect(
         (agent.state.entries.first as UserEntry).text,
         'Encaixa estudo amanhã',
       );
+    });
+
+    testWidgets('send sits centre on centre where the + was', (tester) async {
+      final (recognizer, _) = await pumpDock(tester);
+      final plus = tester.getCenter(find.byKey(const Key('fab')));
+      final dock = tester.getRect(find.byType(AskDock));
+      await record(tester, recognizer);
+
+      final send = tester.getCenter(find.byTooltip('Enviar'));
+      expect((send - plus).distance, lessThan(1.5));
+      // One surface, as wide as the bar and the + were, growing upward.
+      final panel = tester.getRect(find.byType(AskRecorder));
+      expect(panel.left, moreOrLessEquals(dock.left));
+      expect(panel.right, moreOrLessEquals(dock.right));
+      expect(panel.bottom, moreOrLessEquals(dock.bottom, epsilon: 1));
+    });
+
+    testWidgets('held, the microphone swells under the finger', (
+      tester,
+    ) async {
+      final (recognizer, _) = await pumpDock(tester);
+      final mic = tester.getCenter(find.bySemanticsLabel('Falar'));
+      final finger = await hold(tester, recognizer);
+
+      final swollen = tester.getCenter(
+        find.descendant(
+          of: find.byType(AskRecorder),
+          matching: find.byWidgetPredicate(
+            (it) => it is AppIcon && it.iconData == AppIcons.microphone,
+          ),
+        ),
+      );
+      expect((swollen - mic).distance, lessThan(2));
+
+      await finger.up();
+      await settle(tester);
     });
 
     testWidgets('discard brings the bar and the + back', (tester) async {
@@ -658,9 +690,7 @@ void main() {
 
       expect(find.byType(AgentSheet), findsOneWidget);
       expect(voice.state.status, VoiceStatus.idle);
-      final agent = tester
-          .element(find.byType(AgentSheet))
-          .read<AgentCubit>();
+      final agent = tester.element(find.byType(AgentSheet)).read<AgentCubit>();
       expect(agent.state.entries, isEmpty);
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,

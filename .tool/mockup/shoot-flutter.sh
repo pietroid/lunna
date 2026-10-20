@@ -21,7 +21,12 @@ python3 -m http.server "$port" -d "$web" >/dev/null 2>&1 & server=$!; disown
   --remote-debugging-port="$debug" --user-data-dir="$profile" --hide-scrollbars \
   about:blank >/dev/null 2>&1 & chrome=$!; disown
 trap 'kill $server $chrome 2>/dev/null; sleep 1; rm -rf "$profile" 2>/dev/null || true' EXIT
-sleep 2
+# Chrome takes 2-4 s to open its debug port on a busy machine: wait for it
+# (up to 20 s) rather than for a fixed time.
+for _ in $(seq 40); do
+  curl -s "http://127.0.0.1:$debug/json/version" >/dev/null && break
+  sleep 0.5
+done
 
 imgs=""
 for scene in "$@"; do

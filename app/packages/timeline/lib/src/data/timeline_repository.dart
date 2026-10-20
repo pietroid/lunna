@@ -275,6 +275,41 @@ class TimelineRepository {
     }
   }
 
+  /// A page of the tasks done, newest first: the archive in Menu.
+  ///
+  /// [after] is the last task of the page before, and the page goes on
+  /// from it; [query] is looked for in titles and notes. Each card's start
+  /// is the moment it was done.
+  Future<List<TimelineEvent>> fetchDone({
+    TimelineEvent? after,
+    String query = '',
+    int limit = donePage,
+  }) async {
+    try {
+      final response = await apiClient.get<Map<String, dynamic>>(
+        '/tasks/done',
+        queryParameters: {
+          'limit': '$limit',
+          if (query.trim().isNotEmpty) 'q': query.trim(),
+          if (after != null) ...{
+            'before': after.startTime.toUtc().toIso8601String(),
+            'beforeId': after.id,
+          },
+        },
+      );
+
+      return [
+        for (final card in response.data?['done'] as List<dynamic>? ?? [])
+          TimelineEvent.fromJson(card as Map<String, dynamic>),
+      ];
+    } on Object catch (error) {
+      throw TimelineFailure.from(error);
+    }
+  }
+
+  /// How many tasks done a page of the archive holds.
+  static const donePage = 30;
+
   /// How many days are drawn when nobody says.
   static const defaultDays = 2;
 

@@ -133,25 +133,7 @@ class _ProjectPageState extends State<ProjectPage> {
               onPressed: () => Navigator.of(context).maybePop(),
             ),
             titleSpacing: 0,
-            title: project == null
-                ? null
-                : Row(
-                    children: [
-                      AppDoneCircle(
-                        done: project.isDone,
-                        label: project.isDone
-                            ? context.l10n.projectReopen
-                            : context.l10n.projectDone,
-                        onChanged: (done) => unawaited(
-                          context.read<ProjectsCubit>().setDone(
-                            project.id,
-                            done: done,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: _Title(project: project)),
-                    ],
-                  ),
+            title: project == null ? null : _Title(project: project),
             actions: [
               if (project != null)
                 AppIconButton(

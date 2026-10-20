@@ -109,6 +109,12 @@ class _MenuPageState extends State<MenuPage> {
                 iconData: AppIcons.repeat,
                 onTap: () => unawaited(context.push<void>('/rotina')),
               ),
+              AppListItem(
+                title: l10n.menuArchive,
+                subtitle: l10n.menuArchiveHint,
+                iconData: AppIcons.archive,
+                onTap: () => unawaited(context.push<void>('/feitas')),
+              ),
               const SizedBox(height: AppSpacing.s6),
               Text(
                 l10n.menuDaySection,

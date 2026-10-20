@@ -12,7 +12,12 @@ import { CalendarService } from '../calendar/calendar.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
 import { MemoryProjectStore, ProjectStore } from '../projects/project.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
-import { BacklogCard, Timeline, TimelineCard } from './entities/event.entity';
+import {
+  BacklogCard,
+  DoneCard,
+  Timeline,
+  TimelineCard,
+} from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
 import { EventsController } from './events.controller';
 import { PauseTickerService } from './pause-ticker.service';
@@ -190,7 +195,10 @@ describe('the day', () => {
     projectStore = moduleRef.get(ProjectStore);
 
     app = moduleRef.createNestApplication();
-    await app.init();
+    // Bound to loopback, once. Left to supertest, each request listens on `::`,
+    // which macOS will share with a port another program holds on 127.0.0.1,
+    // and the request (sent to 127.0.0.1) reaches that program instead.
+    await app.listen(0, '127.0.0.1');
   });
 
   afterEach(async () => {
@@ -281,6 +289,94 @@ describe('the day', () => {
       fixed: true,
     });
   }
+
+  describe('the archive of what was done', () => {
+    function done(query = '') {
+      return request(app.getHttpServer()).get(`/tasks/done${query}`);
+    }
+
+    /** The tasks done, from the archive's answer. */
+    function archive(response: { body: unknown }): DoneCard[] {
+      return (response.body as { done: DoneCard[] }).done;
+    }
+
+    /** Writes [title] down, ticks it off, and lets a minute pass. */
+    async function finish(title: string, extra: object = {}): Promise<void> {
+      await add(title, 15, extra);
+      await post(`/tasks/${(await task(title)).id}/done`).expect(201);
+      later(1);
+    }
+
+    it('lists the tasks done, newest first, with when and their project', async () => {
+      const project = await projectStore.insert(owner, { title: 'Mudança' });
+      await finish('Caixas', { projectId: project.id });
+      await finish('Mercado');
+      await add('Ainda não', 30);
+
+      const found = archive(await done().expect(200));
+
+      expect(found.map((it) => it.title)).toEqual(['Mercado', 'Caixas']);
+      const caixas = found[1];
+      expect(caixas.startTime).toBe(NOW.toISOString());
+      expect(caixas.doneAt).toBe(NOW.toISOString());
+      expect(caixas.day).toBe('2026-03-10');
+      expect(caixas.project).toEqual({ id: project.id, title: 'Mudança' });
+      expect(found[0].project).toBeUndefined();
+    });
+
+    it('looks for words in titles and notes, in any case', async () => {
+      await finish('Mercado');
+      await finish('Ligar pro banco');
+      const banco = archive(await done().expect(200))[0];
+      await request(app.getHttpServer())
+        .patch(`/tasks/${banco.id}`)
+        .send({ notes: 'Pedir o EXTRATO de março' })
+        .expect(200);
+
+      const byNotes = await done('?q=extrato').expect(200);
+      const byTitle = await done('?q=MERC').expect(200);
+      const blank = await done('?q=%20%20').expect(200);
+
+      const names = (it: { body: unknown }) =>
+        archive(it).map((card) => card.title);
+      expect(names(byNotes)).toEqual(['Ligar pro banco']);
+      expect(names(byTitle)).toEqual(['Mercado']);
+      expect(names(blank)).toEqual(['Ligar pro banco', 'Mercado']);
+    });
+
+    it('reads page after page, without losing tasks done at once', async () => {
+      // Three ticked off within the same minute share their doneAt.
+      for (const title of ['Um', 'Dois', 'Três']) {
+        await add(title, 15);
+        await post(`/tasks/${(await task(title)).id}/done`).expect(201);
+      }
+      later(1);
+      await finish('Quatro');
+
+      const seen: string[] = [];
+      let query = '?limit=2';
+      for (;;) {
+        const page = archive(await done(query).expect(200));
+        if (page.length === 0) break;
+        seen.push(...page.map((it) => it.title));
+        const last = page[page.length - 1];
+        query = `?limit=2&before=${encodeURIComponent(last.doneAt)}&beforeId=${last.id}`;
+      }
+
+      expect(seen[0]).toBe('Quatro');
+      expect([...seen].sort()).toEqual(['Dois', 'Quatro', 'Três', 'Um']);
+    });
+
+    it('refuses a page it cannot read, in Portuguese', async () => {
+      const tooMany = await done('?limit=500').expect(400);
+      const halfCursor = await done('?before=2026-03-10T10:00:00Z').expect(400);
+
+      const message = (it: { body: unknown }) =>
+        (it.body as { message: string }).message;
+      expect(message(tooMany)).toMatch(/entre 1 e 100/);
+      expect(message(halfCursor)).toMatch(/de onde continuar/);
+    });
+  });
 
   describe('a task of a project', () => {
     it('names its project wherever it is drawn', async () => {

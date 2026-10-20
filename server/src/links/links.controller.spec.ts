@@ -98,7 +98,10 @@ describe('LinksController', () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    await app.init();
+    // Bound to loopback, once. Left to supertest, each request listens on `::`,
+    // which macOS will share with a port another program holds on 127.0.0.1,
+    // and the request (sent to 127.0.0.1) reaches that program instead.
+    await app.listen(0, '127.0.0.1');
   });
 
   afterEach(async () => {

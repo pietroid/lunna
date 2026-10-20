@@ -229,44 +229,67 @@ class AskRecorder extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              // Held, the lock has the column over the microphone.
-              padding: EdgeInsets.only(
-                right: held ? _micFromRight + 20 + AppSpacing.s2 : 0,
+        // One surface, as wide as the bar and the + together: the words
+        // above, the recorder under them. Nothing else floats over the day,
+        // and nothing is kept invisible to hold its room.
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
+            border: Border.all(color: AppColors.line),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 28,
+                offset: Offset(0, 8),
+                spreadRadius: -10,
               ),
-              child: _Heard(voice: voice, onOpen: onReview),
-            ),
-            const SizedBox(height: AppSpacing.s3),
-            Row(
-              children: [
-                Expanded(
-                  child: AskPill(
-                    padding: const EdgeInsets.only(
-                      left: AppSpacing.s2,
-                      right: AppSpacing.s4,
-                    ),
-                    child: held
-                        ? _HeldRow(voice: voice, slide: slide.dx)
-                        : VoiceBar(voice: voice, onDiscard: onDiscard),
-                  ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                // Held, the lock has the column over the microphone.
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.s4,
+                  AppSpacing.s3,
+                  held ? _micFromRight + 20 + AppSpacing.s2 : AppSpacing.s3,
+                  0,
                 ),
-                const SizedBox(width: AppSpacing.s3),
-                // The + is where the recording goes: send, or, held, room
-                // for the microphone the finger is on.
-                Opacity(
-                  opacity: held ? 0 : 1,
-                  child: AppFab(
-                    iconData: AppIcons.arrowUp,
-                    tooltip: l10n.agentVoiceSend,
-                    onPressed: held ? () {} : onSend,
-                  ),
+                child: _Heard(voice: voice, onOpen: held ? null : onReview),
+              ),
+              // The recorder sits where the bar sat, at the bar's height,
+              // so the finger on the microphone is still on it.
+              SizedBox(
+                height: AskBar.height,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.s2, right: 4),
+                  child: held
+                      ? _HeldRow(voice: voice, slide: slide.dx)
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: VoiceBar(
+                                voice: voice,
+                                onDiscard: onDiscard,
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.s3),
+                            // Send has the +'s place, centre on centre.
+                            AppFab(
+                              iconData: AppIcons.arrowUp,
+                              tooltip: l10n.agentVoiceSend,
+                              diameter: 48,
+                              onPressed: onSend,
+                            ),
+                          ],
+                        ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
         if (held) ...[
           // The lock, a slide up away.
@@ -364,8 +387,11 @@ class _HeldRow extends StatelessWidget {
             ),
           ),
         ),
-        // Room for the microphone swollen over the bar's end.
-        const SizedBox(width: AskRecorder._swollen - AppSpacing.s3),
+        // Room for the microphone swollen under the finger, and the + spot
+        // past it, which stays empty while the finger is down.
+        const SizedBox(
+          width: AskRecorder._micFromRight + AskRecorder._swollen / 2 - 4,
+        ),
       ],
     );
   }
@@ -509,73 +535,58 @@ class AskPill extends StatelessWidget {
   }
 }
 
-/// The words of a recording on Tempo, over the recorder; a tap takes them,
-/// still recording, into the conversation.
+/// The words of a recording on Tempo, at the top of the recorder's panel;
+/// a tap takes them, still recording, into the conversation. Null [onOpen]
+/// while a finger holds the microphone, when the words only show.
 class _Heard extends StatelessWidget {
-  const _Heard({required this.voice, required this.onOpen});
+  const _Heard({required this.voice, this.onOpen});
 
   final VoiceState voice;
-  final VoidCallback onOpen;
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
+    final onOpen = this.onOpen;
+    final words = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const AppIcon(iconData: AppIcons.agent, size: 18),
+            const SizedBox(width: AppSpacing.s2),
+            Expanded(
+              child: Text(
+                voice.status == VoiceStatus.stopped
+                    ? context.l10n.agentVoiceStopped
+                    : context.l10n.agentVoiceListening,
+                style: AppTypography.label.copyWith(
+                  color: AppColors.accent,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            // Up, into the conversation.
+            if (onOpen != null)
+              const AppIcon(
+                iconData: AppIcons.earlier,
+                size: 18,
+                color: AppColors.ink3,
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        VoiceTranscript(voice: voice),
+      ],
+    );
+    if (onOpen == null) return words;
+
     return Semantics(
       button: true,
       label: context.l10n.agentVoiceOpen,
       child: GestureDetector(
         onTap: onOpen,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.s4,
-            AppSpacing.s3,
-            AppSpacing.s3,
-            AppSpacing.s4,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-            border: Border.all(color: AppColors.line),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 28,
-                offset: Offset(0, 8),
-                spreadRadius: -10,
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const AppIcon(iconData: AppIcons.agent, size: 18),
-                  const SizedBox(width: AppSpacing.s2),
-                  Expanded(
-                    child: Text(
-                      voice.status == VoiceStatus.stopped
-                          ? context.l10n.agentVoiceStopped
-                          : context.l10n.agentVoiceListening,
-                      style: AppTypography.label.copyWith(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  // Up, into the conversation.
-                  const AppIcon(
-                    iconData: AppIcons.earlier,
-                    size: 18,
-                    color: AppColors.ink3,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.s2),
-              VoiceTranscript(voice: voice),
-            ],
-          ),
-        ),
+        behavior: HitTestBehavior.opaque,
+        child: words,
       ),
     );
   }
