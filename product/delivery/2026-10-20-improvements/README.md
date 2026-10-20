@@ -279,6 +279,31 @@ page, Menu, Feitas, recording (tapped), recording (held).
 - **`ProjectsCubit.setDone` stays.** Nothing in the UI calls it now, but
   it is the server's `done` field and question 3 may bring it back.
 
+### The flaky server test (after merging main)
+
+After main was merged in, `.tool/check --all` failed on `server-test`:
+one test in `events.controller.spec.ts` fell over with "socket hang up",
+and a different one on each run. Once it answered **401**, which no
+stubbed guard in the suite can send. It was not this branch: the same
+spec, from main's tree (`git archive 5daf05d`), failed 1 run in 10 as
+well.
+
+The cause is supertest on macOS. Given a server that isn't listening,
+supertest calls `listen(0)` (on `::`) for every request and then dials
+`127.0.0.1:<port>`. macOS lets that wildcard bind share a port another
+program holds on `127.0.0.1` alone, and the request goes to that program.
+This Mac has plenty of them in the ephemeral range: Chrome, Code, Claude
+Code, dart. A two-line Node script showed it: a wildcard listen on
+another program's loopback port succeeds, and a `127.0.0.1` listen on it
+is refused (`EADDRINUSE`). CI, on Linux, refuses both binds, so it never
+saw this.
+
+**The fix:** the four specs that talk HTTP (events, projects, agent,
+links) now bind their app once, with `app.listen(0, '127.0.0.1')`, instead
+of `app.init()`. Requests go to that server. The full server suite then
+passed 12 runs in a row (before the fix it failed by the 3rd), and
+`.tool/check --all` is green.
+
 ### Not tested
 
 - On a real phone: whether the finger stays on the swollen mic is shown
