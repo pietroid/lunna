@@ -1,11 +1,23 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, isNotNull, isNull, notInArray } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  ilike,
+  isNotNull,
+  isNull,
+  lt,
+  notInArray,
+  or,
+} from 'drizzle-orm';
 import { CalendarUser } from '../calendar/calendar.types';
 import { DB } from '../db/db';
 import type { Database } from '../db/db';
 import { task, TaskRow } from '../db/schema';
 import { TaskStore } from './task.store';
-import { NewTask, RoutineTask, Task } from './task.types';
+import { DonePage, NewTask, RoutineTask, Task } from './task.types';
 
 /** The tasks, in Postgres. */
 @Injectable()
@@ -91,6 +103,43 @@ export class PgTaskStore extends TaskStore {
       );
   }
 
+  async done(user: CalendarUser, page: DonePage): Promise<Task[]> {
+    const before = page.before;
+    // The words are looked for as they are: % and _ in them mean themselves.
+    const like =
+      page.query === undefined
+        ? undefined
+        : `%${page.query.replace(/[\\%_]/g, (it) => `\\${it}`)}%`;
+
+    const rows = await this._db
+      .select()
+      .from(task)
+      .where(
+        and(
+          eq(task.userId, user.id),
+          isNotNull(task.doneAt),
+          ...(before === undefined
+            ? []
+            : [
+                or(
+                  lt(task.doneAt, new Date(before.at)),
+                  and(
+                    eq(task.doneAt, new Date(before.at)),
+                    lt(task.id, isUuid(before.id) ? before.id : MAX_UUID),
+                  ),
+                ),
+              ]),
+          ...(like === undefined
+            ? []
+            : [or(ilike(task.title, like), ilike(task.notes, like))]),
+        ),
+      )
+      .orderBy(desc(task.doneAt), desc(task.id))
+      .limit(page.limit);
+
+    return rows.map(toTask);
+  }
+
   async get(user: CalendarUser, taskId: string): Promise<Task | undefined> {
     if (!isUuid(taskId)) return undefined;
 
@@ -174,6 +223,9 @@ function toTask(row: TaskRow): Task {
 function dateOf(value: string | undefined): Date | null {
   return value === undefined ? null : new Date(value);
 }
+
+/** Above every id, for a cursor whose id is not one. */
+const MAX_UUID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
 
 /** Whether [value] can be an id at all, so a stray one is a 404, not a 500. */
 function isUuid(value: string): boolean {

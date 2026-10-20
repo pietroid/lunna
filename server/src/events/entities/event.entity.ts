@@ -121,6 +121,32 @@ export class BacklogCard {
 }
 
 /**
+ * A task that was finished, as the archive in Menu draws it.
+ *
+ * Shaped like a card so the app reads it as one: its start and its end are
+ * both the moment it was done, which is the hour the archive shows and
+ * files it under ([day]).
+ */
+export class DoneCard {
+  id: string;
+  kind: 'task';
+  title: string;
+  notes: string;
+  /** ISO 8601, when it was finished. */
+  doneAt: string;
+  /** The same as [doneAt]. */
+  startTime: string;
+  /** The same as [doneAt]. */
+  endTime: string;
+  /** "2026-09-21", the day it was done on, in the person's zone. */
+  day: string;
+  /** How long it was meant to take. */
+  durationMinutes: number;
+  workMinutes: number;
+  project?: CardProject;
+}
+
+/**
  * The day, as the screen draws it.
  *
  * Both views of it at once, from one read, so the list and the calendar

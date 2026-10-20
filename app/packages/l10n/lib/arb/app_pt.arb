@@ -24,6 +24,8 @@
   "archiveYesterday": "Ontem",
   "archiveEmpty": "Nada concluído ainda. O que você marcar como feito fica guardado aqui.",
   "archiveNoMatch": "Nenhuma tarefa feita com essas palavras.",
+  "archiveFailed": "Não deu para abrir as feitas agora.",
+  "archiveRetry": "Tentar de novo",
   "menuDayStart": "Começa às",
   "menuDayEnd": "Termina às",
   "menuDayHelp": "Nada entra na fila fora dessas horas.",
@@ -236,7 +238,6 @@
   "eventProjectLabel": "Projeto",
   "eventNoProject": "Nenhum",
   "eventNotesLabel": "Notas",
-  "eventMarkDone": "Marcar como feita",
   "restTip01": "Respire fundo. Três vezes, devagar.",
   "restTip02": "Levante, alongue as costas e olhe pela janela.",
   "restTip03": "Beba um copo d’água antes de continuar.",
@@ -741,8 +742,6 @@
   "projectPlusDay": "+1 dia",
   "projectLessDay": "Um dia a menos",
   "projectMoreDay": "Um dia a mais",
-  "projectDone": "Concluir projeto",
-  "projectReopen": "Reabrir projeto",
   "projectTasksTab": "{count, plural, =0{Tarefas} other{Tarefas · {count}}}",
   "@projectTasksTab": {
     "placeholders": {

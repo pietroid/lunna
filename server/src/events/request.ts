@@ -11,6 +11,7 @@ import {
   TaskEdit,
   TaskRequest,
 } from './entities/event.entity';
+import { DonePage } from '../tasks/task.types';
 import { DEFAULT_DAYS, MAX_DAYS } from './timeline.service';
 import { TimingAction, TimingDecision, TIMING_DECISIONS } from './timing';
 
@@ -263,4 +264,59 @@ function requireMinutes(raw: number | undefined, name: string): number {
   }
 
   return Math.round(raw);
+}
+
+/** How many finished tasks a page of the archive holds, unless asked. */
+export const DONE_PAGE = 30;
+
+/** The most a page of the archive holds. */
+export const MAX_DONE_PAGE = 100;
+
+/**
+ * A page of the archive: `?before=<iso>&beforeId=<id>&q=<words>&limit=<n>`.
+ *
+ * [before] and [beforeId] are the last task of the page before; [q] is
+ * looked for in titles and notes, and blank is no search at all.
+ */
+export function requireDonePage(raw: {
+  before?: string;
+  beforeId?: string;
+  q?: string;
+  limit?: string;
+}): DonePage {
+  const page: DonePage = { limit: DONE_PAGE };
+
+  if (raw.limit !== undefined) {
+    const limit = Number(raw.limit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_DONE_PAGE) {
+      throw new BadRequestException(
+        `Peça entre 1 e ${MAX_DONE_PAGE} tarefas por vez.`,
+      );
+    }
+    page.limit = limit;
+  }
+
+  if (raw.before !== undefined || raw.beforeId !== undefined) {
+    if (
+      typeof raw.before !== 'string' ||
+      Number.isNaN(Date.parse(raw.before)) ||
+      typeof raw.beforeId !== 'string' ||
+      raw.beforeId === ''
+    ) {
+      throw new BadRequestException(
+        'Não sei de onde continuar: mande a data e o id da última tarefa.',
+      );
+    }
+    page.before = { at: raw.before, id: raw.beforeId };
+  }
+
+  if (raw.q !== undefined) {
+    if (typeof raw.q !== 'string' || raw.q.length > 200) {
+      throw new BadRequestException('Essa busca é longa demais.');
+    }
+    const words = raw.q.trim();
+    if (words !== '') page.query = words;
+  }
+
+  return page;
 }

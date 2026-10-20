@@ -41,6 +41,12 @@ verbatim:
 That approves the board as drawn in round 2. Nothing was re-shot for
 this reply: the board below is the approved one.
 
+A last reply on the issue, verbatim, before the build:
+
+> Approve
+
+The build (sections 3 to 5) was also worked unattended.
+
 ## 2. The design
 
 ![Board](img/mockup-board.png)
@@ -149,97 +155,143 @@ No new icon: `AppIcons.archive` and `AppIcons.things` already existed.
    no way to mark the project finished. Is that wanted, or should it be
    done some other way (from the projects list, say)?
 
-## Build brief
+## 3. What was built
 
-Phase 3 starts here. Remove this section in Phase 4.
+Shot from the real build, through the same preview entry point (now
+deleted), at a fixed 10:12. Scenes, left to right: Calendário, a task's
+page, Menu, Feitas, recording (tapped), recording (held).
 
-Approved on the issue ("Great. Build it"), board as in round 2. The
-three open questions were not answered; build without them (see
-"Decided unattended").
+**Lunna**
 
-### Files Phase 1 wrote or changed (committed on `queue/1-improvements` by the queue, kept for the build)
+![Lunna](img/build-lunna-strip.png)
 
-- `app/lib/improvements_preview.dart`: the preview entry point, six
-  scenes, a fixed clock, fake repository (`noSuchMethod`). Delete it after
-  Phase 4.
-- `app/pubspec.yaml`: `clock` dependency (the preview uses `withClock`).
-  Drop it if nothing else in `lib/` uses it.
-- `app/packages/timeline/lib/src/widgets/event_tile.dart`: `preview`
-  param, `_body(lines:)`, a `LayoutBuilder` giving the notes a second
-  line by drawn height (`_twoLines = 72`) or leaving them out, and the
-  folders mark.
-- `app/packages/timeline/lib/src/widgets/format.dart`: `notesPreview`.
-- `app/packages/timeline/lib/src/view/timeline_list.dart`:
-  `preview: !_isList` in `_tile`.
-- `app/packages/timeline/lib/src/view/event_page.dart`: circle removed
-  from the title, no done control (round 2 took the pill out again).
-- `app/packages/timeline/lib/src/view/done_archive.dart` (new):
-  `DoneArchivePage` (search, day headings) and `DoneArchiveTile`. For now
-  it takes a fixed list and filters locally. Exported from `view.dart`.
-- `app/packages/app_ui/lib/src/widgets/app_done_button.dart`: written in
-  round 1, deleted in round 2. `app_done_circle.dart` is still there
-  (the project page uses it).
-- `app/packages/agent/lib/src/view/ask_bar.dart`: `AskRecorder` is one
-  panel. `_Heard` has no surface of its own, and `onOpen` is null while
-  held. Send is an `AppFab(diameter: 48)` in the +'s spot. `_HeldRow`
-  reserves the mic and + room.
-- `app/lib/shell/view/shell_page.dart`:
-  `floatingActionButtonAnimator: noAnimation`.
-- `app/lib/menu/view/menu_page.dart`: the Feitas row (`/feitas`, no route
-  yet).
-- `app/packages/l10n/lib/arb/app_pt.arb` + `gen/`: `eventDoneShort`,
-  `menuArchive`, `menuArchiveHint`, `archiveSearch`, `archiveToday`,
-  `archiveYesterday`, `archiveEmpty`, `archiveNoMatch` (`eventDoneShort`
-  was added in round 1 and removed in round 2). `eventMarkDone` is now
-  unused: delete it in the build.
-- `.tool/mockup/shoot-flutter.sh`: wait for the debug port.
+**Focus**
+
+![Focus](img/build-focus-strip.png)
+
+| Calendário | Feitas | Recording |
+|---|---|---|
+| ![1](img/build-lunna-1.png) | ![4](img/build-lunna-4.png) | ![5](img/build-lunna-5.png) |
+
+### The contract
+
+- **A calendar card is never taller for its notes.** Drawn 72 px or
+  taller (about 40 minutes), it shows its project and the first line of
+  its notes with words under the title, up to 3 lines. Shorter, it shows
+  no notes at all, and a project's task gets the folders mark before its
+  title. Lista draws neither, since its cards size to their content.
+- **A task is ticked off only on Tempo.** Its page and the project page
+  have no done control any more.
+- **Feitas reads the server, a page at a time.**
+  `GET /api/tasks/done?q=<words>&limit=<n>&before=<iso>&beforeId=<id>`
+  answers `{ done: [card] }`, newest first by `done_at`, then by id. Each
+  card's `startTime` and `endTime` are its `doneAt`, and it carries `day`
+  (in the person's zone), `notes` and `project`. `q` is matched
+  case-insensitively against the title and the notes (`ILIKE`, with `%`
+  and `_` taken literally). The cursor is the last card's `doneAt` and
+  id, so tasks finished in the same millisecond are not lost between
+  pages. Bad input is a 400 in Portuguese: a limit outside 1–100, half a
+  cursor, or a search over 200 characters.
 
 ### Server
 
-- `GET /api/tasks/done?before=<iso>&q=<words>&limit=<n>` →
-  `{ done: [card] }`. Newest first by `done_at`, with
-  `startTime = done_at`, `project`, `notes`. `q` is matched case-insensitively
-  against title and notes (`ILIKE`). Validate the way `events/request.ts`
-  does, with refusals in Portuguese. Add it to `TaskStore` (Pg + Memory)
-  and write an e2e spec with a frozen clock.
-- Nothing else: notes and `project` already arrive on every card in
-  `cards`.
+- `tasks/task.store.ts`, `tasks/pg-task.store.ts`: `TaskStore.done(user,
+  page)` in memory and in Postgres. `tasks/task.types.ts`: `DonePage`.
+- `events/request.ts`: `requireDonePage`. `events/tasks.controller.ts`:
+  `GET /tasks/done`. `events/entities/event.entity.ts`: `DoneCard`.
+- No migration, no new env var. Notes and `project` already came on
+  every calendar card.
 
 ### App
 
-- `TimelineRepository.fetchDone({before, query})`, plus a
-  `DoneArchiveCubit` (pages, search with debounce). `DoneArchivePage`
-  reads the cubit, loads more near the end, and opens
-  `EventPage(finished:)` with the NotesDock. Add a go_router route
-  `/feitas` in `lib/app`.
-- Projects: remove `AppDoneCircle` from `project_page.dart` with nothing
-  in its place (question 3 is unanswered, so no finish control), then
-  delete `app_done_circle.dart`.
-- Delete `eventMarkDone` from `app_pt.arb` and regenerate.
-- Recording: check that the finger stays on the swollen mic on a real
-  phone. With the panel's bottom row at the bar's height, the centre
-  should land exactly. Check the notes page's `NotesDock` for the same
-  awkward layout and make it match if needed.
-- Tests: `notesPreview` (link lines skipped, whitespace collapsed); an
-  `EventTile` with preview at 60 px vs 90 px height (no notes at all vs
-  a second line, never taller); the event page has no circle and no done
-  control; archive grouping and search; the shell's FAB uses
-  `noAnimation`; the recorder panel's send finds the +'s centre; the
-  existing ask-dock hold/slide/lock tests still pass. Update tests that
-  find `AppDoneCircle`.
-- Run under both brands.
+- `timeline`: `TimelineRepository.fetchDone`, `DoneArchiveCubit` (first
+  page, the next one 600 px before the end, search after 300 ms of no
+  typing, late answers to old words dropped, duplicates between pages
+  dropped), `DoneArchivePage` over it (loading, failure with "Tentar de
+  novo", empty, no match). `EventTile(preview:)` and `notesPreview` from
+  the design, unchanged.
+- `lib/app/view/app.dart`: the `/feitas` route. A tap opens
+  `EventPage(finished:)` with the notes dock, and the archive reads itself
+  again when the page closes, since notes can be changed there.
+- `projects`: the circle before the project's name is gone, with nothing
+  in its place. `AppDoneCircle` is deleted from `app_ui`.
+- `l10n`: `archiveFailed` and `archiveRetry` added. `eventMarkDone`,
+  `projectDone` and `projectReopen` deleted (no longer used).
+- `ask_bar.dart` (the one-panel recorder) and `shell_page.dart`
+  (`noAnimation`) from the design, unchanged.
+- `AGENTS.md`: Feitas, the route and the card preview rule, in "The app
+  shell" and "Calendário".
 
-### Decisions not in the pins
+### Tests
 
-- Not built (open questions, unanswered at approval): music in Feitas,
-  project deadlines on the calendar, finishing a project.
-- The preview's second line takes `(height − 64) / 18` lines, clamped to
-  1–3. Agora is laid out at its natural height, so it never gets a second
-  line.
-- The archive's rows are not greyed out like Lista's "N feitas": they are
-  there to be read.
+- Server: 4 end-to-end specs in `events.controller.spec.ts` (newest
+  first with project and day, search in titles and notes in any case,
+  paging across three tasks finished at the same instant, refusals) and
+  1 PGlite spec in `pg-task.store.spec.ts` (order, cursor, `ILIKE`, a
+  literal `%`, other people's tasks). Frozen clock, pinned zone.
+- `timeline`: `done_archive_test.dart` (3 cubit tests: paging, debounced
+  search, failure; 2 page tests: Hoje/Ontem headings and opening a
+  task, empty vs no match), `event_tile_preview_test.dart` (3
+  `notesPreview` tests; a card at 90 px shows the notes under the title,
+  at 60 px shows none and stays 60 px; project name vs folders mark;
+  Lista draws neither), and one more in `event_page_test.dart` (no ✓ on a
+  task's page).
+- `agent` (`voice_test.dart`): send sits within 1.5 px of the +'s
+  centre, and the panel is as wide as the bar and the + and ends at the
+  dock's bottom; held, the swollen mic is within 2 px of the bar's mic
+  where the finger landed. The existing hold, slide, lock and send tests
+  still pass.
+- All of it under both brands, through `.tool/check`, which passes
+  (app analyze, every touched package under Focus and Lunna, server
+  eslint, tsc and tests).
+- **Flaky, seen once.** The first `.tool/check` ran right after the two
+  web builds, on a busy machine. Two server tests failed in it, neither
+  about this change: "the day › reordering › never moves a fixed block"
+  (`GET /timeline` answered 403) and "the agent › the answer as a
+  surface › reaches a task off the board through its project" (the
+  answer had no `tasks`). Both files passed alone (133 of 133), and the
+  full check passed on the next run with the same code, so I didn't
+  stash to bisect it. Worth watching if it comes back.
 
-### Cost and time (design session)
+### Where the build differs from the mockup
 
-The queue measures this run and writes the figures in the PR, so
-`.tool/cost` was not run here (per the queue's instructions).
+- **Feitas has states the mockup didn't draw**: a small spinner while
+  the first page loads, and a line with "Tentar de novo" when it can't
+  be read.
+- **Nothing else.** The calendar, the task page, Menu and the recorder
+  are the widgets the design drew. The strips match the board.
+
+### Decided unattended (build)
+
+- **The archive searches on the server**, not just over what is loaded,
+  so a task from months ago is found without scrolling to it.
+- **NotesDock is left as it is.** While dictating, its words go straight
+  into the notes, so it already is one pill, the bar and the + together,
+  with nothing floating above it. Its other microphone asks the agent
+  through the same `AskDock`, so it gets the new panel too.
+- **No feature spec file.** These are six small fixes to existing
+  features, not a new one, so the rules went straight into `AGENTS.md`
+  (Feitas and the card preview), where every session reads them.
+- **The shell's `noAnimation` has no test.** The app's root package has
+  no test folder, and pumping `ShellPage` needs every bloc of the app.
+  The setting is one line. It shows on the board: the + is in the same
+  spot on scenes 1 and 3.
+- **`ProjectsCubit.setDone` stays.** Nothing in the UI calls it now, but
+  it is the server's `done` field and question 3 may bring it back.
+
+### Not tested
+
+- On a real phone: whether the finger stays on the swollen mic is shown
+  by the geometry test and the shots, not by a hand.
+- Against a real Postgres (Neon). The store's query ran on PGlite.
+
+## 4. How to turn it on
+
+Nothing to set. No env var and no migration. Deploy the server and the
+app together: an older server answers `GET /api/tasks/done` with a 404,
+and Feitas then shows its "Tentar de novo" line.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. The build made no calls to
+outside services (no OpenRouter, no model evals).

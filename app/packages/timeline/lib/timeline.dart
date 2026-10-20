@@ -2,6 +2,7 @@
 /// that put blocks on it.
 library;
 
+export 'src/bloc/done_archive_cubit.dart';
 export 'src/bloc/timeline_bloc.dart';
 export 'src/bloc/timeline_mode_cubit.dart';
 export 'src/data/routines_repository.dart';

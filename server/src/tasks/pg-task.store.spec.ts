@@ -189,6 +189,46 @@ describe('PgTaskStore', () => {
     });
   });
 
+  it('reads the tasks done newest first, by page and by words', async () => {
+    const at = '2026-03-10T12:00:00.000Z';
+    const ids: string[] = [];
+    for (const [title, doneAt, notes] of [
+      ['Mercado', '2026-03-09T12:00:00.000Z', ''],
+      ['Banco', at, 'pedir 100% do extrato'],
+      ['Correio', at, ''],
+    ]) {
+      const it = await store.insert(OWNER, { title, minutes: 15, position: 0 });
+      await store.update(OWNER, { ...it, notes, doneAt });
+      ids.push(it.id);
+    }
+    await store.insert(OWNER, { title: 'Aberta', minutes: 15, position: 0 });
+    await store.insert(OTHER, { title: 'Alheia', minutes: 15, position: 0 });
+
+    const first = await store.done(OWNER, { limit: 2 });
+    const last = first[first.length - 1];
+    const rest = await store.done(OWNER, {
+      limit: 2,
+      before: { at: last.doneAt ?? '', id: last.id },
+    });
+
+    expect([...first, ...rest].map((it) => it.title).slice(2)).toEqual([
+      'Mercado',
+    ]);
+    expect(first.map((it) => it.title).sort()).toEqual(['Banco', 'Correio']);
+    expect(
+      (await store.done(OWNER, { limit: 10, query: 'EXTRATO' })).map(
+        (it) => it.title,
+      ),
+    ).toEqual(['Banco']);
+    // % is a character to look for, not a wildcard.
+    expect(
+      (await store.done(OWNER, { limit: 10, query: '0%' })).map(
+        (it) => it.title,
+      ),
+    ).toEqual(['Banco']);
+    expect(await store.done(OTHER, { limit: 10 })).toEqual([]);
+  });
+
   it('treats an id that is not one as not found', async () => {
     expect(await store.get(OWNER, 'nope')).toBeUndefined();
   });

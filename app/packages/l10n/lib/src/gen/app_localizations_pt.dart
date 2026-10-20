@@ -69,6 +69,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get archiveNoMatch => 'Nenhuma tarefa feita com essas palavras.';
 
   @override
+  String get archiveFailed => 'Não deu para abrir as feitas agora.';
+
+  @override
+  String get archiveRetry => 'Tentar de novo';
+
+  @override
   String get menuDayStart => 'Começa às';
 
   @override
@@ -249,9 +255,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNotesLabel => 'Notas';
-
-  @override
-  String get eventMarkDone => 'Marcar como feita';
 
   @override
   String get restTip01 => 'Respire fundo. Três vezes, devagar.';
@@ -1014,12 +1017,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get projectMoreDay => 'Um dia a mais';
-
-  @override
-  String get projectDone => 'Concluir projeto';
-
-  @override
-  String get projectReopen => 'Reabrir projeto';
 
   @override
   String projectTasksTab(int count) {

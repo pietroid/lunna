@@ -265,7 +265,10 @@ remembered on the device (`TimelineModeCubit`):
 - **Calendário**: everything, to scale, day after day. Scrolling near the
   end asks for another week (`TimelineExtended`), up to 120 days. **Agora**
   is always drawn, the break with its line whenever nothing runs, and a
-  task let go on it is begun. Every free stretch carries a small **+**
+  task let go on it is begun. A card tall enough for a second line (72 px
+  drawn) shows its project and the start of its notes under the title
+  (`notesPreview`, up to 3 lines); a shorter one shows no notes at all and
+  marks a project's task with the folders. A card is never taller for it. Every free stretch carries a small **+**
   and its hours, both stuck to the top of the part of it in sight (placed
   while painting, so they never lag the scroll); the hours run from the
   first one in sight, which is where the + writes.
@@ -422,11 +425,20 @@ nothing; the app draws `GuardSheet` and posts the answer to
 ### The app shell
 
 Three tabs: **Tempo** (the timeline), **Projetos** (see below) and
-**Menu**, which opens Rotina and sets when the day starts and ends. The
-`AppFab` (a `+`) writes down whatever the tab in front is about: on
-Projetos a project, anywhere else something on the day Tempo is showing
-(from Menu it brings Tempo forward). The
+**Menu**, which opens Rotina and **Feitas** and sets when the day starts
+and ends. The `AppFab` (a `+`) writes down whatever the tab in front is
+about: on Projetos a project, anywhere else something on the day Tempo is
+showing (from Menu it brings Tempo forward). It sits in the same spot on
+every tab and never animates between them (`noAnimation`). The
 greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
+
+**Feitas** (`/feitas`, `DoneArchivePage` over `DoneArchiveCubit`) is every
+task ticked off, newest first under the calendar's day headings, searched
+on the server: `GET /api/tasks/done?q=&limit=&before=&beforeId=` answers
+`{ done: [card] }`, each card's `startTime` being its `doneAt`, paged by
+the last one's `doneAt` and id. A tap opens `EventPage(finished:)`. A task
+is ticked off only on Tempo (the running card's ✓, or carried right in
+Lista); its page has no done control.
 
 ### Projects
 

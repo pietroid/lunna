@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   Patch,
   Post,
@@ -14,6 +15,8 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { Trace } from '../common/trace';
 import { ProjectStore } from '../projects/project.store';
+import { TaskStore } from '../tasks/task.store';
+import { isoDayIn } from '../time/zone';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
@@ -21,13 +24,14 @@ import { MoveEventDto } from './dto/move-event.dto';
 import { SnoozeEventDto } from './dto/snooze-event.dto';
 import { SwapTaskDto } from './dto/swap-task.dto';
 import { TimingDto } from './dto/timing.dto';
-import { Timeline } from './entities/event.entity';
+import { DoneCard, Timeline } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
 import { PauseTickerService } from './pause-ticker.service';
 import {
   daysOf,
   owner,
   requireDelta,
+  requireDonePage,
   requireLength,
   requireMove,
   requireSnooze,
@@ -54,7 +58,53 @@ export class TasksController {
     private readonly layout: EventLayoutService,
     private readonly ticker: PauseTickerService,
     private readonly projects: ProjectStore,
+    private readonly tasks: TaskStore,
   ) {}
+
+  /**
+   * What has been finished, newest first, a page at a time: the archive in
+   * Menu. It changes nothing, so it answers with the tasks alone.
+   */
+  @Get('done')
+  async archive(
+    @CurrentUser() user: AuthUser,
+    @Query('before') before?: string,
+    @Query('beforeId') beforeId?: string,
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+  ): Promise<{ done: DoneCard[] }> {
+    const who = owner(user);
+    const page = requireDonePage({ before, beforeId, q, limit });
+    const [found, projects] = await Promise.all([
+      this.tasks.done(who, page),
+      this.projects.list(who),
+    ]);
+    const titles = new Map(projects.map((it) => [it.id, it.title]));
+    const zone = this.timeline.zone(who);
+
+    return {
+      done: found.map((task) => {
+        const at = task.doneAt ?? '';
+        const project =
+          task.projectId === undefined ? undefined : titles.get(task.projectId);
+        return {
+          id: task.id,
+          kind: 'task',
+          title: task.title,
+          notes: task.notes,
+          doneAt: at,
+          startTime: at,
+          endTime: at,
+          day: isoDayIn(new Date(at), zone),
+          durationMinutes: task.minutes,
+          workMinutes: task.minutes,
+          ...(project === undefined
+            ? {}
+            : { project: { id: task.projectId as string, title: project } }),
+        };
+      }),
+    };
+  }
 
   /** Writes a task down at the end of the queue. */
   @Post()

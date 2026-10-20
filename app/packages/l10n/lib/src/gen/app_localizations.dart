@@ -191,6 +191,18 @@ abstract class AppLocalizations {
   /// **'Nenhuma tarefa feita com essas palavras.'**
   String get archiveNoMatch;
 
+  /// No description provided for @archiveFailed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para abrir as feitas agora.'**
+  String get archiveFailed;
+
+  /// No description provided for @archiveRetry.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tentar de novo'**
+  String get archiveRetry;
+
   /// No description provided for @menuDayStart.
   ///
   /// In pt, this message translates to:
@@ -472,12 +484,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Notas'**
   String get eventNotesLabel;
-
-  /// No description provided for @eventMarkDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Marcar como feita'**
-  String get eventMarkDone;
 
   /// No description provided for @restTip01.
   ///
@@ -1654,18 +1660,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Um dia a mais'**
   String get projectMoreDay;
-
-  /// No description provided for @projectDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir projeto'**
-  String get projectDone;
-
-  /// No description provided for @projectReopen.
-  ///
-  /// In pt, this message translates to:
-  /// **'Reabrir projeto'**
-  String get projectReopen;
 
   /// No description provided for @projectTasksTab.
   ///

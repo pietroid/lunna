@@ -36,6 +36,32 @@ class App extends StatelessWidget {
             path: '/rotina',
             builder: (context, state) => const RoutinesPage(),
           ),
+          // Everything done, opened from Menu.
+          GoRoute(
+            path: '/feitas',
+            builder: (context, state) => BlocProvider(
+              create: (context) {
+                final cubit = DoneArchiveCubit(
+                  repository: context.read<TimelineRepository>(),
+                );
+                unawaited(cubit.load());
+                return cubit;
+              },
+              child: DoneArchivePage(
+                // A finished task is not on the timeline, so its page is
+                // handed the card the archive drew.
+                onOpen: (card) => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EventPage(
+                      id: card.id,
+                      finished: card,
+                      dock: NotesDock.task,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           // Signed out, the app is its own landing page.
           GoRoute(
             path: '/auth',
