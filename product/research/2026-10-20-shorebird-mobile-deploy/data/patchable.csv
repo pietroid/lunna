@@ -1,0 +1,28 @@
+date,sha,kind,native_files,plugin_bump,dart_files,subject
+2026-10-03,d3319b5,release,120,true,130,Import focus as starting point
+2026-10-03,394ff7b,release,11,true,102,App: Better Auth sign-in; three tabs with a FAB; notes on blocks; l10n
+2026-10-03,939d659,patch,0,false,1,Rename leftover Focus mention
+2026-10-03,d7bba0d,release,2,false,0,Drop stale Xcode project backups
+2026-10-03,a677b70,release,1,false,0,Drop stale SwiftPM lockfile; Xcode regenerates it without Firebase
+2026-10-04,ac9782c,release,4,false,0,adding kets
+2026-10-04,d396f15,patch,0,false,4,fixing tests
+2026-10-06,981f9fe,patch,0,false,19,feat: changing timeline
+2026-10-06,fd0c440,patch,0,false,10,fix: fixing timezone tests
+2026-10-06,990c7c9,patch,0,false,16,feat: adding backlog and todo
+2026-10-14,fed2fc0,patch,0,false,34,adjusting calendar bugs
+2026-10-14,4392bdd,release,246,false,20,splitting lunna and focus
+2026-10-14,01bff51,patch,0,false,3,fixing events
+2026-10-15,63d4d08,release,3,false,23,adding agentic experience
+2026-10-15,5cfcfdb,release,4,true,12,feat: adding voice command
+2026-10-15,2e53f53,patch,0,false,19,fix: adding fixes after agentic experience
+2026-10-16,feb755d,patch,0,false,18,feat: adding project
+2026-10-16,011e4d0,patch,0,false,16,feat: improving dragging on calendar mode
+2026-10-17,9e41308,patch,0,false,13,feat: add improvemetns to the agent
+2026-10-17,f5c66a7,patch,0,false,11,feat: fixing audio on agentic entrypoint
+2026-10-17,d515d68,patch,0,false,17,feat: fixing some bugs on project structure and adding assistant
+2026-10-17,e88e08e,patch,0,false,18,feat: adding assistant to task and project notes and STT
+2026-10-17,098f447,release,1,false,9,feat: adding hyperlinks
+2026-10-17,bad5a40,patch,0,false,1,fix: fixing test
+2026-10-17,1c24826,patch,0,false,20,feat: adding a2ui to agentic experience and adding project capabilities
+2026-10-18,e621bcc,patch,0,false,17,feat: polishing a few things
+2026-10-20,5101b98,patch,0,false,19,Improvements (#2)
