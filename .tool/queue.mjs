@@ -1,0 +1,575 @@
+#!/usr/bin/env node
+// The queue: GitHub issues worked by Claude Code on this Mac, one at a time.
+//
+//   .tool/queue setup            labels, a push topic, the LaunchAgent; sends a test push
+//   .tool/queue run              the loop the LaunchAgent keeps alive (a pass a minute)
+//   .tool/queue tick             one pass, in the foreground
+//   .tool/queue ls               the issues it knows and where each one is
+//   .tool/queue log <issue>      the tail of that issue's last run
+//   .tool/queue stop | start     unload or load the LaunchAgent
+//
+// An open issue of yours labelled create, research or improve is queued. Each
+// phase is a fresh headless `claude -p` in the issue's own worktree and
+// branch; the queue commits, pushes, keeps a PR whose description is the
+// topic's README with the usage on top, and stops at each gate with a
+// comment on the issue and a push to your phone. Your next comment on the
+// issue (or the PR) is the answer: "approve" alone goes on, anything else is
+// feedback for another round. At the last gate "approve" merges into main
+// (conflicts resolved by another run), closes the issue and tells you.
+//
+// The repo is public: only issues and comments by its owner are ever read.
+// State and logs live in .git/queue/, never in the tree.
+import { spawn, execFileSync } from 'node:child_process';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { homedir } from 'node:os';
+import { basename, dirname, join, posix, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = resolve(here, '..');
+const home = join(root, '.git', 'queue');
+const configPath = join(home, 'config.json');
+const stateDir = join(home, 'issues');
+const logDir = join(home, 'logs');
+const AGENT = 'dev.pietroid.lunna-queue';
+const plistPath = join(homedir(), 'Library', 'LaunchAgents', `${AGENT}.plist`);
+const MARK = '<!-- lunna-queue -->';
+const KINDS = ['create', 'research', 'improve'];
+const STATUS = { working: 'agent:working', waiting: 'agent:waiting', failed: 'agent:failed', done: 'agent:done' };
+const APPROVE = /^(approved?|aprovad[oa]|aprovo|aprova|lgtm|ok(ay)?|go|ship( it)?|build( it)?|merge( it)?|sim|pode|👍|✅|🚀)[\s.!]*$/iu;
+const RETRY = /^(retry|again|de novo|tenta de novo)[\s.!]*$/iu;
+const RUN_LIMIT_MS = 4 * 3600e3;
+const COAUTHOR = 'Co-Authored-By: Claude <noreply@anthropic.com>';
+
+const sh = (cmd, args, opts = {}) =>
+  execFileSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 << 20, ...opts }).trim();
+const trySh = (...a) => { try { return sh(...a); } catch { return null; } };
+const gh = (args, input) => sh('gh', args, input === undefined ? {} : { input });
+const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
+const git = (wt, ...args) => sh('git', args, { cwd: wt });
+const log = (...a) => console.log(new Date().toISOString().slice(0, 19), ...a);
+const fail = (m) => { console.error(m); process.exit(1); };
+const readJson = (p, d = null) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : d);
+const writeJson = (p, v) => { mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, JSON.stringify(v, null, 2) + '\n'); };
+const slugify = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'task';
+
+const config = () => readJson(configPath) ?? fail('No config: run .tool/queue setup first.');
+const load = (n) => readJson(join(stateDir, `${n}.json`));
+const save = (st) => writeJson(join(stateDir, `${st.issue}.json`), st);
+const states = () => (existsSync(stateDir) ? readdirSync(stateDir).filter((f) => f.endsWith('.json')).map((f) => readJson(join(stateDir, f))) : []);
+
+// ---------------------------------------------------------------- the phone
+
+async function push(cfg, { title, message, tags = [], priority = 3, click }) {
+  try {
+    await fetch('https://ntfy.sh/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic: cfg.topic, title, message, tags, priority, click, actions: click ? [{ action: 'view', label: 'Open', url: click }] : undefined }),
+    });
+  } catch (e) { log('push failed:', e.message); }
+}
+
+// ---------------------------------------------------------------- usage
+
+// `claude -p /usage` is a local command: no model call, no tokens.
+function usageNow() {
+  const out = trySh('claude', ['-p', '/usage', '--output-format', 'json'], { timeout: 30e3 });
+  if (!out) return null;
+  const text = JSON.parse(out).result ?? '';
+  const pct = (label) => { const m = text.match(new RegExp(`${label}[^\\n]*?(\\d+)% used`)); return m ? +m[1] : null; };
+  return { session: pct('Current session'), week: pct('Current week \\(all models\\)') };
+}
+
+const fmtTokens = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : `${n}`);
+const fmtMin = (ms) => { const m = Math.round(ms / 60e3); return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`; };
+const fmtWindow = (b, a) => (b == null || a == null ? '—' : `${b}→${a}%`);
+const delta = (r) => (r.before?.week == null || r.after?.week == null ? null : r.after.week - r.before.week);
+
+function totals(runs) {
+  const t = { ms: 0, turns: 0, tin: 0, cache: 0, tout: 0, usd: 0, week: 0 };
+  for (const r of runs) {
+    t.ms += r.ms; t.turns += r.turns; t.tin += r.tin; t.cache += r.cache; t.tout += r.tout; t.usd += r.usd; t.week += delta(r) ?? 0;
+  }
+  return t;
+}
+
+function usageLine(runs) {
+  const t = totals(runs);
+  const last = runs.at(-1);
+  const week = last?.after?.week ?? last?.before?.week;
+  return `${fmtMin(t.ms)} · ${fmtTokens(t.tin)} in / ${fmtTokens(t.tout)} out · ~$${t.usd.toFixed(2)} API-eq · week +${t.week} pts${week != null ? ` (now ${week}%)` : ''}`;
+}
+
+function usageTable(runs) {
+  if (!runs.length) return '_No runs yet._';
+  const rows = runs.map((r) => {
+    const d = delta(r);
+    return `| ${r.phase} | ${r.started.slice(5, 16).replace('T', ' ')} | ${fmtMin(r.ms)} | ${r.turns} | ${fmtTokens(r.tin)} (${fmtTokens(r.cache)}) | ${fmtTokens(r.tout)} | $${r.usd.toFixed(2)} | ${fmtWindow(r.before?.session, r.after?.session)} | ${fmtWindow(r.before?.week, r.after?.week)}${d != null ? ` (+${d})` : ''} |`;
+  });
+  const t = totals(runs);
+  return [
+    '| Phase | Started (UTC) | Time | Turns | Tokens in (cache read) | Out | API-eq. | 5-hour window | Week |',
+    '|---|---|---|---|---|---|---|---|---|',
+    ...rows,
+    `| **Total** | | **${fmtMin(t.ms)}** | **${t.turns}** | **${fmtTokens(t.tin)}** (${fmtTokens(t.cache)}) | **${fmtTokens(t.tout)}** | **$${t.usd.toFixed(2)}** | | **+${t.week} pts** |`,
+    '',
+    '<sub>Billed to the subscription. API-eq. is what the same tokens would cost at API prices, not money spent. Window figures are `/usage` before and after each run, so they also count anything else on the account meanwhile.</sub>',
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------- the engine
+
+const SCHEMA = JSON.stringify({
+  type: 'object',
+  properties: {
+    summary: { type: 'string', description: 'Two to four sentences for the person, in the language of the issue: what you did and what to look at.' },
+    doc: { type: 'string', description: 'Path from the repo root of the README the PR shows (the delivery README, the RFC or the improvement report).' },
+    questions: { type: 'array', items: { type: 'string' }, description: 'Open questions for the person, if any.' },
+  },
+  required: ['summary', 'doc'],
+});
+
+const rules = (st) => `You are running unattended, started by the Lunna queue (.tool/queue.mjs) for GitHub issue #${st.issue}: ${st.url}
+Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion is not available.
+- Work only in this worktree (${st.worktree}), branch ${st.branch}. Leave the work in its files: the queue commits, pushes and keeps the PR. Don't run git commit, push, checkout, merge, rebase or stash pop of anything you didn't stash, and don't run .tool/doc open.
+- Where a skill says to ask, or to stop for the person, take the option you would recommend, list it in the document under "Decided unattended", and go on. Write a question you can't decide into the document and into the structured output's questions.
+- Skip .tool/cost and session_cost: the queue measures every run and writes the figures in the PR.
+- Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README as the PR description, on a phone.
+- This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
+- Finish with the structured output.`;
+
+const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');
+const slugOf = (doc) => basename(dirname(doc)).replace(/^\d{4}-\d{2}-\d{2}-/, '');
+
+function prompt(st, phase, reply) {
+  const ask = `${st.title}\n\n${st.body ?? ''}`.trim();
+  switch (`${st.kind}:${phase}`) {
+    case 'create:design':
+      return `/create ${ask}\n\n---\nThis is the design session, unattended. Do Phase 1, then write the hand-off at once instead of waiting for approval (the person approves on the issue): the draft product/delivery/<YYYY-MM-DD>-<slug>/README.md with sections 1 and 2 and the Build brief, the board as img/mockup-board.png with board.json, and each screen as img/mockup-<n>.png. Section 1 quotes the issue. Keep the preview entry point and the new widgets in the worktree.`;
+    case 'create:revise':
+      return `/create ${st.title}\n\nThe design in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo Phase 2 on it, unattended: change the widgets, re-shoot what changed, update the board, img/ and the README (the reply goes in section 1; update the decisions and the Build brief). Stop at the hand-off again.`;
+    case 'create:build':
+      return `/create build ${slugOf(st.doc)}\n\nThe design was approved on the issue. Do Phases 3 and 4 unattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. In section 5 write "Measured by the queue: see the pull request." instead of .tool/cost tables.`;
+    case 'create:fix':
+      return `/create build ${slugOf(st.doc)}\n\nThis is a follow-up: the build in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo what they ask, unattended, by the rules of Phases 3 and 4: keep .tool/check green, re-shoot the prints if the UI changed, and update the README (the reply in section 1, what was built).`;
+    case 'research:start':
+      return `/research ${ask}\n\n---\nUnattended: do Phases 1 to 3 and write the RFC in its product/research/ folder. Leave Phase 4 (the deep-research pass) until the person asks for it.`;
+    case 'research:fix':
+      return `/research ${st.title}\n\nThe RFC at ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nAnswer it the way the skill answers the user's notes, unattended, and run Phase 4 if they ask for it. Update the RFC.`;
+    case 'improve:start':
+      return `/improve ${ask}\n\n---\nUnattended: at step 2 take the recommended option of each fork and list them in the report; do the whole run through step 5.`;
+    case 'improve:fix':
+      return `/improve ${st.title}\n\nThe change reported in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo what they ask, unattended, verify it for real and update the report.`;
+    case `${st.kind}:conflicts`:
+      return `Merging origin/main into this branch (${st.branch}, for issue #${st.issue}: ${st.title}) stopped on conflicts in:\n\n${reply}\n\nResolve every one keeping both intents: main's side is already shipped, this branch's side is the feature. Then run .tool/check --all and fix what fails. Don't commit. In the summary, say what conflicted and how you resolved it; doc is ${st.doc}.`;
+    case `${st.kind}:checks`:
+      return `After merging origin/main into this branch (${st.branch}, for issue #${st.issue}: ${st.title}), .tool/check --all fails:\n\n\`\`\`\n${reply}\n\`\`\`\n\nFix it (stash and rerun to prove a failure isn't this branch's). Don't commit. doc is ${st.doc}.`;
+  }
+  throw new Error(`no prompt for ${st.kind}:${phase}`);
+}
+
+// One headless session. Resolves with its figures and the structured output;
+// never throws for a failed run.
+async function claude(st, phase, text) {
+  const before = usageNow();
+  const started = new Date();
+  mkdirSync(logDir, { recursive: true });
+  const logPath = join(logDir, `${st.issue}-${started.toISOString().replace(/[:.]/g, '-')}-${phase}.jsonl`);
+  const out = createWriteStream(logPath);
+  const args = ['-p', text, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--permission-prompts', 'none',
+    '--max-turns', '500', '--json-schema', SCHEMA, '--append-system-prompt', rules(st)];
+  const child = spawn('claude', args, { cwd: st.worktree, env: { ...process.env, LUNNA_QUEUE: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const awake = spawn('caffeinate', ['-i', '-w', String(child.pid)], { stdio: 'ignore' });
+  awake.on('error', () => {});
+  const timer = setTimeout(() => child.kill('SIGINT'), RUN_LIMIT_MS);
+  let result = null, limit = null, lastText = '', buf = '', stderr = '';
+  child.stdout.on('data', (chunk) => {
+    out.write(chunk);
+    buf += chunk;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i); buf = buf.slice(i + 1);
+      let ev; try { ev = JSON.parse(line); } catch { continue; }
+      if (ev.type === 'result') result = ev;
+      if (ev.type === 'rate_limit_event') limit = ev.rate_limit_info;
+      if (ev.type === 'assistant') for (const c of ev.message?.content ?? []) if (c.type === 'text' && c.text.trim()) lastText = c.text;
+    }
+  });
+  child.stderr.on('data', (c) => { stderr += c; out.write(c); });
+  const code = await new Promise((done) => child.on('close', done));
+  clearTimeout(timer);
+  out.end();
+  const tokens = Object.values(result?.modelUsage ?? {});
+  const sum = (k) => tokens.reduce((n, m) => n + (m[k] ?? 0), 0);
+  const run = {
+    phase, started: started.toISOString(), ms: Date.now() - started, turns: result?.num_turns ?? 0,
+    tin: sum('inputTokens') + sum('cacheReadInputTokens') + sum('cacheCreationInputTokens'), cache: sum('cacheReadInputTokens'),
+    tout: sum('outputTokens'), usd: result?.total_cost_usd ?? 0, before, after: usageNow(), session: result?.session_id, log: logPath,
+  };
+  const output = result?.structured_output ?? null;
+  const ok = code === 0 && result && !result.is_error && output;
+  const limited = !ok && (limit?.status === 'rejected' || /usage limit|rate limit|limit reached/i.test(`${result?.result ?? ''} ${stderr} ${lastText}`));
+  const why = ok ? null : (result?.result || lastText || stderr || `claude exited with ${code}`).slice(-1500);
+  const resetsAt = limited ? Math.max(...Object.values(limit?.unifiedWindows ?? {}).filter((w) => w.utilization >= 1).map((w) => w.resetsAt), limit?.resetsAt ?? 0) : null;
+  return { run, output, ok, limited, resetsAt, why };
+}
+
+// ---------------------------------------------------------------- GitHub
+
+function setStatus(cfg, st, status) {
+  const current = ghJson(['issue', 'view', String(st.issue), '-R', cfg.repo, '--json', 'labels']).labels.map((l) => l.name);
+  const labels = [...current.filter((l) => !l.startsWith('agent:')), STATUS[status]];
+  gh(['api', '-X', 'PUT', `repos/${cfg.repo}/issues/${st.issue}/labels`, '--input', '-'], JSON.stringify({ labels }));
+  st.status = status;
+  save(st);
+}
+
+function comment(cfg, n, body) {
+  const c = ghJson(['api', '-X', 'POST', `repos/${cfg.repo}/issues/${n}/comments`, '--input', '-'], JSON.stringify({ body: `${body}\n\n${MARK}` }));
+  return c.created_at;
+}
+
+const react = (cfg, path) => trySh('gh', ['api', '-X', 'POST', `repos/${cfg.repo}/${path}/reactions`, '-f', 'content=eyes']);
+
+// Comments by the owner on the issue and its PR since the gate opened.
+function answers(cfg, st) {
+  const read = (n) => ghJson(['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${n}/comments`]).flat();
+  return [st.issue, st.pr].filter(Boolean).flatMap(read)
+    .filter((c) => c.user.login === cfg.owner && !c.body.includes(MARK) && c.created_at > st.gateAt)
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+const raw = (cfg, sha, path) => `https://raw.githubusercontent.com/${cfg.repo}/${sha}/${path}`;
+
+// The topic's README, with its relative links made absolute so it reads
+// as a PR description: pictures at this commit, files on the branch.
+function readme(cfg, st, sha) {
+  const path = st.doc && join(st.worktree, st.doc);
+  if (!path || !existsSync(path)) return '';
+  const dir = posix.dirname(st.doc);
+  let md = readFileSync(path, 'utf8').replace(/(!?\[[^\]]*\]\(|src=")(?![a-z]+:|#|\/)([^)"\s]+)/gi, (_, lead, rel) => {
+    const p = posix.normalize(posix.join(dir, rel));
+    return lead + (/\.(png|jpe?g|gif|svg|webp)$/i.test(p) ? raw(cfg, sha, p) : `https://github.com/${cfg.repo}/blob/${st.branch}/${p}`);
+  });
+  if (md.length > 55000) md = md.slice(0, 55000) + `\n\n… cut here: [the whole README](https://github.com/${cfg.repo}/blob/${st.branch}/${st.doc}).`;
+  return md;
+}
+
+function prBody(cfg, st, sha, line) {
+  const qs = st.questions?.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
+  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${qs}\n\n### Usage\n\n${usageTable(st.runs)}\n\n---\n\n${readme(cfg, st, sha)}`;
+}
+
+function syncPr(cfg, st, line) {
+  const sha = git(st.worktree, 'rev-parse', 'HEAD');
+  const body = prBody(cfg, st, sha, line);
+  if (!st.pr) {
+    const url = sh('gh', ['pr', 'create', '-R', cfg.repo, '--draft', '--base', 'main', '--head', st.branch, '--title', st.title, '--body-file', '-'], { input: body });
+    st.pr = +url.split('/').pop();
+    save(st);
+  } else {
+    gh(['pr', 'edit', String(st.pr), '-R', cfg.repo, '--body-file', '-'], body);
+  }
+  return sha;
+}
+
+// ---------------------------------------------------------------- the worktree
+
+function worktree(cfg, st) {
+  if (existsSync(st.worktree)) return;
+  sh('git', ['fetch', '-q', 'origin', 'main']);
+  const exists = trySh('git', ['rev-parse', '--verify', '-q', `refs/heads/${st.branch}`]);
+  sh('git', ['worktree', 'add', '-q', ...(exists ? [st.worktree, st.branch] : ['-b', st.branch, st.worktree, 'origin/main'])]);
+  // What git ignores but the app and the server need to run.
+  const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(root, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
+  for (const f of envs) if (existsSync(join(root, f))) copyFileSync(join(root, f), join(st.worktree, f));
+  trySh('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 });
+}
+
+function commit(st, message) {
+  git(st.worktree, 'add', '-A');
+  if (trySh('git', ['diff', '--cached', '--quiet'], { cwd: st.worktree }) !== null) return false; // nothing staged
+  git(st.worktree, 'commit', '-q', '-m', `${message}\n\n${COAUTHOR}`);
+  return true;
+}
+
+function removeWorktree(st) {
+  trySh('git', ['worktree', 'remove', '--force', st.worktree]);
+  trySh('git', ['branch', '-D', st.branch]);
+}
+
+// ---------------------------------------------------------------- phases
+
+const FIRST = { create: 'design', research: 'start', improve: 'start' };
+const GATE = { 'create:design': 'design', 'create:revise': 'design' };
+const gateOf = (st, phase) => GATE[`${st.kind}:${phase}`] ?? 'review';
+const NEXT = { design: { approve: 'build', feedback: 'revise' }, review: { approve: 'merge', feedback: 'fix' } };
+const HEADLINE = {
+  design: ['🎨', 'Design ready', 'Reply **approve** to build it, or write what to change.', 'art'],
+  review: ['✅', 'Ready for review', 'Reply **approve** to merge it into main (that deploys), or write what to fix.', 'white_check_mark'],
+};
+
+async function work(cfg, st) {
+  const { phase, reply } = st.next;
+  log(`#${st.issue} ${phase}`);
+  setStatus(cfg, st, 'working');
+  worktree(cfg, st);
+  if (phase === 'merge') return merge(cfg, st);
+
+  const res = await claude(st, phase, prompt(st, phase, reply));
+  st.runs.push(res.run);
+  if (!res.ok) return stopped(cfg, st, phase, reply, res);
+
+  st.summary = res.output.summary;
+  st.doc = res.output.doc || st.doc;
+  st.questions = res.output.questions ?? [];
+  commit(st, `${st.kind}(#${st.issue}): ${phase} · ${st.title}`);
+  git(st.worktree, 'push', '-q', '-u', 'origin', st.branch);
+
+  const gate = gateOf(st, phase);
+  const [icon, head, ask, tag] = HEADLINE[gate];
+  const sha = syncPr(cfg, st, `**${head}**, waiting for your reply on #${st.issue}.`);
+  if (gate === 'review') trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
+  const board = st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png')) ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
+  const qs = st.questions.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
+  st.gate = gate;
+  st.gateAt = comment(cfg, st.issue, `${icon} **${head}**: #${st.pr}\n\n${st.summary}${board}${qs}\n\n${ask}\n\n<sub>${usageLine(st.runs)}</sub>`);
+  st.next = null;
+  setStatus(cfg, st, 'waiting');
+  await push(cfg, { title: `#${st.issue} ${head}: ${st.title}`, message: `${st.summary}\n\n${usageLine(st.runs)}`, tags: [tag], priority: 4, click: st.url });
+}
+
+async function stopped(cfg, st, phase, reply, res) {
+  st.gate = 'failed';
+  st.next = null;
+  if (res.limited) {
+    st.waitUntil = res.resetsAt ? res.resetsAt * 1000 : Date.now() + 3600e3;
+    st.resume = { phase, reply };
+    const at = new Date(st.waitUntil).toLocaleString('en-GB', { timeZone: cfg.timeZone, dateStyle: 'short', timeStyle: 'short' });
+    st.gateAt = comment(cfg, st.issue, `⏸ **Usage limit reached** during \`${phase}\`. It picks up again at ${at}, from its files.\n\n<sub>${usageLine(st.runs)}</sub>`);
+    setStatus(cfg, st, 'waiting');
+    return push(cfg, { title: `#${st.issue} paused until ${at}`, message: `Usage limit reached during ${phase}. ${usageLine(st.runs)}`, tags: ['hourglass'], click: st.url });
+  }
+  st.resume = { phase, reply };
+  st.gateAt = comment(cfg, st.issue, `⚠️ **Stopped** during \`${phase}\`:\n\n\`\`\`\n${res.why}\n\`\`\`\n\nReply **retry** to run it again, or write how to go on. Log: \`${res.run.log}\`\n\n<sub>${usageLine(st.runs)}</sub>`);
+  setStatus(cfg, st, 'failed');
+  await push(cfg, { title: `#${st.issue} failed: ${st.title}`, message: `${phase}: ${res.why.slice(0, 300)}`, tags: ['warning'], priority: 4, click: st.url });
+}
+
+const conflicted = (st) => git(st.worktree, 'diff', '--name-only', '--diff-filter=U');
+
+async function merge(cfg, st, attempt = 0) {
+  const wt = st.worktree;
+  const fix = async (phase, detail) => {
+    const res = await claude(st, phase, prompt(st, phase, detail));
+    st.runs.push(res.run);
+    save(st);
+    if (!res.ok) { await stopped(cfg, st, 'merge', null, res); return false; }
+    return true;
+  };
+
+  git(wt, 'fetch', '-q', 'origin', 'main');
+  const behind = +git(wt, 'rev-list', '--count', 'HEAD..origin/main');
+  if (behind) {
+    if (trySh('git', ['merge', '--no-edit', '-q', 'origin/main'], { cwd: wt }) === null) {
+      const files = conflicted(st);
+      if (!files) return stopped(cfg, st, 'merge', null, { run: { log: '-' }, why: 'git merge origin/main failed without conflicts' });
+      if (!(await fix('conflicts', files.split('\n').map((f) => `- ${f}`).join('\n')))) return;
+      if (conflicted(st) || trySh('git', ['grep', '-nE', '^(<<<<<<<|>>>>>>>) ', '--', '.'], { cwd: wt })) {
+        return stopped(cfg, st, 'merge', null, { run: { log: st.runs.at(-1).log }, why: 'conflict markers are still in the tree after the conflicts run' });
+      }
+      git(wt, 'add', '-A');
+      git(wt, 'commit', '-q', '--no-edit');
+    }
+    // Main moved under the branch: CI's checks, here, before it lands.
+    const check = () => { try { sh(join(wt, '.tool/check'), ['--all'], { cwd: wt, timeout: 3600e3 }); return null; } catch (e) { return `${e.stdout ?? ''}${e.stderr ?? ''}`.slice(-4000); } };
+    let failure = check();
+    if (failure) {
+      if (!(await fix('checks', failure))) return;
+      commit(st, `${st.kind}(#${st.issue}): fix checks after merging main`);
+      failure = check();
+      if (failure) return stopped(cfg, st, 'merge', null, { run: { log: st.runs.at(-1).log }, why: `.tool/check --all still fails:\n${failure}` });
+    }
+  }
+  git(wt, 'push', '-q', 'origin', st.branch);
+  syncPr(cfg, st, '**Merged.**');
+  trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
+  let merged;
+  try {
+    merged = ghJson(['api', '-X', 'PUT', `repos/${cfg.repo}/pulls/${st.pr}/merge`, '--input', '-'], JSON.stringify({
+      merge_method: 'squash', commit_title: `${st.title} (#${st.pr})`, commit_message: `Closes #${st.issue}\n\n${COAUTHOR}`,
+    }));
+  } catch (e) {
+    if (attempt < 2) { await new Promise((r) => setTimeout(r, 10e3)); return merge(cfg, st, attempt + 1); } // main moved again
+    return stopped(cfg, st, 'merge', null, { run: { log: '-' }, why: `GitHub refused the merge: ${e.stderr ?? e.message}` });
+  }
+  trySh('git', ['push', '-q', 'origin', '--delete', st.branch], { cwd: wt });
+  const line = usageLine(st.runs);
+  comment(cfg, st.issue, `🚀 **Merged** in ${merged.sha.slice(0, 7)} (#${st.pr}). Pushing to main deploys it.\n\n### Usage\n\n${usageTable(st.runs)}`);
+  trySh('gh', ['issue', 'close', String(st.issue), '-R', cfg.repo]);
+  st.next = null;
+  st.gate = null;
+  setStatus(cfg, st, 'done');
+  removeWorktree(st);
+  await push(cfg, { title: `#${st.issue} merged: ${st.title}`, message: `Issue closed. ${line}`, tags: ['rocket'], priority: 4, click: `https://github.com/${cfg.repo}/pull/${st.pr}` });
+}
+
+// ---------------------------------------------------------------- the loop
+
+async function tick(cfg) {
+  const open = ghJson(['issue', 'list', '-R', cfg.repo, '--state', 'open', '--author', cfg.owner, '--limit', '100', '--json', 'number,title,body,url,labels']);
+  for (const issue of open) {
+    const kind = issue.labels.map((l) => l.name).find((l) => KINDS.includes(l));
+    if (!kind) continue;
+    let st = load(issue.number);
+    if (!st) {
+      const branch = `queue/${issue.number}-${slugify(issue.title)}`;
+      st = { issue: issue.number, kind, title: issue.title, body: issue.body, url: issue.url, branch,
+        worktree: join(cfg.worktrees, basename(branch)), runs: [], next: { phase: FIRST[kind] } };
+      save(st);
+      react(cfg, `issues/${st.issue}`);
+      log(`#${st.issue} queued (${kind})`);
+      continue;
+    }
+    if (st.status === 'done' || st.next) continue;
+    if (st.waitUntil) {
+      if (Date.now() < st.waitUntil) continue;
+      st.next = st.resume; st.waitUntil = null; save(st);
+      continue;
+    }
+    if (!st.gateAt) continue;
+    const new_ = answers(cfg, st);
+    if (!new_.length) continue;
+    for (const c of new_) react(cfg, `issues/comments/${c.id}`);
+    const text = new_.map((c) => c.body.trim()).join('\n\n');
+    const approved = new_.every((c) => APPROVE.test(c.body.trim()));
+    if (st.status === 'failed') {
+      const retry = new_.every((c) => RETRY.test(c.body.trim()) || APPROVE.test(c.body.trim()));
+      st.next = { phase: st.resume.phase, reply: retry ? st.resume.reply : [st.resume.reply, text].filter(Boolean).join('\n\n') };
+    } else {
+      st.next = { phase: NEXT[st.gate][approved ? 'approve' : 'feedback'], reply: approved ? null : text };
+    }
+    save(st);
+    log(`#${st.issue} answered: ${st.next.phase}`);
+  }
+  // One job per pass: merges first, then whatever was asked first.
+  const ready = states().filter((s) => s.next && open.some((i) => i.number === s.issue))
+    .sort((a, b) => (b.next.phase === 'merge') - (a.next.phase === 'merge') || a.issue - b.issue);
+  const st = ready[0];
+  if (!st) return;
+  const { phase, reply } = st.next;
+  try { await work(cfg, st); } catch (e) {
+    // git, gh or the network, not the model: stop at a gate rather than loop on it.
+    await stopped(cfg, st, phase, reply, { run: { log: join(home, 'daemon.log') }, why: String(e.stderr || e.message).slice(-1500) });
+  }
+}
+
+function locked() {
+  const lock = join(home, 'lock');
+  const pid = existsSync(lock) && +readFileSync(lock, 'utf8');
+  if (pid && pid !== process.pid && trySh('kill', ['-0', String(pid)]) !== null) return true;
+  writeFileSync(lock, String(process.pid));
+  return false;
+}
+
+async function loop(once) {
+  const cfg = config();
+  if (locked()) fail('Another .tool/queue run is going.');
+  for (;;) {
+    try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
+    if (once) return;
+    await new Promise((r) => setTimeout(r, 60e3));
+  }
+}
+
+// ---------------------------------------------------------------- setup
+
+const LABELS = [
+  ['create', '1f883d', 'Queue: design, approve, build, approve, merge'],
+  ['research', '0969da', 'Queue: an RFC under product/research'],
+  ['improve', '8250df', 'Queue: an /improve run'],
+  ['agent:working', 'fbca04', 'The queue is working on it'],
+  ['agent:waiting', 'd93f0b', 'Waiting for your reply'],
+  ['agent:failed', 'b60205', 'Stopped: reply retry, or how to go on'],
+  ['agent:done', 'cccccc', 'Merged by the queue'],
+];
+
+async function setup() {
+  const old = readJson(configPath, {});
+  const repo = ghJson(['repo', 'view', '--json', 'nameWithOwner']).nameWithOwner;
+  const cfg = {
+    repo,
+    owner: gh(['api', 'user', '--jq', '.login']),
+    topic: old.topic ?? `lunna-${randomBytes(12).toString('hex')}`,
+    worktrees: old.worktrees ?? resolve(root, '..', `${basename(root)}-queue`),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+  writeJson(configPath, cfg);
+  for (const [name, color, description] of LABELS) gh(['label', 'create', name, '-R', repo, '--color', color, '--description', description, '--force']);
+
+  const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  mkdirSync(dirname(plistPath), { recursive: true });
+  writeFileSync(plistPath, `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>${AGENT}</string>
+  <key>ProgramArguments</key><array><string>${xml(process.execPath)}</string><string>${xml(join(here, 'queue.mjs'))}</string><string>run</string></array>
+  <key>WorkingDirectory</key><string>${xml(root)}</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(process.env.PATH)}</string></dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>StandardOutPath</key><string>${xml(join(home, 'daemon.log'))}</string>
+  <key>StandardErrorPath</key><string>${xml(join(home, 'daemon.log'))}</string>
+</dict></plist>
+`);
+  start();
+  await push(cfg, { title: 'Lunna queue is on', message: `Watching ${repo} for issues labelled ${KINDS.join(', ')}.`, tags: ['white_check_mark'], click: `https://github.com/${repo}/issues` });
+  console.log(`✓ labels on ${repo}, LaunchAgent ${AGENT} loaded, test push sent
+  phone: install ntfy (App Store / Play Store), tap +, topic ${cfg.topic}, server ntfy.sh
+         (or open https://ntfy.sh/${cfg.topic} on the phone)
+  then open an issue with the "Create" template and watch for the 👀`);
+}
+
+const uid = () => process.getuid();
+function start() {
+  trySh('launchctl', ['bootout', `gui/${uid()}/${AGENT}`]);
+  sh('launchctl', ['bootstrap', `gui/${uid()}`, plistPath]);
+}
+function stop() {
+  trySh('launchctl', ['bootout', `gui/${uid()}/${AGENT}`]);
+  console.log(`✓ ${AGENT} unloaded`);
+}
+
+function ls() {
+  const all = states().sort((a, b) => a.issue - b.issue);
+  if (!all.length) return console.log('  nothing yet');
+  for (const s of all) {
+    const where = s.next ? `next: ${s.next.phase}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
+    console.log(`#${s.issue}  ${s.kind.padEnd(8)} ${where.padEnd(26)} ${s.pr ? `PR #${s.pr}  ` : ''}${s.title}`);
+    if (s.runs.length) console.log(`      ${usageLine(s.runs)}`);
+  }
+}
+
+function tail(n) {
+  const st = load(n) ?? fail(`#${n}: not in the queue`);
+  const last = st.runs.at(-1)?.log;
+  if (!last || !existsSync(last)) return console.log('  no run yet');
+  const lines = readFileSync(last, 'utf8').trim().split('\n').slice(-400);
+  for (const line of lines) {
+    let ev; try { ev = JSON.parse(line); } catch { continue; }
+    for (const c of ev.message?.content ?? []) {
+      if (c.type === 'text' && c.text.trim()) console.log(`  ${ev.type === 'assistant' ? '◆' : '·'} ${c.text.trim().split('\n')[0].slice(0, 160)}`);
+      if (c.type === 'tool_use') console.log(`  → ${c.name} ${JSON.stringify(c.input).slice(0, 140)}`);
+    }
+    if (ev.type === 'result') console.log(`  = ${ev.subtype}, ${ev.num_turns} turns`);
+  }
+  console.log(`  ${last}`);
+}
+
+const [command, ...rest] = process.argv.slice(2);
+const commands = { setup, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
+if (!commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | stop | start');
+await commands[command]();

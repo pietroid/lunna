@@ -111,7 +111,8 @@ product/
   improvements/         one folder per /improve run: what changed, evidence, references
   research/             one folder per topic: the RFC (README.md), data/, code/, reports/, notes/
 .tool/                  internal tools: check (CI on what changed), preview (prints),
-                        cost (session tokens), doc (open/annotate Markdown)
+                        cost (session tokens), doc (open/annotate Markdown),
+                        queue (GitHub issues worked unattended, gate by gate)
 ```
 
 ## Auth

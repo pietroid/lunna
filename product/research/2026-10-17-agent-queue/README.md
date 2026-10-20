@@ -1,6 +1,6 @@
 # An agent queue that works while you don't
 
-2026-10-17. RFC. Status: draft. Literature read, deep-research pass not run yet.
+2026-10-17. RFC. Status: decided and built (2026-10-20) as `.tool/queue`, with GitHub Issues as the inbox and no budget gate; see the answers under Decisions. Deep-research pass not run.
 
 ## Thesis
 
@@ -213,6 +213,10 @@ from the phone goes through the ntfy inbox (rec. 4), which writes the file.
    answered (rec. 3).
 4. **Run** it in its own worktree and branch (`agent/<slug>`), never main:
 
+> **Q:** _“Budget gate (code/budget.mjs): start a job only if the 5-hour window is under 80% and the week is under its pacing line, elapsed share of the week − 15 points reserved for you. Today: 68% used, line 77.8%, so go”_ — Dont need for now.
+
+> **A:** Dropped. No gate: every run records `/usage` before and after, and the PR description and each push show it (`.tool/queue`).
+
    ```bash
    claude -p "/research <prompt>" --permission-mode auto --permission-prompts none \
      --max-turns 120 --output-format stream-json --verbose
@@ -305,6 +309,30 @@ inbox) and the wrong home for the agent.
    start)*: titles pass through their server. / Self-hosted on the Pi with
    `deny-all`, upstream for iOS.
 
+> **Q:** _“Engine. claude -p on the subscription (recommended): same cost, allowed [1]. / OpenCode or Codex with an API key: independent, costs per token (~$20/day at your pace, from the transcripts' API prices). / Claude Code on the web: same cost, most Claude-bound.”_ — claude locally in my mac seems good.
+
+> **A:** Done: `claude -p` on the subscription, in a worktree per issue, `--permission-mode auto --permission-prompts none`.
+
+> **Q:** _“GitHub Issues: best phone UI, needs a sync.”_ — Github issues is better. But I would still have the markdown _after_ the task is done, but that is essentially the research and create task right? I think it would just be nice to add as well the content as PR. Imagine I open a github issue, the agent opens a PR with the description very much alike the MD we had. My role is to approve the design (it could be a comment for example that i must answer in the issue) and when everything is done, it just merges to main and let me know that the issue was solved.
+
+> **A:** Built that way in `.tool/queue`: the issue is the queue (Create/Research/Improve templates add the label), the draft PR's description is the delivery README with its pictures under a usage table, you answer on the issue (`approve` alone goes on, anything else is feedback), and the last `approve` merges into main, closes the issue and pushes to the phone.
+
+> **Q:** _“Expose .tool/doc through the existing Cloudflare tunnel behind Access: full commenting, one more public surface.”_ — no need for that. lets just have github issues as described by the comment above
+
+> **A:** Done: nothing exposed; the PR is the page you read.
+
+> **Q:** _“Budget. Window share and reserve: 80% of each night window, 15 weekly points kept for you (recommended). Tighter if you often work Saturdays before the reset.”_ — lets not worry about budget for now. I think we can let the github description know
+
+> **A:** Done: per-run and total usage (time, turns, tokens, API-eq. USD, 5-hour and weekly windows) top the PR and ride on every push.
+
+> **Q:** _“What may run unattended. /research only for the first two weeks (recommended), then /improve, then /create design. /create build always stops at delivery; nothing merges itself.”_ — Everything run unattended, I alraedy trust it enough.
+
+> **A:** Done: all three kinds run unattended, and the last gate merges.
+
+> **Q:** _“ntfy host. ntfy.sh with a long random topic (recommended to start): titles pass through their server.”_ — it can be. I just need a easy notification service on the phone.
+
+> **A:** ntfy.sh with a random topic: install the ntfy app and subscribe to it. No account, no server.
+
 ## Rollout
 
 | Phase | Ships | Fixes | Size |
@@ -315,6 +343,10 @@ inbox) and the wrong home for the agent.
 | 3 | Unattended mode in the three skills; gates; ntfy Approve and inbox | 2, 5 | 1 day |
 | 4 | Keep-awake while running; ntfy on the Pi; optional paid fallback engine | 6 | ½ day |
 | 5 | Measure after two weeks: jobs/night, gate wait, % of week used at night vs day | — | 1 h |
+
+> **Q:** _“Keep-awake while running; ntfy on the Pi; optional paid fallback engine”_ — Why on the pi? Cant we use another service?
+
+> **A:** No need: ntfy.sh is the service. Nothing runs on the Pi.
 
 ## References
 

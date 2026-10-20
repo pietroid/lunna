@@ -14,6 +14,7 @@ output are what make a session cheap.
 | `preview` | Build a preview entry point in both brands, screenshot it, lay out the board |
 | `cost` | What a Claude Code session cost, per message, from its transcript |
 | `doc` | List, open and comment on the Markdown under `product/` |
+| `queue` | GitHub issues worked by Claude Code on this Mac, gate by gate |
 
 ## `check`: what CI runs, on what changed
 
@@ -89,6 +90,54 @@ itself, as a blockquote under that block:
 So the notes live in git with the doc, and an agent reads them with
 `.tool/doc notes <doc> --open` instead of reading the whole document. The
 page redraws whenever the file changes, from any editor.
+
+## `queue`: issues in, merged PRs out
+
+```bash
+.tool/queue setup        # once: labels, a push topic, the LaunchAgent, a test push
+.tool/queue ls           # each issue, where it is, what it has used
+.tool/queue log 12       # the tail of #12's last run
+.tool/queue tick         # one pass in the foreground (stop the agent first)
+.tool/queue stop|start   # unload / load the LaunchAgent
+```
+
+Open an issue with the **Create**, **Research** or **Improve** template
+(it adds the label). A LaunchAgent polls every minute and works one issue at
+a time, each phase a fresh `claude -p` in its own worktree
+(`../lunna-queue/<n>-<slug>`, branch `queue/<n>-<slug>`):
+
+```
+issue ─▶ 👀 ─▶ design ─▶ draft PR + comment + push ─▶ you reply
+                  ▲                                   │
+                  └──────── anything else ◀───────────┤
+                                                      ▼ "approve"
+          build + .tool/check ─▶ PR ready + comment + push ─▶ you reply
+                  ▲                                   │
+                  └───────── what to fix ◀────────────┤
+                                                      ▼ "approve"
+          merge origin/main (a run resolves conflicts, .tool/check --all)
+          ─▶ squash into main ─▶ issue closed ─▶ push
+```
+
+Research and improve skip the design gate. **The PR description is the
+topic's README** (delivery, RFC or report) with its pictures, under a usage
+table: per run, time, turns, tokens, API-equivalent USD and the 5-hour and
+weekly windows before and after (`claude -p /usage`, free). Each push
+carries the totals.
+
+- **Answering.** Your comments on the issue or its PR after the gate.
+  `approve` (or `ok`, `lgtm`, `aprovado`, 👍) **alone in its comment** goes
+  on; anything else is feedback for another round. After a failure,
+  `retry` reruns the phase. Closing the issue drops it.
+- **Phone.** ntfy.sh: install the app and subscribe to the topic `setup`
+  printed (it's in `.git/queue/config.json`). No account, no server.
+- **Only the owner.** The repo is public: issues and comments by anyone
+  else are never read.
+- **Limits.** A run that hits the usage limit pauses until the window
+  resets and picks up from its files. The Mac must be awake (`caffeinate`
+  holds it while a run goes; closing the lid still sleeps it).
+- **State** is in `.git/queue/`: one JSON per issue, the stream-json log of
+  every run in `logs/`, the agent's own output in `daemon.log`.
 
 ## `mockup/`: the pieces under `preview`
 

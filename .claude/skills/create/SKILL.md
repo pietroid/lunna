@@ -21,6 +21,11 @@ carries everything across.
 `/create build <slug>` (or "build <slug>" in the arguments) starts at Phase 3,
 from `product/delivery/*-<slug>/README.md`.
 
+**Unattended** (`LUNNA_QUEUE=1`, a run of `.tool/queue` for a GitHub
+issue): nobody answers until the run ends. The queue's instructions in the
+prompt replace every "stop and ask" here; the person answers on the issue,
+and the next phase is a fresh session that starts from the files.
+
 Worked example of the whole flow: `product/delivery/2026-10-15-agent/README.md`.
 The tools this skill runs are in `.tool/` (see `.tool/README.md`): `preview`,
 `check`, `cost`, `doc`.

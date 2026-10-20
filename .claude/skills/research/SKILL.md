@@ -13,6 +13,11 @@ something they'd act on, with a source or a `file:line` behind it?
 Worked example of the whole flow:
 `product/research/2026-10-16-agent-reliability/`.
 
+**Unattended** (`LUNNA_QUEUE=1`, a run of `.tool/queue` for a GitHub
+issue): nobody answers until the run ends. The queue's instructions in the
+prompt replace every "stop and ask" here; the person answers on the issue,
+and the next phase is a fresh session that starts from the files.
+
 ## Where things go
 
 One folder per topic, the way `product/delivery/` has one per feature.

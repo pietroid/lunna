@@ -14,6 +14,11 @@ the agent.
 
 Worked example: `product/improvements/2026-10-17-docs-tooling-tokens/`.
 
+**Unattended** (`LUNNA_QUEUE=1`, a run of `.tool/queue` for a GitHub
+issue): nobody answers until the run ends. The queue's instructions in the
+prompt replace every "stop and ask" here; the person answers on the issue,
+and the next phase is a fresh session that starts from the files.
+
 ## 1. Find the evidence before proposing
 
 Don't recommend from intuition. Every claim of "this costs too much" or
