@@ -1,9 +1,10 @@
 # Improvements: notes and projects on the calendar, Feitas, a quieter bar, one recorder
 
-Six fixes from using the app: the calendar now shows how each note starts
-and which project a task belongs to, with no extra height. Menu gets an
-archive of finished tasks. The + stops animating between tabs. The circle
-before a task's name is gone. Recording becomes one panel instead of three
+Six fixes from using the app: the calendar now shows how each note starts,
+under the title, and which project a task belongs to, with no extra
+height. Menu gets an archive of finished tasks. The + stops animating
+between tabs. The circle before a task's name is gone, and the task page
+no longer marks anything done. Recording becomes one panel instead of three
 loose pieces.
 
 ## 1. The prompt
@@ -21,6 +22,16 @@ GitHub issue [#1](https://github.com/pietroid/lunna/issues/1), verbatim:
 
 Worked unattended by the Lunna queue (design session). Approval and
 answers come on the issue.
+
+The design was reviewed on the issue, and the person replied, verbatim:
+
+> Remove mark as done.
+>
+> The short description on the task should be below the title not aside. If it doesn't fit the task height it just doesn't show at all
+
+Worked unattended again (second design round). Screens 1, 2, 5 and 6
+were re-shot (5 and 6 show the calendar behind the recorder). 3 and 4
+did not change.
 
 ## 2. The design
 
@@ -42,9 +53,8 @@ Raw shots without pins: `img/mockup-1.png` … `img/mockup-6.png`.
 
 These come from patterns I already know. I did not browse Mobbin.
 
-- **Google Calendar / Fantastical**: an event's description runs after
-  its title in a quieter colour when the block is short, and goes under
-  the title when the block is tall.
+- **Google Calendar / Fantastical**: an event's description goes under
+  the title when the block is tall enough, and is left out when it isn't.
 - **Things 3 Logbook**: finished tasks grouped by day, newest first, and
   searchable.
 - **WhatsApp / Telegram**: the voice recorder takes the whole composer
@@ -55,13 +65,13 @@ These come from patterns I already know. I did not browse Mobbin.
 | Screen | Pin | Decision |
 |--------|-----|----------|
 | 1 Calendário | A | A card with room for a second line (≥ 72 px drawn, about 40 min or more) shows the start of its notes under the title in ink3. It shows as many lines as fit, up to 3. The card never gets taller |
-| 1 Calendário | B | A short card (30 min) runs the notes on after the title, in smaller ink3 text, cut off at the end of the line. A note line that is only a link is skipped (`notesPreview`) |
+| 1 Calendário | B | A card with no room for a second line (30 min) shows no notes at all: they never run on beside the title. A note line that is only a link is skipped (`notesPreview`) |
 | 1 Calendário | C | A project task's second line starts with the project name (labelStrong, ink2): "Reforma do apê · Conferir…" |
 | 1 Calendário | D | A project task with no room for a second line (Agora, short cards) gets the folders icon before its title, the same way fixed cards get a pin |
 | 1 Calendário | E | The + is in the same spot on every tab. Changing tabs no longer animates it (`FloatingActionButtonAnimator.noAnimation`) |
 | 2 Task | A | The circle before the name (`AppDoneCircle`) goes, on both the task page and the project page |
-| 2 Task | B | Done is a labelled pill, borderless on a `fill` background: ✓ "Marcar como feita", at the end of the ▶ −15 +15 row. Once done it reads "Feita" in accent on `accentWash` (`AppDoneButton`) |
-| 2 Task | C | Horário, Duração and Projeto rows stay as they are |
+| 2 Task | B | Horário, Duração and Projeto rows stay as they are |
+| 2 Task | C | The page has no way to mark the task done: the row is ▶ −15 +15 and nothing else. A task is ticked off on Tempo, by the ✓ on the running card |
 | 3 Menu | A | New "Feitas" row right after Rotina, with the archive icon (Phosphor `archive`) and "Tudo o que você já concluiu". It opens `/feitas` |
 | 3 Menu | B | The Menu's + sits exactly where the + sits on Tempo and Projetos |
 | 3 Menu | C | The bottom bar doesn't change: brightness alone marks the current tab |
@@ -88,10 +98,16 @@ No new icon: `AppIcons.archive` and `AppIcons.things` already existed.
   time the button changes from the ask dock to the plain +. The + was
   already in the same spot on every tab (checked against the geometry),
   so the fix is no animation, not a new position.
-- **The circle is replaced by words**, not by nothing. Taking the circle
-  out with no replacement would leave the page with no way to mark a
-  task done. A labelled "Marcar como feita" can't be read as "save" or as
-  decoration. The quick ✓ on Tempo's running card stays.
+- **Round 2: "Remove mark as done"** is read as: the task page has no
+  done control at all (the round-1 pill "Marcar como feita" is gone, and
+  `AppDoneButton` with it). A task is still ticked off by the ✓ on
+  Tempo's running card, which the reply did not mention. A finished
+  task's page still says when it was done ("Feita hoje às …").
+- **The project page loses its circle too, with nothing in its place**,
+  to match the task page. Round 1's open question about a "Concluir
+  projeto" pill is dropped with it (see the questions).
+- **Round 2: notes below or nowhere.** The project's folders mark on a
+  short card stays (pin 1D): the reply is about the notes only.
 - **"Projects in the calendar"** is read as: a project's tasks say so on
   the calendar, as they already did in Lista. Project deadlines on the
   calendar are left as a question (below).
@@ -116,9 +132,9 @@ No new icon: `AppIcons.archive` and `AppIcons.things` already existed.
 2. **Project deadlines on the calendar**: should a project's due day also
    show on the calendar, as a slim untimed line under that day's heading
    ("Prazo · Reforma do apê")?
-3. **Done on the project page**: the plan is a "Concluir projeto" pill in
-   place of the circle, in the Prazo/Feitas rows. Is that the right
-   place?
+3. **Finishing a project**: with its circle gone, the project page has
+   no way to mark the project finished. Is that wanted, or should it be
+   done some other way (from the projects list, say)?
 
 ## Build brief
 
@@ -132,18 +148,20 @@ Phase 3 starts here. Remove this section in Phase 4.
 - `app/pubspec.yaml`: `clock` dependency (the preview uses `withClock`).
   Drop it if nothing else in `lib/` uses it.
 - `app/packages/timeline/lib/src/widgets/event_tile.dart`: `preview`
-  param, `_body(lines:)`, a `LayoutBuilder` picking inline notes or a
-  second line by drawn height (`_twoLines = 72`), and the folders mark.
+  param, `_body(lines:)`, a `LayoutBuilder` giving the notes a second
+  line by drawn height (`_twoLines = 72`) or leaving them out, and the
+  folders mark.
 - `app/packages/timeline/lib/src/widgets/format.dart`: `notesPreview`.
 - `app/packages/timeline/lib/src/view/timeline_list.dart`:
   `preview: !_isList` in `_tile`.
 - `app/packages/timeline/lib/src/view/event_page.dart`: circle removed
-  from the title. `AppDoneButton` at the end of the controls row.
+  from the title, no done control (round 2 took the pill out again).
 - `app/packages/timeline/lib/src/view/done_archive.dart` (new):
   `DoneArchivePage` (search, day headings) and `DoneArchiveTile`. For now
   it takes a fixed list and filters locally. Exported from `view.dart`.
-- `app/packages/app_ui/lib/src/widgets/app_done_button.dart` (new),
-  exported from `app_ui.dart`. `app_done_circle.dart` is still there.
+- `app/packages/app_ui/lib/src/widgets/app_done_button.dart`: written in
+  round 1, deleted in round 2. `app_done_circle.dart` is still there
+  (the project page uses it).
 - `app/packages/agent/lib/src/view/ask_bar.dart`: `AskRecorder` is one
   panel. `_Heard` has no surface of its own, and `onOpen` is null while
   held. Send is an `AppFab(diameter: 48)` in the +'s spot. `_HeldRow`
@@ -154,7 +172,9 @@ Phase 3 starts here. Remove this section in Phase 4.
   yet).
 - `app/packages/l10n/lib/arb/app_pt.arb` + `gen/`: `eventDoneShort`,
   `menuArchive`, `menuArchiveHint`, `archiveSearch`, `archiveToday`,
-  `archiveYesterday`, `archiveEmpty`, `archiveNoMatch`.
+  `archiveYesterday`, `archiveEmpty`, `archiveNoMatch` (`eventDoneShort`
+  was added in round 1 and removed in round 2). `eventMarkDone` is now
+  unused: delete it in the build.
 - `.tool/mockup/shoot-flutter.sh`: wait for the debug port.
 
 ### Server
@@ -175,22 +195,21 @@ Phase 3 starts here. Remove this section in Phase 4.
   reads the cubit, loads more near the end, and opens
   `EventPage(finished:)` with the NotesDock. Add a go_router route
   `/feitas` in `lib/app`.
-- Projects: replace `AppDoneCircle` in `project_page.dart` with
-  `AppDoneButton` ("Concluir projeto" / "Concluído"), then delete
+- Projects: remove `AppDoneCircle` from `project_page.dart` with nothing
+  in its place (unless question 3 says otherwise), then delete
   `app_done_circle.dart`.
 - Recording: check that the finger stays on the swollen mic on a real
   phone. With the panel's bottom row at the bar's height, the centre
   should land exactly. Check the notes page's `NotesDock` for the same
   awkward layout and make it match if needed.
 - Tests: `notesPreview` (link lines skipped, whitespace collapsed); an
-  `EventTile` with preview at 60 px vs 90 px height (inline vs second
-  line, never taller); the event page has no circle and its done button
-  finishes the task; archive grouping and search; the shell's FAB uses
+  `EventTile` with preview at 60 px vs 90 px height (no notes at all vs
+  a second line, never taller); the event page has no circle and no done
+  control; archive grouping and search; the shell's FAB uses
   `noAnimation`; the recorder panel's send finds the +'s centre; the
   existing ask-dock hold/slide/lock tests still pass. Update tests that
   find `AppDoneCircle`.
-- Run under both brands. Focus's dark `fill` must still show the done
-  pill.
+- Run under both brands.
 
 ### Decisions not in the pins
 

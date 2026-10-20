@@ -18,7 +18,6 @@ export 'src/widgets/app_bottom_bar.dart';
 export 'src/widgets/app_button.dart';
 export 'src/widgets/app_card.dart';
 export 'src/widgets/app_day_clock.dart';
-export 'src/widgets/app_done_button.dart';
 export 'src/widgets/app_done_circle.dart';
 export 'src/widgets/app_fab.dart';
 export 'src/widgets/app_icon_button.dart';

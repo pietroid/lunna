@@ -254,9 +254,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventMarkDone => 'Marcar como feita';
 
   @override
-  String get eventDoneShort => 'Feita';
-
-  @override
   String get restTip01 => 'Respire fundo. Três vezes, devagar.';
 
   @override

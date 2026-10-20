@@ -28,8 +28,8 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// On the calendar ([preview]) a card also says what its notes start with
 /// and which project it is of, in the room its time already gives it and
 /// never more: a card with room for a second line draws them under the
-/// title, as many lines as fit up to three; a shorter one runs the notes on
-/// after the title, quieter, and marks a project's task with the folders.
+/// title, as many lines as fit up to three; a shorter one shows no notes at
+/// all, and marks a project's task with the folders.
 ///
 /// It carries no gestures of its own. Tapping and dragging on the timeline
 /// are read by one listener over the whole list, which tells each card how it
@@ -183,19 +183,8 @@ class EventTile extends StatelessWidget {
                 const SizedBox(width: AppSpacing.s2),
               ],
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    text: card.title,
-                    children: [
-                      // No room under the title: the notes run on after
-                      // it, quieter, for as far as the line goes.
-                      if (!under && notes.isNotEmpty)
-                        TextSpan(
-                          text: '  $notes',
-                          style: AppTypography.label.copyWith(color: _quiet),
-                        ),
-                    ],
-                  ),
+                child: Text(
+                  card.title,
                   style: AppTypography.body.copyWith(
                     color: card.isPaused ? AppColors.ink2 : AppColors.ink,
                   ),
@@ -215,6 +204,8 @@ class EventTile extends StatelessWidget {
               ),
             ],
           ),
+          // The notes go under the title or nowhere: with no room for that
+          // line the card is its title alone.
           if (under) ...[
             const SizedBox(height: AppSpacing.s1),
             Text.rich(

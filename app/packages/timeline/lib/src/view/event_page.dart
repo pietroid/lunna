@@ -71,8 +71,7 @@ class EventPage extends StatelessWidget {
         titleSpacing: 0,
         title: card == null
             ? null
-            // The name alone: done is said in words, by the button under
-            // the summary, never by a mark before the name.
+            // The name alone, with no mark before it.
             : _Title(card: card),
         actions: [
           if (card != null && card.isInteractive && !done)
@@ -303,29 +302,9 @@ class _Summary extends StatelessWidget {
           if (running && !card.isBacklog) ...[
             const SizedBox(height: AppSpacing.s3),
             NowProgress(card: card, trailing: controls),
-          ],
-          if (card.isInteractive) ...[
-            const SizedBox(height: AppSpacing.s3),
-            Row(
-              children: [
-                if (controls != null && !(running && !card.isBacklog)) controls,
-                const Spacer(),
-                AppDoneButton(
-                  done: done,
-                  label: l10n.eventMarkDone,
-                  doneLabel: l10n.eventDoneShort,
-                  // A finished task stays finished from here.
-                  onChanged: done
-                      ? null
-                      : (_) {
-                          context.read<TimelineBloc>().add(
-                            EventFinished(card.id),
-                          );
-                          unawaited(Navigator.of(context).maybePop());
-                        },
-                ),
-              ],
-            ),
+          ] else if (controls != null) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Align(alignment: Alignment.centerLeft, child: controls),
           ],
         ],
       ),
@@ -335,8 +314,8 @@ class _Summary extends StatelessWidget {
   Widget _controls(BuildContext context) {
     final bloc = context.read<TimelineBloc>();
 
-    // Done is the labelled button at the end of the row, so the row has
-    // no check of its own: a bare check reads as "save".
+    // The page marks nothing done: a task is ticked off where it runs, on
+    // Tempo. A check in the corner of an editor reads as "save".
     return EventControls(
       card: card,
       onPauseToggled: () => bloc.add(EventPauseToggled(card.id)),

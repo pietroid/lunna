@@ -479,12 +479,6 @@ abstract class AppLocalizations {
   /// **'Marcar como feita'**
   String get eventMarkDone;
 
-  /// No description provided for @eventDoneShort.
-  ///
-  /// In pt, this message translates to:
-  /// **'Feita'**
-  String get eventDoneShort;
-
   /// No description provided for @restTip01.
   ///
   /// In pt, this message translates to:
