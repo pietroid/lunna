@@ -33,6 +33,14 @@ Worked unattended again (second design round). Screens 1, 2, 5 and 6
 were re-shot (5 and 6 show the calendar behind the recorder). 3 and 4
 did not change.
 
+The second round was reviewed on the issue, and the person replied,
+verbatim:
+
+> Great. Build it
+
+That approves the board as drawn in round 2. Nothing was re-shot for
+this reply: the board below is the approved one.
+
 ## 2. The design
 
 ![Board](img/mockup-board.png)
@@ -116,6 +124,11 @@ No new icon: `AppIcons.archive` and `AppIcons.things` already existed.
   rules out.
 - **Music** is not drawn. "Consider adding music there as well" can mean
   too many things (see the questions).
+- **Round 3: "Great. Build it"** did not answer the three open
+  questions. The build takes the reading with the least new surface:
+  no music in Feitas, no project deadlines on the calendar, and no way
+  to finish a project from its page. The questions stay open below for
+  a later issue; none of them blocks the build.
 - **Six screens instead of 3–5**: the held and tapped recorders are
   different layouts, and recording is the part the issue calls most
   awkward.
@@ -140,7 +153,11 @@ No new icon: `AppIcons.archive` and `AppIcons.things` already existed.
 
 Phase 3 starts here. Remove this section in Phase 4.
 
-### Files Phase 1 wrote or changed (uncommitted, kept for the build)
+Approved on the issue ("Great. Build it"), board as in round 2. The
+three open questions were not answered; build without them (see
+"Decided unattended").
+
+### Files Phase 1 wrote or changed (committed on `queue/1-improvements` by the queue, kept for the build)
 
 - `app/lib/improvements_preview.dart`: the preview entry point, six
   scenes, a fixed clock, fake repository (`noSuchMethod`). Delete it after
@@ -196,8 +213,9 @@ Phase 3 starts here. Remove this section in Phase 4.
   `EventPage(finished:)` with the NotesDock. Add a go_router route
   `/feitas` in `lib/app`.
 - Projects: remove `AppDoneCircle` from `project_page.dart` with nothing
-  in its place (unless question 3 says otherwise), then delete
-  `app_done_circle.dart`.
+  in its place (question 3 is unanswered, so no finish control), then
+  delete `app_done_circle.dart`.
+- Delete `eventMarkDone` from `app_pt.arb` and regenerate.
 - Recording: check that the finger stays on the swollen mic on a real
   phone. With the panel's bottom row at the bar's height, the centre
   should land exactly. Check the notes page's `NotesDock` for the same
@@ -213,6 +231,8 @@ Phase 3 starts here. Remove this section in Phase 4.
 
 ### Decisions not in the pins
 
+- Not built (open questions, unanswered at approval): music in Feitas,
+  project deadlines on the calendar, finishing a project.
 - The preview's second line takes `(height − 64) / 18` lines, clamped to
   1–3. Agora is laid out at its natural height, so it never gets a second
   line.
