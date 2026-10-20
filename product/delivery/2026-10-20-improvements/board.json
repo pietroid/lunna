@@ -1,0 +1,43 @@
+{ "screens": [
+ { "png": "img/mockup-1.png", "title": "1 · Calendário com notas e projetos", "why": "As notas e o projeto só apareciam ao abrir a tarefa ou na Lista.",
+   "pins": [
+    {"id":"A","x":260,"y":468,"label":"Notas embaixo","text":"Card com altura para 2ª linha (≥ 72px, ~40 min): começo das notas sob o título, em ink3, até 3 linhas. O card nunca cresce."},
+    {"id":"B","x":220,"y":651,"label":"Notas na linha","text":"Card curto (30 min): as notas continuam depois do título, menores e em ink3, até onde a linha vai. Linha que é só um link é pulada."},
+    {"id":"C","x":82,"y":468,"label":"Projeto no calendário","text":"Na 2ª linha, o nome do projeto vem antes das notas, em labelStrong ink2: 'Reforma do apê · Conferir…'."},
+    {"id":"D","x":47,"y":230,"label":"Marca de pastas","text":"Sem espaço para a 2ª linha (Agora, cards curtos), a tarefa de projeto leva o ícone de pastas antes do título, como o pin dos fixos."},
+    {"id":"E","x":345,"y":726,"label":"+ parado","text":"Mesmo ponto em todas as abas; trocar de aba não anima o botão."}
+   ]},
+ { "png": "img/mockup-2.png", "title": "2 · A tarefa sem o círculo", "why": "O ✓ saiu, mas no lugar ficou um círculo estranho antes do nome.",
+   "pins": [
+    {"id":"A","x":62,"y":32,"label":"Só o nome","text":"Sai o círculo (AppDoneCircle) antes do nome, na tarefa e no projeto. O título começa logo depois da seta."},
+    {"id":"B","x":281,"y":204,"label":"Marcar como feita","text":"Concluir é dito em palavras: pílula sem borda, fundo fill, ✓ + 'Marcar como feita', no fim da fileira ▶ −15 +15. Feita, vira 'Feita' em vermelho."},
+    {"id":"C","x":168,"y":157,"label":"Rótulos ficam","text":"Horário, Duração e Projeto continuam como estavam."}
+   ]},
+ { "png": "img/mockup-3.png", "title": "3 · Feitas no Menu", "why": "Não havia onde rever o que já foi feito.",
+   "pins": [
+    {"id":"A","x":29,"y":146,"label":"Feitas","text":"Nova linha do Menu, logo após Rotina: ícone de arquivo (Phosphor archive), 'Tudo o que você já concluiu'. Abre /feitas."},
+    {"id":"B","x":342,"y":726,"label":"Mesmo lugar","text":"O + do Menu está exatamente onde está o + do Tempo (e do Projetos): a troca de aba só troca o que é desenhado."},
+    {"id":"C","x":310,"y":801,"label":"Barra quieta","text":"A barra de baixo não muda: só o brilho diz qual aba está na frente."}
+   ]},
+ { "png": "img/mockup-4.png", "title": "4 · O arquivo do que foi feito", "why": "Para consultar depois: quando foi, de qual projeto, o que foi anotado.",
+   "pins": [
+    {"id":"A","x":184,"y":95,"label":"Buscar","text":"Procura nos títulos e nas notas (no servidor, ?q=)."},
+    {"id":"B","x":49,"y":452,"label":"Por dia","text":"Mais novas primeiro, com os títulos de dia do calendário: Hoje, Ontem, depois a data. Rola carregando mais (?before=)."},
+    {"id":"C","x":84,"y":306,"label":"Projeto e notas","text":"Cada tarefa: ✓, nome, hora em que foi feita; embaixo o projeto (AppTag) e o começo das notas."},
+    {"id":"D","x":324,"y":195,"label":"Abre a tarefa","text":"Um toque abre a página da tarefa feita (EventPage finished), onde nome e notas ainda mudam."}
+   ]},
+ { "png": "img/mockup-5.png", "title": "5 · Gravando (toque)", "why": "Gravar espalhava três peças sobre o dia: as palavras, a barra e um + invisível.",
+   "pins": [
+    {"id":"A","x":70,"y":610,"label":"Um painel","text":"Gravando, a barra e o + viram uma única superfície da largura dos dois, que cresce para cima: as palavras em cima, o gravador embaixo."},
+    {"id":"B","x":195,"y":661,"label":"As palavras","text":"Aparecem conforme são ouvidas, até 4 linhas. Um toque leva para a conversa com elas no campo, sem enviar (o ^ diz isso)."},
+    {"id":"C","x":336,"y":724,"label":"Enviar no lugar do +","text":"↑ de 48px, centro no centro do +: onde o dedo já estava acostumado a ir."},
+    {"id":"D","x":120,"y":724,"label":"Lixeira, tempo, onda","text":"O gravador fica na altura da barra, no mesmo lugar, então nada pula quando a gravação começa."}
+   ]},
+ { "png": "img/mockup-6.png", "title": "6 · Gravando (segurando)", "why": "Segurando, o microfone, a trava e a dica brigavam por espaço.",
+   "pins": [
+    {"id":"A","x":268,"y":724,"label":"Microfone sob o dedo","text":"Cresce para 72px no centro do microfone da barra, onde o dedo pousou. Soltar envia."},
+    {"id":"B","x":268,"y":651,"label":"Trava dentro","text":"A trava fica dentro do painel, acima do microfone; as palavras abrem espaço para ela. Deslizar 80px para cima trava."},
+    {"id":"C","x":156,"y":724,"label":"Cancelar","text":"Ponto, tempo e '← Deslize para cancelar' (100px) no lugar da onda."},
+    {"id":"D","x":337,"y":724,"label":"Sem + fantasma","text":"O canto do + fica vazio enquanto o dedo está no microfone; travado, vira o ↑ da tela 5."}
+   ]}
+]}

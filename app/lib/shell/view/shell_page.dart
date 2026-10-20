@@ -126,6 +126,11 @@ class _ShellPageState extends State<ShellPage> {
           floatingActionButtonLocation: _index == _timelineIndex
               ? FloatingActionButtonLocation.centerFloat
               : AppFab.location,
+          // The + is at the same place on every tab, so changing tabs
+          // swaps what is drawn and moves nothing: no scaling out and in,
+          // no slide between the two locations.
+          floatingActionButtonAnimator:
+              FloatingActionButtonAnimator.noAnimation,
           bottomNavigationBar: AppBottomBar(
             currentIndex: _index,
             onSelected: _onSelected,

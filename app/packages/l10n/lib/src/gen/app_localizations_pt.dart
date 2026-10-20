@@ -48,6 +48,27 @@ class AppLocalizationsPt extends AppLocalizations {
   String get menuDaySection => 'Seu dia';
 
   @override
+  String get menuArchive => 'Feitas';
+
+  @override
+  String get menuArchiveHint => 'Tudo o que você já concluiu';
+
+  @override
+  String get archiveSearch => 'Buscar nas feitas';
+
+  @override
+  String get archiveToday => 'Hoje';
+
+  @override
+  String get archiveYesterday => 'Ontem';
+
+  @override
+  String get archiveEmpty => 'Nada concluído ainda. O que você marcar como feito fica guardado aqui.';
+
+  @override
+  String get archiveNoMatch => 'Nenhuma tarefa feita com essas palavras.';
+
+  @override
   String get menuDayStart => 'Começa às';
 
   @override
@@ -231,6 +252,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventMarkDone => 'Marcar como feita';
+
+  @override
+  String get eventDoneShort => 'Feita';
 
   @override
   String get restTip01 => 'Respire fundo. Três vezes, devagar.';

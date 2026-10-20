@@ -1980,6 +1980,8 @@ class _TimelineListState extends State<TimelineList> {
       // Lista has the height to say which project a task is of; the
       // calendar draws cards to the scale of their time.
       showProject: _isList,
+      // The calendar says what the notes start with, in the room it has.
+      preview: !_isList,
       pressed: card.id == _pressed || card.id == _swap,
       // The card in the air is drawn over the list, so the one left behind
       // only holds its place open.
