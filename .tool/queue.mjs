@@ -20,7 +20,7 @@
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
 import { spawn, execFileSync } from 'node:child_process';
-import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, dirname, join, posix, resolve } from 'node:path';
@@ -40,7 +40,6 @@ const STATUS = { working: 'agent:working', waiting: 'agent:waiting', failed: 'ag
 const APPROVE = /^(approved?|aprovad[oa]|aprovo|aprova|lgtm|ok(ay)?|go|ship( it)?|build( it)?|merge( it)?|sim|pode|👍|✅|🚀)[\s.!]*$/iu;
 const RETRY = /^(retry|again|de novo|tenta de novo)[\s.!]*$/iu;
 const RUN_LIMIT_MS = 4 * 3600e3;
-const COAUTHOR = 'Co-Authored-By: Claude <noreply@anthropic.com>';
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 << 20, ...opts }).trim();
@@ -291,7 +290,7 @@ function worktree(cfg, st) {
 function commit(st, message) {
   git(st.worktree, 'add', '-A');
   if (trySh('git', ['diff', '--cached', '--quiet'], { cwd: st.worktree }) !== null) return false; // nothing staged
-  git(st.worktree, 'commit', '-q', '-m', `${message}\n\n${COAUTHOR}`);
+  git(st.worktree, 'commit', '-q', '-m', message);
   return true;
 }
 
@@ -399,7 +398,7 @@ async function merge(cfg, st, attempt = 0) {
   let merged;
   try {
     merged = ghJson(['api', '-X', 'PUT', `repos/${cfg.repo}/pulls/${st.pr}/merge`, '--input', '-'], JSON.stringify({
-      merge_method: 'squash', commit_title: `${st.title} (#${st.pr})`, commit_message: `Closes #${st.issue}\n\n${COAUTHOR}`,
+      merge_method: 'squash', commit_title: `${st.title} (#${st.pr})`, commit_message: `Closes #${st.issue}`,
     }));
   } catch (e) {
     if (attempt < 2) { await new Promise((r) => setTimeout(r, 10e3)); return merge(cfg, st, attempt + 1); } // main moved again
@@ -475,11 +474,14 @@ function locked() {
 }
 
 async function loop(once) {
+  const loaded = statSync(fileURLToPath(import.meta.url)).mtimeMs;
   const cfg = config();
   if (locked()) fail('Another .tool/queue run is going.');
   for (;;) {
     try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
     if (once) return;
+    // An edited queue.mjs takes over at the next pass: exit, launchd starts it again.
+    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) return log('queue.mjs changed: restarting');
     await new Promise((r) => setTimeout(r, 60e3));
   }
 }
@@ -537,6 +539,8 @@ const uid = () => process.getuid();
 function start() {
   trySh('launchctl', ['bootout', `gui/${uid()}/${AGENT}`]);
   sh('launchctl', ['bootstrap', `gui/${uid()}`, plistPath]);
+  // A KeepAlive job's first spawn is "speculative": launchd may hold it off.
+  sh('launchctl', ['kickstart', `gui/${uid()}/${AGENT}`]);
 }
 function stop() {
   trySh('launchctl', ['bootout', `gui/${uid()}/${AGENT}`]);
