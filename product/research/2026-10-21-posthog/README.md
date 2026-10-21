@@ -1,6 +1,6 @@
-# PostHog: users, errors, replays and heatmaps
+# PostHog: users, errors and replays
 
-2026-10-21 · RFC · draft (Phases 1–3; deep-research pass not run)
+2026-10-21 · RFC · decided: US cloud, no heatmaps, no consent prompt (deep-research pass not run)
 
 ## In one minute
 
@@ -17,10 +17,12 @@ the app for screens and replays, with every picture masked by default.**
 - **Do:** turn on session replay on iOS, Android and web (canvas capture),
   with `maskAllTexts` and `maskAllImages` left on.
 - **Not needed:** self-hosting (the Pi can't hold it, and the free tier
-  covers one person many times over), or a heatmap tool for the phones:
-  none exists for Flutter, and replay's taps answer the same question.
-- **You decide:** EU or US cloud (**EU** recommended), and whether heatmaps
-  are worth turning on for the web build alone (**yes**, they cost nothing).
+  covers one person many times over), heatmaps (decided: off; Flutter
+  paints one canvas, and replay's taps answer the same question), or a
+  consent prompt (decided: sign-up is by invitation).
+- **Decided:** PostHog's **US** cloud.
+- **You decide:** one project for both brands (**one** recommended), and
+  masking (**everything masked** recommended).
 
 ## Ideas to keep
 
@@ -46,8 +48,8 @@ the app for screens and replays, with every picture masked by default.**
 4. **"A heatmap needs a page of elements; Flutter paints one canvas."**
    PostHog, [Heatmaps](https://posthog.com/docs/toolbar/heatmaps): the
    clickmap "requires autocapture" and counts "actual DOM elements".
-   *For us:* on Flutter web only the coordinate heatmap can work, and the
-   phones have no heatmap at all. *New*
+   *For us:* on Flutter web only the coordinate heatmap could work, and the
+   phones have none, which is why heatmaps stay off. *New*
 
 ## The change
 
@@ -57,7 +59,7 @@ the app for screens and replays, with every picture masked by default.**
 | 2 | Server: `posthog-node`, errors and actions from `LoggingInterceptor` | errors, track users | S |
 | 3 | App: setup, `identify`, screens, errors at the Dio boundary | track users, errors | M |
 | 4 | Session replay, masked, on all three platforms | screen capture | S |
-| 5 | Web: snippet in `index.html`, `/ingest` proxy, heatmaps | heatmap, ad blockers | S |
+| 5 | Web: snippet in `index.html`, `/ingest` proxy | ad blockers | S |
 
 ### 1. One `Analytics` seam
 
@@ -128,40 +130,48 @@ in the project settings: Flutter web is one CanvasKit canvas, and since SDK
 What a replay shows is the layout, the drags and where each tap lands,
 which is what a bug in the timeline's gestures needs.
 
-### 5. Web: snippet, proxy, heatmaps
+### 5. Web: snippet and proxy
 
 `posthog_flutter` on the web is a bridge to posthog-js, and "`setup()` does
 nothing on web without" its snippet in `web/index.html`
 ([docs](https://posthog.com/docs/libraries/flutter)). The key goes in as a
 `__POSTHOG_KEY__` placeholder that `tool/brand_web.sh` fills like the
 others. `api_host` is `/ingest`, which `deploy/nginx.conf` proxies to
-`eu.i.posthog.com` and `/ingest/static/` to `eu-assets.i.posthog.com`
-([nginx proxy](https://posthog.com/docs/advanced/proxy/nginx)), so ad
-blockers see the app's own origin. `enable_heatmaps: true` in the same
-snippet.
+`us.i.posthog.com` and `/ingest/static/` to `us-assets.i.posthog.com`
+([nginx proxy](https://posthog.com/docs/advanced/proxy/nginx)), with
+`ui_host: 'https://us.posthog.com'` so toolbar links still open PostHog,
+and ad blockers see the app's own origin. The phones and the server talk
+to `https://us.i.posthog.com` directly (`POSTHOG_HOST`). Heatmaps stay
+off: no `enable_heatmaps` in the snippet, and the project's heatmap
+toggle left off.
 
 ## Decisions for you
 
-1. **Region.** **EU cloud (recommended)**: same price, data outside the
-   US; US cloud; self-host (PostHog's own hobby deploy wants a far bigger
-   machine than the Pi, and you'd maintain ClickHouse).
-2. **One project or one per brand.** **One (recommended)**, with `brand` as
+> **Decision (2026-10-21):** proceed with US, no heatmaps for now. No
+> consent prompt.
+
+The region, heatmaps and the consent banner are settled by it (US cloud,
+off, none); what is left:
+
+1. **One project or one per brand.** **One (recommended)**, with `brand` as
    a person and event property: one person in both apps is one row, as in
    the database. Two projects would split that person in two.
-3. **Masking.** **All text and images masked (recommended)**: replays show
+2. **Masking.** **All text and images masked (recommended)**: replays show
    shapes, not titles. Unmasking chrome (tab labels, headings) widget by
    widget later is possible; unmasking notes is not advised.
-4. **Heatmaps on the web.** **On (recommended)**: free, one line, but
-   coordinate-only (see Deeper); off, and rely on replays' taps.
-5. **Telling people.** **One line in the landing page (recommended)**:
-   sign-up is gated by `ALLOWED_EMAILS`, so everyone is known; a consent
-   banner is for when the app opens to strangers.
 
 ## Decided unattended
 
 - Wrote Phases 1–3 only; the deep-research pass waits for the person.
 - Picked server-side events over client autocapture for actions (idea 2);
   client autocapture of taps does not exist for Flutter widgets anyway.
+- Read "no consent prompt" as no banner and no opt-in: PostHog starts on
+  every build that has a key. The one line on the landing page saying the
+  app records usage and errors (the old recommendation) is not a prompt,
+  so it stays in scope; drop it at the plan gate if it is not wanted.
+- Did not run Phase 4: the reply did not ask for it. The weakest claims
+  left are the free-tier numbers (literature 7) and the canvas-masking
+  version (literature 4).
 - Left the agent's model calls out of scope (PostHog has LLM analytics;
   it is a separate topic and costs nothing to add later).
 
@@ -190,7 +200,7 @@ the phone's debug console.
 | 3 | Autocapture alone would miss them | `TimelineBloc._failed` and friends swallow what the global handler would see | `timeline_bloc.dart:68,99,206,231,282` |
 | 4 | Screens would be unnamed | `GoRoute`s carry no `name:`; three tabs are one route | `app.dart:22`, `shell_page.dart:106` |
 | 5 | Web events can be blocked | the web build would call `*.posthog.com` directly | `deploy/nginx.conf` |
-| 6 | No heatmap for Flutter | PostHog heatmaps are a posthog-js feature over the DOM | [heatmaps docs](https://posthog.com/docs/toolbar/heatmaps) |
+| 6 | No heatmap for Flutter (out of scope: decided off) | PostHog heatmaps are a posthog-js feature over the DOM | [heatmaps docs](https://posthog.com/docs/toolbar/heatmaps) |
 
 Tests: none of this is tested today, and the plugin's method channel would
 throw in widget tests, hence `NoAnalytics` (change 1). The server's tests
@@ -225,7 +235,7 @@ build the app without `main.ts`, so the PostHog client must be optional
    autocapture and DOM elements; the scrollmap needs page leaves.
    *For us:* only the position heatmap can mean anything on a canvas, and
    Tempo, Projetos and Menu share one URL, so their clicks pile onto one
-   map. **Inferred, not verified**: worth checking in phase 0.
+   map. **Inferred, not verified**, and moot while heatmaps are off.
 6. **Backend events** ([best practices](https://posthog.com/docs/product-analytics/best-practices),
    [Node](https://posthog.com/docs/libraries/node)): backend events need
    the same `distinct_id` the front end identifies with; `flushAt` 20,
@@ -240,11 +250,11 @@ build the app without `main.ts`, so the PostHog client must be optional
 
 | Phase | Ships | Fixes | Size |
 |-------|-------|-------|------|
-| 0 | EU project, keys in env; check a heatmap on the Flutter web build by hand | measuring | XS |
+| 0 | US project, keys in env and repo variables | measuring | XS |
 | 1 | Server: errors and action events (change 2) | 1, 2 | S |
 | 2 | App: seam, identify, screens, errors (1, 3) | 1–4 | M |
 | 3 | Replay, masked (4) | screen capture | S |
-| 4 | Web snippet, proxy, heatmaps; source maps in CI (5) | 5, 6 | S |
+| 4 | Web snippet, proxy; source maps in CI (5) | 5 | S |
 
 Phase 1 alone already answers "what broke, for whom", from one file.
 
@@ -255,10 +265,10 @@ Phase 1 alone already answers "what broke, for whom", from one file.
 - [Flutter session replay](https://posthog.com/docs/session-replay/installation/flutter): `PostHogWidget`, masking defaults, touches.
 - [Mobile session replay](https://posthog.com/docs/session-replay/mobile): Flutter records screenshots only.
 - [Canvas recording](https://posthog.com/docs/session-replay/canvas-recording): 4 fps, masking inside the canvas.
-- [Heatmaps](https://posthog.com/docs/toolbar/heatmaps): web only, clickmap needs DOM elements.
+- [Heatmaps](https://posthog.com/docs/toolbar/heatmaps): web only, clickmap needs DOM elements (why they stay off).
 - [Node SDK](https://posthog.com/docs/libraries/node): client options, `shutdown`, Express handlers.
 - [NestJS error tracking](https://posthog.com/docs/error-tracking/installation/nestjs): `PostHogInterceptor`, `minStatusToCapture`.
 - [Product analytics best practices](https://posthog.com/docs/product-analytics/best-practices): backend is more reliable; one id format; event names.
-- [nginx proxy](https://posthog.com/docs/advanced/proxy/nginx): the `/static/`, `/array/` and `/` locations.
+- [nginx proxy](https://posthog.com/docs/advanced/proxy/nginx): the `/static/`, `/array/` and `/` locations, US hosts.
 - [Pricing](https://posthog.com/pricing): free tier (numbers via search, not read on the page).
 - [posthog_flutter changelog](https://pub.dev/packages/posthog_flutter/changelog): canvas masking 5.34.0, `captureTouches` 5.41.0.
