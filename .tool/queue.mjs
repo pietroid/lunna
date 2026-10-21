@@ -23,7 +23,7 @@
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
 import { spawn, execFileSync } from 'node:child_process';
-import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, dirname, join, posix, resolve } from 'node:path';
@@ -595,7 +595,13 @@ async function loop(once) {
     if (once) return;
     // An edited queue.mjs takes over at the next pass: exit, launchd starts it again.
     pullCheckout();
-    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) return log('queue.mjs changed: restarting');
+    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) {
+      // Not by exiting: launchd defers a KeepAlive job that exited cleanly ("inefficient").
+      log('queue.mjs changed: restarting');
+      rmSync(join(home, 'lock'), { force: true });
+      if (trySh('launchctl', ['kickstart', '-k', `gui/${process.getuid()}/${AGENT}`]) !== null) await new Promise(() => {}); // killed by it
+      return;
+    }
     await new Promise((r) => setTimeout(r, 60e3));
   }
 }
