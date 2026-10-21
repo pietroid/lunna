@@ -130,14 +130,68 @@ export const verification = pgTable(
  * hour a fact.
  */
 /**
- * A subject that outlives a day: a name, free-text notes, and the tasks that
- * point at it (`task.project_id`).
+ * A shelf of the person's catalogue: Atendimentos, Conteúdo, Produtos.
  *
- * The deadline is a day, not an hour: the project is due by the end of it,
- * in the person's zone. Null for a project with no deadline at all.
+ * Everyone starts with an empty catalogue; it fills with their own.
  */
-export const project = pgTable(
-  'project',
+export const catalogCategory = pgTable(
+  'catalog_category',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    /** Its place among the shelves, smallest first. */
+    position: doublePrecision('position').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('catalog_category_user_idx').on(table.userId)],
+);
+
+/**
+ * One kind of thing the person delivers (a natal chart, a Reels), on a
+ * shelf: what one usually takes and is worth, so writing a delivery down is
+ * picking its kind.
+ */
+export const catalogType = pgTable(
+  'catalog_type',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => catalogCategory.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    /** How long one takes, start to finish. */
+    minutes: integer('minutes').notNull(),
+    /** What one is worth, in whole reais. Null when it earns nothing. */
+    price: integer('price'),
+    /** The longest piece of it the day takes at once. Null: whole. */
+    blockMinutes: integer('block_minutes'),
+    /** Its place on its shelf, smallest first. */
+    position: doublePrecision('position').notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('catalog_type_user_idx').on(table.userId)],
+);
+
+/**
+ * One delivery ("entrega"): something the person owes someone, or the
+ * market, by a day. A name, notes, the tasks that point at it
+ * (`task.artifact_id`), and, from its type or given by hand, a total time,
+ * a value and how the day may cut it.
+ *
+ * The open ones are a queue of their own, in `position` order. The deadline
+ * is a day, due by its end in the person's zone. Its value counts towards a
+ * money goal on the day it is delivered (`done_at`).
+ */
+export const artifact = pgTable(
+  'artifact',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: text('user_id')
@@ -146,14 +200,58 @@ export const project = pgTable(
     title: text('title').notNull(),
     /** Free text the user keeps on it. */
     notes: text('notes').notNull().default(''),
+    /** Its kind in the catalogue. Null for a one-off delivery. */
+    typeId: uuid('type_id').references(() => catalogType.id, {
+      onDelete: 'set null',
+    }),
+    /** How long it takes in all. Null when nobody said. */
+    minutes: integer('minutes'),
+    /** What it is worth, in whole reais. */
+    value: integer('value'),
+    /** The longest piece of it the day takes at once. Null: whole. */
+    blockMinutes: integer('block_minutes'),
     /** The day it is due by, `YYYY-MM-DD`. */
     deadline: date('deadline', { mode: 'string' }),
-    /** When it was marked done. Null while it is open. */
+    /** Its place in the queue of deliveries, smallest first. */
+    position: doublePrecision('position').notNull(),
+    /** When it was delivered. Null while it is open. */
     doneAt: timestamp('done_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (table) => [index('project_user_idx').on(table.userId)],
+  (table) => [index('artifact_user_idx').on(table.userId)],
+);
+
+/**
+ * A number to reach in a stretch of time, repeated stretch after stretch:
+ * R$ 8.000 a month, three Reels a week.
+ *
+ * `kind` is `money` (the value of what was delivered in the stretch) or
+ * `count` (how many of `type_id` were). `period` is `week` (Monday to
+ * Sunday) or `month`. `starts` is the first day of its first stretch: a
+ * goal whose stretch has not come yet is a future one.
+ */
+export const goal = pgTable(
+  'goal',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<'money' | 'count'>().notNull(),
+    /** The kind counted, for a count goal. */
+    typeId: uuid('type_id').references(() => catalogType.id, {
+      onDelete: 'cascade',
+    }),
+    /** Whole reais, or deliveries. */
+    target: integer('target').notNull(),
+    period: text('period').$type<'week' | 'month'>().notNull(),
+    /** `YYYY-MM-DD`, the first day of its first stretch. */
+    starts: date('starts', { mode: 'string' }).notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index('goal_user_idx').on(table.userId)],
 );
 
 export const task = pgTable(
@@ -191,8 +289,8 @@ export const task = pgTable(
      * hour: the layout never sees it until it is dragged into the queue.
      */
     backlog: boolean('backlog').notNull().default(false),
-    /** The project it belongs to, when it belongs to one. */
-    projectId: uuid('project_id').references(() => project.id, {
+    /** The delivery it belongs to, when it belongs to one. */
+    artifactId: uuid('artifact_id').references(() => artifact.id, {
       onDelete: 'set null',
     }),
     /** When it was finished. Null while there is still something to do. */
@@ -393,7 +491,10 @@ export const schema = {
   account,
   verification,
   routine,
-  project,
+  catalogCategory,
+  catalogType,
+  artifact,
+  goal,
   task,
   event,
   agentMessage,
@@ -404,6 +505,9 @@ export type EventRow = typeof event.$inferSelect;
 export type NewEventRow = typeof event.$inferInsert;
 export type RoutineRow = typeof routine.$inferSelect;
 export type TaskRow = typeof task.$inferSelect;
-export type ProjectRow = typeof project.$inferSelect;
+export type CatalogCategoryRow = typeof catalogCategory.$inferSelect;
+export type CatalogTypeRow = typeof catalogType.$inferSelect;
+export type ArtifactRow = typeof artifact.$inferSelect;
+export type GoalRow = typeof goal.$inferSelect;
 export type AgentMessageRow = typeof agentMessage.$inferSelect;
 export type LinkPreviewRow = typeof linkPreview.$inferSelect;

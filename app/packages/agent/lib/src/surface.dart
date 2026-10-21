@@ -87,7 +87,7 @@ class PeekItem extends Equatable {
     required this.start,
     required this.end,
     this.title = '',
-    this.project,
+    this.artifact,
   });
 
   factory PeekItem.fromJson(Map<String, dynamic> json) => PeekItem(
@@ -98,7 +98,7 @@ class PeekItem extends Equatable {
     title: json['title'] as String? ?? '',
     start: DateTime.parse(json['start'] as String).toLocal(),
     end: DateTime.parse(json['end'] as String).toLocal(),
-    project: json['project'] as String?,
+    artifact: (json['artifact'] ?? json['project']) as String?,
   );
 
   final PeekKind kind;
@@ -110,11 +110,11 @@ class PeekItem extends Equatable {
 
   final DateTime end;
 
-  /// The project's name, for a task of one.
-  final String? project;
+  /// The artifact's name, for a task of one.
+  final String? artifact;
 
   @override
-  List<Object?> get props => [kind, title, start, end, project];
+  List<Object?> get props => [kind, title, start, end, artifact];
 }
 
 /// Some cards, picked by the model, in its order, under its heading.
@@ -143,7 +143,7 @@ class PeekCard extends Equatable {
     this.at,
     this.fixed = false,
     this.done = false,
-    this.project,
+    this.artifact,
     this.notes,
   });
 
@@ -156,7 +156,7 @@ class PeekCard extends Equatable {
       at: at == null ? null : DateTime.parse(at).toLocal(),
       fixed: json['fixed'] as bool? ?? false,
       done: json['done'] as bool? ?? false,
-      project: json['project'] as String?,
+      artifact: (json['artifact'] ?? json['project']) as String?,
       notes: json['notes'] as String?,
     );
   }
@@ -175,7 +175,7 @@ class PeekCard extends Equatable {
 
   final bool done;
 
-  final String? project;
+  final String? artifact;
 
   final String? notes;
 
@@ -187,28 +187,28 @@ class PeekCard extends Equatable {
     at,
     fixed,
     done,
-    project,
+    artifact,
     notes,
   ];
 }
 
-/// A project at a glance: the Projetos row, and what comes next in it.
-final class ProjectBlock extends AnswerBlock {
+/// An artifact at a glance: the Projetos row, and what comes next in it.
+final class ArtifactBlock extends AnswerBlock {
   /// {@macro answer_block}
-  const ProjectBlock(this.project);
+  const ArtifactBlock(this.artifact);
 
-  final PeekProject project;
+  final PeekArtifact artifact;
 
   @override
-  List<Object?> get props => [project];
+  List<Object?> get props => [artifact];
 }
 
-/// {@template peek_project}
-/// What [ProjectBlock] draws of a project.
+/// {@template peek_artifact}
+/// What [ArtifactBlock] draws of an artifact.
 /// {@endtemplate}
-class PeekProject extends Equatable {
-  /// {@macro peek_project}
-  const PeekProject({
+class PeekArtifact extends Equatable {
+  /// {@macro peek_artifact}
+  const PeekArtifact({
     required this.id,
     required this.title,
     required this.createdAt,
@@ -218,9 +218,9 @@ class PeekProject extends Equatable {
     this.next = const [],
   });
 
-  factory PeekProject.fromJson(Map<String, dynamic> json) {
+  factory PeekArtifact.fromJson(Map<String, dynamic> json) {
     final deadline = json['deadline'] as String?;
-    return PeekProject(
+    return PeekArtifact(
       id: json['id'] as String,
       title: json['title'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
@@ -365,11 +365,14 @@ class AgentSurface {
                     .toList(),
               ),
             );
-          case 'ProjectPeek':
+          // Conversations kept from before deliveries were projects still
+          // name the peek and its data the old way.
+          case 'ArtifactPeek' || 'ProjectPeek':
             blocks.add(
-              ProjectBlock(
-                PeekProject.fromJson(
-                  bound(it['project'])! as Map<String, dynamic>,
+              ArtifactBlock(
+                PeekArtifact.fromJson(
+                  bound(it['artifact'] ?? it['project'])!
+                      as Map<String, dynamic>,
                 ),
               ),
             );

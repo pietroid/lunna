@@ -1,7 +1,7 @@
 # Entregas: deliveries, goals and the catalogue replace Projetos
 
-Status: **design, third round, waiting for approval** (issue #12).
-Sections 3–5 come with the build.
+Status: **built** (issue #12): the design was approved on the issue and
+built unattended. The build is in sections 3–5.
 
 ## 1. The prompt
 
@@ -73,6 +73,10 @@ The second round drew the types as a second line under a picked category,
 and the person replied:
 
 > No i mean, unify types with categories, like the most used types for example show up.
+
+The third round was answered:
+
+> approve
 
 ## 2. The design
 
@@ -220,82 +224,141 @@ Say otherwise on the issue.
 - **Filter by each type as well**, and then **unify types with
   categories, the most used types showing up** (pins 1F, 2B).
 
-### Open questions
+### Open questions of the design
 
-The first round's two are answered above. Still open:
+Both were left with the option marked when the design was approved, and
+the build follows them: "Criar um tipo" opens a small type sheet (11), and
+Nova entrega's catalogue does not open on "Mais usados" (9).
 
-1. Should "Criar um tipo" open the small type sheet in this delivery
-   (decided unattended, 11), or wait for the catalogue's page?
-2. Should Nova entrega's catalogue also open on the three most-used types
-   ("Mais usados") above the categories (decided unattended, 9: not for
-   now)?
+## 3. What was built
 
-## Build brief
+### The real build, both brands
 
-Phase 3 starts here; Phase 4 replaces this section with sections 3–5.
+Drawn by the real widgets behind the real `ArtifactsCubit`, with a fake
+repository answering canned data. Scenes: 1 the tab, 2 Todas as entregas
+kept to Mapa astral, 3 the catalogue, 4 a delivery of a kind, 5 a count
+goal, 6 the empty catalogue, 7 the first kind (new).
 
-**Files Phase 1 wrote or changed (uncommitted in the worktree, except as the
-queue commits them):**
+![Lunna](img/build-lunna.png)
 
-- `app/lib/artifacts_preview.dart`: preview entry point, scenes 1–6,
-  fake catalogue, queue, delivered list and goals (2026-10-21). Scene 1
-  opens on the category Conteúdo, scene 2 on the type Mapa astral, scene 6
-  hands the sheet an empty catalogue.
-- `app/packages/artifacts/` is a new package. `models/models.dart` holds `CatalogType`,
-  `CatalogCategory`, `Artifact`, `Goal`, `GoalKind` and `GoalPeriod`.
-  `format.dart` holds money, durations, month and goal labels. The views
-  are `artifacts_page.dart` (the tab), `goal_card.dart`, `artifact_row.dart`,
-  `all_artifacts_page.dart`, `artifact_sheet.dart` (catalogue →
-  details, and `_EmptyCatalog` when it holds nothing), `goal_sheet.dart`,
-  `sheet_frame.dart` and `shelf_filter.dart` (`Shelf`, a category or a
-  type, `mostUsedTypes`, and the one-line `ShelfFilter` both lists use). They take their data
-  as constructor arguments: the build puts a cubit and a repository behind
-  them.
-- `app/packages/app_ui/lib/src/app_icons/app_icons.dart`: seven icons.
-- `app/packages/app_ui/lib/src/widgets/app_segmented.dart`: `selectedKey`,
-  so a line that scrolls can bring the picked segment into sight.
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`): `shellArtifactsTab`,
-  `monthsLong`, `artifacts*`, `artifact*`, `goal*`,
-  `catalog*` (`catalogEmpty*`, `catalogNewType`).
-- `app/pubspec.yaml`: depends on `artifacts`.
+![Focus](img/build-focus.png)
 
-**Server**
+One screen per image, for a phone: [the tab](img/build-1.png) ·
+[a delivery of a kind](img/build-4.png) · [a goal](img/build-5.png) ·
+[a new kind](img/build-7.png).
 
-- Tables: `catalog_category`, `catalog_type` (minutes, price, block
-  minutes), `artifact` (title, notes, type, minutes, value, deadline,
-  block minutes, position, done_at), `goal` (kind, period, target, type,
-  starts). A task gets `artifact_id` in place of `project_id`.
-- Migration: each project becomes a one-off artifact with its tasks;
-  then drop `project`. **No catalogue seed**: everyone starts empty.
-- Money counts on `done_at` (delivered), never a paid date.
-- Routes: CRUD for the catalogue, artifacts (with move/reorder) and goals.
-  `GET /api/artifacts` answers `{ goals (with done/queued), queue, schedule:
-  { needMinutes, freeMinutes, until } }`. The free minutes come from the
-  timeline's free stretches up to the end of the month.
-- The agent: projects in the board become artifacts (`product/spec/agent.md`).
+### The contract
 
-**App**
+**A project is now a delivery, and nothing else changed for its tasks.**
+The `project` table became `artifact` with the same ids, and
+`task.project_id` became `task.artifact_id`, so every project's tasks,
+notes and deadline are still there, as a one-off delivery at the end of the
+queue. Money counts towards a goal on the day a delivery is delivered
+(`done_at`); a goal's *na fila* is what is open and due before its stretch
+ends. Every route under `/artifacts`, `/catalog` and `/goals` answers the
+whole tab. The full spec is [product/spec/artifacts.md](../../spec/artifacts.md).
 
-- `ArtifactsCubit` + repository. The `Shelf` filter is view state, kept
-  on the page and applied to the queue the app already has; Todas as
-  entregas also sends it to the server (`?category=` or `?type=`) once the
-  delivered list is paged.
-- **Most used types**: the server counts deliveries per type (queued and
-  delivered, all time) and `GET /api/artifacts` answers `topTypes` (the
-  ids, at most 3); the app's `mostUsedTypes` is then only the preview's
-  stand-in, since the app holds just a page of the delivered list.
-- The empty catalogue's "Criar um tipo" opens a small type sheet
-  (`POST /api/catalog/types`); with no category yet, the same sheet
-  names one. The tab replaces `ProjectsPage` in
-  `ShellPage`. The FAB on it opens `showArtifactSheet`.
-- The artifact page replaces `ProjectPage` (notes, subtasks,
-  `TimelineList(only:)`), drawn as today's project page for now.
-- Remove the `projects` package once nothing uses it.
-- Tests under both brands. Update `product/spec/projects.md` → `artifacts.md` and
-  AGENTS.md.
+### Server
 
-**Out of this delivery** (from the issue): how the timeline cuts a delivery
-into blocks, the catalogue's own page, the artifact's inner page redesign,
-and cycles.
+- `server/src/artifacts/` (was `projects/`): `ArtifactStore` with
+  `MemoryArtifactStore` and `PgArtifactStore` (deliveries, catalogue,
+  goals), `ArtifactsService` (the answer, goals measured per stretch, the
+  schedule, the most used kinds, the queue's order), `stretch.ts` (weeks
+  from Monday and months, as day arithmetic), `request.ts` (refuses, never
+  guesses).
+- Routes: `GET|POST /artifacts`, `PATCH|DELETE /artifacts/:id`,
+  `POST /artifacts/:id/move`, `POST /artifacts/:id/tasks`,
+  `POST /catalog/types`, `POST /goals`, `DELETE /goals/:id`. `POST /tasks`
+  takes `artifactId`; a card names its delivery as `artifact: { id, title }`.
+- Migrations: `0009_artifacts` creates `catalog_category`, `catalog_type`,
+  `artifact`, `goal` and `task.artifact_id`, and copies every project and
+  its tasks across; `0010_drop_projects` drops `task.project_id` and
+  `project`. Two steps so `drizzle-kit generate` never had to ask about a
+  rename. No catalogue seed.
+- The agent reads deliveries where it read projects: the board, the
+  `artifact` answer block and `ArtifactPeek`, `about: { artifactId }`. The
+  prompt says the person calls them *entregas*.
 
-Cost: the queue measures this run and writes the figures into the PR.
+### App
+
+- `app/packages/artifacts` is the real package now: `ArtifactsCubit` and
+  `ArtifactsRepository`, the models read off the wire, and the views of the
+  design wired to them. `ArtifactPage` is the project page moved over, with
+  a line for the kind, time and value and a ✓ that marks it delivered.
+- `app/packages/projects` is deleted. `ShellPage` puts Entregas in its tab
+  (icon `stack`), and the + on it opens Nova entrega.
+- The timeline and agent packages say artifact where they said project
+  (`writeDownOnTimeline(artifactId:)`, `TimelineEvent.artifactId`,
+  `AgentSubject.artifact`, `AgentLinks.openArtifact`). The agent's decoder
+  still reads `ProjectPeek` and `add_project` from conversations stored
+  before this build.
+- `AppIcons.things` (folders) is gone; a delivery's tag and a card's mark
+  use `AppIcons.artifacts`.
+
+### Tests
+
+- Server: 6 new end-to-end specs in `artifacts.controller.spec.ts` (empty
+  catalogue then kinds on named or picked shelves, a delivery of a kind with
+  its defaults and a whole one, the queue's order, goals over the month, the
+  week and one ahead, the schedule against a frozen clock, the most used
+  kinds), the store's catalogue and goals against PGlite, and the
+  `0009`/`0010` migration run on rows written before it. The renamed
+  project specs still pass unchanged.
+- App (`packages/artifacts`, 23 tests): the answer read off the wire, the
+  shelf filter, the cubit (optimistic drag, refusals, the day told on a
+  removal), the delivery page ported from the project page plus delivering
+  it, and widget tests for the tab, the search and the three sheets.
+- `.tool/check` passes whole: `app-analyze`, the agent, app_ui,
+  artifacts, notifications and timeline packages under both brands,
+  `server-eslint`, `server-tsc` and `server-test` (306 tests in 21 suites).
+  No flaky test was seen. The first run failed only on prettier line breaks
+  the rename left in the server; they were formatted and the rerun passed.
+- Not tested: a real phone, a real Postgres other than PGlite, and the
+  agent against a real model.
+
+### Where the build differs from the design
+
+1. **"Editar" in the catalogue is "Novo tipo".** The catalogue's page is a
+   later delivery, so the link opens the same small type sheet the empty
+   catalogue opens; otherwise only the first kind could ever be written.
+2. **Nova meta has a real amount field** and, for Quantidade, a line of the
+   kinds to count; the readback says weeks too ("Faturar R$ 2.000 por
+   semana.", "Post: 3 por semana."). For a weekly goal the second choice is
+   "Semana que vem".
+3. **A one-off is timed and priced in place**: its time row opens the
+   length picker (1h until changed), and its value is typed. The deadline
+   row opens the day picker for both.
+4. **The empty catalogue's one-off hint** no longer says it can be kept as
+   a kind afterwards: that belongs to the catalogue's page.
+5. **The search is on the device**: the answer carries every delivery, so
+   Todas as entregas filters what it has rather than asking the server
+   (`?category=`/`?type=` waits for paging the delivered list).
+6. **The queue is dragged only under *Todas***: a place among one shelf's
+   says nothing about the rest. A long press on a goal card removes it.
+7. **The goal strip is 12 px taller** (140) so a larger text size does not
+   clip the card; rows of the sheets shrink their controls rather than run
+   off at large text.
+
+### Decided unattended in the build
+
+12. The ids stay: a project became a delivery with the same id, so links
+    and conversations about it still reach it.
+13. A delivery's total time is the one written down, or else the sum of its
+    tasks; *time worked* is the sum of its finished tasks.
+14. The schedule's free time is the working day less every event and every
+    laid-out task, from now to the end of the month; a delivery's own queued
+    tasks count on both sides.
+15. Notas/Tarefas is remembered under `artifact.tab.<id>`; the old
+    `project.tab.<id>` choice is forgotten once.
+
+## 4. How to turn it on
+
+Nothing to set: no new env var or secret. The server migrates on boot
+(`0009`, `0010`). **The app and the server ship together**: a phone on an
+older build still calls `/projects` and gets a 404 until it updates (the web
+build ships with the server).
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. The build made no calls to
+OpenRouter or any other paid service (`npm run eval:agent` was not run).

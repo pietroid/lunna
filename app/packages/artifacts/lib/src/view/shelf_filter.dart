@@ -22,33 +22,6 @@ class Shelf {
       (type == null || artifact.type?.id == type);
 }
 
-/// The kinds of [categories] she uses most, by how many of [used] are of
-/// each, the catalogue's order breaking ties; at most [count] of them, and
-/// none that was never used.
-List<CatalogType> mostUsedTypes(
-  List<CatalogCategory> categories,
-  Iterable<Artifact> used, {
-  int count = 3,
-}) {
-  final uses = <String, int>{};
-  for (final artifact in used) {
-    final id = artifact.type?.id;
-    if (id != null) uses[id] = (uses[id] ?? 0) + 1;
-  }
-  final kinds = [
-    for (final category in categories)
-      for (final type in category.types)
-        if (uses.containsKey(type.id)) type,
-  ];
-  // A stable sort, so the catalogue's order breaks ties.
-  final order = {for (final (i, t) in kinds.indexed) t.id: i};
-  kinds.sort((a, b) {
-    final byUse = uses[b.id]!.compareTo(uses[a.id]!);
-    return byUse != 0 ? byUse : order[a.id]!.compareTo(order[b.id]!);
-  });
-  return kinds.take(count).toList();
-}
-
 /// {@template shelf_filter}
 /// The catalogue as one line of filters: "Todas", then the kinds she uses
 /// most, then the shelves, each marked with a folder.
@@ -61,28 +34,23 @@ class ShelfFilter extends StatefulWidget {
   /// {@macro shelf_filter}
   const ShelfFilter({
     required this.categories,
-    required this.used,
+    required this.top,
     required this.value,
     required this.onChanged,
-    this.top = 3,
     super.key,
   });
 
   /// The catalogue's shelves.
   final List<CatalogCategory> categories;
 
-  /// The deliveries whose kinds count as used: the queue and what was
-  /// delivered.
-  final Iterable<Artifact> used;
+  /// The kinds she uses most, most used first, as the server counts them.
+  final List<CatalogType> top;
 
   /// What is picked.
   final Shelf value;
 
   /// Called with what was picked.
   final ValueChanged<Shelf> onChanged;
-
-  /// How many of the most used kinds come into the line.
-  final int top;
 
   @override
   State<ShelfFilter> createState() => _ShelfFilterState();
@@ -132,11 +100,7 @@ class _ShelfFilterState extends State<ShelfFilter> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final value = widget.value;
-    final kinds = mostUsedTypes(
-      widget.categories,
-      widget.used,
-      count: widget.top,
-    );
+    final kinds = [...widget.top];
     if (value.type != null && !kinds.any((t) => t.id == value.type)) {
       final picked = widget.categories
           .expand((c) => c.types)

@@ -1,8 +1,33 @@
+import 'dart:async';
+
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/src/bloc/artifacts_cubit.dart';
 import 'package:artifacts/src/models/models.dart';
+import 'package:artifacts/src/view/artifact_page.dart';
 import 'package:artifacts/src/view/artifact_row.dart';
 import 'package:artifacts/src/view/shelf_filter.dart';
+import 'package:clock/clock.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
+
+/// Opens every delivery, searched, kept to [shelf] to begin with.
+///
+/// The page is its own route, so it is handed the cubit it reads.
+Future<void> openAllArtifacts(
+  BuildContext context, {
+  Shelf shelf = const Shelf(),
+}) {
+  final cubit = context.read<ArtifactsCubit>();
+
+  return Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => BlocProvider.value(
+        value: cubit,
+        child: AllArtifactsPage(initialShelf: shelf),
+      ),
+    ),
+  );
+}
 
 /// {@template all_artifacts_page}
 /// Every delivery, searched: those in the queue, in their order, then those
@@ -15,26 +40,10 @@ import 'package:l10n/l10n.dart';
 class AllArtifactsPage extends StatefulWidget {
   /// {@macro all_artifacts_page}
   const AllArtifactsPage({
-    required this.queue,
-    required this.done,
-    required this.categories,
-    required this.now,
     this.initialQuery = '',
     this.initialShelf = const Shelf(),
     super.key,
   });
-
-  /// The deliveries not yet made, in order of priority.
-  final List<Artifact> queue;
-
-  /// The deliveries made, newest first.
-  final List<Artifact> done;
-
-  /// The catalogue's shelves, which filter the list.
-  final List<CatalogCategory> categories;
-
-  /// The moment it is drawn at.
-  final DateTime now;
 
   /// What the search starts with.
   final String initialQuery;
@@ -70,8 +79,18 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final queue = widget.queue.where(_matches).toList();
-    final done = widget.done.where(_matches).toList();
+    final state = context.watch<ArtifactsCubit>().state;
+    final now = clock.now();
+    final queue = state.queue.where(_matches).toList();
+    final done = state.done.where(_matches).toList();
+    Widget row(Artifact artifact) => Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+      child: ArtifactRow(
+        artifact: artifact,
+        now: now,
+        onTap: () => unawaited(openArtifact(context, artifact.id)),
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -99,7 +118,14 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                       ),
                     ),
                     const SizedBox(width: AppSpacing.s1),
-                    Text(l10n.artifactsAllTitle, style: AppTypography.title),
+                    Flexible(
+                      child: Text(
+                        l10n.artifactsAllTitle,
+                        style: AppTypography.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s3),
@@ -109,12 +135,13 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: AppSpacing.s3),
-                ShelfFilter(
-                  categories: widget.categories,
-                  used: [...widget.queue, ...widget.done],
-                  value: _shelf,
-                  onChanged: (shelf) => setState(() => _shelf = shelf),
-                ),
+                if (state.catalog.isNotEmpty)
+                  ShelfFilter(
+                    categories: state.catalog,
+                    top: state.data?.topTypes ?? const [],
+                    value: _shelf,
+                    onChanged: (shelf) => setState(() => _shelf = shelf),
+                  ),
                 if (queue.isEmpty && done.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(AppSpacing.s5),
@@ -127,17 +154,11 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                   ),
                 if (queue.isNotEmpty) ...[
                   _Section(title: l10n.artifactsInQueue, count: queue.length),
-                  for (final artifact in queue) ...[
-                    ArtifactRow(artifact: artifact, now: widget.now),
-                    const SizedBox(height: AppSpacing.s2),
-                  ],
+                  for (final artifact in queue) row(artifact),
                 ],
                 if (done.isNotEmpty) ...[
                   _Section(title: l10n.artifactsDone, count: done.length),
-                  for (final artifact in done) ...[
-                    ArtifactRow(artifact: artifact, now: widget.now),
-                    const SizedBox(height: AppSpacing.s2),
-                  ],
+                  for (final artifact in done) row(artifact),
                 ],
               ],
             ),

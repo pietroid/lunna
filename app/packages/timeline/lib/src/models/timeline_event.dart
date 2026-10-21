@@ -92,8 +92,8 @@ class TimelineEvent extends Equatable {
     this.awaitingStart = false,
     this.notBefore,
     this.routine,
-    this.projectId,
-    this.projectTitle,
+    this.artifactId,
+    this.artifactTitle,
   }) : workMinutes = workMinutes ?? durationMinutes,
        day = day ?? DateTime(startTime.year, startTime.month, startTime.day);
 
@@ -119,9 +119,9 @@ class TimelineEvent extends Equatable {
       awaitingStart: json['awaitingStart'] as bool? ?? false,
       notBefore: _maybeDate(json['notBefore']),
       routine: json['routine'] as String?,
-      projectId: (json['project'] as Map<String, dynamic>?)?['id'] as String?,
-      projectTitle:
-          (json['project'] as Map<String, dynamic>?)?['title'] as String?,
+      artifactId: (json['artifact'] as Map<String, dynamic>?)?['id'] as String?,
+      artifactTitle:
+          (json['artifact'] as Map<String, dynamic>?)?['title'] as String?,
     );
   }
 
@@ -199,11 +199,11 @@ class TimelineEvent extends Equatable {
   /// `weekdays` or `weekend`.
   final String? routine;
 
-  /// The project the task belongs to, when it belongs to one.
-  final String? projectId;
+  /// The artifact the task belongs to, when it belongs to one.
+  final String? artifactId;
 
-  /// That project's name, drawn on the card.
-  final String? projectTitle;
+  /// That artifact's name, drawn on the card.
+  final String? artifactTitle;
 
   /// Whether it is something to do, rather than an hour on the calendar.
   bool get isTask => kind == CardKind.task;
@@ -296,8 +296,8 @@ class TimelineEvent extends Equatable {
       awaitingStart: awaitingStart ?? this.awaitingStart,
       notBefore: notBefore,
       routine: routine,
-      projectId: projectId,
-      projectTitle: projectTitle,
+      artifactId: artifactId,
+      artifactTitle: artifactTitle,
     );
   }
 
@@ -322,8 +322,8 @@ class TimelineEvent extends Equatable {
     awaitingStart,
     notBefore,
     routine,
-    projectId,
-    projectTitle,
+    artifactId,
+    artifactTitle,
   ];
 }
 

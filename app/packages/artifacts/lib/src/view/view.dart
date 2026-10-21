@@ -1,7 +1,11 @@
 export 'all_artifacts_page.dart';
+export 'artifact_format.dart';
+export 'artifact_page.dart';
 export 'artifact_row.dart';
 export 'artifact_sheet.dart';
 export 'artifacts_page.dart';
+export 'failure_listener.dart';
 export 'goal_card.dart';
 export 'goal_sheet.dart';
 export 'shelf_filter.dart';
+export 'type_sheet.dart';

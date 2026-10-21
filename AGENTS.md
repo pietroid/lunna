@@ -85,12 +85,12 @@ app/
     auth/               Better Auth client: Google sign-in, token store
     l10n/               every user-facing string (pt-BR)
     notifications/      local reminder queue + background refresh
-    projects/           Projetos: list, project page, stages, sheets
+    artifacts/          Entregas: goals, queue, catalogue, sheets, the delivery's page
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
   src/
     agent/              the agent: OpenRouter client, tools, the board
-                        (refs, dates, projects), the answer and its A2UI
+                        (refs, dates, artifacts), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
                         conversations (ConversationStore), evals/
     auth/               Better Auth instance + SessionGuard
@@ -100,13 +100,13 @@ server/
     links/              link previews: the guarded page fetcher, the image proxy
     tasks/              TaskStore (Postgres) over the task table
     notifications/      the reminder plan, derived from the calendar
-    projects/           ProjectStore (+ its module), the projects and where their tasks are
+    artifacts/          ArtifactStore (+ its module): deliveries, catalogue, goals, the schedule
     routines/           routine CRUD and day expansion
     time/               work hours, zones, the scheduler
   drizzle/              generated SQL migrations (committed)
 deploy/                 docker-compose.yml, nginx.conf, web.Dockerfile
 product/
-  spec/                 feature specs moved out of this file (agent, projects)
+  spec/                 feature specs moved out of this file (agent, artifacts)
   delivery/             one folder per delivered feature: prompt, design, notes
   improvements/         one folder per /improve run: what changed, evidence, references
   research/             one folder per topic: the RFC (README.md), data/, code/, reports/, notes/;
@@ -198,7 +198,7 @@ in place and saves them through `PATCH /api/tasks/:id` or
 `PATCH /api/events/:id` a moment after typing stops, on blur, and when the
 page closes.
 
-A task's notes and a project's have the agent's bar at their foot, and
+A task's notes and a delivery's have the agent's bar at their foot, and
 beside it a microphone that **dictates**: plain speech to text, straight
 into the notes, each recording a paragraph of its own (at the cursor while
 typing), saved like typing.
@@ -245,7 +245,7 @@ the running one first and then the rest by their hours (`inOrder`), however
 far ahead the queue reaches. `backlog` is
 the backlog in its order, with no hours (`section: 'backlog'`). `cards` is
 everything the calendar draws from now to the end of day N. A task of a
-project carries `project: { id, title }` in all three, and Lista and the
+delivery carries `artifact: { id, title }` in all three, and Lista and the
 event page name it (`AppTag`). Every write
 under `/api/tasks` and `/api/events` takes the same `?days=` and answers
 with the same shape.
@@ -268,9 +268,9 @@ remembered on the device (`TimelineModeCubit`):
   end asks for another week (`TimelineExtended`), up to 120 days. **Agora**
   is always drawn, the break with its line whenever nothing runs, and a
   task let go on it is begun. A card tall enough for a second line (72 px
-  drawn) shows its project and the start of its notes under the title
+  drawn) shows its delivery and the start of its notes under the title
   (`notesPreview`, up to 3 lines); a shorter one shows no notes at all and
-  marks a project's task with the folders. A card is never taller for it. Every free stretch carries a small **+**
+  marks a delivery's task with the stack. A card is never taller for it. Every free stretch carries a small **+**
   and its hours, both stuck to the top of the part of it in sight (placed
   while painting, so they never lag the scroll); the hours run from the
   first one in sight, which is where the + writes.
@@ -426,10 +426,10 @@ nothing; the app draws `GuardSheet` and posts the answer to
 
 ### The app shell
 
-Three tabs: **Tempo** (the timeline), **Projetos** (see below) and
+Three tabs: **Tempo** (the timeline), **Entregas** (see below) and
 **Menu**, which opens Rotina and **Feitas** and sets when the day starts
 and ends. The `AppFab` (a `+`) writes down whatever the tab in front is
-about: on Projetos a project, anywhere else something on the day Tempo is
+about: on Entregas a delivery, anywhere else something on the day Tempo is
 showing (from Menu it brings Tempo forward). It sits in the same spot on
 every tab and never animates between them (`noAnimation`). The
 greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
@@ -442,15 +442,20 @@ the last one's `doneAt` and id. A tap opens `EventPage(finished:)`. A task
 is ticked off only on Tempo (the running card's ✓, or carried right in
 Lista); its page has no done control.
 
-### Projects
+### Entregas (artifacts)
 
-A project is a subject that outlives a day (a name, notes, a deadline). Its
-tasks are ordinary tasks on the day (`task.project_id`), written down at
-the end of the backlog, and its Tarefas is Tempo's Lista kept to them
-(`TimelineList(only:, done:)`): the same gestures, the same stages, plus
-the ones done. The routes, the stages and the rules are in
-[product/spec/projects.md](./product/spec/projects.md): read it before
-touching `server/src/projects/` or `app/packages/projects/`.
+Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
+code), something owed by a day, with an optional kind from the person's
+**catalogue** (shelves and kinds, empty until they fill it), a total time,
+a value and how the day may cut it. The open ones are a queue of their
+own, under the **goals** (money delivered, or a count of one kind, per week
+or month) and a line setting the time the month's deliveries owe against
+the agenda's free hours. A delivery's tasks are ordinary tasks on the day
+(`task.artifact_id`), and its Tarefas is Tempo's Lista kept to them
+(`TimelineList(only:, done:)`). **Money counts when a delivery is
+delivered** (`done_at`). The routes and the rules are in
+[product/spec/artifacts.md](./product/spec/artifacts.md): read it before
+touching `server/src/artifacts/` or `app/packages/artifacts/`.
 
 ### Reminders
 
@@ -473,7 +478,7 @@ model names cards by short refs and days as said, the server resolves
 them, runs the plan on a sandbox copy of the day, and asks the doubts it
 can see itself. Voice becomes text on the phone and reaches the server as
 an ordinary turn. **The model answers with one `answer` tool whose blocks
-name what to show (plan, choices, day, cards, project); the server fills
+name what to show (plan, choices, day, cards, artifact); the server fills
 every fact and sends one A2UI v0.9 surface (`ui`)**, and nothing the
 person reads carries a ref (`speakable`). Agent changes are measured with `npm run eval:agent`
 (real model, costs money, never in CI). The tools, the plan rules, the

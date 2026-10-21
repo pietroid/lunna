@@ -31,8 +31,6 @@ dependencies:
     path: packages/l10n
   notifications:
     path: packages/notifications
-  projects:
-    path: packages/projects
   timeline:
     path: packages/timeline
   url_launcher: ^6.3.0

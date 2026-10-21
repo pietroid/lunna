@@ -3,26 +3,26 @@ import 'package:equatable/equatable.dart';
 
 /// {@template agent_subject}
 /// What a conversation is about, when it is opened from a page rather than
-/// from Tempo: a task's, or a project's. The agent reads it, with its notes,
+/// from Tempo: a task's, or an artifact's. The agent reads it, with its notes,
 /// and "isso" means it.
 /// {@endtemplate}
 class AgentSubject extends Equatable {
   /// The task [id], from its page.
-  const AgentSubject.task(String id) : taskId = id, projectId = null;
+  const AgentSubject.task(String id) : taskId = id, artifactId = null;
 
-  /// The project [id], from its page.
-  const AgentSubject.project(String id) : projectId = id, taskId = null;
+  /// The artifact [id], from its page.
+  const AgentSubject.artifact(String id) : artifactId = id, taskId = null;
 
   final String? taskId;
-  final String? projectId;
+  final String? artifactId;
 
   Map<String, String> toJson() => {
     'taskId': ?taskId,
-    'projectId': ?projectId,
+    'artifactId': ?artifactId,
   };
 
   @override
-  List<Object?> get props => [taskId, projectId];
+  List<Object?> get props => [taskId, artifactId];
 }
 
 /// What one change of a plan does.
@@ -45,7 +45,7 @@ enum PlanChangeKind {
   /// A task or a block renamed, or given another length.
   edit,
 
-  /// Text added at the end of a card's or a project's notes.
+  /// Text added at the end of a card's or an artifact's notes.
   note,
 
   /// A task or a block ticked off.
@@ -54,14 +54,14 @@ enum PlanChangeKind {
   /// A task or a block deleted.
   remove,
 
-  /// A new project, with the tasks it starts with.
-  addProject,
+  /// A new artifact, with the tasks it starts with.
+  addArtifact,
 
-  /// A project renamed, given another deadline, or closed.
-  editProject,
+  /// An artifact renamed, given another deadline, or closed.
+  editArtifact,
 
-  /// A project deleted, and the tasks of its backlog with it.
-  removeProject;
+  /// An artifact deleted, and the tasks of its backlog with it.
+  removeArtifact;
 
   static PlanChangeKind fromWire(String? value) => switch (value) {
     'add_task' => addTask,
@@ -72,18 +72,19 @@ enum PlanChangeKind {
     'note' => note,
     'done' => done,
     'remove' => remove,
-    'add_project' => addProject,
-    'edit_project' => editProject,
-    'remove_project' => removeProject,
+    // Kept conversations may still say project.
+    'add_artifact' || 'add_project' => addArtifact,
+    'edit_artifact' || 'edit_project' => editArtifact,
+    'remove_artifact' || 'remove_project' => removeArtifact,
     _ => moveTask,
   };
 
   /// Whether it adds something rather than moving it.
-  bool get adds => this == addTask || this == addEvent || this == addProject;
+  bool get adds => this == addTask || this == addEvent || this == addArtifact;
 
   /// Whether it deletes something: drawn first, and the plan's button says
   /// so.
-  bool get deletes => this == remove || this == removeProject;
+  bool get deletes => this == remove || this == removeArtifact;
 
   /// Whether it is about a fixed block.
   bool get fixed => this == addEvent || this == moveEvent;
@@ -106,7 +107,7 @@ class PlanChange extends Equatable {
     this.was,
     this.wasMinutes,
     this.note,
-    this.project,
+    this.artifact,
     this.deadline,
     this.wasDeadline,
     this.takes = const [],
@@ -160,17 +161,17 @@ class PlanChange extends Equatable {
   /// The text a [PlanChangeKind.note] adds, in full.
   final String? note;
 
-  /// The project it belongs to.
-  final String? project;
+  /// The artifact it belongs to.
+  final String? artifact;
 
-  /// A project's deadline, as the change leaves it.
+  /// An artifact's deadline, as the change leaves it.
   final DateTime? deadline;
 
-  /// A project's deadline before the change.
+  /// An artifact's deadline before the change.
   final DateTime? wasDeadline;
 
-  /// What goes with it: the tasks a deleted project takes along, or the ones
-  /// a new project starts with.
+  /// What goes with it: the tasks a deleted artifact takes along, or the ones
+  /// a new artifact starts with.
   final List<String> takes;
 
   DateTime? get end => at?.add(Duration(minutes: minutes));
@@ -188,7 +189,7 @@ class PlanChange extends Equatable {
     was,
     wasMinutes,
     note,
-    project,
+    artifact,
     deadline,
     wasDeadline,
     takes,

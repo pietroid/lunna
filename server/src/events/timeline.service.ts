@@ -5,7 +5,7 @@ import {
   CalendarUser,
   RoutineDays,
 } from '../calendar/calendar.types';
-import { ProjectStore } from '../projects/project.store';
+import { ArtifactStore } from '../artifacts/artifact.store';
 import { relayout } from '../time/scheduling';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
@@ -22,7 +22,7 @@ import {
 import { addDaysIn, atMinuteIn, startOfDayIn, Zone } from '../time/zone';
 import {
   BacklogCard,
-  CardProject,
+  CardArtifact,
   Timeline,
   TimelineCard,
 } from './entities/event.entity';
@@ -76,8 +76,8 @@ export interface Day {
   placed: Map<string, Interval>;
   /** Which days each routine repeats on, by routine id. */
   routines: Map<string, RoutineDays>;
-  /** The title of each of the person's projects, by project id. */
-  projects: Map<string, string>;
+  /** The title of each of the person's artifacts, by artifact id. */
+  artifacts: Map<string, string>;
 }
 
 /**
@@ -93,8 +93,8 @@ export class TimelineService {
   constructor(
     private readonly _calendar: CalendarService,
     private readonly _tasks: TaskStore,
-    // Absent on a sandbox copy of the day, whose cards then name no project.
-    @Optional() private readonly _projects?: ProjectStore,
+    // Absent on a sandbox copy of the day, whose cards then name no artifact.
+    @Optional() private readonly _artifacts?: ArtifactStore,
   ) {}
 
   /** The zone every hour on this person's day is measured in. */
@@ -119,8 +119,11 @@ export class TimelineService {
     const routines = new Map(
       (await this._calendar.routines(user)).map((it) => [it.id, it.days]),
     );
-    const projects = new Map(
-      ((await this._projects?.list(user)) ?? []).map((it) => [it.id, it.title]),
+    const artifacts = new Map(
+      ((await this._artifacts?.list(user)) ?? []).map((it) => [
+        it.id,
+        it.title,
+      ]),
     );
 
     let reach = until;
@@ -199,7 +202,7 @@ export class TimelineService {
       live,
       placed,
       routines,
-      projects,
+      artifacts,
     };
   }
 
@@ -351,7 +354,7 @@ function taskCard(day: Day, task: Task): TimelineCard | undefined {
     awaitingStart: awaiting,
     notBefore: live === undefined ? task.notBefore : undefined,
     routine: routineOf(day, task),
-    project: projectOf(day, task),
+    artifact: artifactOf(day, task),
   };
 }
 
@@ -365,7 +368,7 @@ function backlogCard(day: Day, task: Task): BacklogCard {
     workMinutes: task.minutes,
     notes: task.notes,
     routine: routineOf(day, task),
-    project: projectOf(day, task),
+    artifact: artifactOf(day, task),
   };
 }
 
@@ -375,10 +378,10 @@ function routineOf(day: Day, task: Task): RoutineDays | undefined {
     : day.routines.get(task.routineId);
 }
 
-function projectOf(day: Day, task: Task): CardProject | undefined {
-  if (task.projectId === undefined) return undefined;
-  const title = day.projects.get(task.projectId);
-  return title === undefined ? undefined : { id: task.projectId, title };
+function artifactOf(day: Day, task: Task): CardArtifact | undefined {
+  if (task.artifactId === undefined) return undefined;
+  const title = day.artifacts.get(task.artifactId);
+  return title === undefined ? undefined : { id: task.artifactId, title };
 }
 
 function eventCard(day: Day, event: CalendarEvent): TimelineCard | undefined {

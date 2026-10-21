@@ -89,8 +89,8 @@ export class TimelineCard {
   notBefore?: string;
   /** Which days it repeats on, when it is an instance of a routine. */
   routine?: RoutineDays;
-  /** The project a task belongs to, named so the card can say so. */
-  project?: CardProject;
+  /** The artifact a task belongs to, named so the card can say so. */
+  artifact?: CardArtifact;
 }
 
 /**
@@ -99,8 +99,8 @@ export class TimelineCard {
  * It has an order and a length and no hour, so it carries none of a card's
  * hours. It reaches the calendar only once it is dragged into the queue.
  */
-/** The project a task belongs to, as a card names it. */
-export interface CardProject {
+/** The artifact a task belongs to, as a card names it. */
+export interface CardArtifact {
   id: string;
   title: string;
 }
@@ -117,7 +117,7 @@ export class BacklogCard {
   notes: string;
   /** Which days it repeats on, when it is a day of a routine. */
   routine?: RoutineDays;
-  project?: CardProject;
+  artifact?: CardArtifact;
 }
 
 /**
@@ -143,7 +143,7 @@ export class DoneCard {
   /** How long it was meant to take. */
   durationMinutes: number;
   workMinutes: number;
-  project?: CardProject;
+  artifact?: CardArtifact;
 }
 
 /**
@@ -218,8 +218,8 @@ export interface TaskRequest {
    * its end.
    */
   index?: number;
-  /** The project it belongs to, checked against the person's own. */
-  projectId?: string;
+  /** The artifact it belongs to, checked against the person's own. */
+  artifactId?: string;
 }
 
 /** What the detail screen can change about a task. */

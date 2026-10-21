@@ -18,6 +18,6 @@ export class CreateTaskDto {
    * at a place rather than at its end.
    */
   index?: number;
-  /** The project it belongs to, when it is written down in one. */
-  projectId?: string;
+  /** The artifact it belongs to, when it is written down in one. */
+  artifactId?: string;
 }

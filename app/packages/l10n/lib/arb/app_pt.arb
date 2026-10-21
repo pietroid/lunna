@@ -13,7 +13,6 @@
   "authSignInWithGoogle": "Entrar com Google",
   "authSignInFailed": "Não foi possível entrar",
   "shellTimelineTab": "Tempo",
-  "shellProjectsTab": "Projetos",
   "shellMenuTab": "Menu",
   "menuRoutinesHint": "Os blocos que se repetem",
   "menuDaySection": "Seu dia",
@@ -235,8 +234,8 @@
   "eventNotesHint": "Anotações",
   "eventWhenLabel": "Horário",
   "eventLengthLabel": "Duração",
-  "eventProjectLabel": "Projeto",
-  "eventNoProject": "Nenhum",
+  "eventArtifactLabel": "Entrega",
+  "eventNoArtifact": "Nenhuma",
   "eventNotesLabel": "Notas",
   "restTip01": "Respire fundo. Três vezes, devagar.",
   "restTip02": "Levante, alongue as costas e olhe pela janela.",
@@ -681,46 +680,35 @@
     }
   },
   "agentVoiceUnavailable": "Este aparelho não reconhece fala em português.",
-  "projectsOpenCount": "{count, plural, =0{Nenhum em andamento} =1{1 em andamento} other{{count} em andamento}}",
-  "@projectsOpenCount": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "projectsDoneSection": "Concluídos",
-  "projectsEmpty": "Um projeto junta as tarefas de um mesmo assunto, com prazo ou sem.",
-  "projectsNew": "Novo projeto",
-  "projectUntitled": "Sem nome",
-  "projectNoDeadline": "Sem prazo",
-  "projectGiveDeadline": "Dar um prazo",
-  "projectUntil": "até {date}",
-  "@projectUntil": {
+  "artifactUntitled": "Sem nome",
+  "artifactNoDeadline": "Sem prazo",
+  "artifactGiveDeadline": "Dar um prazo",
+  "artifactUntil": "até {date}",
+  "@artifactUntil": {
     "placeholders": {
       "date": {
         "type": "String"
       }
     }
   },
-  "projectDaysLeft": "{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}",
-  "@projectDaysLeft": {
+  "artifactDaysLeft": "{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}",
+  "@artifactDaysLeft": {
     "placeholders": {
       "days": {
         "type": "int"
       }
     }
   },
-  "projectOverdue": "{days, plural, =1{atrasado 1 dia} other{atrasado {days} dias}}",
-  "@projectOverdue": {
+  "artifactOverdue": "{days, plural, =1{atrasada 1 dia} other{atrasada {days} dias}}",
+  "@artifactOverdue": {
     "placeholders": {
       "days": {
         "type": "int"
       }
     }
   },
-  "projectTaskCount": "{done} de {total}",
-  "@projectTaskCount": {
+  "artifactTaskCount": "{done} de {total}",
+  "@artifactTaskCount": {
     "placeholders": {
       "done": {
         "type": "int"
@@ -730,45 +718,40 @@
       }
     }
   },
-  "projectDoneOn": "concluído {date}",
-  "@projectDoneOn": {
+  "artifactDoneOn": "entregue {date}",
+  "@artifactDoneOn": {
     "placeholders": {
       "date": {
         "type": "String"
       }
     }
   },
-  "projectMinusDay": "−1 dia",
-  "projectPlusDay": "+1 dia",
-  "projectLessDay": "Um dia a menos",
-  "projectMoreDay": "Um dia a mais",
-  "projectTasksTab": "{count, plural, =0{Tarefas} other{Tarefas · {count}}}",
-  "@projectTasksTab": {
+  "artifactMinusDay": "−1 dia",
+  "artifactPlusDay": "+1 dia",
+  "artifactLessDay": "Um dia a menos",
+  "artifactMoreDay": "Um dia a mais",
+  "artifactTasksTab": "{count, plural, =0{Tarefas} other{Tarefas · {count}}}",
+  "@artifactTasksTab": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "projectNotesTab": "Notas",
-  "projectDeadlineLabel": "Prazo",
-  "projectProgressLabel": "Feitas",
-  "projectNotesHint": "Escreva o que quiser sobre o projeto…",
-  "projectAddTask": "Nova tarefa",
-  "projectTasksDone": "{count, plural, =1{1 feita} other{{count} feitas}}",
-  "@projectTasksDone": {
+  "artifactNotesTab": "Notas",
+  "artifactDeadlineLabel": "Prazo",
+  "artifactProgressLabel": "Feitas",
+  "artifactNotesHint": "Escreva o que quiser sobre a entrega…",
+  "artifactAddTask": "Nova tarefa",
+  "artifactTasksDone": "{count, plural, =1{1 feita} other{{count} feitas}}",
+  "@artifactTasksDone": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "projectSheetHint": "Qual é o projeto?",
-  "projectSheetOpenEnded": "Sem data para acabar",
-  "projectWeek": "1 semana",
-  "projectMonth": "1 mês",
-  "projectPickDay": "Escolher dia",
-  "projectDeleteBody": "As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.",
+  "artifactDeleteBody": "As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.",
   "dayOverTitle": "Seu dia terminou às {end}",
   "@dayOverTitle": {
     "placeholders": {
@@ -872,11 +855,11 @@
   "agentChangeNotes": "notas",
   "agentChangeDone": "concluída",
   "agentChangeRemove": "apagar",
-  "agentChangeNewProject": "novo projeto",
+  "agentChangeNewArtifact": "nova entrega",
   "agentChangeDeadline": "prazo",
-  "agentChangeProjectDone": "projeto concluído",
-  "agentChangeRemoveProject": "{count, plural, =0{apagar o projeto} =1{apagar o projeto e 1 tarefa} other{apagar o projeto e {count} tarefas}}",
-  "@agentChangeRemoveProject": {
+  "agentChangeArtifactDone": "entregue",
+  "agentChangeRemoveArtifact": "{count, plural, =0{apagar a entrega} =1{apagar a entrega e 1 tarefa} other{apagar a entrega e {count} tarefas}}",
+  "@agentChangeRemoveArtifact": {
     "placeholders": {
       "count": {
         "type": "int"
@@ -899,8 +882,8 @@
       }
     }
   },
-  "agentProjectDone": "{done} de {total} feitas",
-  "@agentProjectDone": {
+  "agentArtifactDone": "{done} de {total} feitas",
+  "@agentArtifactDone": {
     "placeholders": {
       "done": {
         "type": "int"
@@ -910,16 +893,16 @@
       }
     }
   },
-  "agentProjectNext": "Próximas",
-  "agentProjectMore": "{count, plural, =1{mais 1} other{mais {count}}}",
-  "@agentProjectMore": {
+  "agentArtifactNext": "Próximas",
+  "agentArtifactMore": "{count, plural, =1{mais 1} other{mais {count}}}",
+  "@agentArtifactMore": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "agentProjectOpen": "Abrir projeto",
+  "agentArtifactOpen": "Abrir entrega",
   "shellArtifactsTab": "Entregas",
   "monthsLong": "janeiro,fevereiro,março,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro",
   "artifactsSearch": "Buscar entregas",
@@ -1090,7 +1073,7 @@
   "catalogEmptyTitle": "Seu catálogo está vazio",
   "catalogEmptyBody": "Crie um tipo para o que você entrega sempre, como um mapa astral ou um post. Ele já traz o tempo, o preço e como dividir no dia.",
   "catalogNewType": "Criar um tipo",
-  "catalogEmptyLooseHint": "Você diz quanto tempo leva. Depois dá para guardá-la como tipo.",
+  "catalogEmptyLooseHint": "Você diz quanto tempo leva e quanto vale.",
   "artifactNameHint": "Nome da entrega",
   "artifactChangeType": "Trocar",
   "artifactTotalTime": "Tempo total",
@@ -1155,5 +1138,53 @@
       }
     }
   },
-  "goalCreate": "Criar meta"
+  "goalCreate": "Criar meta",
+  "catalogAddType": "Novo tipo",
+  "typeNameHint": "Nome do tipo, como Mapa astral",
+  "typeCategory": "Categoria",
+  "typeNewCategory": "Nova",
+  "typeCategoryHint": "Nome da categoria, como Atendimentos",
+  "typeCreate": "Guardar no catálogo",
+  "valueOptional": "opcional",
+  "artifactKindLabel": "Tipo",
+  "goalsEmpty": "Uma meta diz quanto você quer faturar, ou quantas entregas de um tipo fazer, por semana ou por mês.",
+  "goalDeleteBody": "As entregas continuam na fila; só a meta deixa de ser medida.",
+  "artifactsEmpty": "Nada na fila ainda. O + põe uma entrega nela.",
+  "artifactsNoneHere": "Nada na fila com esse filtro.",
+  "goalCountNeedsType": "Crie um tipo no catálogo para contar as entregas dele.",
+  "goalNextWeek": "Semana que vem",
+  "goalReadbackMoneyWeek": "Faturar {amount} por semana.",
+  "@goalReadbackMoneyWeek": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackCountMonth": "{type}: {count} em {month}.",
+  "@goalReadbackCountMonth": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackCountWeek": "{type}: {count} por semana.",
+  "@goalReadbackCountWeek": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackFutureWeek": "Fica guardada e passa a valer na segunda-feira."
 }

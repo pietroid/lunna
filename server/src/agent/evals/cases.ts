@@ -12,10 +12,10 @@ export interface World {
   task(
     title: string,
     minutes: number,
-    opts?: { at?: string; backlog?: boolean; project?: string },
+    opts?: { at?: string; backlog?: boolean; artifact?: string },
   ): Promise<void>;
-  /** A project, answering its id for its tasks' `project`. */
-  project(title: string, deadline?: string): Promise<string>;
+  /** An artifact, answering its id for its tasks' `artifact`. */
+  artifact(title: string, deadline?: string): Promise<string>;
   /** A fixed block at "YYYY-MM-DD HH:mm". */
   event(title: string, at: string, minutes?: number): Promise<void>;
 }
@@ -59,7 +59,7 @@ export interface Case {
   said: string | string[];
   setup?: (world: World) => Promise<void>;
   expect: Expect;
-  /** A block the answer must draw (`day`, `cards`, `project`…). */
+  /** A block the answer must draw (`day`, `cards`, `artifact`…). */
   drawn?: string;
   /** True, or what was wrong. */
   check?: (state: State) => true | string;
@@ -361,14 +361,17 @@ export const CASES: Case[] = [
     drawn: 'day',
   },
   {
-    id: 'project-from-tempo',
-    why: 'a project is reached from Tempo, through the index (§5.4)',
+    id: 'artifact-from-tempo',
+    why: 'an artifact is reached from Tempo, through the index (§5.4)',
     setup: async (w) => {
-      const tese = await w.project('Tese', '2026-11-30');
-      await w.task('Escrever capítulo 2', 90, { backlog: true, project: tese });
+      const tese = await w.artifact('Tese', '2026-11-30');
+      await w.task('Escrever capítulo 2', 90, {
+        backlog: true,
+        artifact: tese,
+      });
       await w.task('Revisar bibliografia', 45, {
         backlog: true,
-        project: tese,
+        artifact: tese,
       });
     },
     said: 'põe o capítulo 2 da tese amanhã às 9',

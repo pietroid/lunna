@@ -11,7 +11,7 @@ answers 503 and nothing else changes).
 
 **Reads run, writes are only ever proposed.** The model has four tools:
 `read_timeline` (days not already in its context), `read_conversations`
-(earlier conversations, by words or day), `read_cards` (a project whole, or
+(earlier conversations, by words or day), `read_cards` (an artifact whole, or
 a card's notes) and `answer`, which ends every turn. There is no tool that
 writes. The design behind this is the RFC
 [2026-10-16-agent-reliability](../research/2026-10-16-agent-reliability/README.md).
@@ -22,13 +22,13 @@ a short ref (`t3` a task, `e1` an event, `b2` the backlog, `d1` a done task),
 a date table (hoje, amanhã, the next six days, today marked over once its
 working day is), the cards of today, tomorrow, the day on screen and any
 card the request names, the backlog (its first 30), the index of open
-projects (`p2 · Tese · due 30/11 · 6 open tasks, 2 with an hour`), and the
-free room, in the app's lengths ("1h30"). Each card names its project.
+artifacts (`p2 · Tese · due 30/11 · 6 open tasks, 2 with an hour`), and the
+free room, in the app's lengths ("1h30"). Each card names its artifact.
 **A ref means the same card for the whole conversation**: the server keeps
 an `id → ref` map per conversation (in memory), and a card it has not shown
 yet gets the next number of its kind. `board.reach(task)` hands a ref to a
 task off the board (the 31st of the backlog, a done one), so `read_cards`
-on a project and the page's context name every task by a ref the gestures
+on an artifact and the page's context name every task by a ref the gestures
 accept. It is written as the last user message,
 right before the request; the system prompt and tools stay byte-identical.
 The model never sees a UUID, never computes a date and never works out an
@@ -105,11 +105,11 @@ a refusal.
 | `POST /agent/plans/:id/undo?days=` | the timeline; the plan can be applied again |
 
 **A conversation opened from a page is about it.** The bar also sits at the
-foot of a task's notes and a project's (`NotesDock`); a conversation opened
-there carries `about: { taskId }` or `{ projectId }` on every turn
+foot of a task's notes and an artifact's (`NotesDock`); a conversation opened
+there carries `about: { taskId }` or `{ artifactId }` on every turn
 (`AgentCubit.open(about:)`). The server writes it after the board: the
 task's line (its ref when it is on the board) and its notes, or the
-project's name, deadline, notes and tasks; the model is told "isso" means
+artifact's name, deadline, notes and tasks; the model is told "isso" means
 it. Notes are cut at 2000 characters. A subject that is not the person's is
 refused (404, `refused`, "Não encontrei essa tarefa."), anything else that
 is not one is a 400. The agent still only changes the day: it reads notes
@@ -147,8 +147,8 @@ ends every turn. Each block names what to show, never what it says:
 | `plan { data, changes }` (≤ 1) | the gestures | the dry run, as above; a refusal goes back to the model |
 | `choices { options: [{label, changes? \| say?}] }` (2–3) | labels, and each one's plan or words | each plan its own dry run, exclusive with the plan; a failing one is dropped |
 | `day { day, from?, to?, free? }` | which day and hours | the cards and free stretches of that slice |
-| `cards { refs, title?, notes? }` (≤ 8) | which cards, the order, the heading | title, hour, length, project, notes |
-| `project { ref }` | which project | `ProjectPeek`: counts, deadline, the next 3 open tasks (hour first) |
+| `cards { refs, title?, notes? }` (≤ 8) | which cards, the order, the heading | title, hour, length, artifact, notes |
+| `artifact { ref }` | which artifact | `ArtifactPeek`: counts, deadline, the next 3 open tasks (hour first) |
 | `focus: true` (any, one) | what matters most | drawn first |
 
 At most 6 blocks; a block that breaks a limit is dropped and the rest
@@ -167,7 +167,7 @@ for the same; `speakable` is the guarantee.
 **The wire.** `toA2ui` (`answer.ts`) writes one A2UI v0.9 surface per turn
 against our catalog (`https://lunna.pietroteruya.dev/a2ui/v1/catalog.json`):
 `createSurface`, `updateComponents` (a `Column` root, then `Caption`,
-`Plan`, `Choices`, `DayPeek`, `Cards`, `ProjectPeek`, each bound by path to
+`Plan`, `Choices`, `DayPeek`, `Cards`, `ArtifactPeek`, each bound by path to
 its data) and `updateDataModel`. Actions: `apply`/`adjust` on the plan
 (`{planId}`), `choose` on each option (`{planId}` or `{say}`). The app reads
 it in one place, `AgentSurface.decode`, and draws a component it does not
@@ -178,9 +178,9 @@ with `plan` and `options` (only the plan-carrying choices) for one release.
 
 **In the app.** A choice with a plan applies it, as quick replies did; one
 with `say` sends its words as the person's next message, and only on the
-latest answer. Steps are folded under *Detalhes*. *Abrir projeto* on a
-`ProjectPeek` opens its page through `AgentLinks`, which the shell provides
-(the agent package can't import projects); on that project's own page, and
+latest answer. Steps are folded under *Detalhes*. *Abrir entrega* on a
+`ArtifactPeek` opens its page through `AgentLinks`, which the shell provides
+(the agent package can't import artifacts); on that artifact's own page, and
 on pages pushed over the shell, it is not offered.
 
 ## Evals
@@ -252,7 +252,7 @@ there; tapped on Tempo's bar, it opens the sheet to say so.
 ### Dictation
 
 Dictation is not the agent. At the foot of a task's notes (`EventPage.dock`)
-and a project's Notas, `NotesDock` puts the bar, and beside it, where the +
+and an artifact's Notas, `NotesDock` puts the bar, and beside it, where the +
 is on Tempo, a microphone (`AppFab`, `AppIcons.microphone`) that writes what
 is said straight into the notes: **the small microphone inside the bar asks
 the agent, the big one beside it writes.**

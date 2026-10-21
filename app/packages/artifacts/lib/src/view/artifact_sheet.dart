@@ -1,33 +1,40 @@
+import 'dart:async';
+
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/src/bloc/artifacts_cubit.dart';
 import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/sheet_frame.dart';
+import 'package:artifacts/src/view/sheet_rows.dart';
+import 'package:artifacts/src/view/type_sheet.dart';
+import 'package:clock/clock.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
 /// Opens the sheet that puts a delivery in the queue.
+///
+/// The sheet is its own route, so it is handed the cubit it writes with.
 Future<void> showArtifactSheet(
   BuildContext context, {
-  required List<CatalogCategory> categories,
-  required List<Goal> goals,
-  required DateTime now,
   CatalogCategory? initialCategory,
   CatalogType? initialType,
   String? initialName,
   DateTime? initialDeadline,
 }) {
+  final cubit = context.read<ArtifactsCubit>();
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: AppColors.bg.withValues(alpha: 0.72),
-    builder: (_) => ArtifactSheet(
-      categories: categories,
-      goals: goals,
-      now: now,
-      initialCategory: initialCategory,
-      initialType: initialType,
-      initialName: initialName,
-      initialDeadline: initialDeadline,
+    builder: (_) => BlocProvider.value(
+      value: cubit,
+      child: ArtifactSheet(
+        initialCategory: initialCategory,
+        initialType: initialType,
+        initialName: initialName,
+        initialDeadline: initialDeadline,
+      ),
     ),
   );
 }
@@ -38,31 +45,20 @@ Future<void> showArtifactSheet(
 /// It opens on the catalogue, since nearly everything she delivers is a
 /// kind she has delivered before: picking one brings its time, its value
 /// and how the day may cut it, and leaves only the name and the day to
-/// write. A loose delivery, with no kind, is the last line of the
-/// catalogue. The second step reads it all back as rows, each one changed
-/// in place, and says which goal it will count towards.
+/// write. A one-off delivery, with no kind, is the last line of the
+/// catalogue, and is timed and priced by hand. The second step reads it all
+/// back as rows, each one changed in place, and says which goal it will
+/// count towards.
 /// {@endtemplate}
 class ArtifactSheet extends StatefulWidget {
   /// {@macro artifact_sheet}
   const ArtifactSheet({
-    required this.categories,
-    required this.goals,
-    required this.now,
     this.initialCategory,
     this.initialType,
     this.initialName,
     this.initialDeadline,
     super.key,
   });
-
-  /// The catalogue.
-  final List<CatalogCategory> categories;
-
-  /// The goals a delivery may count towards.
-  final List<Goal> goals;
-
-  /// The moment it is drawn at.
-  final DateTime now;
 
   /// The shelf of [initialType].
   final CatalogCategory? initialCategory;
@@ -81,17 +77,31 @@ class ArtifactSheet extends StatefulWidget {
 }
 
 class _ArtifactSheetState extends State<ArtifactSheet> {
+  /// How long a one-off takes until she says otherwise.
+  static const _looseMinutes = 60;
+
+  /// The block a one-off, or a kind with none, is cut in.
+  static const _defaultBlock = 60;
+
   late CatalogType? _type = widget.initialType;
   late CatalogCategory? _category = widget.initialCategory;
+
+  /// Whether she chose a one-off delivery, with no kind.
+  bool _loose = false;
   late final _name = TextEditingController(text: widget.initialName);
   final _search = TextEditingController();
+  final _value = TextEditingController();
   late bool _split = widget.initialType?.blockMinutes != null;
   bool _top = true;
+  late DateTime? _deadline = widget.initialDeadline;
+  int _minutes = _looseMinutes;
+  bool _busy = false;
 
   @override
   void dispose() {
     _name.dispose();
     _search.dispose();
+    _value.dispose();
     super.dispose();
   }
 
@@ -99,25 +109,87 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     setState(() {
       _category = category;
       _type = type;
+      _loose = false;
       _split = type.blockMinutes != null;
       _name.text = '${type.name} · ';
     });
   }
 
+  void _pickLoose() {
+    setState(() {
+      _type = null;
+      _category = null;
+      _loose = true;
+      _split = false;
+      // The one field both searched the catalogue and named the delivery.
+      if (_name.text.isEmpty) _name.text = _search.text.trim();
+    });
+  }
+
+  void _back() => setState(() {
+    _type = null;
+    _loose = false;
+  });
+
+  Future<void> _pickDeadline() async {
+    final now = clock.now();
+    final picked = await AppWheelPicker.dayAndTime(
+      context,
+      initial: _deadline ?? now.add(const Duration(days: 7)),
+      earliest: now,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _deadline = DateTime(picked.year, picked.month, picked.day));
+  }
+
+  Future<void> _pickMinutes() async {
+    final picked = await AppWheelPicker.duration(
+      context,
+      initial: Duration(minutes: _minutes),
+    );
+    if (picked == null || picked.inMinutes <= 0 || !mounted) return;
+    setState(() => _minutes = picked.inMinutes);
+  }
+
+  int? get _looseValue => int.tryParse(_value.text.trim());
+
+  Future<void> _create() async {
+    final title = _name.text.trim();
+    if (title.isEmpty || _busy) return;
+    final type = _type;
+    setState(() => _busy = true);
+    final made = await context.read<ArtifactsCubit>().create(
+      title: title,
+      type: type,
+      minutes: type == null ? _minutes : null,
+      value: type == null ? _looseValue : null,
+      blockMinutes: _split ? (type?.blockMinutes ?? _defaultBlock) : null,
+      deadline: _deadline,
+      top: _top,
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (made) unawaited(Navigator.of(context).maybePop());
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final state = context.watch<ArtifactsCubit>().state;
+    final picking = _type == null && !_loose;
     return SheetFrame(
       title: l10n.artifactsNew,
-      tall: _type == null,
-      child: _type == null ? _catalog(l10n) : _details(l10n, _type!),
+      tall: picking,
+      child: picking
+          ? _catalog(l10n, state.catalog)
+          : _details(l10n, state.goals),
     );
   }
 
-  Widget _catalog(AppLocalizations l10n) {
+  Widget _catalog(AppLocalizations l10n, List<CatalogCategory> categories) {
     final query = _search.text.trim().toLowerCase();
     // Everyone starts with an empty catalogue: it fills with her own kinds.
-    final empty = widget.categories.isEmpty;
+    final empty = categories.isEmpty;
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.s6),
       children: [
@@ -127,6 +199,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
               ? l10n.artifactNameHint
               : l10n.artifactSheetSearchHint,
           onChanged: (_) => setState(() {}),
+          onSubmitted: empty ? (_) => _pickLoose() : null,
         ),
         const SizedBox(height: AppSpacing.s5),
         Row(
@@ -141,17 +214,22 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
               child: Text(l10n.catalogTitle, style: AppTypography.labelStrong),
             ),
             if (!empty)
-              Text(
-                l10n.catalogEdit,
-                style: AppTypography.label.copyWith(color: AppColors.ink3),
+              GestureDetector(
+                onTap: () => unawaited(showTypeSheet(context)),
+                child: Text(
+                  l10n.catalogAddType,
+                  style: AppTypography.label.copyWith(color: AppColors.ink3),
+                ),
               ),
           ],
         ),
         if (empty) ...[
           const SizedBox(height: AppSpacing.s3),
-          _EmptyCatalog(onNewType: () {}),
+          _EmptyCatalog(
+            onNewType: () => unawaited(showTypeSheet(context)),
+          ),
         ],
-        for (final category in widget.categories) ...[
+        for (final category in categories) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.s1,
@@ -161,7 +239,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
             ),
             child: Text(category.name, style: AppTypography.caption),
           ),
-          _Group(
+          SheetGroup(
             children: [
               for (final type in category.types)
                 if (query.isEmpty || type.name.toLowerCase().contains(query))
@@ -173,10 +251,10 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
           ),
         ],
         const SizedBox(height: AppSpacing.s4),
-        _Group(
+        SheetGroup(
           children: [
             InkWell(
-              onTap: () {},
+              onTap: _pickLoose,
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.s4),
                 child: Row(
@@ -214,12 +292,13 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     );
   }
 
-  Widget _details(AppLocalizations l10n, CatalogType type) {
-    final now = widget.now;
-    final deadline = widget.initialDeadline;
-    final block = type.blockMinutes ?? 60;
-    final price = type.price;
-    final goal = _goalFor(type, deadline ?? now);
+  Widget _details(AppLocalizations l10n, List<Goal> goals) {
+    final now = clock.now();
+    final type = _type;
+    final deadline = _deadline;
+    final block = type?.blockMinutes ?? _defaultBlock;
+    final price = type == null ? _looseValue : type.price;
+    final goal = _goalFor(goals, type, price, deadline ?? now);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -227,16 +306,20 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       children: [
         Row(
           children: [
-            AppTag(
-              text: [
-                if (_category != null) _category!.name,
-                type.name,
-              ].join(' · '),
-              iconData: AppIcons.catalog,
+            Flexible(
+              child: AppTag(
+                text: type == null
+                    ? l10n.artifactLoose
+                    : [
+                        if (_category != null) _category!.name,
+                        type.name,
+                      ].join(' · '),
+                iconData: AppIcons.catalog,
+              ),
             ),
             const SizedBox(width: AppSpacing.s2),
             GestureDetector(
-              onTap: () => setState(() => _type = null),
+              onTap: _back,
               child: Text(
                 l10n.artifactChangeType,
                 style: AppTypography.label.copyWith(color: AppColors.ink3),
@@ -251,6 +334,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
           cursorColor: AppColors.ink,
           cursorWidth: 1.5,
           style: AppTypography.title,
+          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: l10n.artifactNameHint,
             hintStyle: AppTypography.title.copyWith(color: AppColors.ink3),
@@ -264,15 +348,16 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
             ),
           ),
         ),
-        _Group(
+        SheetGroup(
           children: [
-            _FieldRow(
+            SheetRow(
               iconData: AppIcons.timer,
               label: l10n.artifactTotalTime,
-              value: formatMinutes(l10n, type.minutes),
-              note: l10n.artifactTimeFromType(type.name),
+              value: formatMinutes(l10n, type?.minutes ?? _minutes),
+              note: type == null ? null : l10n.artifactTimeFromType(type.name),
+              onTap: type == null ? () => unawaited(_pickMinutes()) : null,
             ),
-            _FieldRow(
+            SheetRow(
               iconData: AppIcons.split,
               label: l10n.artifactSplit,
               trailing: AppSegmented(
@@ -288,19 +373,31 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
                 ],
               ),
             ),
-            if (price != null)
-              _FieldRow(
+            if (type == null)
+              SheetRow(
+                iconData: AppIcons.value,
+                label: l10n.artifactValue,
+                trailing: MoneyField(
+                  controller: _value,
+                  onChanged: () => setState(() {}),
+                ),
+              )
+            else if (price != null)
+              SheetRow(
                 iconData: AppIcons.value,
                 label: l10n.artifactValue,
                 value: formatMoney(price),
               ),
-            _FieldRow(
+            SheetRow(
               iconData: AppIcons.calendar,
               label: l10n.artifactDeadline,
-              value: deadline == null ? '—' : dayName(l10n, deadline, now),
+              value: deadline == null
+                  ? l10n.artifactNoDeadline
+                  : dayName(l10n, deadline, now),
+              onTap: () => unawaited(_pickDeadline()),
             ),
             if (goal != null)
-              _FieldRow(
+              SheetRow(
                 iconData: AppIcons.goal,
                 label: l10n.artifactCountsFor,
                 value: goalLabel(l10n, goal),
@@ -327,21 +424,31 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
         AppButton(
           text: l10n.artifactCreate,
           expand: true,
-          onPressed: () => Navigator.of(context).maybePop(),
+          onPressed: _name.text.trim().isEmpty || _busy
+              ? null
+              : () => unawaited(_create()),
         ),
       ],
     );
   }
 
-  /// The goal a delivery of [type] due on [day] counts towards: the money
-  /// goal of that stretch when it is worth something, or the count goal of
-  /// its kind.
-  Goal? _goalFor(CatalogType type, DateTime day) {
-    for (final goal in widget.goals) {
+  /// The goal a delivery due on [day] counts towards: the money goal of
+  /// that stretch when it is worth something, or the count goal of its kind.
+  Goal? _goalFor(
+    List<Goal> goals,
+    CatalogType? type,
+    int? value,
+    DateTime day,
+  ) {
+    for (final goal in goals) {
       final inStretch = !day.isBefore(goal.start) && day.isBefore(goal.end);
       if (!inStretch) continue;
-      if (goal.kind == GoalKind.money && type.price != null) return goal;
-      if (goal.kind == GoalKind.count && goal.type?.id == type.id) return goal;
+      if (goal.kind == GoalKind.money && (value ?? 0) > 0) return goal;
+      if (goal.kind == GoalKind.count &&
+          type != null &&
+          goal.type?.id == type.id) {
+        return goal;
+      }
     }
     return null;
   }
@@ -385,36 +492,6 @@ class _EmptyCatalog extends StatelessWidget {
   }
 }
 
-/// Rows on one fill, split by hairlines.
-class _Group extends StatelessWidget {
-  const _Group({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.fill,
-      borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              const Divider(
-                height: 1,
-                thickness: 1,
-                indent: AppSpacing.s4,
-                color: AppColors.line,
-              ),
-            children[i],
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 /// One kind in the catalogue: its name, its time and its value.
 class _TypeRow extends StatelessWidget {
   const _TypeRow({required this.type, required this.onTap});
@@ -445,73 +522,6 @@ class _TypeRow extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// One line of a delivery: an icon, what it is, and its value.
-class _FieldRow extends StatelessWidget {
-  const _FieldRow({
-    required this.iconData,
-    required this.label,
-    this.value,
-    this.note,
-    this.trailing,
-  });
-
-  final AppIconData iconData;
-  final String label;
-  final String? value;
-  final String? note;
-  final Widget? trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.s4,
-        vertical: trailing == null ? AppSpacing.s3 + 2 : AppSpacing.s2,
-      ),
-      child: Row(
-        children: [
-          AppIcon(
-            iconData: iconData,
-            size: AppSpacing.s5,
-            color: AppColors.ink2,
-          ),
-          const SizedBox(width: AppSpacing.s3),
-          Text(
-            label,
-            style: AppTypography.body.copyWith(color: AppColors.ink2),
-          ),
-          const SizedBox(width: AppSpacing.s3),
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child:
-                  trailing ??
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        value ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodyStrong,
-                      ),
-                      if (note != null)
-                        Text(
-                          note!,
-                          style: AppTypography.caption.copyWith(
-                            color: AppColors.ink3,
-                          ),
-                        ),
-                    ],
-                  ),
-            ),
-          ),
-        ],
       ),
     );
   }

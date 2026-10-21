@@ -10,7 +10,10 @@ import { App } from 'supertest/types';
 import { SessionGuard } from '../auth/session.guard';
 import { CalendarService } from '../calendar/calendar.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
-import { MemoryProjectStore, ProjectStore } from '../projects/project.store';
+import {
+  MemoryArtifactStore,
+  ArtifactStore,
+} from '../artifacts/artifact.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
 import {
   BacklogCard,
@@ -167,7 +170,7 @@ describe('the day', () => {
   let app: INestApplication<App>;
   let store: MemoryCalendarStore;
   let taskStore: MemoryTaskStore;
-  let projectStore: MemoryProjectStore;
+  let artifactStore: MemoryArtifactStore;
 
   /** Whoever the stub guard signs in. */
   const owner = { id: 'test-user', timeZone: ZONE };
@@ -183,7 +186,7 @@ describe('the day', () => {
         CalendarService,
         { provide: CalendarStore, useClass: MemoryCalendarStore },
         { provide: TaskStore, useClass: MemoryTaskStore },
-        { provide: ProjectStore, useClass: MemoryProjectStore },
+        { provide: ArtifactStore, useClass: MemoryArtifactStore },
       ],
     })
       .overrideGuard(SessionGuard)
@@ -192,7 +195,7 @@ describe('the day', () => {
 
     store = moduleRef.get(CalendarStore);
     taskStore = moduleRef.get(TaskStore);
-    projectStore = moduleRef.get(ProjectStore);
+    artifactStore = moduleRef.get(ArtifactStore);
 
     app = moduleRef.createNestApplication();
     // Bound to loopback, once. Left to supertest, each request listens on `::`,
@@ -307,9 +310,9 @@ describe('the day', () => {
       later(1);
     }
 
-    it('lists the tasks done, newest first, with when and their project', async () => {
-      const project = await projectStore.insert(owner, { title: 'Mudança' });
-      await finish('Caixas', { projectId: project.id });
+    it('lists the tasks done, newest first, with when and their artifact', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Mudança' });
+      await finish('Caixas', { artifactId: artifact.id });
       await finish('Mercado');
       await add('Ainda não', 30);
 
@@ -320,8 +323,8 @@ describe('the day', () => {
       expect(caixas.startTime).toBe(NOW.toISOString());
       expect(caixas.doneAt).toBe(NOW.toISOString());
       expect(caixas.day).toBe('2026-03-10');
-      expect(caixas.project).toEqual({ id: project.id, title: 'Mudança' });
-      expect(found[0].project).toBeUndefined();
+      expect(caixas.artifact).toEqual({ id: artifact.id, title: 'Mudança' });
+      expect(found[0].artifact).toBeUndefined();
     });
 
     it('looks for words in titles and notes, in any case', async () => {
@@ -378,32 +381,32 @@ describe('the day', () => {
     });
   });
 
-  describe('a task of a project', () => {
-    it('names its project wherever it is drawn', async () => {
-      const project = await projectStore.insert(owner, { title: 'Mudança' });
-      await add('Caixas', 30, { projectId: project.id });
+  describe('a task of an artifact', () => {
+    it('names its artifact wherever it is drawn', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Mudança' });
+      await add('Caixas', 30, { artifactId: artifact.id });
       const response = await shelve('Sem projeto', 30);
       await post('/tasks', {
         title: 'Fita',
         minutes: 15,
-        projectId: project.id,
+        artifactId: artifact.id,
       });
       const after = await request(app.getHttpServer())
         .get('/timeline')
         .expect(200);
 
-      const named = { id: project.id, title: 'Mudança' };
-      expect(tasks(after).map((it) => [it.title, it.project])).toEqual([
+      const named = { id: artifact.id, title: 'Mudança' };
+      expect(tasks(after).map((it) => [it.title, it.artifact])).toEqual([
         ['Caixas', named],
       ]);
-      expect(cards(after).map((it) => [it.title, it.project])).toEqual([
+      expect(cards(after).map((it) => [it.title, it.artifact])).toEqual([
         ['Caixas', named],
       ]);
-      expect(backlog(after).map((it) => [it.title, it.project])).toEqual([
+      expect(backlog(after).map((it) => [it.title, it.artifact])).toEqual([
         ['Sem projeto', undefined],
         ['Fita', named],
       ]);
-      expect(backlog(response)[0]).not.toHaveProperty('project');
+      expect(backlog(response)[0]).not.toHaveProperty('artifact');
     });
   });
 

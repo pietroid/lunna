@@ -1,6 +1,6 @@
 import { Interval } from '../time/work-hours';
 import { atMinuteIn, formatTimeIn, isoDayIn } from '../time/zone';
-import { Board, BoardCard, BoardProject, formatSpan, noonOf } from './board';
+import { Board, BoardCard, BoardArtifact, formatSpan, noonOf } from './board';
 import type { PlanView, QuickReply } from './agent.service';
 
 /** Where our catalog lives: the components below, by these names. */
@@ -18,7 +18,7 @@ export interface PeekCard {
   at?: string;
   fixed: boolean;
   done: boolean;
-  project?: string;
+  artifact?: string;
   /** Only when they were asked about. */
   notes?: string;
 }
@@ -30,11 +30,11 @@ export interface PeekItem {
   title: string;
   start: string;
   end: string;
-  project?: string;
+  artifact?: string;
 }
 
-/** A project at a glance: the Projetos row, and what comes next in it. */
-export interface PeekProject {
+/** An artifact at a glance: the Entregas row, and what comes next in it. */
+export interface PeekArtifact {
   id: string;
   title: string;
   createdAt: string;
@@ -63,9 +63,9 @@ export type Block =
   | { kind: 'choices'; options: Choice[] }
   | { kind: 'day'; day: string; from: string; to: string; items: PeekItem[] }
   | { kind: 'cards'; title?: string; cards: PeekCard[] }
-  | { kind: 'project'; project: PeekProject };
+  | { kind: 'artifact'; artifact: PeekArtifact };
 
-/** How many next tasks a project shows. */
+/** How many next tasks an artifact shows. */
 const MAX_NEXT = 3;
 
 /** A free stretch shorter than this is not drawn. */
@@ -77,7 +77,7 @@ export function peekCard(
   card: BoardCard,
   withNotes = false,
 ): PeekCard {
-  const project = board.projectOf(card);
+  const artifact = board.artifactOf(card);
   const notes = card.notes.trim();
   return {
     id: card.id,
@@ -86,7 +86,7 @@ export function peekCard(
     ...(card.start === undefined ? {} : { at: card.start.toISOString() }),
     fixed: card.kind === 'event',
     done: card.done,
-    ...(project === undefined ? {} : { project }),
+    ...(artifact === undefined ? {} : { artifact }),
     ...(withNotes && notes !== '' ? { notes } : {}),
   };
 }
@@ -123,7 +123,7 @@ export function peekDay(
     .filter((card) => card.day === day && card.start !== undefined)
     .filter((card) => within({ start: card.start!, end: card.end! }))
     .map((card) => {
-      const project = board.projectOf(card);
+      const artifact = board.artifactOf(card);
       return {
         kind:
           card.kind === 'event'
@@ -138,7 +138,7 @@ export function peekDay(
         title: card.title,
         start: card.start!.toISOString(),
         end: card.end!.toISOString(),
-        ...(project === undefined ? {} : { project }),
+        ...(artifact === undefined ? {} : { artifact }),
       };
     });
   if (free) {
@@ -168,7 +168,7 @@ export function peekDay(
 }
 
 /** [it] at a glance: its counts and its next open tasks, each with a ref. */
-export function peekProject(board: Board, it: BoardProject): PeekProject {
+export function peekArtifact(board: Board, it: BoardArtifact): PeekArtifact {
   const open = it.tasks.filter((task) => task.doneAt === undefined);
   const cards = open.map((task) => board.reach(task));
   const next = [
@@ -179,12 +179,12 @@ export function peekProject(board: Board, it: BoardProject): PeekProject {
   ].slice(0, MAX_NEXT);
 
   return {
-    id: it.project.id,
-    title: it.project.title,
-    createdAt: it.project.createdAt,
-    ...(it.project.deadline === undefined
+    id: it.artifact.id,
+    title: it.artifact.title,
+    createdAt: it.artifact.createdAt,
+    ...(it.artifact.deadline === undefined
       ? {}
-      : { deadline: it.project.deadline }),
+      : { deadline: it.artifact.deadline }),
     done: it.tasks.length - open.length,
     total: it.tasks.length,
     next: next.map((card) => peekCard(board, card)),
@@ -216,7 +216,7 @@ const COMPONENT: Record<Block['kind'], string> = {
   choices: 'Choices',
   day: 'DayPeek',
   cards: 'Cards',
-  project: 'ProjectPeek',
+  artifact: 'ArtifactPeek',
 };
 
 /** What tapping a choice sends back: its plan to apply, or its words. */
@@ -288,9 +288,9 @@ export function toA2ui(surfaceId: string, blocks: Block[]): A2uiMessage[] {
           cards: { path: `/${id}` },
         });
         return;
-      case 'project':
-        value[id] = block.project;
-        components.push({ ...component, project: { path: `/${id}` } });
+      case 'artifact':
+        value[id] = block.artifact;
+        components.push({ ...component, artifact: { path: `/${id}` } });
         return;
     }
   });
@@ -346,8 +346,8 @@ export function summary(board: Board, blocks: Block[]): string {
       }
       case 'cards':
         return `${block.title ?? 'Cartões'}: ${block.cards.map((it) => it.title).join(', ')}.`;
-      case 'project':
-        return `Projeto ${block.project.title}: ${block.project.done} de ${block.project.total} feitas.`;
+      case 'artifact':
+        return `Entrega ${block.artifact.title}: ${block.artifact.done} de ${block.artifact.total} feitas.`;
       default:
         return undefined;
     }

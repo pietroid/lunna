@@ -70,7 +70,7 @@ class _PeekRow extends StatelessWidget {
       PeekKind.free => (AppColors.freeFill, AppColors.freeInk),
       PeekKind.task => (AppColors.bg, AppColors.ink),
     };
-    final project = item.project;
+    final artifact = item.artifact;
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.s1),
@@ -119,7 +119,7 @@ class _PeekRow extends StatelessWidget {
                   ),
                   if (!free)
                     Text(
-                      [?project, durationLabel(l10n, minutes)].join(' · '),
+                      [?artifact, durationLabel(l10n, minutes)].join(' · '),
                       style: AppTypography.label.copyWith(
                         color: ink == AppColors.ink ? AppColors.ink3 : ink,
                         fontSize: 12,

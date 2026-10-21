@@ -113,8 +113,8 @@ class _DemoHome extends StatelessWidget {
             label: context.l10n.shellTimelineTab,
           ),
           AppBottomBarItem(
-            iconData: AppIcons.things,
-            label: context.l10n.shellProjectsTab,
+            iconData: AppIcons.artifacts,
+            label: context.l10n.shellArtifactsTab,
           ),
           AppBottomBarItem(
             iconData: AppIcons.menu,

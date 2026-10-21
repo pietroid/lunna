@@ -9,7 +9,7 @@ import {
   intervalOfTask,
   TimelineService,
 } from '../events/timeline.service';
-import { ProjectStore } from '../projects/project.store';
+import { ArtifactStore } from '../artifacts/artifact.store';
 import { TaskStore } from '../tasks/task.store';
 import {
   addMinutes,
@@ -36,7 +36,7 @@ import {
   legacyOptions,
   peekCard,
   peekDay,
-  peekProject,
+  peekArtifact,
   summary,
   toA2ui,
 } from './answer';
@@ -73,9 +73,9 @@ export interface AgentMessage {
 
 /**
  * What a conversation is about, when it was opened from a page rather than
- * from Tempo: a task's or a project's.
+ * from Tempo: a task's or an artifact's.
  */
-export type Subject = { taskId: string } | { projectId: string };
+export type Subject = { taskId: string } | { artifactId: string };
 
 /** How much of a subject's notes the model reads. */
 const MAX_NOTES = 2000;
@@ -231,7 +231,7 @@ export class AgentService {
     private readonly _layout: EventLayoutService,
     private readonly _calendar: CalendarService,
     private readonly _tasks: TaskStore,
-    private readonly _projects: ProjectStore,
+    private readonly _artifacts: ArtifactStore,
     private readonly _conversations: ConversationStore,
   ) {}
 
@@ -328,7 +328,7 @@ export class AgentService {
 
   /**
    * What the model reads about the page the person is on: the task or the
-   * project, as `read_cards` reads it. Refused when there is no such thing.
+   * artifact, as `read_cards` reads it. Refused when there is no such thing.
    */
   private async _subject(
     user: CalendarUser,
@@ -356,24 +356,24 @@ export class AgentService {
       ].join('\n');
     }
 
-    const project = board.projectById(about.projectId);
-    if (project === undefined) {
+    const artifact = board.artifactById(about.artifactId);
+    if (artifact === undefined) {
       throw new AgentError(
         'refused',
-        'Não encontrei esse projeto.',
+        'Não encontrei essa entrega.',
         HttpStatus.NOT_FOUND,
       );
     }
     return [
-      'The person is on this project’s page:',
-      ...this._read(board, project.ref),
+      'The person is on this artifact’s page:',
+      ...this._read(board, artifact.ref),
     ].join('\n');
   }
 
   /**
-   * One card or project, read whole: its line, its notes and (a project's)
+   * One card or artifact, read whole: its line, its notes and (an artifact's)
    * every task under a ref. The page's context and `read_cards` are this
-   * same function, so what the model knows of a project is the same
+   * same function, so what the model knows of an artifact is the same
    * wherever the person asked from.
    */
   private _read(board: Board, ref: string): string[] {
@@ -384,23 +384,23 @@ export class AgentService {
         : ['  Notes:', ...kept.split('\n').map((line) => `    ${line}`)];
     };
 
-    const project = board.project(ref);
-    if (project !== undefined) {
-      const { title, deadline, doneAt } = project.project;
+    const artifact = board.artifact(ref);
+    if (artifact !== undefined) {
+      const { title, deadline, doneAt } = artifact.artifact;
       return [
-        `  ${project.ref} · project “${title}”${deadline === undefined ? '' : `, due ${deadline}`}${doneAt === undefined ? '' : ' (done)'}`,
-        ...notes(project.project.notes),
+        `  ${artifact.ref} · artifact “${title}”${deadline === undefined ? '' : `, due ${deadline}`}${doneAt === undefined ? '' : ' (done)'}`,
+        ...notes(artifact.artifact.notes),
         '  Its tasks:',
-        ...(project.tasks.length === 0
+        ...(artifact.tasks.length === 0
           ? ['    (none)']
-          : project.tasks.map(
+          : artifact.tasks.map(
               (task) => `    ${board.line(board.reach(task))}`,
             )),
       ];
     }
 
     const card = board.ref(ref);
-    if (card === undefined) return [`  No card or project ${ref}.`];
+    if (card === undefined) return [`  No card or artifact ${ref}.`];
     return [`  ${board.line(card)}`, ...notes(card.notes)];
   }
 
@@ -418,15 +418,15 @@ export class AgentService {
     trace: Trace,
     now: Date,
   ): Promise<Omit<TurnResult, 'conversationId'>> {
-    const [day, projects, projectTasks] = await Promise.all([
+    const [day, artifacts, artifactTasks] = await Promise.all([
       this._timeline.day(user, HORIZON_DAYS, now),
-      this._projects.list(user),
-      this._tasks.ofProjects(user),
+      this._artifacts.list(user),
+      this._tasks.ofArtifacts(user),
     ]);
     const board = new Board(day, this._timeline.view(day), {
       refs: this._refsOf(conversationId),
-      projects,
-      projectTasks,
+      artifacts,
+      artifactTasks,
     });
     const subject =
       about === undefined
@@ -899,13 +899,16 @@ export class AgentService {
         case 'cards':
           block = this._cardsBlock(turn, item, dropped);
           break;
-        case 'project': {
-          const project =
-            typeof item.ref === 'string' ? board.project(item.ref) : undefined;
-          if (project === undefined) {
-            dropped.push(`no project ${String(item.ref)}`);
+        case 'artifact': {
+          const artifact =
+            typeof item.ref === 'string' ? board.artifact(item.ref) : undefined;
+          if (artifact === undefined) {
+            dropped.push(`no artifact ${String(item.ref)}`);
           } else {
-            block = { kind: 'project', project: peekProject(board, project) };
+            block = {
+              kind: 'artifact',
+              artifact: peekArtifact(board, artifact),
+            };
           }
           break;
         }

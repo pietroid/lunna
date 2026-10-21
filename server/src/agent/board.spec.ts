@@ -15,7 +15,7 @@ function boardAt(now: string, zone = 'America/Sao_Paulo'): Board {
     live: new Map(),
     placed: new Map(),
     routines: new Map(),
-    projects: new Map(),
+    artifacts: new Map(),
   };
 
   return new Board(day, {

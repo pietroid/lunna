@@ -236,7 +236,7 @@ export class EventLayoutService {
         minutes: request.minutes,
         position: await this._positionAt(user, day.backlog, day.backlog.length),
         backlog: true,
-        projectId: request.projectId,
+        artifactId: request.artifactId,
       });
       trace.log('task.create', { taskId: created.id, backlog: true });
       return created.id;
@@ -260,7 +260,7 @@ export class EventLayoutService {
       minutes: request.minutes,
       position: await this._positionAt(user, queue, index),
       notBefore: anchor?.toISOString(),
-      projectId: request.projectId,
+      artifactId: request.artifactId,
     });
 
     trace.log('task.create', {
@@ -349,7 +349,7 @@ export class EventLayoutService {
 
   /**
    * [taskId], when it is a task that was finished: not on the day, but still
-   * kept, and opened from its project.
+   * kept, and opened from its artifact.
    */
   private async _doneOf(
     user: CalendarUser,

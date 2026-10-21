@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/home/home.dart';
 import 'package:lunna/menu/menu.dart';
 import 'package:lunna/notifications/notifications.dart';
-import 'package:projects/projects.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template shell_page}
@@ -17,13 +17,13 @@ import 'package:timeline/timeline.dart';
 /// rebuilt on every tap: moving between them is not navigation, it is looking
 /// somewhere else, and a list should be where it was left.
 ///
-/// The [AppFab] writes down whatever the tab in front is about. On Projetos
-/// that is a project. Anywhere else it is something on the timeline, on the
+/// The [AppFab] writes down whatever the tab in front is about. On Entregas
+/// that is a delivery. Anywhere else it is something on the timeline, on the
 /// day Tempo is showing: at the first free hour in sight on the calendar, at
 /// the end of the day at the top of the list; from Menu it brings Tempo
 /// forward first, so the new block is on screen when the sheet closes.
 ///
-/// Projetos is read again each time it comes to the front, since the hours
+/// Entregas is read again each time it comes to the front, since the hours
 /// of its tasks on the day move with the day.
 /// {@endtemplate}
 class ShellPage extends StatefulWidget {
@@ -38,8 +38,8 @@ class _ShellPageState extends State<ShellPage> {
   /// Tempo, the timeline.
   static const _timelineIndex = 0;
 
-  /// Projetos.
-  static const _projectsIndex = 1;
+  /// Entregas.
+  static const _artifactsIndex = 1;
 
   /// Menu, where the working day's hours are set.
   static const _menuIndex = 2;
@@ -55,7 +55,7 @@ class _ShellPageState extends State<ShellPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(context.read<ProjectsCubit>().load());
+    unawaited(context.read<ArtifactsCubit>().load());
   }
 
   void _onSelected(int index) {
@@ -64,18 +64,15 @@ class _ShellPageState extends State<ShellPage> {
     if (index != _timelineIndex) {
       unawaited(context.read<VoiceCubit>().cancel());
     }
-    if (index == _projectsIndex) {
-      unawaited(context.read<ProjectsCubit>().load());
+    if (index == _artifactsIndex) {
+      unawaited(context.read<ArtifactsCubit>().load());
     }
     setState(() => _index = index);
   }
 
   Future<void> _onFabPressed() async {
-    if (_index == _projectsIndex) {
-      final cubit = context.read<ProjectsCubit>();
-      final draft = await showProjectSheet(context);
-      if (draft == null) return;
-      await cubit.create(draft.title, deadline: draft.deadline);
+    if (_index == _artifactsIndex) {
+      await showArtifactSheet(context);
       return;
     }
 
@@ -94,9 +91,9 @@ class _ShellPageState extends State<ShellPage> {
       providers: [
         RepositoryProvider<TimelineAim>.value(value: _aim),
         RepositoryProvider<OpenDayHours>.value(value: _openDayHours),
-        // What the agent's answers open: a project's page, from Tempo.
+        // What the agent's answers open: an artifact's page, from Tempo.
         RepositoryProvider<AgentLinks>.value(
-          value: AgentLinks(openProject: (id) => openProject(context, id)),
+          value: AgentLinks(openArtifact: (id) => openArtifact(context, id)),
         ),
       ],
       child: RemindersListener(
@@ -105,7 +102,7 @@ class _ShellPageState extends State<ShellPage> {
           extendBody: true,
           body: IndexedStack(
             index: _index,
-            children: const [HomePage(), ProjectsPage(), MenuPage()],
+            children: const [HomePage(), ArtifactsPage(), MenuPage()],
           ),
           floatingActionButton: _index == _timelineIndex
               ? AskDock(
@@ -117,8 +114,8 @@ class _ShellPageState extends State<ShellPage> {
                   ),
                 )
               : AppFab(
-                  tooltip: _index == _projectsIndex
-                      ? l10n.projectsNew
+                  tooltip: _index == _artifactsIndex
+                      ? l10n.artifactsNew
                       : l10n.shellWriteDown,
                   onPressed: () => unawaited(_onFabPressed()),
                 ),
@@ -140,8 +137,8 @@ class _ShellPageState extends State<ShellPage> {
                 label: l10n.shellTimelineTab,
               ),
               AppBottomBarItem(
-                iconData: AppIcons.things,
-                label: l10n.shellProjectsTab,
+                iconData: AppIcons.artifacts,
+                label: l10n.shellArtifactsTab,
               ),
               AppBottomBarItem(
                 iconData: AppIcons.menu,

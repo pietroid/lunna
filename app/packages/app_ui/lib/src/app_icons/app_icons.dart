@@ -86,10 +86,7 @@ class AppIcons {
   /// Time, the day as it happened and as it is still going to happen.
   static const time = AppIconData.phosphor(PhosphorIconsRegular.clock);
 
-  /// Things, what outlives a single day.
-  static const things = AppIconData.phosphor(PhosphorIconsRegular.folders);
-
-  /// Notes, written on a card or a project: what the agent adds to them.
+  /// Notes, written on a card or an artifact: what the agent adds to them.
   static const note = AppIconData.phosphor(PhosphorIconsRegular.notePencil);
 
   /// Opens what is folded under it, such as the steps behind an answer.

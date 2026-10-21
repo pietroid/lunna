@@ -1,7 +1,7 @@
 import 'package:app_ui/app_ui.dart';
 
 /// {@template app_tag}
-/// A quiet label of what something belongs to, such as a task's project:
+/// A quiet label of what something belongs to, such as a task's artifact:
 /// a small icon and a name on a borderless fill.
 ///
 /// It names, it does not ask: a tag with [onTap] opens what it names.
@@ -10,7 +10,7 @@ class AppTag extends StatelessWidget {
   /// {@macro app_tag}
   const AppTag({
     required this.text,
-    this.iconData = AppIcons.things,
+    this.iconData = AppIcons.artifacts,
     this.fill = AppColors.fillStrong,
     this.ink = AppColors.ink2,
     this.onTap,
@@ -20,7 +20,7 @@ class AppTag extends StatelessWidget {
   /// The name of what it belongs to.
   final String text;
 
-  /// What kind of thing that is; a project by default.
+  /// What kind of thing that is; an artifact by default.
   final AppIconData iconData;
 
   /// The fill behind it.

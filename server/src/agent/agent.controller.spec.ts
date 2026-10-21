@@ -17,7 +17,10 @@ import { TasksController } from '../events/tasks.controller';
 import { PauseTickerService } from '../events/pause-ticker.service';
 import { TimelineController } from '../events/timeline.controller';
 import { TimelineService } from '../events/timeline.service';
-import { MemoryProjectStore, ProjectStore } from '../projects/project.store';
+import {
+  MemoryArtifactStore,
+  ArtifactStore,
+} from '../artifacts/artifact.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import { AgentController } from './agent.controller';
@@ -136,11 +139,11 @@ function drawn(
   });
 }
 
-/** The ref of the project titled [title], in what the model read. */
-function projectRef(messages: ChatMessage[], title: string): string {
+/** The ref of the artifact titled [title], in what the model read. */
+function artifactRef(messages: ChatMessage[], title: string): string {
   const read = messages.map((it) => it.content).join('\n');
   const found = new RegExp(`\\b(p\\d+) · ${title} ·`).exec(read);
-  if (found === null) throw new Error(`No project "${title}"`);
+  if (found === null) throw new Error(`No artifact "${title}"`);
   return found[1];
 }
 
@@ -189,7 +192,7 @@ describe('the agent', () => {
         { provide: OpenRouterClient, useValue: model },
         { provide: CalendarStore, useClass: MemoryCalendarStore },
         { provide: TaskStore, useClass: MemoryTaskStore },
-        { provide: ProjectStore, useClass: MemoryProjectStore },
+        { provide: ArtifactStore, useClass: MemoryArtifactStore },
         { provide: ConversationStore, useClass: MemoryConversationStore },
       ],
     })
@@ -711,34 +714,34 @@ describe('the agent', () => {
     expect(context).toMatch(/Request: Quanto tempo isso leva\?$/);
   });
 
-  it('tells the model which project the person is on, with its tasks', async () => {
-    const projects = app.get(ProjectStore);
+  it('tells the model which artifact the person is on, with its tasks', async () => {
+    const artifacts = app.get(ArtifactStore);
     const tasks = app.get(TaskStore);
-    const project = await projects.insert(USER, {
+    const artifact = await artifacts.insert(USER, {
       title: 'Mudança',
       deadline: '2026-04-01',
     });
-    await projects.update(USER, { ...project, notes: 'Caixas no sábado.' });
+    await artifacts.update(USER, { ...artifact, notes: 'Caixas no sábado.' });
     const id = ((await task('Orçar frete', 30, true)).body as Timeline)
       .backlog[0].id;
     await tasks.update(USER, {
       ...(await tasks.get(USER, id))!,
-      projectId: project.id,
+      artifactId: artifact.id,
     });
     model.steps = [say('Certo.')];
 
     await post('/agent/turn', {
       messages: [{ role: 'user', text: 'O que falta?' }],
-      about: { projectId: project.id },
+      about: { artifactId: artifact.id },
     });
 
     const context = model.seen[0][model.seen[0].length - 1].content;
     expect(context).toContain(
-      'The person is on this project’s page:\n  p1 · project “Mudança”, due 2026-04-01\n  Notes:\n    Caixas no sábado.\n  Its tasks:\n    b1 · Orçar frete · backlog task · 30 min · project Mudança',
+      'The person is on this artifact’s page:\n  p1 · artifact “Mudança”, due 2026-04-01\n  Notes:\n    Caixas no sábado.\n  Its tasks:\n    b1 · Orçar frete · backlog task · 30 min · artifact Mudança',
     );
     // From anywhere, the board's index names it.
     expect(context).toContain(
-      'Projects (read_cards with a project ref reads its notes and every task):\n  p1 · Mudança · due 01/04 · 1 open tasks, 0 with an hour',
+      'Artifacts (read_cards with an artifact ref reads its notes and every task):\n  p1 · Mudança · due 01/04 · 1 open tasks, 0 with an hour',
     );
   });
 
@@ -755,7 +758,7 @@ describe('the agent', () => {
 
     for (const about of [
       { taskId: 'nope' },
-      { taskId: '00000000-0000-4000-8000-000000000000', projectId: 'x' },
+      { taskId: '00000000-0000-4000-8000-000000000000', artifactId: 'x' },
       'tarefa',
     ]) {
       const bad = await post('/agent/turn', {
@@ -1036,10 +1039,10 @@ describe('the agent', () => {
       ).toBe(at('15:30'));
     });
 
-    it('draws a project from anywhere: its counts, and what comes next by hour first', async () => {
-      const projects = app.get(ProjectStore);
+    it('draws an artifact from anywhere: its counts, and what comes next by hour first', async () => {
+      const artifacts = app.get(ArtifactStore);
       const tasks = app.get(TaskStore);
-      const project = await projects.insert(USER, {
+      const artifact = await artifacts.insert(USER, {
         title: 'Tese',
         deadline: '2026-04-30',
       });
@@ -1050,7 +1053,7 @@ describe('the agent', () => {
         )!.id;
         await tasks.update(USER, {
           ...(await tasks.get(USER, id))!,
-          projectId: project.id,
+          artifactId: artifact.id,
           ...(done ? { doneAt: NOW.toISOString(), backlog: false } : {}),
         });
       };
@@ -1061,16 +1064,16 @@ describe('the agent', () => {
       model.steps = [
         (messages) =>
           call('answer', {
-            blocks: [{ type: 'project', ref: projectRef(messages, 'Tese') }],
+            blocks: [{ type: 'artifact', ref: artifactRef(messages, 'Tese') }],
           }),
       ];
 
       const reply = (await ask('Como está a Tese?')).body as AgentReply;
 
       const [peek] = drawn(reply);
-      expect(peek.component).toBe('ProjectPeek');
+      expect(peek.component).toBe('ArtifactPeek');
       expect(peek.data).toMatchObject({
-        id: project.id,
+        id: artifact.id,
         title: 'Tese',
         deadline: '2026-04-30',
         done: 1,
@@ -1086,7 +1089,7 @@ describe('the agent', () => {
         ['Bibliografia', false],
       ]);
       // No caption: the reply in words is written by the server.
-      expect(reply.reply).toBe('Projeto Tese: 1 de 4 feitas.');
+      expect(reply.reply).toBe('Entrega Tese: 1 de 4 feitas.');
     });
 
     it('sends an answer with nothing left to draw back to the model', async () => {
@@ -1158,28 +1161,28 @@ describe('the agent', () => {
       expect(context).toContain('e2 · Dentista');
     });
 
-    it('reaches a task off the board through its project, and moves it like any other', async () => {
-      const projects = app.get(ProjectStore);
+    it('reaches a task off the board through its artifact, and moves it like any other', async () => {
+      const artifacts = app.get(ArtifactStore);
       const tasks = app.get(TaskStore);
-      const project = await projects.insert(USER, { title: 'Mudança' });
+      const artifact = await artifacts.insert(USER, { title: 'Mudança' });
       for (let i = 1; i <= 30; i++) await task(`Coisa ${i}`, 15, true);
       const body = (await task('Orçar frete', 30, true)).body as Timeline;
       const id = body.backlog.find((it) => it.title === 'Orçar frete')!.id;
       await tasks.update(USER, {
         ...(await tasks.get(USER, id))!,
-        projectId: project.id,
+        artifactId: artifact.id,
       });
       model.steps = [
         (messages) => {
           // Past the backlog's first 30, it is not on the board.
           expect(() => refOf(messages, 'Orçar frete')).toThrow();
           return call('read_cards', {
-            refs: [projectRef(messages, 'Mudança')],
+            refs: [artifactRef(messages, 'Mudança')],
           });
         },
         (messages) => {
           expect(lastTool(messages).cards).toContain(
-            'b31 · Orçar frete · backlog task · 30 min · project Mudança',
+            'b31 · Orçar frete · backlog task · 30 min · artifact Mudança',
           );
           return propose({
             data: { what: 'orçar frete', when: 'amanhã às 9' },

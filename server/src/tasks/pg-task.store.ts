@@ -44,14 +44,14 @@ export class PgTaskStore extends TaskStore {
     return rows.map(toTask);
   }
 
-  async ofProjects(user: CalendarUser): Promise<Task[]> {
+  async ofArtifacts(user: CalendarUser): Promise<Task[]> {
     const rows = await this._db
       .select()
       .from(task)
       .where(
         and(
           eq(task.userId, user.id),
-          isNotNull(task.projectId),
+          isNotNull(task.artifactId),
           eq(task.cancelled, false),
         ),
       )
@@ -161,7 +161,7 @@ export class PgTaskStore extends TaskStore {
         position: input.position,
         notBefore: dateOf(input.notBefore),
         backlog: input.backlog ?? false,
-        projectId: input.projectId ?? null,
+        artifactId: input.artifactId ?? null,
       })
       .returning();
 
@@ -180,7 +180,7 @@ export class PgTaskStore extends TaskStore {
         backlog: next.backlog,
         doneAt: dateOf(next.doneAt),
         cancelled: next.cancelled === true,
-        projectId: next.projectId ?? null,
+        artifactId: next.artifactId ?? null,
       })
       .where(and(eq(task.id, next.id), eq(task.userId, user.id)))
       .returning();
@@ -216,7 +216,7 @@ function toTask(row: TaskRow): Task {
       ? {}
       : { occurrence: row.occurrence.toISOString() }),
     ...(row.cancelled ? { cancelled: true } : {}),
-    ...(row.projectId === null ? {} : { projectId: row.projectId }),
+    ...(row.artifactId === null ? {} : { artifactId: row.artifactId }),
   };
 }
 

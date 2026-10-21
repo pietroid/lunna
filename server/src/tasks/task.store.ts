@@ -19,10 +19,10 @@ export abstract class TaskStore {
   abstract pending(user: CalendarUser): Promise<Task[]>;
 
   /**
-   * Every task that belongs to a project, done or still to do, in
+   * Every task that belongs to an artifact, done or still to do, in
    * position order. A day of a routine that was taken off is not one.
    */
-  abstract ofProjects(user: CalendarUser): Promise<Task[]>;
+  abstract ofArtifacts(user: CalendarUser): Promise<Task[]>;
 
   /**
    * Writes down each day of a flexible routine that is not there yet, as a
@@ -83,13 +83,13 @@ export class MemoryTaskStore extends TaskStore {
     );
   }
 
-  ofProjects(user: CalendarUser): Promise<Task[]> {
+  ofArtifacts(user: CalendarUser): Promise<Task[]> {
     return Promise.resolve(
       [...this._tasks.values()]
         .filter(
           (it) =>
             it.userId === user.id &&
-            it.projectId !== undefined &&
+            it.artifactId !== undefined &&
             it.cancelled !== true,
         )
         .sort((a, b) => a.position - b.position)
@@ -198,7 +198,7 @@ export class MemoryTaskStore extends TaskStore {
       position: task.position,
       backlog: task.backlog ?? false,
       ...(task.notBefore === undefined ? {} : { notBefore: task.notBefore }),
-      ...(task.projectId === undefined ? {} : { projectId: task.projectId }),
+      ...(task.artifactId === undefined ? {} : { artifactId: task.artifactId }),
     };
     this._tasks.set(stored.id, stored);
 
@@ -235,7 +235,7 @@ function toTask(stored: Task & { userId?: string }): Task {
     'doneAt',
     'routineId',
     'occurrence',
-    'projectId',
+    'artifactId',
   ] as const) {
     if (task[key] === undefined) delete task[key];
   }

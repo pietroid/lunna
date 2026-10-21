@@ -16,7 +16,7 @@ import 'package:timeline/src/models/models.dart';
 Future<void> writeDownOnTimeline(
   BuildContext context, {
   Placement placement = const Placement.backlog(),
-  String? projectId,
+  String? artifactId,
 }) async {
   final bloc = context.read<TimelineBloc>();
   final l10n = context.l10n;
@@ -38,8 +38,8 @@ Future<void> writeDownOnTimeline(
         : l10n.promptToQueue,
     initialStart: at,
     initialDuration: minutes == null ? null : Duration(minutes: minutes),
-    // A project holds tasks; a fixed block is the calendar's alone.
-    fixable: projectId == null,
+    // An artifact holds tasks; a fixed block is the calendar's alone.
+    fixable: artifactId == null,
   );
   if (result == null) return;
 
@@ -50,7 +50,7 @@ Future<void> writeDownOnTimeline(
       fixed: result.fixed,
       startTime: result.startTime,
       placement: placement,
-      projectId: projectId,
+      artifactId: artifactId,
     ),
   );
 }

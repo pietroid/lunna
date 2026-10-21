@@ -38,7 +38,7 @@ class AskDock extends StatefulWidget {
   /// The day Tempo is showing, which the conversation is about.
   final DateTime? Function()? day;
 
-  /// The page the dock is on, when not Tempo: the task or the project the
+  /// The page the dock is on, when not Tempo: the task or the artifact the
   /// conversation is about.
   final AgentSubject? about;
 

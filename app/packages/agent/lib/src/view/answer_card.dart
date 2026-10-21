@@ -5,7 +5,7 @@ import 'package:app_ui/app_ui.dart';
 /// heading in the quiet ink with what it counts on the right, and rows
 /// parted by a seam of the page's own colour.
 ///
-/// A plan, a slice of the day, some cards and a project all sit in it, so a
+/// A plan, a slice of the day, some cards and an artifact all sit in it, so a
 /// surface reads as one thing however the model stacked it.
 /// {@endtemplate}
 class AnswerCard extends StatelessWidget {

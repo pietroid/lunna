@@ -7,7 +7,7 @@ import 'package:l10n/l10n.dart';
 /// One delivery in the queue: its name and what it is worth, then its kind,
 /// its time and its day, and a bar once some of it has been worked.
 ///
-/// The same borderless fill as a project's row was, so the list reads as
+/// The same borderless fill as an artifact's row was, so the list reads as
 /// the app's other lists do.
 /// {@endtemplate}
 class ArtifactRow extends StatelessWidget {

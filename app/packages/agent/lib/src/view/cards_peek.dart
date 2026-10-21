@@ -8,7 +8,7 @@ import 'package:timeline/timeline.dart' show durationLabel, hhmm;
 /// {@template cards_peek}
 /// Some cards, read only, under the heading the agent gave them: each one's
 /// name, then where it is (its hours, or Depois eu priorizo), its length and
-/// its project, as Lista says them. A card asked about for its notes shows
+/// its artifact, as Lista says them. A card asked about for its notes shows
 /// them under it.
 /// {@endtemplate}
 class CardsPeek extends StatelessWidget {
@@ -34,7 +34,7 @@ class CardsPeek extends StatelessWidget {
 }
 
 /// {@template peek_card_row}
-/// One card of a [CardsPeek], or of a project's next tasks.
+/// One card of a [CardsPeek], or of an artifact's next tasks.
 /// {@endtemplate}
 class PeekCardRow extends StatelessWidget {
   /// {@macro peek_card_row}
@@ -71,7 +71,7 @@ class PeekCardRow extends StatelessWidget {
         text: [
           where,
           if (at == null) durationLabel(l10n, card.minutes),
-          ?card.project,
+          ?card.artifact,
         ].join(' · '),
       ),
       below: notes == null

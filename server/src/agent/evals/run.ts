@@ -25,7 +25,7 @@ import { CalendarUser } from '../../calendar/calendar.types';
 import { Trace } from '../../common/trace';
 import { EventLayoutService } from '../../events/event-layout.service';
 import { TimelineService } from '../../events/timeline.service';
-import { MemoryProjectStore } from '../../projects/project.store';
+import { MemoryArtifactStore } from '../../artifacts/artifact.store';
 import { MemoryTaskStore } from '../../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../../time/work-hours';
 import { instantOf, isoIn } from '../../time/zone';
@@ -145,7 +145,7 @@ async function runCase(
   });
   const client = new RecordingClient(config);
   const tasks = new MemoryTaskStore();
-  const projects = new MemoryProjectStore();
+  const artifacts = new MemoryArtifactStore();
   const calendar = new CalendarService(new MemoryCalendarStore(), config);
   const timeline = new TimelineService(calendar, tasks);
   const layout = new EventLayoutService(timeline, calendar, tasks);
@@ -155,7 +155,7 @@ async function runCase(
     layout,
     calendar,
     tasks,
-    projects,
+    artifacts,
     new MemoryConversationStore(),
   );
   const trace = Trace.start(USER.id, 'eval');
@@ -168,7 +168,7 @@ async function runCase(
           title,
           minutes,
           backlog: opts.backlog === true,
-          ...(opts.project === undefined ? {} : { projectId: opts.project }),
+          ...(opts.artifact === undefined ? {} : { artifactId: opts.artifact }),
           ...(opts.at === undefined
             ? {}
             : { notBefore: instant(opts.at).toISOString() }),
@@ -177,9 +177,9 @@ async function runCase(
         now,
       );
     },
-    async project(title, deadline) {
+    async artifact(title, deadline) {
       return (
-        await projects.insert(USER, {
+        await artifacts.insert(USER, {
           title,
           ...(deadline === undefined ? {} : { deadline }),
         })

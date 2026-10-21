@@ -198,7 +198,7 @@ class _TitleState extends State<_Title> {
   }
 }
 
-/// When the block is, how long it takes, which project it is of, and the
+/// When the block is, how long it takes, which artifact it is of, and the
 /// buttons.
 ///
 /// Each a labelled row, the label on the left in ink3, so the page reads as
@@ -221,7 +221,7 @@ class _Summary extends StatelessWidget {
     final controls = card.isInteractive && !done ? _controls(context) : null;
     final editable = card.isInteractive && !done;
     final started = !card.startTime.isAfter(now);
-    final project = card.projectTitle;
+    final artifact = card.artifactTitle;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -289,15 +289,15 @@ class _Summary extends StatelessWidget {
           ),
           if (card.isTask)
             _Property(
-              label: l10n.eventProjectLabel,
-              child: project == null
+              label: l10n.eventArtifactLabel,
+              child: artifact == null
                   ? Text(
-                      l10n.eventNoProject,
+                      l10n.eventNoArtifact,
                       style: AppTypography.labelStrong.copyWith(
                         color: AppColors.ink3,
                       ),
                     )
-                  : AppTag(text: project),
+                  : AppTag(text: artifact),
             ),
           if (running && !card.isBacklog) ...[
             const SizedBox(height: AppSpacing.s3),
