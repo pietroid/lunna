@@ -1,6 +1,6 @@
 # A console for the agent queue, with no server to keep
 
-2026-10-21 · RFC · proposed (issue #14; round 2: Hermes and OpenClaw; deep-research pass not run)
+2026-10-21 · RFC · proposed (issue #14; round 2: Hermes and OpenClaw; round 3: Multica; deep-research pass not run)
 
 ## In one minute
 
@@ -21,10 +21,13 @@ third-party: every tool on offer replaces a part that already works.**
 - **Not needed:** a backend, or Vibe Kanban, Happy, Hermes, OpenClaw or
   GitHub Actions runners (see [the table](./data/options.md)). Hermes and
   OpenClaw would put a second agent, on a second bill, in front of
-  `claude -p`, which is what the queue already runs.
+  `claude -p`, which is what the queue already runs. **Multica** is the
+  closest fit (it runs `claude -p` on your login, no second bill), but it
+  moves the record off GitHub and is pre-1.0: [its section](#multica-the-queue-as-a-product).
 - **You decide:** a budget ceiling (**stop new runs at 85% of the week**,
-  recommended), and whether to also use Remote Control for ad-hoc sessions
-  (**yes, by hand**, recommended).
+  recommended), whether to also use Remote Control for ad-hoc sessions
+  (**yes, by hand**, recommended), and Multica (**not now, re-check at
+  1.0**, recommended).
 
 ## Ideas to keep
 
@@ -49,13 +52,20 @@ third-party: every tool on offer replaces a part that already works.**
    sunsetting" ([README](https://raw.githubusercontent.com/BloopAI/vibe-kanban/HEAD/README.md)).
    *For us:* the queue is ~680 lines we understand. The console is a
    static page over GitHub's API, so it has no server to patch. *New*
+   *Round 3, the subtler case:* Multica rents you gates too (workflow
+   steps that hand an issue to you), but its GitHub link "never pushes
+   commits, comments, or status checks" [20]: the screens come with **a
+   record of their own**, and the line comments you review on stop being
+   where the work lives.
 5. **"The harness that holds the login holds the bill."**
    Claude Code, [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance):
    subscription sign-in is "designed to support ordinary use of Claude Code
    and other native Anthropic applications"; other products "should use API
    key authentication". *For us:* any manager that is not `claude` itself
    either shells out to `claude -p` (as the queue does) or pays per token.
-   Hermes's own brain would be the second case. *New*
+   Hermes's own brain would be the second case; Multica is the first
+   (it ships no model and runs `claude -p` with the machine's login [19]),
+   which is why it is the one worth a closer look. *New*
 4. **"Approval belongs on the action"**, a level deeper. See
    [the concept](../concepts.md#approval-on-the-action). GitHub's docs say
    "Pull request authors cannot approve their own pull requests"
@@ -161,6 +171,8 @@ own edit history, and it needs no new scope.
 - GitHub's Agent HQ bills through Copilot, not your subscription.
 - Hermes and OpenClaw are personal-agent gateways (chat apps in, an agent
   of their own out). See [below](#hermes-openclaw-and-other-agent-gateways).
+- Multica is an issue board whose assignees are agent CLIs, `claude`
+  among them. See [below](#multica-the-queue-as-a-product).
 
 > **Q:** havent you considered hermes or similar options?
 
@@ -172,6 +184,23 @@ own edit history, and it needs no new scope.
 > a paid dispatcher in front, no gates, and a gateway to patch. The phone
 > chat it adds, Remote Control gives for free. Recommendation stands;
 > Hermes is decision 6.
+
+> **Q:** and multica it seems it allows for claude code
+
+> **A:** It does, and better than Hermes: Multica ships no model, and its
+> daemon on the Mac runs the same `claude -p` the queue runs
+> (`--output-format stream-json --permission-mode bypassPermissions`,
+> read in its `server/pkg/agent/claude.go`), on the Mac's own Claude
+> login, so no second bill. Concretely, #14 would be a Multica issue
+> assigned to a "Claude" agent; it comments as it goes and moves the card
+> to Review, and a workflow step hands it to you. What it costs: the
+> issue, its comments and the run log live in Multica (its cloud, or a
+> Docker + Postgres stack you keep), not on GitHub; it only *reads* PRs;
+> the iPhone app is built from source and re-signed every 7 days, with no
+> Android; and it is v0.6.5 with 1,880 open issues and PRs. So it is the queue as
+> someone else's product, not a screen over yours. Recommendation stands,
+> with a re-check at 1.0: [its section](#multica-the-queue-as-a-product),
+> decision 7.
 
 ## Decisions for you
 
@@ -220,6 +249,16 @@ own edit history, and it needs no new scope.
      per-token bill for the dispatcher, a gateway process to keep updated,
      and a second record of work beside GitHub.
 
+7. **Multica in place of the queue.**
+   - (a) **Not now; re-check at 1.0 or when the iOS app is in the App
+     Store** *(recommended)*: today it trades ~680 lines you own for a
+     server, a second record and a weekly-moving pre-1.0 release.
+   - (b) A one-week trial on `research` issues only: Multica Cloud, the
+     daemon on the Mac under a dedicated macOS user (its docs say runs
+     have the daemon user's full permissions [21]), the queue paused for
+     those issues. Cost: an evening to set up, and two places to look
+     during the week.
+
 ## Decided unattended
 
 - **Topic and scope.** The question was framed as "keep Claude Code, add
@@ -235,6 +274,10 @@ own edit history, and it needs no new scope.
   left out, since they are desktop screens for live sessions, the niche
   Remote Control already fills. Neither gateway was installed. No Phase 4
   pass: the note did not ask for one.
+- **Round 3 (Multica).** Read from its repo on 2026-10-21 (README, docs,
+  `server/pkg/agent/claude.go`, LICENSE, GitHub API for stars and
+  releases), not installed. Its pricing page did not load, so the Cloud's
+  price is unknown. No Phase 4 pass: the reply did not ask for one.
 
 ## Deeper
 
@@ -341,6 +384,40 @@ What we read:
    Remote Control and the ntfy push already cover; nothing here replaces
    the gates.
 
+### Multica: the queue as a product
+
+Multica (multica-ai, ~53k stars, created January 2026, v0.6.5 on
+2026-10-21) is the first option on the table built the way the queue is:
+issues in, an agent CLI on your own machine out, results back on the
+issue [19]. It is a Go server and Postgres (Multica Cloud, or self-hosted
+with Docker Compose) plus a **daemon** on each computer that claims runs
+and spawns the CLIs it finds on the PATH: 26 of them, Claude Code
+included [22].
+
+| Part | The queue today | Multica |
+|---|---|---|
+| Record of the work | GitHub issues, PRs, line comments | Multica issues and comments, in its database; GitHub PRs are linked by issue id and only read [20] |
+| Worker | `claude -p` on the Mac | `claude -p --output-format stream-json --permission-mode bypassPermissions` on the Mac, on its login, with `--resume` per issue |
+| Gates | design / RFC / review, each waits for "approve" on the PR | workflow columns that "hand to agent" or "hand to member"; the agent moves the card itself [23] |
+| Phone | GitHub app, review page, ntfy push | web; iOS built from source, re-signed every 7 days; no Android [24] |
+| Budget | `/usage` session and week %, per run | token counts per run (it diffs Claude's usage); no plan-window gate seen |
+| Upkeep | ~680 lines you own | a server to update (or their cloud), a release every few days |
+
+1. **The bill.** No model of its own, so no second bill: the answer the
+   reply guessed right. *For us:* the one option that passes idea 5.
+2. **The record.** "The GitHub integration only reads the repositories…;
+   it never pushes commits, comments, or status checks" [20]. *For us:*
+   reviewing a README on the PR, line by line, which is how this RFC was
+   argued, would move to Multica's comments, and the PR becomes an
+   output linked to a card.
+3. **The boundary.** "A run executes with the full permissions of the
+   operating-system user running the daemon"; Multica recommends a
+   dedicated user, a container or a VM [21]. *For us:* the queue has the
+   same exposure today; a trial is the moment to fix both.
+4. **The license.** Apache 2.0 plus conditions: no hosted service for
+   third parties without a commercial license; internal use is free [25].
+   *For us:* fine for one person, and not "open source" in the OSI sense.
+
 ### Rollout
 
 | Phase | Ships | Fixes | Size |
@@ -373,6 +450,14 @@ What we read:
 17. Claude Code, *Legal and compliance*. https://code.claude.com/docs/en/legal-and-compliance: subscription OAuth for Claude Code and native apps; API keys for other products.
 18. runZero, *OpenClaw CVE-2026-25253*. https://www.runzero.com/blog/openclaw/: one-click gateway token theft, CVSS 8.8, fixed in 2026.1.29 (secondary; exposure counts vary by source).
 
+19. multica-ai/multica, README and `server/pkg/agent/claude.go`. https://github.com/multica-ai/multica: "Multica does not ship a model"; daemon spawns the installed CLIs; Claude Code run as `claude -p` in stream-json, `bypassPermissions`.
+20. Multica docs, *GitHub integration*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/github-integration.mdx: PRs auto-linked by issue id; "never pushes commits, comments, or status checks".
+21. Multica docs, *Security model*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/security-model.mdx: runs have the daemon user's full permissions; use a dedicated user, container or VM.
+22. Multica docs, *Daemon and runtimes* and *AI coding tools comparison*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/providers.mdx: 26 CLIs; the tool's own login stays on the computer.
+23. Multica docs, *Workflows*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/workflows.mdx: hand to agent / member per column; "A run finishing does not move the issue by itself".
+24. Multica docs, *Mobile app (iOS)*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx: not on the App Store; free signing lasts 7 days; no Android.
+25. Multica LICENSE. https://github.com/multica-ai/multica/blob/main/LICENSE: Apache 2.0 plus conditions on hosted services and branding; internal use needs no commercial license.
+
 Measured here: [`data/latency.md`](./data/latency.md) ([`code/latency.mjs`](./code/latency.mjs));
 the options compared: [`data/options.md`](./data/options.md).
 
@@ -385,6 +470,8 @@ the options compared: [`data/options.md`](./data/options.md).
 - Hermes's star count and release pace (the README showed ~256k stars on
   2026-10-21; secondary sources disagree), and whether a third-party
   `claude -p` provider plugin for Hermes is maintained.
+- Multica Cloud's price and limits (the pricing page answered 404), and
+  whether its images run on the Pi (ARM64) for a self-host.
 
 A Phase 4 pass would check these, and re-read the options table against
 current releases.

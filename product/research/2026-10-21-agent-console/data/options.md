@@ -21,3 +21,9 @@ Added in round 2 (the note "havent you considered hermes or similar options?"):
 |---|---|---|---|---|---|---|
 | Hermes Agent (NousResearch, MIT) | community, Nous Research | the Mac or a VPS; its `claude-code` skill runs `claude -p` | the worker yes (it is `claude`); its own dispatcher model **no**, per-token | no; command approval only | chat replies, cron; no budget | later (decision 6); a paid dispatcher in front of what the queue runs |
 | OpenClaw (MIT) | community | the Mac or a VPS, one gateway; reuses the `claude` CLI login on its host | same as Hermes; docs advise an API key for automation | no | browser dashboard of sessions; no budget | rejected: same shape, plus a gateway with a 2026 one-click token-theft CVE to keep patched |
+
+Added in round 3 (the reply "and multica it seems it allows for claude code"):
+
+| Option | Who maintains it | Runs Claude where | Uses the subscription | Gates and PRs | Queue, budget view | Fit |
+|---|---|---|---|---|---|---|
+| Multica (multica-ai; Apache 2.0 + conditions; ~53k stars, v0.6.5) | Index Labs and community; releases every few days, 1,880 open issues and PRs | the Mac, a daemon spawning `claude -p` (stream-json, `bypassPermissions`) | yes: no model of its own, the CLI's own login | its own issues, board and workflow handoffs; GitHub PRs linked and read, never written | board, run list, token counts; no plan-window budget | closest fit; not now (decision 7): moves the record off GitHub, pre-1.0, iOS from source only |

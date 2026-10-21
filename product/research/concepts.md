@@ -136,14 +136,14 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** the failure case, Vibe Kanban's [README](https://raw.githubusercontent.com/BloopAI/vibe-kanban/HEAD/README.md): "Vibe Kanban is sunsetting".
 - **Here:** gates, budget and run rules stay in `.tool/queue`; the screens are the GitHub app, a static Pages page and the Claude app.
-- **Met in:** agent-console idea 3; round 2 added a second failure case, OpenClaw's one-click gateway token theft ([CVE-2026-25253](https://www.runzero.com/blog/openclaw/)), fixed only on installs someone updated by hand.
+- **Met in:** agent-console idea 3; round 2 added a second failure case, OpenClaw's one-click gateway token theft ([CVE-2026-25253](https://www.runzero.com/blog/openclaw/)), fixed only on installs someone updated by hand. Round 3 added the subtler case: Multica rents gates as well as screens, but with a record of its own (its GitHub link only reads), so adopting it moves where the work lives.
 
 ### The harness that holds the login holds the bill
 > Only Claude Code itself runs on the subscription; any other manager pays per token.
 
 - **Read:** Claude Code, [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance): subscription OAuth supports "ordinary use of Claude Code and other native Anthropic applications"; other products use API keys.
 - **Here:** the queue shells out to the unmodified `claude -p`, so it stays on the plan; Hermes or OpenClaw would add their own dispatcher model on a per-token key in front of the same command.
-- **Met in:** agent-console idea 5.
+- **Met in:** agent-console idea 5; round 3 met the positive case, Multica, which ships no model and runs `claude -p` on the machine's own login.
 
 ## Observability: seeing what happened
 
