@@ -8,7 +8,8 @@ idea already here one line and a link, and goes one level deeper on it
 RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-queue](./2026-10-17-agent-queue/README.md) ·
 [agent-ui](./2026-10-17-agent-ui/README.md) ·
-[posthog](./2026-10-21-posthog/README.md)
+[posthog](./2026-10-21-posthog/README.md) ·
+[agent-console](./2026-10-21-agent-console/README.md)
 
 ## Tools: what the model is given
 
@@ -91,7 +92,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Microsoft Agent Framework's `approval_mode` ([Chaganti](https://ravichaganti.com/blog/human-in-the-loop-with-function-approvals-in-microsoft-agent-framework/)).
 - **Here:** every change is a plan and Aplicar is the yes; the server, not the prompt, says what needs it.
-- **Met in:** agent-ui §4.8.
+- **Met in:** agent-ui §4.8; agent-console idea 4 (GitHub forbids author approval, so the queue's "approve" is a regex over a comment, and a button that posts the exact word makes it one action).
 
 ### Guardrails are not redress
 > Preventing harm and undoing it are different properties; build the undo.
@@ -115,6 +116,27 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents).
 - **Here:** each queue phase is a fresh `claude -p` that reads the topic folder.
 - **Met in:** agent-queue §literature 4.
+
+### Acknowledge in seconds
+> Acknowledge in seconds, even when the work takes an hour.
+
+- **Read:** Nielsen, [Response times: the 3 important limits](https://www.nngroup.com/articles/response-times-3-important-limits/): 10 s holds attention; past it, say when it will be done.
+- **Here:** the queue read comments only between runs (median 69 s, max 54 min); a listener apart from the worker puts 👀 and the status up within 10 s.
+- **Met in:** agent-console idea 1.
+
+### A 304 is free
+> Poll often, but poll conditionally; prefer being pushed.
+
+- **Read:** GitHub, [REST API best practices](https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api): webhooks first; a conditional request answered `304` doesn't count against the rate limit.
+- **Here:** three repo-wide `since=` calls with `If-None-Match` every 10 s replace a per-issue sweep every 60 s.
+- **Met in:** agent-console idea 2.
+
+### Own the gates, rent the screens
+> Write the part only you have; let others maintain the screens.
+
+- **Read:** the failure case, Vibe Kanban's [README](https://raw.githubusercontent.com/BloopAI/vibe-kanban/HEAD/README.md): "Vibe Kanban is sunsetting".
+- **Here:** gates, budget and run rules stay in `.tool/queue`; the screens are the GitHub app, a static Pages page and the Claude app.
+- **Met in:** agent-console idea 3.
 
 ## Observability: seeing what happened
 
