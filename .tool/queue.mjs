@@ -42,6 +42,11 @@ const MARK = '<!-- lunna-queue -->';
 const KINDS = ['create', 'research', 'improve'];
 const STATUS = { working: 'agent:working', waiting: 'agent:waiting', failed: 'agent:failed', done: 'agent:done' };
 const APPROVE = /^(approved?|aprovad[oa]|aprovo|aprova|lgtm|ok(ay)?|go|ship( it)?|build( it)?|merge( it)?|sim|pode|👍|✅|🚀)[\s.!]*$/iu;
+// A short reply that says go and asks for nothing else ("Great. Build it",
+// "ok, pode seguir") approves too; one with a but, a change or a question is feedback.
+const GO = /\b(approved?|aprovad[oa]|aprovo|lgtm|ship it|build it|merge it|go ahead|pode seguir|pode mandar|manda ver)\b|👍|✅|🚀/iu;
+const BUT = /\b(but|mas|except|exceto|change|muda|mude|troca|troque|remove|tira|tire|fix|however|porém|só que|instead|em vez)\b|\?/iu;
+const isApproval = (text) => { const t = text.trim(); return APPROVE.test(t) || (t.split(/\s+/).length <= 8 && GO.test(t) && !BUT.test(t)); };
 const RETRY = /^(retry|again|de novo|tenta de novo)[\s.!]*$/iu;
 const RUN_LIMIT_MS = 4 * 3600e3;
 
@@ -279,7 +284,7 @@ export function feedback(said) {
 
 // "approve" alone in each, and no comment on a line: a line comment is
 // always something to work on.
-export const approves = (said) => said.every((c) => c.kind !== 'line' && APPROVE.test(c.body));
+export const approves = (said) => said.every((c) => c.kind !== 'line' && isApproval(c.body));
 
 const raw = (cfg, sha, path) => `https://raw.githubusercontent.com/${cfg.repo}/${sha}/${path}`;
 
@@ -543,7 +548,7 @@ async function tick(cfg) {
     const text = feedback(new_);
     const approved = approves(new_);
     if (st.status === 'failed') {
-      const retry = new_.every((c) => c.kind !== 'line' && (RETRY.test(c.body) || APPROVE.test(c.body)));
+      const retry = new_.every((c) => c.kind !== 'line' && (RETRY.test(c.body) || isApproval(c.body)));
       st.next = { phase: st.resume.phase, reply: retry ? st.resume.reply : [st.resume.reply, text].filter(Boolean).join('\n\n') };
     } else {
       st.next = { phase: NEXT[st.gate][approved ? 'approve' : 'feedback'], reply: approved ? null : text };
@@ -571,6 +576,16 @@ function locked() {
   return false;
 }
 
+// The queue merges through GitHub, so nothing pulls the checkout it runs
+// from: fast-forward it to origin/main after each pass, so what was merged is
+// what runs (the mtime check above then restarts it). Only on main with a
+// clean tree: work in progress is never touched, and then it just waits.
+function pullCheckout() {
+  if (trySh('git', ['symbolic-ref', '--short', 'HEAD']) !== 'main' || trySh('git', ['status', '--porcelain'])) return;
+  if (trySh('git', ['fetch', '-q', 'origin', 'main']) === null) return;
+  if (trySh('git', ['merge', '-q', '--ff-only', 'origin/main']) === null) log('checkout: main has diverged from origin/main, not pulled');
+}
+
 async function loop(once) {
   const loaded = statSync(fileURLToPath(import.meta.url)).mtimeMs;
   const cfg = config();
@@ -579,6 +594,7 @@ async function loop(once) {
     try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
     if (once) return;
     // An edited queue.mjs takes over at the next pass: exit, launchd starts it again.
+    pullCheckout();
     if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) return log('queue.mjs changed: restarting');
     await new Promise((r) => setTimeout(r, 60e3));
   }
