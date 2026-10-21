@@ -1223,4 +1223,251 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentProjectOpen => 'Abrir projeto';
+
+  @override
+  String get shellArtifactsTab => 'Entregas';
+
+  @override
+  String get monthsLong => 'janeiro,fevereiro,março,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro';
+
+  @override
+  String get artifactsSearch => 'Buscar entregas';
+
+  @override
+  String get artifactsSearchHint => 'Buscar por nome, cliente ou tipo';
+
+  @override
+  String get goalsSection => 'Metas';
+
+  @override
+  String get goalNew => 'Nova meta';
+
+  @override
+  String get goalRevenue => 'Faturamento';
+
+  @override
+  String goalInMonth(String label, String month) {
+    return '$label · $month';
+  }
+
+  @override
+  String goalThisWeek(String label) {
+    return '$label · esta semana';
+  }
+
+  @override
+  String goalOf(String target) {
+    return 'de $target';
+  }
+
+  @override
+  String goalDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'faltam $days dias',
+      one: 'falta 1 dia',
+      zero: 'termina hoje',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String goalStartsOn(String date) {
+    return 'começa $date';
+  }
+
+  @override
+  String get goalDone => 'feito';
+
+  @override
+  String goalQueued(String value) {
+    return 'na fila $value';
+  }
+
+  @override
+  String goalMissing(String value) {
+    return 'faltam $value';
+  }
+
+  @override
+  String get goalCovered => 'a fila cobre o resto';
+
+  @override
+  String goalSchedule(String need, String free, String date) {
+    return 'A fila pede $need · você tem $free livres até $date';
+  }
+
+  @override
+  String get artifactsQueue => 'Fila';
+
+  @override
+  String artifactsQueueSummary(int count, String time) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entregas',
+      one: '1 entrega',
+    );
+    return '$_temp0 · $time';
+  }
+
+  @override
+  String get artifactsAll => 'Todas';
+
+  @override
+  String artifactsSeeAll(int count) {
+    return 'Ver todas as $count';
+  }
+
+  @override
+  String get artifactsAllTitle => 'Todas as entregas';
+
+  @override
+  String get artifactsInQueue => 'Na fila';
+
+  @override
+  String get artifactsDone => 'Feitas';
+
+  @override
+  String artifactsDoneOn(String date) {
+    return 'feita $date';
+  }
+
+  @override
+  String artifactsNoResults(String query) {
+    return 'Nada com “$query”.';
+  }
+
+  @override
+  String get artifactsNew => 'Nova entrega';
+
+  @override
+  String get artifactLoose => 'Avulsa';
+
+  @override
+  String artifactDue(String date) {
+    return 'até $date';
+  }
+
+  @override
+  String artifactTimeDone(String done, String total) {
+    return '$done de $total';
+  }
+
+  @override
+  String artifactSteps(int done, int total) {
+    return '$done de $total etapas';
+  }
+
+  @override
+  String artifactBlocks(String block) {
+    return 'em blocos de $block';
+  }
+
+  @override
+  String get artifactSheetSearchHint => 'Mapa astral, post, revolução…';
+
+  @override
+  String get artifactSheetLoose => 'Uma entrega avulsa';
+
+  @override
+  String get artifactSheetLooseHint => 'Sem tipo do catálogo: você diz quanto tempo leva';
+
+  @override
+  String get catalogTitle => 'Catálogo';
+
+  @override
+  String get catalogEdit => 'Editar';
+
+  @override
+  String get artifactNameHint => 'Nome da entrega';
+
+  @override
+  String get artifactChangeType => 'Trocar';
+
+  @override
+  String get artifactTotalTime => 'Tempo total';
+
+  @override
+  String artifactTimeFromType(String type) {
+    return 'do tipo $type';
+  }
+
+  @override
+  String get artifactSplit => 'No dia';
+
+  @override
+  String get artifactSplitWhole => 'Inteira';
+
+  @override
+  String artifactSplitBlocks(String block) {
+    return 'Blocos de $block';
+  }
+
+  @override
+  String get artifactValue => 'Valor';
+
+  @override
+  String get artifactDeadline => 'Prazo';
+
+  @override
+  String get artifactCountsFor => 'Conta para';
+
+  @override
+  String get artifactPlace => 'Entra na fila';
+
+  @override
+  String get artifactPlaceTop => 'No topo';
+
+  @override
+  String get artifactPlaceEnd => 'No fim';
+
+  @override
+  String get artifactCreate => 'Pôr na fila';
+
+  @override
+  String get goalSheetKind => 'Medir';
+
+  @override
+  String get goalKindMoney => 'Faturamento';
+
+  @override
+  String get goalKindCount => 'Quantidade';
+
+  @override
+  String get goalAmount => 'Quanto';
+
+  @override
+  String get goalPer => 'Por';
+
+  @override
+  String get goalPerWeek => 'Semana';
+
+  @override
+  String get goalPerMonth => 'Mês';
+
+  @override
+  String get goalWhen => 'Quando';
+
+  @override
+  String get goalNow => 'Agora';
+
+  @override
+  String goalNextMonth(String month) {
+    return 'Em $month';
+  }
+
+  @override
+  String goalReadbackMoney(String amount, String month) {
+    return 'Faturar $amount em $month.';
+  }
+
+  @override
+  String goalReadbackFuture(String month) {
+    return 'Fica guardada e passa a valer em 1º de $month.';
+  }
+
+  @override
+  String get goalCreate => 'Criar meta';
 }

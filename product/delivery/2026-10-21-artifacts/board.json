@@ -1,0 +1,256 @@
+{
+ "screens": [
+  {
+   "png": "img/mockup-1.png",
+   "title": "1 · Entregas, where Projetos was",
+   "why": "The three forces on one screen: goals on top, the agenda under them, the queue they compete for.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 195,
+     "y": 806,
+     "label": "Tab: Entregas",
+     "text": "Replaces Projetos in the same spot. Icon: Phosphor stack (deliveries piled up). Tempo · Entregas · Menu stay three tabs."
+    },
+    {
+     "id": "B",
+     "x": 348,
+     "y": 42,
+     "label": "Search",
+     "text": "Opens Todas as entregas with the field focused (screen 2)."
+    },
+    {
+     "id": "C",
+     "x": 133,
+     "y": 208,
+     "label": "Goal card",
+     "text": "What it measures, the month, days left, the amount. Bar: delivered (accent) + queued and due in time (accent wash). Here even the whole queue leaves R$ 1.870 uncovered."
+    },
+    {
+     "id": "D",
+     "x": 262,
+     "y": 100,
+     "label": "Nova meta",
+     "text": "A quiet pill; the accent stays on the + (screen 5)."
+    },
+    {
+     "id": "E",
+     "x": 40,
+     "y": 280,
+     "label": "The agenda",
+     "text": "The schedule force in one line: time the queue has due this month against the free hours left. 11h15 needed, 26h free: room for more clients."
+    },
+    {
+     "id": "F",
+     "x": 376,
+     "y": 376,
+     "label": "Shelves",
+     "text": "Catalogue categories filter the queue. Todas by default."
+    },
+    {
+     "id": "G",
+     "x": 75,
+     "y": 481,
+     "label": "A delivery",
+     "text": "Name · value; kind · time (or worked of total, or steps) · due day. Bar once work has started. Order is priority; hold to drag, as in Lista."
+    },
+    {
+     "id": "H",
+     "x": 345,
+     "y": 728,
+     "label": "+",
+     "text": "Writes a delivery (screens 3–4). Same place as on every tab."
+    },
+    {
+     "id": "I",
+     "x": 360,
+     "y": 185,
+     "label": "More goals",
+     "text": "Goals scroll sideways: active first, then future ones, drawn quiet with their start day."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-2.png",
+   "title": "2 · Every delivery, searched",
+   "why": "The tab shows the top 5 of the queue; the rest, and what was delivered, live here.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 364,
+     "y": 91,
+     "label": "Search",
+     "text": "Reads name, kind and shelf: “mapa” finds every natal chart, “Camila” everything for her."
+    },
+    {
+     "id": "B",
+     "x": 376,
+     "y": 152,
+     "label": "Shelves",
+     "text": "The same filter as the tab."
+    },
+    {
+     "id": "C",
+     "x": 110,
+     "y": 207,
+     "label": "Na fila",
+     "text": "Queue matches, in priority order."
+    },
+    {
+     "id": "D",
+     "x": 115,
+     "y": 447,
+     "label": "Feitas",
+     "text": "Delivered, newest first, with the day. They are what fills the goals."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-3.png",
+   "title": "3 · New delivery: pick from the catalogue",
+   "why": "Most deliveries are a kind she already sells; picking one fills time, value and splitting.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 376,
+     "y": 201,
+     "label": "Type or search",
+     "text": "Filters the catalogue as she types; a name that matches nothing becomes a loose delivery."
+    },
+    {
+     "id": "B",
+     "x": 380,
+     "y": 259,
+     "label": "Editar",
+     "text": "Opens the catalogue's own page (a later delivery)."
+    },
+    {
+     "id": "C",
+     "x": 378,
+     "y": 333,
+     "label": "Kind's defaults",
+     "text": "Each kind carries its usual time and price. A post has no price: it counts towards a count goal."
+    },
+    {
+     "id": "D",
+     "x": 196,
+     "y": 803,
+     "label": "Avulsa, at the end",
+     "text": "Last row: “Uma entrega avulsa”, no kind, time given by hand. Today's projects become these."
+    },
+    {
+     "id": "E",
+     "x": 125,
+     "y": 291,
+     "label": "Category → kind",
+     "text": "Two levels: the shelf (Atendimentos, Conteúdo, Produtos) and the kind on it."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-4.png",
+   "title": "4 · New delivery: who it is for",
+   "why": "Only the name and the day are left to write; every other row came from the kind.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 232,
+     "y": 379,
+     "label": "Kind tag",
+     "text": "Shelf · kind; Trocar goes back to the catalogue."
+    },
+    {
+     "id": "B",
+     "x": 340,
+     "y": 415,
+     "label": "Name",
+     "text": "Prefilled with the kind; she adds who it is for."
+    },
+    {
+     "id": "C",
+     "x": 378,
+     "y": 468,
+     "label": "Tempo total",
+     "text": "From the kind, changeable. Later, the sum of its subtasks when it has them."
+    },
+    {
+     "id": "D",
+     "x": 378,
+     "y": 532,
+     "label": "No dia",
+     "text": "Inteira, or Blocos de 1h: the timeline takes a piece a day instead of pushing the whole 3h to tomorrow."
+    },
+    {
+     "id": "E",
+     "x": 378,
+     "y": 585,
+     "label": "Valor",
+     "text": "From the price; what counts towards the money goal."
+    },
+    {
+     "id": "F",
+     "x": 378,
+     "y": 690,
+     "label": "Conta para",
+     "text": "Worked out, not picked: the money goal of the due month, or the count goal of its kind."
+    },
+    {
+     "id": "G",
+     "x": 378,
+     "y": 752,
+     "label": "Where in the queue",
+     "text": "No topo or No fim. Finer order is a drag on the tab."
+    },
+    {
+     "id": "H",
+     "x": 290,
+     "y": 808,
+     "label": "Pôr na fila",
+     "text": "The one accent action."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-5.png",
+   "title": "5 · New goal",
+   "why": "The smallest goal that says something: a number, per week or month, now or next month.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 378,
+     "y": 517,
+     "label": "Medir",
+     "text": "Faturamento (reais) or Quantidade (of one kind from the catalogue, e.g. 3 posts)."
+    },
+    {
+     "id": "B",
+     "x": 378,
+     "y": 574,
+     "label": "Quanto",
+     "text": "The target."
+    },
+    {
+     "id": "C",
+     "x": 378,
+     "y": 629,
+     "label": "Por",
+     "text": "Semana or Mês; it repeats every stretch."
+    },
+    {
+     "id": "D",
+     "x": 378,
+     "y": 686,
+     "label": "Quando",
+     "text": "Agora, or next month: a future goal waits, drawn quiet among the goals."
+    },
+    {
+     "id": "E",
+     "x": 378,
+     "y": 751,
+     "label": "Read back",
+     "text": "The goal as a sentence, so what will be measured is never in doubt."
+    }
+   ]
+  }
+ ]
+}

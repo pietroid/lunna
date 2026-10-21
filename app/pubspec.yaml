@@ -14,6 +14,8 @@ dependencies:
     path: packages/api_client
   app_ui:
     path: packages/app_ui
+  artifacts:
+    path: packages/artifacts
   auth:
     path: packages/auth
   bloc: ^9.2.1

@@ -919,5 +919,237 @@
       }
     }
   },
-  "agentProjectOpen": "Abrir projeto"
+  "agentProjectOpen": "Abrir projeto",
+  "shellArtifactsTab": "Entregas",
+  "monthsLong": "janeiro,fevereiro,março,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro",
+  "artifactsSearch": "Buscar entregas",
+  "artifactsSearchHint": "Buscar por nome, cliente ou tipo",
+  "goalsSection": "Metas",
+  "goalNew": "Nova meta",
+  "goalRevenue": "Faturamento",
+  "goalInMonth": "{label} · {month}",
+  "@goalInMonth": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "goalThisWeek": "{label} · esta semana",
+  "@goalThisWeek": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "goalOf": "de {target}",
+  "@goalOf": {
+    "placeholders": {
+      "target": {
+        "type": "String"
+      }
+    }
+  },
+  "goalDaysLeft": "{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}",
+  "@goalDaysLeft": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "goalStartsOn": "começa {date}",
+  "@goalStartsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "goalDone": "feito",
+  "goalQueued": "na fila {value}",
+  "@goalQueued": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "goalMissing": "faltam {value}",
+  "@goalMissing": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "goalCovered": "a fila cobre o resto",
+  "goalSchedule": "A fila pede {need} · você tem {free} livres até {date}",
+  "@goalSchedule": {
+    "placeholders": {
+      "need": {
+        "type": "String"
+      },
+      "free": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactsQueue": "Fila",
+  "artifactsQueueSummary": "{count, plural, =1{1 entrega} other{{count} entregas}} · {time}",
+  "@artifactsQueueSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactsAll": "Todas",
+  "artifactsSeeAll": "Ver todas as {count}",
+  "@artifactsSeeAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "artifactsAllTitle": "Todas as entregas",
+  "artifactsInQueue": "Na fila",
+  "artifactsDone": "Feitas",
+  "artifactsDoneOn": "feita {date}",
+  "@artifactsDoneOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactsNoResults": "Nada com “{query}”.",
+  "@artifactsNoResults": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactsNew": "Nova entrega",
+  "artifactLoose": "Avulsa",
+  "artifactDue": "até {date}",
+  "@artifactDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactTimeDone": "{done} de {total}",
+  "@artifactTimeDone": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactSteps": "{done} de {total} etapas",
+  "@artifactSteps": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "artifactBlocks": "em blocos de {block}",
+  "@artifactBlocks": {
+    "placeholders": {
+      "block": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactSheetSearchHint": "Mapa astral, post, revolução…",
+  "artifactSheetLoose": "Uma entrega avulsa",
+  "artifactSheetLooseHint": "Sem tipo do catálogo: você diz quanto tempo leva",
+  "catalogTitle": "Catálogo",
+  "catalogEdit": "Editar",
+  "artifactNameHint": "Nome da entrega",
+  "artifactChangeType": "Trocar",
+  "artifactTotalTime": "Tempo total",
+  "artifactTimeFromType": "do tipo {type}",
+  "@artifactTimeFromType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactSplit": "No dia",
+  "artifactSplitWhole": "Inteira",
+  "artifactSplitBlocks": "Blocos de {block}",
+  "@artifactSplitBlocks": {
+    "placeholders": {
+      "block": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactValue": "Valor",
+  "artifactDeadline": "Prazo",
+  "artifactCountsFor": "Conta para",
+  "artifactPlace": "Entra na fila",
+  "artifactPlaceTop": "No topo",
+  "artifactPlaceEnd": "No fim",
+  "artifactCreate": "Pôr na fila",
+  "goalSheetKind": "Medir",
+  "goalKindMoney": "Faturamento",
+  "goalKindCount": "Quantidade",
+  "goalAmount": "Quanto",
+  "goalPer": "Por",
+  "goalPerWeek": "Semana",
+  "goalPerMonth": "Mês",
+  "goalWhen": "Quando",
+  "goalNow": "Agora",
+  "goalNextMonth": "Em {month}",
+  "@goalNextMonth": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackMoney": "Faturar {amount} em {month}.",
+  "@goalReadbackMoney": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackFuture": "Fica guardada e passa a valer em 1º de {month}.",
+  "@goalReadbackFuture": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "goalCreate": "Criar meta"
 }

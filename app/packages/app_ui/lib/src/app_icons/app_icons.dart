@@ -171,6 +171,26 @@ class AppIcons {
   /// A link with no picture of its own, on its card in the notes.
   static const link = AppIconData.phosphor(PhosphorIconsRegular.link);
 
+  /// Entregas: the queue of what she delivers, one on top of the other.
+  static const artifacts = AppIconData.phosphor(PhosphorIconsRegular.stack);
+
+  /// A goal: an amount, or a count, to reach in a stretch of time.
+  static const goal = AppIconData.phosphor(PhosphorIconsRegular.target);
+
+  /// Looks through a list.
+  static const search = AppIconData.phosphor(
+    PhosphorIconsRegular.magnifyingGlass,
+  );
+
+  /// The catalogue: the kinds of thing she delivers, and what each is worth.
+  static const catalog = AppIconData.phosphor(PhosphorIconsRegular.bookOpen);
+
+  /// What a delivery is worth.
+  static const value = AppIconData.phosphor(PhosphorIconsRegular.coins);
+
+  /// A delivery done in pieces, a block at a time.
+  static const split = AppIconData.phosphor(PhosphorIconsRegular.rows);
+
   /// Opens somewhere outside the app: a link card's browser.
   static const external = AppIconData.phosphor(
     PhosphorIconsRegular.arrowUpRight,
