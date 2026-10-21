@@ -7,7 +7,8 @@ idea already here one line and a link, and goes one level deeper on it
 
 RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-queue](./2026-10-17-agent-queue/README.md) ·
-[agent-ui](./2026-10-17-agent-ui/README.md)
+[agent-ui](./2026-10-17-agent-ui/README.md) ·
+[posthog](./2026-10-21-posthog/README.md)
 
 ## Tools: what the model is given
 
@@ -114,3 +115,33 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents).
 - **Here:** each queue phase is a fresh `claude -p` that reads the topic folder.
 - **Met in:** agent-queue §literature 4.
+
+## Observability: seeing what happened
+
+### Report at the boundary
+> An error you catch is an error nobody sees.
+
+- **Read:** PostHog, [Flutter error tracking](https://posthog.com/docs/error-tracking/installation/flutter): autocapture hooks the global handlers; caught errors need `captureException`.
+- **Here:** 26 catch sites turn failures into states; report at the Dio interceptor and `LoggingInterceptor`, which every failure crosses.
+- **Met in:** posthog, idea 1 and change 2.
+
+### Count actions on the server
+> Count an action where it happens, not where it is drawn.
+
+- **Read:** PostHog, [Product analytics best practices](https://posthog.com/docs/product-analytics/best-practices): backend analytics are more reliable; one id format everywhere.
+- **Here:** every write is a server route, so one table of route → event covers three platforms.
+- **Met in:** posthog, idea 2.
+
+### Screenshot replay is irreversible
+> A Flutter replay is a stack of pictures: mask before you record.
+
+- **Read:** PostHog, [Mobile session replay](https://posthog.com/docs/session-replay/mobile) and [Canvas recording](https://posthog.com/docs/session-replay/canvas-recording).
+- **Here:** `maskAllTexts` and `maskAllImages` stay on; titles and notes never leave the phone.
+- **Met in:** posthog, idea 3.
+
+### Heatmaps need a DOM
+> A heatmap needs a page of elements; Flutter paints one canvas.
+
+- **Read:** PostHog, [Heatmaps](https://posthog.com/docs/toolbar/heatmaps): the clickmap counts DOM elements.
+- **Here:** coordinate heatmaps on the web build only; replay taps on the phones.
+- **Met in:** posthog, idea 4.

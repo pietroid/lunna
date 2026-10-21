@@ -1,0 +1,28 @@
+lib/menu/view/menu_page.dart:69:    } on TimelineFailure catch (failure) {
+lib/notifications/background_refresh.dart:40:  } on Object catch (error, stackTrace) {
+lib/notifications/background_refresh.dart:71:    } on Object catch (error, stackTrace) {
+lib/routines/view/routines_page.dart:63:    } on Object catch (error) {
+packages/agent/lib/src/agent_cubit.dart:211:    } on AgentFailure catch (failure) {
+packages/agent/lib/src/agent_repository.dart:186:    } on Object catch (error) {
+packages/agent/lib/src/view/apply_plan.dart:30:  } on AgentFailure catch (failure) {
+packages/agent/lib/src/view/apply_plan.dart:74:    } on AgentFailure catch (failure) {
+packages/api_client/lib/src/interceptors/auth_interceptor.dart:56:    } on Exception catch (_) {
+packages/auth/lib/src/auth_bloc/auth_bloc.dart:55:    } on AuthFailure catch (failure) {
+packages/auth/lib/src/data/auth_repository.dart:126:    } on DioException catch (error) {
+packages/auth/lib/src/data/auth_repository.dart:163:    } on DioException catch (error) {
+packages/auth/lib/src/data/auth_repository.dart:185:    } on DioException catch (error) {
+packages/notifications/lib/src/service/notification_scheduler.dart:156:      } on Object catch (error, stackTrace) {
+packages/projects/lib/src/bloc/projects_cubit.dart:149:    } on ProjectsFailure catch (failure) {
+packages/projects/lib/src/data/projects_repository.dart:96:    } on Object catch (error) {
+packages/timeline/lib/src/bloc/timeline_bloc.dart:206:    } on Object catch (error) {
+packages/timeline/lib/src/bloc/timeline_bloc.dart:231:    } on Object catch (error) {
+packages/timeline/lib/src/bloc/timeline_bloc.dart:282:    } on Object catch (error) {
+packages/timeline/lib/src/bloc/timeline_bloc.dart:435:    } on Object catch (error) {
+packages/timeline/lib/src/bloc/timeline_bloc.dart:68:    } on Object catch (error) {
+packages/timeline/lib/src/bloc/timeline_bloc.dart:99:    } on Object catch (error) {
+packages/timeline/lib/src/data/routines_repository.dart:75:    } on Object catch (error) {
+packages/timeline/lib/src/data/timeline_repository.dart:273:    } on Object catch (error) {
+packages/timeline/lib/src/data/timeline_repository.dart:305:    } on Object catch (error) {
+packages/timeline/lib/src/data/timeline_repository.dart:324:    } on Object catch (error) {
+
+total: 26
