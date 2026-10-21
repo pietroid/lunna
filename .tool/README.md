@@ -129,6 +129,13 @@ carries the totals.
   `approve` (or `ok`, `lgtm`, `aprovado`, 👍) **alone in its comment** goes
   on; anything else is feedback for another round. After a failure,
   `retry` reruns the phase. Closing the issue drops it.
+- **Commenting on a line.** In the PR's *Files changed* (the GitHub app
+  too), tap a line of the README and comment; start it with `Q:`,
+  `Learn:`, `Decision:` or `Note:` to say what it is. Submit them as one
+  review and the whole review is one round. The next run gets each with
+  its file, line and the line's text, writes it into the doc as a note
+  (`.tool/doc notes` reads them), and the queue posts the run's answer
+  under your comment. A line comment is never an approval.
 - **Phone.** ntfy.sh: install the app and subscribe to the topic `setup`
   printed (it's in `.git/queue/config.json`). No account, no server.
 - **Only the owner.** The repo is public: issues and comments by anyone

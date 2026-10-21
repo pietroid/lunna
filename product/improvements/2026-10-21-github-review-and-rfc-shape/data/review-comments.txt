@@ -1,0 +1,17 @@
+✓ a line comment quotes its line and is its own thread
+✓ a reply goes to the thread it answers
+✓ a comment on lines 4–5 quotes both
+✓ a comment on the whole file quotes nothing
+✓ an outdated comment keeps its original line
+✓ feedback names file, line and thread, and quotes the line
+✓ "approve" alone approves, on the issue or as a review
+✓ a line comment is never an approval
+✓ read pietroid/lunna #3 + PR #4 as pietroid: 0 answers (0 comment, 0 review, 0 line)
+✓ feedback names file, line and thread, and quotes the line
+✓ "approve" alone approves, on the issue or as a review
+✓ a line comment is never an approval
+✓ read pietroid/lunna #1 + PR #2 as pietroid: 4 answers (4 comment, 0 review, 0 line)
+  2026-10-20T22:07:58Z comment Remove mark as done.
+  2026-10-20T22:13:47Z comment Great. Build it
+  2026-10-20T22:18:14Z comment Approve
+  2026-10-20T22:31:17Z comment Approve

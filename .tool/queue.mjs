@@ -20,7 +20,7 @@
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
 import { spawn, execFileSync } from 'node:child_process';
-import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, dirname, join, posix, resolve } from 'node:path';
@@ -126,6 +126,11 @@ const SCHEMA = JSON.stringify({
     summary: { type: 'string', description: 'Two to four sentences for the person, in the language of the issue: what you did and what to look at.' },
     doc: { type: 'string', description: 'Path from the repo root of the README the PR shows (the delivery README, the RFC or the improvement report).' },
     questions: { type: 'array', items: { type: 'string' }, description: 'Open questions for the person, if any.' },
+    replies: {
+      type: 'array',
+      items: { type: 'object', properties: { thread: { type: 'integer' }, body: { type: 'string' } }, required: ['thread', 'body'] },
+      description: 'One answer per comment the person left on a line of the PR, by its thread id: what you changed there, or the answer to the question. The queue posts each under their comment.',
+    },
   },
   required: ['summary', 'doc'],
 });
@@ -137,6 +142,7 @@ Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion i
 - Skip .tool/cost and session_cost: the queue measures every run and writes the figures in the PR.
 - Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README as the PR description, on a phone.
 - This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
+- A reply that starts "On `<file>` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
 - Finish with the structured output.`;
 
 const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');
@@ -232,13 +238,44 @@ function comment(cfg, n, body) {
 
 const react = (cfg, path) => trySh('gh', ['api', '-X', 'POST', `repos/${cfg.repo}/${path}/reactions`, '-f', 'content=eyes']);
 
-// Comments by the owner on the issue and its PR since the gate opened.
-function answers(cfg, st) {
-  const read = (n) => ghJson(['api', '--paginate', '--slurp', `repos/${cfg.repo}/issues/${n}/comments`]).flat();
-  return [st.issue, st.pr].filter(Boolean).flatMap(read)
-    .filter((c) => c.user.login === cfg.owner && !c.body.includes(MARK) && c.created_at > st.gateAt)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+// What the owner said since the gate opened: comments on the issue and the
+// PR, the text of PR reviews, and comments on lines of the PR's files.
+export function answers(cfg, st) {
+  const read = (path) => ghJson(['api', '--paginate', '--slurp', `repos/${cfg.repo}/${path}`]).flat();
+  const mine = (c, at) => c.user?.login === cfg.owner && !(c.body ?? '').includes(MARK) && at > st.gateAt;
+  const said = [st.issue, st.pr].filter(Boolean).flatMap((n) => read(`issues/${n}/comments`))
+    .filter((c) => mine(c, c.created_at)).map((c) => ({ kind: 'comment', id: c.id, at: c.created_at, body: c.body.trim() }));
+  if (st.pr) {
+    said.push(...read(`pulls/${st.pr}/reviews`).filter((r) => r.body?.trim() && mine(r, r.submitted_at ?? ''))
+      .map((r) => ({ kind: 'review', id: r.id, at: r.submitted_at, body: r.body.trim() })));
+    said.push(...read(`pulls/${st.pr}/comments`).filter((c) => mine(c, c.created_at)).map(lineComment));
+  }
+  return said.sort((a, b) => a.at.localeCompare(b.at));
 }
+
+// A comment on lines of a file in the PR, with the lines it is about (the
+// end of its diff hunk) and the thread a reply goes to.
+export function lineComment(c) {
+  const line = c.line ?? c.original_line ?? null;
+  const start = c.start_line ?? c.original_start_line;
+  const span = start && line ? line - start + 1 : 1;
+  const lines = c.subject_type === 'file' || !c.diff_hunk ? [] : c.diff_hunk.split('\n').slice(-span).map((l) => l.slice(1));
+  return { kind: 'line', id: c.id, thread: c.in_reply_to_id ?? c.id, at: c.created_at, body: c.body.trim(), path: c.path, line, lines };
+}
+
+// The answers as one reply for the next run's prompt. A line comment names
+// its file, line and thread, and quotes the lines it was left on.
+export function feedback(said) {
+  return said.map((c) => {
+    if (c.kind !== 'line') return c.body;
+    const where = `On \`${c.path}\`${c.line ? ` line ${c.line}` : ''} (thread ${c.thread})`;
+    return c.lines.length ? `${where}, about:\n${quote(c.lines.join('\n'))}\n\n${c.body}` : `${where}:\n\n${c.body}`;
+  }).join('\n\n---\n\n');
+}
+
+// "approve" alone in each, and no comment on a line: a line comment is
+// always something to work on.
+export const approves = (said) => said.every((c) => c.kind !== 'line' && APPROVE.test(c.body));
 
 const raw = (cfg, sha, path) => `https://raw.githubusercontent.com/${cfg.repo}/${sha}/${path}`;
 
@@ -306,8 +343,8 @@ const GATE = { 'create:design': 'design', 'create:revise': 'design' };
 const gateOf = (st, phase) => GATE[`${st.kind}:${phase}`] ?? 'review';
 const NEXT = { design: { approve: 'build', feedback: 'revise' }, review: { approve: 'merge', feedback: 'fix' } };
 const HEADLINE = {
-  design: ['🎨', 'Design ready', 'Reply **approve** to build it, or write what to change.', 'art'],
-  review: ['✅', 'Ready for review', 'Reply **approve** to merge it into main (that deploys), or write what to fix.', 'white_check_mark'],
+  design: ['🎨', 'Design ready', 'Reply **approve** to build it, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'art'],
+  review: ['✅', 'Ready for review', 'Reply **approve** to merge it into main (that deploys), or write what to fix: here, or on any line of the PR\'s **Files changed**.', 'white_check_mark'],
 };
 
 async function work(cfg, st) {
@@ -331,6 +368,9 @@ async function work(cfg, st) {
   const [icon, head, ask, tag] = HEADLINE[gate];
   const sha = syncPr(cfg, st, `**${head}**, waiting for your reply on #${st.issue}.`);
   if (gate === 'review') trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
+  for (const r of res.output.replies ?? []) {
+    trySh('gh', ['api', '-X', 'POST', `repos/${cfg.repo}/pulls/${st.pr}/comments/${r.thread}/replies`, '--input', '-'], { input: JSON.stringify({ body: `${r.body}\n\n${MARK}` }) });
+  }
   const board = st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png')) ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
   const qs = st.questions.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
   st.gate = gate;
@@ -441,11 +481,11 @@ async function tick(cfg) {
     if (!st.gateAt) continue;
     const new_ = answers(cfg, st);
     if (!new_.length) continue;
-    for (const c of new_) react(cfg, `issues/comments/${c.id}`);
-    const text = new_.map((c) => c.body.trim()).join('\n\n');
-    const approved = new_.every((c) => APPROVE.test(c.body.trim()));
+    for (const c of new_) if (c.kind !== 'review') react(cfg, `${c.kind === 'line' ? 'pulls' : 'issues'}/comments/${c.id}`);
+    const text = feedback(new_);
+    const approved = approves(new_);
     if (st.status === 'failed') {
-      const retry = new_.every((c) => RETRY.test(c.body.trim()) || APPROVE.test(c.body.trim()));
+      const retry = new_.every((c) => c.kind !== 'line' && (RETRY.test(c.body) || APPROVE.test(c.body)));
       st.next = { phase: st.resume.phase, reply: retry ? st.resume.reply : [st.resume.reply, text].filter(Boolean).join('\n\n') };
     } else {
       st.next = { phase: NEXT[st.gate][approved ? 'approve' : 'feedback'], reply: approved ? null : text };
@@ -574,6 +614,8 @@ function tail(n) {
 }
 
 const [command, ...rest] = process.argv.slice(2);
+// Run as a command, not imported (by a test of the functions it exports).
+const main = !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
 const commands = { setup, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
-if (!commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | stop | start');
-await commands[command]();
+if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | stop | start');
+if (main) await commands[command]();
