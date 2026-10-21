@@ -1,6 +1,6 @@
 import { Day } from '../events/timeline.service';
 import { Timeline } from '../events/entities/event.entity';
-import { Project } from '../projects/project.types';
+import { Artifact } from '../artifacts/artifact.types';
 import { Task } from '../tasks/task.types';
 import {
   addMinutes,
@@ -51,18 +51,18 @@ export interface BoardCard {
   foreign: boolean;
   routine: boolean;
   backlog: boolean;
-  /** Ticked off: reached only through a project, never on the day. */
+  /** Ticked off: reached only through an artifact, never on the day. */
   done: boolean;
-  /** The project it belongs to, when it belongs to one. */
-  projectId?: string;
+  /** The artifact it belongs to, when it belongs to one. */
+  artifactId?: string;
   notes: string;
 }
 
-/** An open project, as the board's index names it. */
-export interface BoardProject {
+/** An open artifact, as the board's index names it. */
+export interface BoardArtifact {
   /** `p2`. */
   ref: string;
-  project: Project;
+  artifact: Artifact;
   /** Its tasks, done ones included, in their order. */
   tasks: Task[];
 }
@@ -75,9 +75,9 @@ export interface BoardOptions {
    * to turn.
    */
   refs?: Map<string, string>;
-  projects?: Project[];
-  /** Every task of a project, done ones included. */
-  projectTasks?: Task[];
+  artifacts?: Artifact[];
+  /** Every task of an artifact, done ones included. */
+  artifactTasks?: Task[];
 }
 
 const WEEKDAYS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
@@ -121,14 +121,14 @@ const WEEKDAY_WORDS: Record<string, number> = {
 export class Board {
   readonly cards: BoardCard[];
   readonly today: string;
-  /** Every project, oldest first; the index names the open ones. */
-  readonly projects: BoardProject[];
+  /** Every artifact, oldest first; the index names the open ones. */
+  readonly artifacts: BoardArtifact[];
   private readonly _byRef: Map<string, BoardCard>;
   private readonly _refs: Map<string, string>;
   /** The rows the cards were read from, for what the timeline leaves out. */
   private readonly _rows = new Map<
     string,
-    { notes: string; projectId?: string }
+    { notes: string; artifactId?: string }
   >();
   private readonly _titles: Map<string, string>;
 
@@ -143,11 +143,11 @@ export class Board {
     for (const row of [...day.tasks, ...day.backlog, ...day.events]) {
       this._rows.set(row.id, {
         notes: row.notes,
-        projectId: 'projectId' in row ? row.projectId : undefined,
+        artifactId: 'artifactId' in row ? row.artifactId : undefined,
       });
     }
     this._titles = new Map(
-      (options.projects ?? []).map((it) => [it.id, it.title]),
+      (options.artifacts ?? []).map((it) => [it.id, it.title]),
     );
 
     const seen = new Set<string>();
@@ -200,11 +200,11 @@ export class Board {
     ];
     this._byRef = new Map(this.cards.map((card) => [card.ref, card]));
 
-    const tasks_ = options.projectTasks ?? [];
-    this.projects = (options.projects ?? []).map((project) => ({
-      ref: this._assign(project.id, 'p'),
-      project,
-      tasks: tasks_.filter((task) => task.projectId === project.id),
+    const tasks_ = options.artifactTasks ?? [];
+    this.artifacts = (options.artifacts ?? []).map((artifact) => ({
+      ref: this._assign(artifact.id, 'p'),
+      artifact,
+      tasks: tasks_.filter((task) => task.artifactId === artifact.id),
     }));
   }
 
@@ -220,19 +220,19 @@ export class Board {
     return this.cards.find((card) => card.id === id);
   }
 
-  /** The open project under [ref] (`p2`). */
-  project(ref: string): BoardProject | undefined {
+  /** The open artifact under [ref] (`p2`). */
+  artifact(ref: string): BoardArtifact | undefined {
     const said = ref.trim().toLowerCase();
-    return this.projects.find((it) => it.ref === said);
+    return this.artifacts.find((it) => it.ref === said);
   }
 
-  projectById(id: string): BoardProject | undefined {
-    return this.projects.find((it) => it.project.id === id);
+  artifactById(id: string): BoardArtifact | undefined {
+    return this.artifacts.find((it) => it.artifact.id === id);
   }
 
-  /** The title a ref stands for, a card's or a project's. */
+  /** The title a ref stands for, a card's or an artifact's. */
   title(ref: string): string | undefined {
-    return this.ref(ref)?.title ?? this.project(ref)?.project.title;
+    return this.ref(ref)?.title ?? this.artifact(ref)?.artifact.title;
   }
 
   /**
@@ -267,7 +267,7 @@ export class Board {
       routine: task.routineId !== undefined,
       backlog: task.backlog && !done,
       done,
-      projectId: task.projectId,
+      artifactId: task.artifactId,
       notes: task.notes,
     };
     this.cards.push(card);
@@ -276,11 +276,11 @@ export class Board {
     return card;
   }
 
-  /** The name of the project [card] belongs to, when it belongs to one. */
-  projectOf(card: BoardCard): string | undefined {
-    return card.projectId === undefined
+  /** The name of the artifact [card] belongs to, when it belongs to one. */
+  artifactOf(card: BoardCard): string | undefined {
+    return card.artifactId === undefined
       ? undefined
-      : this._titles.get(card.projectId);
+      : this._titles.get(card.artifactId);
   }
 
   /** The ref [id] already has in the conversation, or the next of [kind]. */
@@ -300,11 +300,11 @@ export class Board {
     return ref;
   }
 
-  private _extra(id: string): Pick<BoardCard, 'done' | 'projectId' | 'notes'> {
+  private _extra(id: string): Pick<BoardCard, 'done' | 'artifactId' | 'notes'> {
     const row = this._rows.get(id);
     return {
       done: false,
-      ...(row?.projectId === undefined ? {} : { projectId: row.projectId }),
+      ...(row?.artifactId === undefined ? {} : { artifactId: row.artifactId }),
       notes: row?.notes ?? '',
     };
   }
@@ -472,12 +472,12 @@ export class Board {
             .map((card) => `  ${this.line(card)}`)
         : ['  (empty)']),
       '',
-      'Projects (read_cards with a project ref reads its notes and every task):',
-      ...(this.projects.every((it) => it.project.doneAt !== undefined)
+      'Artifacts (read_cards with an artifact ref reads its notes and every task):',
+      ...(this.artifacts.every((it) => it.artifact.doneAt !== undefined)
         ? ['  (none)']
-        : this.projects
-            .filter((it) => it.project.doneAt === undefined)
-            .map((it) => `  ${this.projectLine(it)}`)),
+        : this.artifacts
+            .filter((it) => it.artifact.doneAt === undefined)
+            .map((it) => `  ${this.artifactLine(it)}`)),
       '',
       'Free room:',
     );
@@ -538,19 +538,19 @@ export class Board {
       card.start === undefined
         ? formatSpan(card.minutes * 60_000)
         : `${this.dayLabel(card.day!)} ${formatTimeIn(card.start, this.zone)}–${formatTimeIn(card.end!, this.zone)}`;
-    const project = this.projectOf(card);
+    const artifact = this.artifactOf(card);
 
-    return `${card.ref} · ${card.title} · ${kind}${extra === '' ? '' : ` (${extra})`} · ${when}${project === undefined ? '' : ` · project ${project}`}`;
+    return `${card.ref} · ${card.title} · ${kind}${extra === '' ? '' : ` (${extra})`} · ${when}${artifact === undefined ? '' : ` · artifact ${artifact}`}`;
   }
 
   /** "p2 · Tese · due 30/11 · 6 open tasks, 2 with an hour". */
-  projectLine(it: BoardProject): string {
+  artifactLine(it: BoardArtifact): string {
     const open = it.tasks.filter((task) => task.doneAt === undefined);
     const timed = open.filter((task) => !task.backlog).length;
-    const due = it.project.deadline;
+    const due = it.artifact.deadline;
     return [
       it.ref,
-      it.project.title,
+      it.artifact.title,
       ...(due === undefined
         ? []
         : [`due ${due.slice(8, 10)}/${due.slice(5, 7)}`]),

@@ -178,29 +178,29 @@ class _ChangeRow extends StatelessWidget {
           struck: true,
           detail: TextSpan(text: _hourOr(l10n, l10n.agentChangeRemove)),
         );
-      case PlanChangeKind.addProject:
+      case PlanChangeKind.addArtifact:
         return AnswerRow(
           mark: const AnswerMark(
-            icon: AppIcons.things,
+            icon: AppIcons.artifacts,
             fill: AppColors.accentSoft,
             ink: AppColors.accent,
           ),
           title: change.title,
           detail: TextSpan(
             text: [
-              l10n.agentChangeNewProject,
+              l10n.agentChangeNewArtifact,
               if (change.deadline != null)
-                l10n.projectUntil(_ddmm(change.deadline!)),
+                l10n.artifactUntil(_ddmm(change.deadline!)),
             ].join(' · '),
           ),
           below: change.takes.isEmpty ? null : _Along(titles: change.takes),
         );
-      case PlanChangeKind.editProject:
+      case PlanChangeKind.editArtifact:
         final was = change.was;
         final wasDeadline = change.wasDeadline;
         final deadline = change.deadline;
         return AnswerRow(
-          mark: const AnswerMark(icon: AppIcons.things),
+          mark: const AnswerMark(icon: AppIcons.artifacts),
           title: change.title,
           detail: TextSpan(
             children: [
@@ -215,15 +215,15 @@ class _ChangeRow extends StatelessWidget {
                 ],
                 TextSpan(
                   text: deadline == null
-                      ? l10n.projectNoDeadline.toLowerCase()
+                      ? l10n.artifactNoDeadline.toLowerCase()
                       : _ddmm(deadline),
                 ),
               ] else
-                TextSpan(text: l10n.agentChangeProjectDone),
+                TextSpan(text: l10n.agentChangeArtifactDone),
             ],
           ),
         );
-      case PlanChangeKind.removeProject:
+      case PlanChangeKind.removeArtifact:
         return AnswerRow(
           mark: const AnswerMark(
             icon: AppIcons.trash,
@@ -233,7 +233,7 @@ class _ChangeRow extends StatelessWidget {
           title: change.title,
           struck: true,
           detail: TextSpan(
-            text: l10n.agentChangeRemoveProject(change.takes.length),
+            text: l10n.agentChangeRemoveArtifact(change.takes.length),
           ),
           below: change.takes.isEmpty
               ? null
@@ -337,7 +337,7 @@ class _Added extends StatelessWidget {
   }
 }
 
-/// The tasks that go along with a project: with it into the bin, or into
+/// The tasks that go along with an artifact: with it into the bin, or into
 /// a new one.
 class _Along extends StatelessWidget {
   const _Along({required this.titles, this.going = false});

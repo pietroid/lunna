@@ -14,7 +14,7 @@ import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { Trace } from '../common/trace';
-import { ProjectStore } from '../projects/project.store';
+import { ArtifactStore } from '../artifacts/artifact.store';
 import { TaskStore } from '../tasks/task.store';
 import { isoDayIn } from '../time/zone';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -57,7 +57,7 @@ export class TasksController {
     private readonly timeline: TimelineService,
     private readonly layout: EventLayoutService,
     private readonly ticker: PauseTickerService,
-    private readonly projects: ProjectStore,
+    private readonly artifacts: ArtifactStore,
     private readonly tasks: TaskStore,
   ) {}
 
@@ -75,18 +75,20 @@ export class TasksController {
   ): Promise<{ done: DoneCard[] }> {
     const who = owner(user);
     const page = requireDonePage({ before, beforeId, q, limit });
-    const [found, projects] = await Promise.all([
+    const [found, artifacts] = await Promise.all([
       this.tasks.done(who, page),
-      this.projects.list(who),
+      this.artifacts.list(who),
     ]);
-    const titles = new Map(projects.map((it) => [it.id, it.title]));
+    const titles = new Map(artifacts.map((it) => [it.id, it.title]));
     const zone = this.timeline.zone(who);
 
     return {
       done: found.map((task) => {
         const at = task.doneAt ?? '';
-        const project =
-          task.projectId === undefined ? undefined : titles.get(task.projectId);
+        const artifact =
+          task.artifactId === undefined
+            ? undefined
+            : titles.get(task.artifactId);
         return {
           id: task.id,
           kind: 'task',
@@ -98,9 +100,9 @@ export class TasksController {
           day: isoDayIn(new Date(at), zone),
           durationMinutes: task.minutes,
           workMinutes: task.minutes,
-          ...(project === undefined
+          ...(artifact === undefined
             ? {}
-            : { project: { id: task.projectId as string, title: project } }),
+            : { artifact: { id: task.artifactId as string, title: artifact } }),
         };
       }),
     };
@@ -117,10 +119,10 @@ export class TasksController {
     trace.log('turn.begin', { kind: 'task' });
     const task = requireTask(dto);
     if (
-      task.projectId !== undefined &&
-      (await this.projects.get(owner(user), task.projectId)) === undefined
+      task.artifactId !== undefined &&
+      (await this.artifacts.get(owner(user), task.artifactId)) === undefined
     ) {
-      throw new BadRequestException('Esse projeto não existe mais.');
+      throw new BadRequestException('Essa entrega não existe mais.');
     }
     await this.layout.createTask(owner(user), task, trace);
 

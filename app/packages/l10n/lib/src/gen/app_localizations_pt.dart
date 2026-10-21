@@ -36,9 +36,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shellTimelineTab => 'Tempo';
 
   @override
-  String get shellProjectsTab => 'Projetos';
-
-  @override
   String get shellMenuTab => 'Menu';
 
   @override
@@ -248,10 +245,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventLengthLabel => 'Duração';
 
   @override
-  String get eventProjectLabel => 'Projeto';
+  String get eventArtifactLabel => 'Entrega';
 
   @override
-  String get eventNoProject => 'Nenhum';
+  String get eventNoArtifact => 'Nenhuma';
 
   @override
   String get eventNotesLabel => 'Notas';
@@ -939,42 +936,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentVoiceUnavailable => 'Este aparelho não reconhece fala em português.';
 
   @override
-  String projectsOpenCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count em andamento',
-      one: '1 em andamento',
-      zero: 'Nenhum em andamento',
-    );
-    return '$_temp0';
-  }
+  String get artifactUntitled => 'Sem nome';
 
   @override
-  String get projectsDoneSection => 'Concluídos';
+  String get artifactNoDeadline => 'Sem prazo';
 
   @override
-  String get projectsEmpty => 'Um projeto junta as tarefas de um mesmo assunto, com prazo ou sem.';
+  String get artifactGiveDeadline => 'Dar um prazo';
 
   @override
-  String get projectsNew => 'Novo projeto';
-
-  @override
-  String get projectUntitled => 'Sem nome';
-
-  @override
-  String get projectNoDeadline => 'Sem prazo';
-
-  @override
-  String get projectGiveDeadline => 'Dar um prazo';
-
-  @override
-  String projectUntil(String date) {
+  String artifactUntil(String date) {
     return 'até $date';
   }
 
   @override
-  String projectDaysLeft(int days) {
+  String artifactDaysLeft(int days) {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
@@ -986,40 +962,40 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String projectOverdue(int days) {
+  String artifactOverdue(int days) {
     String _temp0 = intl.Intl.pluralLogic(
       days,
       locale: localeName,
-      other: 'atrasado $days dias',
-      one: 'atrasado 1 dia',
+      other: 'atrasada $days dias',
+      one: 'atrasada 1 dia',
     );
     return '$_temp0';
   }
 
   @override
-  String projectTaskCount(int done, int total) {
+  String artifactTaskCount(int done, int total) {
     return '$done de $total';
   }
 
   @override
-  String projectDoneOn(String date) {
-    return 'concluído $date';
+  String artifactDoneOn(String date) {
+    return 'entregue $date';
   }
 
   @override
-  String get projectMinusDay => '−1 dia';
+  String get artifactMinusDay => '−1 dia';
 
   @override
-  String get projectPlusDay => '+1 dia';
+  String get artifactPlusDay => '+1 dia';
 
   @override
-  String get projectLessDay => 'Um dia a menos';
+  String get artifactLessDay => 'Um dia a menos';
 
   @override
-  String get projectMoreDay => 'Um dia a mais';
+  String get artifactMoreDay => 'Um dia a mais';
 
   @override
-  String projectTasksTab(int count) {
+  String artifactTasksTab(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -1030,22 +1006,22 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get projectNotesTab => 'Notas';
+  String get artifactNotesTab => 'Notas';
 
   @override
-  String get projectDeadlineLabel => 'Prazo';
+  String get artifactDeadlineLabel => 'Prazo';
 
   @override
-  String get projectProgressLabel => 'Feitas';
+  String get artifactProgressLabel => 'Feitas';
 
   @override
-  String get projectNotesHint => 'Escreva o que quiser sobre o projeto…';
+  String get artifactNotesHint => 'Escreva o que quiser sobre a entrega…';
 
   @override
-  String get projectAddTask => 'Nova tarefa';
+  String get artifactAddTask => 'Nova tarefa';
 
   @override
-  String projectTasksDone(int count) {
+  String artifactTasksDone(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -1056,22 +1032,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get projectSheetHint => 'Qual é o projeto?';
-
-  @override
-  String get projectSheetOpenEnded => 'Sem data para acabar';
-
-  @override
-  String get projectWeek => '1 semana';
-
-  @override
-  String get projectMonth => '1 mês';
-
-  @override
-  String get projectPickDay => 'Escolher dia';
-
-  @override
-  String get projectDeleteBody => 'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.';
+  String get artifactDeleteBody => 'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.';
 
   @override
   String dayOverTitle(String end) {
@@ -1166,22 +1127,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentChangeRemove => 'apagar';
 
   @override
-  String get agentChangeNewProject => 'novo projeto';
+  String get agentChangeNewArtifact => 'nova entrega';
 
   @override
   String get agentChangeDeadline => 'prazo';
 
   @override
-  String get agentChangeProjectDone => 'projeto concluído';
+  String get agentChangeArtifactDone => 'entregue';
 
   @override
-  String agentChangeRemoveProject(int count) {
+  String agentChangeRemoveArtifact(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'apagar o projeto e $count tarefas',
-      one: 'apagar o projeto e 1 tarefa',
-      zero: 'apagar o projeto',
+      other: 'apagar a entrega e $count tarefas',
+      one: 'apagar a entrega e 1 tarefa',
+      zero: 'apagar a entrega',
     );
     return '$_temp0';
   }
@@ -1203,15 +1164,15 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String agentProjectDone(int done, int total) {
+  String agentArtifactDone(int done, int total) {
     return '$done de $total feitas';
   }
 
   @override
-  String get agentProjectNext => 'Próximas';
+  String get agentArtifactNext => 'Próximas';
 
   @override
-  String agentProjectMore(int count) {
+  String agentArtifactMore(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -1222,5 +1183,324 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get agentProjectOpen => 'Abrir projeto';
+  String get agentArtifactOpen => 'Abrir entrega';
+
+  @override
+  String get shellArtifactsTab => 'Entregas';
+
+  @override
+  String get monthsLong => 'janeiro,fevereiro,março,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro';
+
+  @override
+  String get artifactsSearch => 'Buscar entregas';
+
+  @override
+  String get artifactsSearchHint => 'Buscar por nome, cliente ou tipo';
+
+  @override
+  String get goalsSection => 'Metas';
+
+  @override
+  String get goalNew => 'Nova meta';
+
+  @override
+  String get goalRevenue => 'Faturamento';
+
+  @override
+  String goalInMonth(String label, String month) {
+    return '$label · $month';
+  }
+
+  @override
+  String goalThisWeek(String label) {
+    return '$label · esta semana';
+  }
+
+  @override
+  String goalOf(String target) {
+    return 'de $target';
+  }
+
+  @override
+  String goalDaysLeft(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'faltam $days dias',
+      one: 'falta 1 dia',
+      zero: 'termina hoje',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String goalStartsOn(String date) {
+    return 'começa $date';
+  }
+
+  @override
+  String get goalDone => 'feito';
+
+  @override
+  String goalQueued(String value) {
+    return 'na fila $value';
+  }
+
+  @override
+  String goalMissing(String value) {
+    return 'faltam $value';
+  }
+
+  @override
+  String get goalCovered => 'a fila cobre o resto';
+
+  @override
+  String goalSchedule(String need, String free, String date) {
+    return 'A fila pede $need · você tem $free livres até $date';
+  }
+
+  @override
+  String get artifactsQueue => 'Fila';
+
+  @override
+  String artifactsQueueSummary(int count, String time) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count entregas',
+      one: '1 entrega',
+    );
+    return '$_temp0 · $time';
+  }
+
+  @override
+  String get artifactsAll => 'Todas';
+
+  @override
+  String artifactsSeeAll(int count) {
+    return 'Ver todas as $count';
+  }
+
+  @override
+  String get artifactsAllTitle => 'Todas as entregas';
+
+  @override
+  String get artifactsInQueue => 'Na fila';
+
+  @override
+  String get artifactsDone => 'Feitas';
+
+  @override
+  String artifactsDoneOn(String date) {
+    return 'feita $date';
+  }
+
+  @override
+  String artifactsNoResults(String query) {
+    return 'Nada com “$query”.';
+  }
+
+  @override
+  String get artifactsNew => 'Nova entrega';
+
+  @override
+  String get artifactLoose => 'Avulsa';
+
+  @override
+  String artifactDue(String date) {
+    return 'até $date';
+  }
+
+  @override
+  String artifactTimeDone(String done, String total) {
+    return '$done de $total';
+  }
+
+  @override
+  String artifactSteps(int done, int total) {
+    return '$done de $total etapas';
+  }
+
+  @override
+  String artifactBlocks(String block) {
+    return 'em blocos de $block';
+  }
+
+  @override
+  String get artifactSheetSearchHint => 'Mapa astral, post, revolução…';
+
+  @override
+  String get artifactSheetLoose => 'Uma entrega avulsa';
+
+  @override
+  String get artifactSheetLooseHint => 'Sem tipo do catálogo: você diz quanto tempo leva';
+
+  @override
+  String get catalogTitle => 'Catálogo';
+
+  @override
+  String get catalogEdit => 'Editar';
+
+  @override
+  String get catalogEmptyTitle => 'Seu catálogo está vazio';
+
+  @override
+  String get catalogEmptyBody => 'Crie um tipo para o que você entrega sempre, como um mapa astral ou um post. Ele já traz o tempo, o preço e como dividir no dia.';
+
+  @override
+  String get catalogNewType => 'Criar um tipo';
+
+  @override
+  String get catalogEmptyLooseHint => 'Você diz quanto tempo leva e quanto vale.';
+
+  @override
+  String get artifactNameHint => 'Nome da entrega';
+
+  @override
+  String get artifactChangeType => 'Trocar';
+
+  @override
+  String get artifactTotalTime => 'Tempo total';
+
+  @override
+  String artifactTimeFromType(String type) {
+    return 'do tipo $type';
+  }
+
+  @override
+  String get artifactSplit => 'No dia';
+
+  @override
+  String get artifactSplitWhole => 'Inteira';
+
+  @override
+  String artifactSplitBlocks(String block) {
+    return 'Blocos de $block';
+  }
+
+  @override
+  String get artifactValue => 'Valor';
+
+  @override
+  String get artifactDeadline => 'Prazo';
+
+  @override
+  String get artifactCountsFor => 'Conta para';
+
+  @override
+  String get artifactPlace => 'Entra na fila';
+
+  @override
+  String get artifactPlaceTop => 'No topo';
+
+  @override
+  String get artifactPlaceEnd => 'No fim';
+
+  @override
+  String get artifactCreate => 'Pôr na fila';
+
+  @override
+  String get goalSheetKind => 'Medir';
+
+  @override
+  String get goalKindMoney => 'Faturamento';
+
+  @override
+  String get goalKindCount => 'Quantidade';
+
+  @override
+  String get goalAmount => 'Quanto';
+
+  @override
+  String get goalPer => 'Por';
+
+  @override
+  String get goalPerWeek => 'Semana';
+
+  @override
+  String get goalPerMonth => 'Mês';
+
+  @override
+  String get goalWhen => 'Quando';
+
+  @override
+  String get goalNow => 'Agora';
+
+  @override
+  String goalNextMonth(String month) {
+    return 'Em $month';
+  }
+
+  @override
+  String goalReadbackMoney(String amount, String month) {
+    return 'Faturar $amount em $month.';
+  }
+
+  @override
+  String goalReadbackFuture(String month) {
+    return 'Fica guardada e passa a valer em 1º de $month.';
+  }
+
+  @override
+  String get goalCreate => 'Criar meta';
+
+  @override
+  String get catalogAddType => 'Novo tipo';
+
+  @override
+  String get typeNameHint => 'Nome do tipo, como Mapa astral';
+
+  @override
+  String get typeCategory => 'Categoria';
+
+  @override
+  String get typeNewCategory => 'Nova';
+
+  @override
+  String get typeCategoryHint => 'Nome da categoria, como Atendimentos';
+
+  @override
+  String get typeCreate => 'Guardar no catálogo';
+
+  @override
+  String get valueOptional => 'opcional';
+
+  @override
+  String get artifactKindLabel => 'Tipo';
+
+  @override
+  String get goalsEmpty => 'Uma meta diz quanto você quer faturar, ou quantas entregas de um tipo fazer, por semana ou por mês.';
+
+  @override
+  String get goalDeleteBody => 'As entregas continuam na fila; só a meta deixa de ser medida.';
+
+  @override
+  String get artifactsEmpty => 'Nada na fila ainda. O + põe uma entrega nela.';
+
+  @override
+  String get artifactsNoneHere => 'Nada na fila com esse filtro.';
+
+  @override
+  String get goalCountNeedsType => 'Crie um tipo no catálogo para contar as entregas dele.';
+
+  @override
+  String get goalNextWeek => 'Semana que vem';
+
+  @override
+  String goalReadbackMoneyWeek(String amount) {
+    return 'Faturar $amount por semana.';
+  }
+
+  @override
+  String goalReadbackCountMonth(String type, String count, String month) {
+    return '$type: $count em $month.';
+  }
+
+  @override
+  String goalReadbackCountWeek(String type, String count) {
+    return '$type: $count por semana.';
+  }
+
+  @override
+  String get goalReadbackFutureWeek => 'Fica guardada e passa a valer na segunda-feira.';
 }

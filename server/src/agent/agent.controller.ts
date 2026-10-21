@@ -205,25 +205,25 @@ export function optionalConversation(raw: unknown): string | undefined {
 
 /**
  * What the conversation is about, when it was opened from a page: a task's
- * (`{ taskId }`) or a project's (`{ projectId }`).
+ * (`{ taskId }`) or an artifact's (`{ artifactId }`).
  */
 export function optionalSubject(raw: unknown): Subject | undefined {
   if (raw === undefined || raw === null) return undefined;
 
-  const about = raw as { taskId?: unknown; projectId?: unknown };
-  const { taskId, projectId } = about;
+  const about = raw as { taskId?: unknown; artifactId?: unknown };
+  const { taskId, artifactId } = about;
   if (
     typeof raw !== 'object' ||
-    (taskId === undefined) === (projectId === undefined)
+    (taskId === undefined) === (artifactId === undefined)
   ) {
-    throw new BadRequestException('about must be { taskId } or { projectId }');
+    throw new BadRequestException('about must be { taskId } or { artifactId }');
   }
-  const id = taskId ?? projectId;
+  const id = taskId ?? artifactId;
   if (typeof id !== 'string' || !UUID.test(id)) {
     throw new BadRequestException('about must name a UUID');
   }
 
   return taskId !== undefined
     ? { taskId: id.toLowerCase() }
-    : { projectId: id.toLowerCase() };
+    : { artifactId: id.toLowerCase() };
 }

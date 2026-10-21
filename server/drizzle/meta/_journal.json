@@ -64,6 +64,20 @@
       "when": 1792281544244,
       "tag": "0008_link_preview",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792607740835,
+      "tag": "0009_artifacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792607750632,
+      "tag": "0010_drop_projects",
+      "breakpoints": true
     }
   ]
 }

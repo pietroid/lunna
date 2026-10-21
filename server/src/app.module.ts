@@ -9,7 +9,7 @@ import { DbModule } from './db/db.module';
 import { EventsModule } from './events/events.module';
 import { LinksModule } from './links/links.module';
 import { NotificationsModule } from './notifications/notifications.module';
-import { ProjectsModule } from './projects/projects.module';
+import { ArtifactsModule } from './artifacts/artifacts.module';
 import { RoutinesModule } from './routines/routines.module';
 import { UsersModule } from './users/users.module';
 
@@ -31,7 +31,7 @@ import { UsersModule } from './users/users.module';
     EventsModule,
     LinksModule,
     NotificationsModule,
-    ProjectsModule,
+    ArtifactsModule,
     RoutinesModule,
     UsersModule,
   ],

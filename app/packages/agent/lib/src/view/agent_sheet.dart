@@ -6,11 +6,11 @@ import 'package:agent/src/agent_repository.dart';
 import 'package:agent/src/models.dart';
 import 'package:agent/src/surface.dart';
 import 'package:agent/src/view/apply_plan.dart';
+import 'package:agent/src/view/artifact_peek.dart';
 import 'package:agent/src/view/cards_peek.dart';
 import 'package:agent/src/view/day_peek.dart';
 import 'package:agent/src/view/failure_note.dart';
 import 'package:agent/src/view/plan_card.dart';
-import 'package:agent/src/view/project_peek.dart';
 import 'package:agent/src/view/quick_replies.dart';
 import 'package:agent/src/view/voice_bar.dart';
 import 'package:agent/src/voice/voice_cubit.dart';
@@ -658,7 +658,7 @@ class _Answer extends StatelessWidget {
     final plan = reply.plan;
     final tookOption = entry.chosen != null && entry.chosen != plan?.id;
     final past = onAdjust == null;
-    final open = AgentLinks.of(context).openProject;
+    final open = AgentLinks.of(context).openArtifact;
     final about = context.read<AgentCubit>().about;
 
     Widget? planned() => switch (plan) {
@@ -717,14 +717,14 @@ class _Answer extends StatelessWidget {
                 ChoicesBlock() => choices(),
                 DayBlock() => DayPeek(block: block),
                 CardsBlock() => CardsPeek(block: block),
-                ProjectBlock(:final project) => ProjectPeek(
-                  project: project,
-                  // On the project's own page, it is already open.
-                  onOpen: open == null || about?.projectId == project.id
+                ArtifactBlock(:final artifact) => ArtifactPeek(
+                  artifact: artifact,
+                  // On the artifact's own page, it is already open.
+                  onOpen: open == null || about?.artifactId == artifact.id
                       ? null
                       : () {
                           Navigator.of(context).pop();
-                          open(project.id);
+                          open(artifact.id);
                         },
                 ),
               },

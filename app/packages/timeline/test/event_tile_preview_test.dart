@@ -32,7 +32,7 @@ void main() {
   group('a card on the calendar', () {
     final start = DateTime(2026, 6, 10, 14);
 
-    TimelineEvent card({String? project}) => TimelineEvent(
+    TimelineEvent card({String? artifact}) => TimelineEvent(
       id: 't',
       title: 'Orçamento da marcenaria',
       section: TimelineSection.dia,
@@ -40,8 +40,8 @@ void main() {
       endTime: start.add(const Duration(minutes: 45)),
       durationMinutes: 45,
       notes: 'https://example.com/planta\nPedir foto da planta',
-      projectId: project == null ? null : 'p',
-      projectTitle: project,
+      artifactId: artifact == null ? null : 'p',
+      artifactTitle: artifact,
     );
 
     Future<void> pump(
@@ -71,7 +71,7 @@ void main() {
 
     bool hasFolders() => find
         .byWidgetPredicate(
-          (it) => it is AppIcon && it.iconData == AppIcons.things,
+          (it) => it is AppIcon && it.iconData == AppIcons.artifacts,
         )
         .evaluate()
         .isNotEmpty;
@@ -97,14 +97,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('names its project first, or marks it when short', (
+    testWidgets('names its artifact first, or marks it when short', (
       tester,
     ) async {
-      await pump(tester, card(project: 'Reforma do apê'), height: 90);
+      await pump(tester, card(artifact: 'Reforma do apê'), height: 90);
       expect(find.textContaining('Reforma do apê'), findsOneWidget);
       expect(hasFolders(), isFalse);
 
-      await pump(tester, card(project: 'Reforma do apê'), height: 60);
+      await pump(tester, card(artifact: 'Reforma do apê'), height: 60);
       expect(find.textContaining('Reforma do apê'), findsNothing);
       expect(hasFolders(), isTrue);
     });
@@ -117,7 +117,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           locale: const Locale('pt', 'BR'),
           home: Scaffold(
-            body: EventTile(card: card(project: 'Reforma')),
+            body: EventTile(card: card(artifact: 'Reforma')),
           ),
         ),
       );

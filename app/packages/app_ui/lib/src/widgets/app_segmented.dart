@@ -26,6 +26,7 @@ class AppSegmented extends StatelessWidget {
     required this.segments,
     required this.selected,
     required this.onSelected,
+    this.selectedKey,
     super.key,
   });
 
@@ -37,6 +38,10 @@ class AppSegmented extends StatelessWidget {
 
   /// Called with the index of the segment that was tapped.
   final ValueChanged<int> onSelected;
+
+  /// Put on the taken segment, so a line that scrolls can bring it into
+  /// sight.
+  final Key? selectedKey;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +56,7 @@ class AppSegmented extends StatelessWidget {
         children: [
           for (var index = 0; index < segments.length; index++)
             _Segment(
+              key: index == selected ? selectedKey : null,
               segment: segments[index],
               isSelected: index == selected,
               onTap: () => onSelected(index),
@@ -66,6 +72,7 @@ class _Segment extends StatelessWidget {
     required this.segment,
     required this.isSelected,
     required this.onTap,
+    super.key,
   });
 
   final AppSegment segment;

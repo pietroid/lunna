@@ -246,7 +246,7 @@ void main() {
         () => repository.conversations(before: any(named: 'before')),
       ).thenAnswer((_) async => []);
       final cubit = AgentCubit(repository: repository, now: () => start)
-        ..open(about: const AgentSubject.project('p1'));
+        ..open(about: const AgentSubject.artifact('p1'));
       await cubit.send('O que falta?');
       await cubit.send('E depois?');
       cubit.open();
@@ -257,7 +257,7 @@ void main() {
           any(),
           conversationId: any(named: 'conversationId'),
           day: any(named: 'day'),
-          about: const AgentSubject.project('p1'),
+          about: const AgentSubject.artifact('p1'),
         ),
       ).called(2);
       verify(
@@ -267,7 +267,7 @@ void main() {
           day: any(named: 'day'),
         ),
       ).called(1);
-      expect(const AgentSubject.project('p1').toJson(), {'projectId': 'p1'});
+      expect(const AgentSubject.artifact('p1').toJson(), {'artifactId': 'p1'});
       expect(const AgentSubject.task('t1').toJson(), {'taskId': 't1'});
       await cubit.close();
     });

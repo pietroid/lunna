@@ -175,7 +175,7 @@ class TimelineList extends StatefulWidget {
   });
 
   /// The tasks the list draws, by id, when it is not the whole day: a
-  /// project's. Null draws every task.
+  /// artifact's. Null draws every task.
   ///
   /// Only the list honours it; the calendar is the day, all of it.
   final Set<String>? only;
@@ -1187,7 +1187,7 @@ class _TimelineListState extends State<TimelineList> {
     // user saying they are doing it now. Let go in an empty queue it is only
     // next, and waits to be begun like any first task.
     final place = _placeOf(id, target);
-    // Counted in the whole queue: a list kept to a project still drops into
+    // Counted in the whole queue: a list kept to an artifact still drops into
     // the day's.
     final ahead = !_isList || _state.tasks.any((it) => it.id != id);
     final above = place.backlog ? null : _hourAbove(id, target);
@@ -1977,9 +1977,9 @@ class _TimelineListState extends State<TimelineList> {
     return EventTile(
       card: card,
       landing: landing,
-      // Lista has the height to say which project a task is of; the
+      // Lista has the height to say which artifact a task is of; the
       // calendar draws cards to the scale of their time.
-      showProject: _isList,
+      showArtifact: _isList,
       // The calendar says what the notes start with, in the room it has.
       preview: !_isList,
       pressed: card.id == _pressed || card.id == _swap,

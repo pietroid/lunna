@@ -34,7 +34,7 @@ function serviceWith(
     live: new Map(),
     placed: new Map(queue.map((it) => [it.task.id, it.slot])),
     routines: new Map(),
-    projects: new Map(),
+    artifacts: new Map(),
   };
   const timeline = {
     day: () => Promise.resolve(day),

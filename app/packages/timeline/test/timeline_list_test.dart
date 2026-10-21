@@ -1568,7 +1568,7 @@ void main() {
     });
   });
 
-  group('kept to some tasks, as a project draws it', () {
+  group('kept to some tasks, as an artifact draws it', () {
     TimelineEvent shelved(String id, String title) => TimelineEvent.fromJson({
       'id': id,
       'kind': 'task',

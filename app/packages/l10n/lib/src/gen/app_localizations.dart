@@ -125,12 +125,6 @@ abstract class AppLocalizations {
   /// **'Tempo'**
   String get shellTimelineTab;
 
-  /// No description provided for @shellProjectsTab.
-  ///
-  /// In pt, this message translates to:
-  /// **'Projetos'**
-  String get shellProjectsTab;
-
   /// No description provided for @shellMenuTab.
   ///
   /// In pt, this message translates to:
@@ -467,17 +461,17 @@ abstract class AppLocalizations {
   /// **'Duração'**
   String get eventLengthLabel;
 
-  /// No description provided for @eventProjectLabel.
+  /// No description provided for @eventArtifactLabel.
   ///
   /// In pt, this message translates to:
-  /// **'Projeto'**
-  String get eventProjectLabel;
+  /// **'Entrega'**
+  String get eventArtifactLabel;
 
-  /// No description provided for @eventNoProject.
+  /// No description provided for @eventNoArtifact.
   ///
   /// In pt, this message translates to:
-  /// **'Nenhum'**
-  String get eventNoProject;
+  /// **'Nenhuma'**
+  String get eventNoArtifact;
 
   /// No description provided for @eventNotesLabel.
   ///
@@ -1565,179 +1559,125 @@ abstract class AppLocalizations {
   /// **'Este aparelho não reconhece fala em português.'**
   String get agentVoiceUnavailable;
 
-  /// No description provided for @projectsOpenCount.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =0{Nenhum em andamento} =1{1 em andamento} other{{count} em andamento}}'**
-  String projectsOpenCount(int count);
-
-  /// No description provided for @projectsDoneSection.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluídos'**
-  String get projectsDoneSection;
-
-  /// No description provided for @projectsEmpty.
-  ///
-  /// In pt, this message translates to:
-  /// **'Um projeto junta as tarefas de um mesmo assunto, com prazo ou sem.'**
-  String get projectsEmpty;
-
-  /// No description provided for @projectsNew.
-  ///
-  /// In pt, this message translates to:
-  /// **'Novo projeto'**
-  String get projectsNew;
-
-  /// No description provided for @projectUntitled.
+  /// No description provided for @artifactUntitled.
   ///
   /// In pt, this message translates to:
   /// **'Sem nome'**
-  String get projectUntitled;
+  String get artifactUntitled;
 
-  /// No description provided for @projectNoDeadline.
+  /// No description provided for @artifactNoDeadline.
   ///
   /// In pt, this message translates to:
   /// **'Sem prazo'**
-  String get projectNoDeadline;
+  String get artifactNoDeadline;
 
-  /// No description provided for @projectGiveDeadline.
+  /// No description provided for @artifactGiveDeadline.
   ///
   /// In pt, this message translates to:
   /// **'Dar um prazo'**
-  String get projectGiveDeadline;
+  String get artifactGiveDeadline;
 
-  /// No description provided for @projectUntil.
+  /// No description provided for @artifactUntil.
   ///
   /// In pt, this message translates to:
   /// **'até {date}'**
-  String projectUntil(String date);
+  String artifactUntil(String date);
 
-  /// No description provided for @projectDaysLeft.
+  /// No description provided for @artifactDaysLeft.
   ///
   /// In pt, this message translates to:
   /// **'{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}'**
-  String projectDaysLeft(int days);
+  String artifactDaysLeft(int days);
 
-  /// No description provided for @projectOverdue.
+  /// No description provided for @artifactOverdue.
   ///
   /// In pt, this message translates to:
-  /// **'{days, plural, =1{atrasado 1 dia} other{atrasado {days} dias}}'**
-  String projectOverdue(int days);
+  /// **'{days, plural, =1{atrasada 1 dia} other{atrasada {days} dias}}'**
+  String artifactOverdue(int days);
 
-  /// No description provided for @projectTaskCount.
+  /// No description provided for @artifactTaskCount.
   ///
   /// In pt, this message translates to:
   /// **'{done} de {total}'**
-  String projectTaskCount(int done, int total);
+  String artifactTaskCount(int done, int total);
 
-  /// No description provided for @projectDoneOn.
+  /// No description provided for @artifactDoneOn.
   ///
   /// In pt, this message translates to:
-  /// **'concluído {date}'**
-  String projectDoneOn(String date);
+  /// **'entregue {date}'**
+  String artifactDoneOn(String date);
 
-  /// No description provided for @projectMinusDay.
+  /// No description provided for @artifactMinusDay.
   ///
   /// In pt, this message translates to:
   /// **'−1 dia'**
-  String get projectMinusDay;
+  String get artifactMinusDay;
 
-  /// No description provided for @projectPlusDay.
+  /// No description provided for @artifactPlusDay.
   ///
   /// In pt, this message translates to:
   /// **'+1 dia'**
-  String get projectPlusDay;
+  String get artifactPlusDay;
 
-  /// No description provided for @projectLessDay.
+  /// No description provided for @artifactLessDay.
   ///
   /// In pt, this message translates to:
   /// **'Um dia a menos'**
-  String get projectLessDay;
+  String get artifactLessDay;
 
-  /// No description provided for @projectMoreDay.
+  /// No description provided for @artifactMoreDay.
   ///
   /// In pt, this message translates to:
   /// **'Um dia a mais'**
-  String get projectMoreDay;
+  String get artifactMoreDay;
 
-  /// No description provided for @projectTasksTab.
+  /// No description provided for @artifactTasksTab.
   ///
   /// In pt, this message translates to:
   /// **'{count, plural, =0{Tarefas} other{Tarefas · {count}}}'**
-  String projectTasksTab(int count);
+  String artifactTasksTab(int count);
 
-  /// No description provided for @projectNotesTab.
+  /// No description provided for @artifactNotesTab.
   ///
   /// In pt, this message translates to:
   /// **'Notas'**
-  String get projectNotesTab;
+  String get artifactNotesTab;
 
-  /// No description provided for @projectDeadlineLabel.
+  /// No description provided for @artifactDeadlineLabel.
   ///
   /// In pt, this message translates to:
   /// **'Prazo'**
-  String get projectDeadlineLabel;
+  String get artifactDeadlineLabel;
 
-  /// No description provided for @projectProgressLabel.
+  /// No description provided for @artifactProgressLabel.
   ///
   /// In pt, this message translates to:
   /// **'Feitas'**
-  String get projectProgressLabel;
+  String get artifactProgressLabel;
 
-  /// No description provided for @projectNotesHint.
+  /// No description provided for @artifactNotesHint.
   ///
   /// In pt, this message translates to:
-  /// **'Escreva o que quiser sobre o projeto…'**
-  String get projectNotesHint;
+  /// **'Escreva o que quiser sobre a entrega…'**
+  String get artifactNotesHint;
 
-  /// No description provided for @projectAddTask.
+  /// No description provided for @artifactAddTask.
   ///
   /// In pt, this message translates to:
   /// **'Nova tarefa'**
-  String get projectAddTask;
+  String get artifactAddTask;
 
-  /// No description provided for @projectTasksDone.
+  /// No description provided for @artifactTasksDone.
   ///
   /// In pt, this message translates to:
   /// **'{count, plural, =1{1 feita} other{{count} feitas}}'**
-  String projectTasksDone(int count);
+  String artifactTasksDone(int count);
 
-  /// No description provided for @projectSheetHint.
-  ///
-  /// In pt, this message translates to:
-  /// **'Qual é o projeto?'**
-  String get projectSheetHint;
-
-  /// No description provided for @projectSheetOpenEnded.
-  ///
-  /// In pt, this message translates to:
-  /// **'Sem data para acabar'**
-  String get projectSheetOpenEnded;
-
-  /// No description provided for @projectWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'1 semana'**
-  String get projectWeek;
-
-  /// No description provided for @projectMonth.
-  ///
-  /// In pt, this message translates to:
-  /// **'1 mês'**
-  String get projectMonth;
-
-  /// No description provided for @projectPickDay.
-  ///
-  /// In pt, this message translates to:
-  /// **'Escolher dia'**
-  String get projectPickDay;
-
-  /// No description provided for @projectDeleteBody.
+  /// No description provided for @artifactDeleteBody.
   ///
   /// In pt, this message translates to:
   /// **'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.'**
-  String get projectDeleteBody;
+  String get artifactDeleteBody;
 
   /// No description provided for @dayOverTitle.
   ///
@@ -1883,11 +1823,11 @@ abstract class AppLocalizations {
   /// **'apagar'**
   String get agentChangeRemove;
 
-  /// No description provided for @agentChangeNewProject.
+  /// No description provided for @agentChangeNewArtifact.
   ///
   /// In pt, this message translates to:
-  /// **'novo projeto'**
-  String get agentChangeNewProject;
+  /// **'nova entrega'**
+  String get agentChangeNewArtifact;
 
   /// No description provided for @agentChangeDeadline.
   ///
@@ -1895,17 +1835,17 @@ abstract class AppLocalizations {
   /// **'prazo'**
   String get agentChangeDeadline;
 
-  /// No description provided for @agentChangeProjectDone.
+  /// No description provided for @agentChangeArtifactDone.
   ///
   /// In pt, this message translates to:
-  /// **'projeto concluído'**
-  String get agentChangeProjectDone;
+  /// **'entregue'**
+  String get agentChangeArtifactDone;
 
-  /// No description provided for @agentChangeRemoveProject.
+  /// No description provided for @agentChangeRemoveArtifact.
   ///
   /// In pt, this message translates to:
-  /// **'{count, plural, =0{apagar o projeto} =1{apagar o projeto e 1 tarefa} other{apagar o projeto e {count} tarefas}}'**
-  String agentChangeRemoveProject(int count);
+  /// **'{count, plural, =0{apagar a entrega} =1{apagar a entrega e 1 tarefa} other{apagar a entrega e {count} tarefas}}'**
+  String agentChangeRemoveArtifact(int count);
 
   /// No description provided for @agentFree.
   ///
@@ -1919,29 +1859,545 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 tarefa} other{{count} tarefas}}'**
   String agentCardsCount(int count);
 
-  /// No description provided for @agentProjectDone.
+  /// No description provided for @agentArtifactDone.
   ///
   /// In pt, this message translates to:
   /// **'{done} de {total} feitas'**
-  String agentProjectDone(int done, int total);
+  String agentArtifactDone(int done, int total);
 
-  /// No description provided for @agentProjectNext.
+  /// No description provided for @agentArtifactNext.
   ///
   /// In pt, this message translates to:
   /// **'Próximas'**
-  String get agentProjectNext;
+  String get agentArtifactNext;
 
-  /// No description provided for @agentProjectMore.
+  /// No description provided for @agentArtifactMore.
   ///
   /// In pt, this message translates to:
   /// **'{count, plural, =1{mais 1} other{mais {count}}}'**
-  String agentProjectMore(int count);
+  String agentArtifactMore(int count);
 
-  /// No description provided for @agentProjectOpen.
+  /// No description provided for @agentArtifactOpen.
   ///
   /// In pt, this message translates to:
-  /// **'Abrir projeto'**
-  String get agentProjectOpen;
+  /// **'Abrir entrega'**
+  String get agentArtifactOpen;
+
+  /// No description provided for @shellArtifactsTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entregas'**
+  String get shellArtifactsTab;
+
+  /// No description provided for @monthsLong.
+  ///
+  /// In pt, this message translates to:
+  /// **'janeiro,fevereiro,março,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro'**
+  String get monthsLong;
+
+  /// No description provided for @artifactsSearch.
+  ///
+  /// In pt, this message translates to:
+  /// **'Buscar entregas'**
+  String get artifactsSearch;
+
+  /// No description provided for @artifactsSearchHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Buscar por nome, cliente ou tipo'**
+  String get artifactsSearchHint;
+
+  /// No description provided for @goalsSection.
+  ///
+  /// In pt, this message translates to:
+  /// **'Metas'**
+  String get goalsSection;
+
+  /// No description provided for @goalNew.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova meta'**
+  String get goalNew;
+
+  /// No description provided for @goalRevenue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Faturamento'**
+  String get goalRevenue;
+
+  /// No description provided for @goalInMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'{label} · {month}'**
+  String goalInMonth(String label, String month);
+
+  /// No description provided for @goalThisWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'{label} · esta semana'**
+  String goalThisWeek(String label);
+
+  /// No description provided for @goalOf.
+  ///
+  /// In pt, this message translates to:
+  /// **'de {target}'**
+  String goalOf(String target);
+
+  /// No description provided for @goalDaysLeft.
+  ///
+  /// In pt, this message translates to:
+  /// **'{days, plural, =0{termina hoje} =1{falta 1 dia} other{faltam {days} dias}}'**
+  String goalDaysLeft(int days);
+
+  /// No description provided for @goalStartsOn.
+  ///
+  /// In pt, this message translates to:
+  /// **'começa {date}'**
+  String goalStartsOn(String date);
+
+  /// No description provided for @goalDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'feito'**
+  String get goalDone;
+
+  /// No description provided for @goalQueued.
+  ///
+  /// In pt, this message translates to:
+  /// **'na fila {value}'**
+  String goalQueued(String value);
+
+  /// No description provided for @goalMissing.
+  ///
+  /// In pt, this message translates to:
+  /// **'faltam {value}'**
+  String goalMissing(String value);
+
+  /// No description provided for @goalCovered.
+  ///
+  /// In pt, this message translates to:
+  /// **'a fila cobre o resto'**
+  String get goalCovered;
+
+  /// No description provided for @goalSchedule.
+  ///
+  /// In pt, this message translates to:
+  /// **'A fila pede {need} · você tem {free} livres até {date}'**
+  String goalSchedule(String need, String free, String date);
+
+  /// No description provided for @artifactsQueue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fila'**
+  String get artifactsQueue;
+
+  /// No description provided for @artifactsQueueSummary.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 entrega} other{{count} entregas}} · {time}'**
+  String artifactsQueueSummary(int count, String time);
+
+  /// No description provided for @artifactsAll.
+  ///
+  /// In pt, this message translates to:
+  /// **'Todas'**
+  String get artifactsAll;
+
+  /// No description provided for @artifactsSeeAll.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver todas as {count}'**
+  String artifactsSeeAll(int count);
+
+  /// No description provided for @artifactsAllTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Todas as entregas'**
+  String get artifactsAllTitle;
+
+  /// No description provided for @artifactsInQueue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Na fila'**
+  String get artifactsInQueue;
+
+  /// No description provided for @artifactsDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feitas'**
+  String get artifactsDone;
+
+  /// No description provided for @artifactsDoneOn.
+  ///
+  /// In pt, this message translates to:
+  /// **'feita {date}'**
+  String artifactsDoneOn(String date);
+
+  /// No description provided for @artifactsNoResults.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada com “{query}”.'**
+  String artifactsNoResults(String query);
+
+  /// No description provided for @artifactsNew.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova entrega'**
+  String get artifactsNew;
+
+  /// No description provided for @artifactLoose.
+  ///
+  /// In pt, this message translates to:
+  /// **'Avulsa'**
+  String get artifactLoose;
+
+  /// No description provided for @artifactDue.
+  ///
+  /// In pt, this message translates to:
+  /// **'até {date}'**
+  String artifactDue(String date);
+
+  /// No description provided for @artifactTimeDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'{done} de {total}'**
+  String artifactTimeDone(String done, String total);
+
+  /// No description provided for @artifactSteps.
+  ///
+  /// In pt, this message translates to:
+  /// **'{done} de {total} etapas'**
+  String artifactSteps(int done, int total);
+
+  /// No description provided for @artifactBlocks.
+  ///
+  /// In pt, this message translates to:
+  /// **'em blocos de {block}'**
+  String artifactBlocks(String block);
+
+  /// No description provided for @artifactSheetSearchHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral, post, revolução…'**
+  String get artifactSheetSearchHint;
+
+  /// No description provided for @artifactSheetLoose.
+  ///
+  /// In pt, this message translates to:
+  /// **'Uma entrega avulsa'**
+  String get artifactSheetLoose;
+
+  /// No description provided for @artifactSheetLooseHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem tipo do catálogo: você diz quanto tempo leva'**
+  String get artifactSheetLooseHint;
+
+  /// No description provided for @catalogTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Catálogo'**
+  String get catalogTitle;
+
+  /// No description provided for @catalogEdit.
+  ///
+  /// In pt, this message translates to:
+  /// **'Editar'**
+  String get catalogEdit;
+
+  /// No description provided for @catalogEmptyTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu catálogo está vazio'**
+  String get catalogEmptyTitle;
+
+  /// No description provided for @catalogEmptyBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Crie um tipo para o que você entrega sempre, como um mapa astral ou um post. Ele já traz o tempo, o preço e como dividir no dia.'**
+  String get catalogEmptyBody;
+
+  /// No description provided for @catalogNewType.
+  ///
+  /// In pt, this message translates to:
+  /// **'Criar um tipo'**
+  String get catalogNewType;
+
+  /// No description provided for @catalogEmptyLooseHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você diz quanto tempo leva e quanto vale.'**
+  String get catalogEmptyLooseHint;
+
+  /// No description provided for @artifactNameHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nome da entrega'**
+  String get artifactNameHint;
+
+  /// No description provided for @artifactChangeType.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trocar'**
+  String get artifactChangeType;
+
+  /// No description provided for @artifactTotalTime.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tempo total'**
+  String get artifactTotalTime;
+
+  /// No description provided for @artifactTimeFromType.
+  ///
+  /// In pt, this message translates to:
+  /// **'do tipo {type}'**
+  String artifactTimeFromType(String type);
+
+  /// No description provided for @artifactSplit.
+  ///
+  /// In pt, this message translates to:
+  /// **'No dia'**
+  String get artifactSplit;
+
+  /// No description provided for @artifactSplitWhole.
+  ///
+  /// In pt, this message translates to:
+  /// **'Inteira'**
+  String get artifactSplitWhole;
+
+  /// No description provided for @artifactSplitBlocks.
+  ///
+  /// In pt, this message translates to:
+  /// **'Blocos de {block}'**
+  String artifactSplitBlocks(String block);
+
+  /// No description provided for @artifactValue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Valor'**
+  String get artifactValue;
+
+  /// No description provided for @artifactDeadline.
+  ///
+  /// In pt, this message translates to:
+  /// **'Prazo'**
+  String get artifactDeadline;
+
+  /// No description provided for @artifactCountsFor.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conta para'**
+  String get artifactCountsFor;
+
+  /// No description provided for @artifactPlace.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entra na fila'**
+  String get artifactPlace;
+
+  /// No description provided for @artifactPlaceTop.
+  ///
+  /// In pt, this message translates to:
+  /// **'No topo'**
+  String get artifactPlaceTop;
+
+  /// No description provided for @artifactPlaceEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'No fim'**
+  String get artifactPlaceEnd;
+
+  /// No description provided for @artifactCreate.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pôr na fila'**
+  String get artifactCreate;
+
+  /// No description provided for @goalSheetKind.
+  ///
+  /// In pt, this message translates to:
+  /// **'Medir'**
+  String get goalSheetKind;
+
+  /// No description provided for @goalKindMoney.
+  ///
+  /// In pt, this message translates to:
+  /// **'Faturamento'**
+  String get goalKindMoney;
+
+  /// No description provided for @goalKindCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quantidade'**
+  String get goalKindCount;
+
+  /// No description provided for @goalAmount.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto'**
+  String get goalAmount;
+
+  /// No description provided for @goalPer.
+  ///
+  /// In pt, this message translates to:
+  /// **'Por'**
+  String get goalPer;
+
+  /// No description provided for @goalPerWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'Semana'**
+  String get goalPerWeek;
+
+  /// No description provided for @goalPerMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mês'**
+  String get goalPerMonth;
+
+  /// No description provided for @goalWhen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quando'**
+  String get goalWhen;
+
+  /// No description provided for @goalNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora'**
+  String get goalNow;
+
+  /// No description provided for @goalNextMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em {month}'**
+  String goalNextMonth(String month);
+
+  /// No description provided for @goalReadbackMoney.
+  ///
+  /// In pt, this message translates to:
+  /// **'Faturar {amount} em {month}.'**
+  String goalReadbackMoney(String amount, String month);
+
+  /// No description provided for @goalReadbackFuture.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fica guardada e passa a valer em 1º de {month}.'**
+  String goalReadbackFuture(String month);
+
+  /// No description provided for @goalCreate.
+  ///
+  /// In pt, this message translates to:
+  /// **'Criar meta'**
+  String get goalCreate;
+
+  /// No description provided for @catalogAddType.
+  ///
+  /// In pt, this message translates to:
+  /// **'Novo tipo'**
+  String get catalogAddType;
+
+  /// No description provided for @typeNameHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nome do tipo, como Mapa astral'**
+  String get typeNameHint;
+
+  /// No description provided for @typeCategory.
+  ///
+  /// In pt, this message translates to:
+  /// **'Categoria'**
+  String get typeCategory;
+
+  /// No description provided for @typeNewCategory.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova'**
+  String get typeNewCategory;
+
+  /// No description provided for @typeCategoryHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nome da categoria, como Atendimentos'**
+  String get typeCategoryHint;
+
+  /// No description provided for @typeCreate.
+  ///
+  /// In pt, this message translates to:
+  /// **'Guardar no catálogo'**
+  String get typeCreate;
+
+  /// No description provided for @valueOptional.
+  ///
+  /// In pt, this message translates to:
+  /// **'opcional'**
+  String get valueOptional;
+
+  /// No description provided for @artifactKindLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tipo'**
+  String get artifactKindLabel;
+
+  /// No description provided for @goalsEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Uma meta diz quanto você quer faturar, ou quantas entregas de um tipo fazer, por semana ou por mês.'**
+  String get goalsEmpty;
+
+  /// No description provided for @goalDeleteBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'As entregas continuam na fila; só a meta deixa de ser medida.'**
+  String get goalDeleteBody;
+
+  /// No description provided for @artifactsEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada na fila ainda. O + põe uma entrega nela.'**
+  String get artifactsEmpty;
+
+  /// No description provided for @artifactsNoneHere.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada na fila com esse filtro.'**
+  String get artifactsNoneHere;
+
+  /// No description provided for @goalCountNeedsType.
+  ///
+  /// In pt, this message translates to:
+  /// **'Crie um tipo no catálogo para contar as entregas dele.'**
+  String get goalCountNeedsType;
+
+  /// No description provided for @goalNextWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'Semana que vem'**
+  String get goalNextWeek;
+
+  /// No description provided for @goalReadbackMoneyWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'Faturar {amount} por semana.'**
+  String goalReadbackMoneyWeek(String amount);
+
+  /// No description provided for @goalReadbackCountMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'{type}: {count} em {month}.'**
+  String goalReadbackCountMonth(String type, String count, String month);
+
+  /// No description provided for @goalReadbackCountWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'{type}: {count} por semana.'**
+  String goalReadbackCountWeek(String type, String count);
+
+  /// No description provided for @goalReadbackFutureWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fica guardada e passa a valer na segunda-feira.'**
+  String get goalReadbackFutureWeek;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

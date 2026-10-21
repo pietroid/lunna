@@ -28,7 +28,7 @@ class TimelineRepository {
     required String title,
     required int minutes,
     Placement placement = const Placement.backlog(),
-    String? projectId,
+    String? artifactId,
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(
@@ -36,7 +36,7 @@ class TimelineRepository {
       data: {
         'title': title,
         'minutes': minutes,
-        'projectId': ?projectId,
+        'artifactId': ?artifactId,
         if (!placement.backlog) 'backlog': false,
         'index': ?placement.index,
         if (placement.at case final at?)

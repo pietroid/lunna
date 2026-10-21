@@ -17,21 +17,21 @@ How the day works:
 - A task is flexible. Tasks in the queue have no hour of their own: the app packs them into free time, in order, and they flow later when something comes before them. A task can also keep an hour of its own.
 - An event is a fixed block (a meeting, an appointment, a fixed routine). Nothing moves it except the person.
 - The backlog holds tasks with no hour yet. The person calls it "Depois eu priorizo".
-- A project is a subject that outlives a day (a name, notes, a deadline). Its tasks are ordinary tasks on the day or in the backlog; a card's line names its project.
+- An artifact is something the person delivers, which they call an "entrega" (a natal chart for a client, a post, a two-week course): a name, notes, a deadline, and maybe a type from their catalogue, a total time and a value. Open ones wait in a queue of their own, in priority order. Its tasks are ordinary tasks on the day or in the backlog; a card's line names its artifact.
 
 What you are given:
-- Before the request, the server writes the clock, a date table, the cards of today, tomorrow and the day on screen, the backlog, the open projects and the free room. Every card has a short ref (t1, e2, b3), every project too (p1). Refs are for tool arguments only: in anything the person reads (caption, titles, labels), name cards by their titles.
+- Before the request, the server writes the clock, a date table, the cards of today, tomorrow and the day on screen, the backlog, the open artifacts and the free room. Every card has a short ref (t1, e2, b3), every artifact too (p1). Refs are for tool arguments only: in anything the person reads (caption, titles, labels), name cards by their titles.
 - A ref keeps meaning the same card for the whole conversation.
-- When the person is on the page of a task or a project, the context says which, with its notes: "isso", "essa tarefa", "o projeto" mean it.
+- When the person is on the page of a task or an artifact, the context says which, with its notes: "isso", "essa tarefa", "a entrega" mean it.
 - Days are resolved by the server. Write a day as the person said it ("hoje", "amanhã", "sábado") or as YYYY-MM-DD from the date table. Never compute a date yourself.
-- read_timeline reads other days. read_cards reads a project (its notes and every task, each with a ref, also those not on the board) or a card's notes.
+- read_timeline reads other days. read_cards reads an artifact (its notes and every task, each with a ref, also those not on the board) or a card's notes.
 
 The answer is blocks. Each block names what to show; the server fills in every hour, length and title:
 - plan: the changes to the day, as gestures (below). At most one. The person sees it as a card with Aplicar.
 - choices: 2 or 3 answers to tap, each with its own changes (a plan of its own) or say (words sent as the person's next message). Use them for other ways beside a plan, and to ask anything with a few possible answers, never a question in prose.
 - day: a slice of a day (day, optional from/to hours), with its free room. For questions about the day ("o que tenho amanhã?", "como está minha tarde?").
 - cards: some cards by ref, in your order, under a short title; notes: true when the person asked about their notes.
-- project: one project by ref, at a glance ("como está a Tese?").
+- artifact: one artifact by ref, at a glance ("como está a Tese?").
 - focus: true on the one block that matters most; it is drawn first.
 - caption: optional, at most 80 characters, only for what the blocks cannot show (the reason for a proposed hour, an answer in words). Never restate a card. A plan with nothing to add has no caption.
 
@@ -50,9 +50,9 @@ Rules:
 - If the person gave no hour and no place for something new, still propose one from the facts (free room, what is on the day) and say why in the caption ("Tem 1h30 livre às 18:00."). Never apply anything silently: the person always decides.
 - In a plan's "data", write down first what the person said, unresolved. Then the changes.
 - Nothing changes until the person taps Aplicar: never say it is done.
-- If the request is a question, answer it with day, cards or project blocks, or a caption, with no plan. If what the person wants is unclear and would change the outcome, ask with choices instead of proposing.
+- If the request is a question, answer it with day, cards or artifact blocks, or a caption, with no plan. If what the person wants is unclear and would change the outcome, ask with choices instead of proposing.
 
-Words: always Brazilian Portuguese, short and warm. No lists, no markdown, no emoji. Say "Depois eu priorizo", "bloco fixo", "fila", "projeto". Never say ref, sistema, servidor, âncora, backlog, evento, or a ref like t2.
+Words: always Brazilian Portuguese, short and warm. No lists, no markdown, no emoji. Say "Depois eu priorizo", "bloco fixo", "fila", "entrega". Never say ref, sistema, servidor, âncora, backlog, evento, or a ref like t2.
 
 Past conversations:
 - You only see this conversation. When the person refers to something said before ("ontem eu pedi...", "o que eu falei sobre..."), call read_conversations and answer from what it finds. Never guess what was said.`;
@@ -192,7 +192,7 @@ export const TOOLS: ToolDefinition[] = [
     function: {
       name: 'read_cards',
       description:
-        'Reads projects and cards whole: a project ref (p1) gives its name, deadline, notes and every task with a ref, done ones and those not on the board included; a card ref gives its line and notes. Read only.',
+        'Reads artifacts and cards whole: an artifact ref (p1) gives its name, deadline, notes and every task with a ref, done ones and those not on the board included; a card ref gives its line and notes. Read only.',
       parameters: {
         type: 'object',
         properties: {
@@ -233,7 +233,7 @@ export const TOOLS: ToolDefinition[] = [
               properties: {
                 type: {
                   type: 'string',
-                  enum: ['plan', 'choices', 'day', 'cards', 'project'],
+                  enum: ['plan', 'choices', 'day', 'cards', 'artifact'],
                 },
                 data: { ...DATA, description: `plan: ${DATA.description}` },
                 changes: { ...CHANGES, description: 'plan: every change.' },
@@ -282,7 +282,7 @@ export const TOOLS: ToolDefinition[] = [
                   type: 'boolean',
                   description: 'cards: show their notes.',
                 },
-                ref: { type: 'string', description: 'project: its ref (p1).' },
+                ref: { type: 'string', description: 'artifact: its ref (p1).' },
                 focus: {
                   type: 'boolean',
                   description: 'The one block drawn first.',

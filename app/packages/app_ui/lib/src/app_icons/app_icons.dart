@@ -86,10 +86,7 @@ class AppIcons {
   /// Time, the day as it happened and as it is still going to happen.
   static const time = AppIconData.phosphor(PhosphorIconsRegular.clock);
 
-  /// Things, what outlives a single day.
-  static const things = AppIconData.phosphor(PhosphorIconsRegular.folders);
-
-  /// Notes, written on a card or a project: what the agent adds to them.
+  /// Notes, written on a card or an artifact: what the agent adds to them.
   static const note = AppIconData.phosphor(PhosphorIconsRegular.notePencil);
 
   /// Opens what is folded under it, such as the steps behind an answer.
@@ -170,6 +167,29 @@ class AppIcons {
 
   /// A link with no picture of its own, on its card in the notes.
   static const link = AppIconData.phosphor(PhosphorIconsRegular.link);
+
+  /// Entregas: the queue of what she delivers, one on top of the other.
+  static const artifacts = AppIconData.phosphor(PhosphorIconsRegular.stack);
+
+  /// A category of the catalogue: several types kept together.
+  static const category = AppIconData.phosphor(PhosphorIconsRegular.folder);
+
+  /// A goal: an amount, or a count, to reach in a stretch of time.
+  static const goal = AppIconData.phosphor(PhosphorIconsRegular.target);
+
+  /// Looks through a list.
+  static const search = AppIconData.phosphor(
+    PhosphorIconsRegular.magnifyingGlass,
+  );
+
+  /// The catalogue: the kinds of thing she delivers, and what each is worth.
+  static const catalog = AppIconData.phosphor(PhosphorIconsRegular.bookOpen);
+
+  /// What a delivery is worth.
+  static const value = AppIconData.phosphor(PhosphorIconsRegular.coins);
+
+  /// A delivery done in pieces, a block at a time.
+  static const split = AppIconData.phosphor(PhosphorIconsRegular.rows);
 
   /// Opens somewhere outside the app: a link card's browser.
   static const external = AppIconData.phosphor(

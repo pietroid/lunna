@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agent/agent.dart';
 import 'package:api_client/api_client.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/artifacts.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,7 +14,6 @@ import 'package:lunna/config.dart';
 import 'package:lunna/links/api_link_previews.dart';
 import 'package:lunna/notifications/background_refresh.dart';
 import 'package:notifications/notifications.dart';
-import 'package:projects/projects.dart';
 import 'package:timeline/timeline.dart';
 
 Future<void> main() async {
@@ -39,7 +39,7 @@ Future<void> main() async {
   final timelineRepository = TimelineRepository(apiClient: apiClient);
   final agentRepository = AgentRepository(apiClient: apiClient);
   final routinesRepository = RoutinesRepository(apiClient: apiClient);
-  final projectsRepository = ProjectsRepository(apiClient: apiClient);
+  final artifactsRepository = ArtifactsRepository(apiClient: apiClient);
   final linkPreviews = ApiLinkPreviews(
     apiClient: apiClient,
     apiBaseUrl: kApiBaseUrl,
@@ -67,8 +67,8 @@ Future<void> main() async {
         RepositoryProvider<RoutinesRepository>(
           create: (_) => routinesRepository,
         ),
-        RepositoryProvider<ProjectsRepository>(
-          create: (_) => projectsRepository,
+        RepositoryProvider<ArtifactsRepository>(
+          create: (_) => artifactsRepository,
         ),
         RepositoryProvider<NotificationScheduler>(
           create: (_) => notificationScheduler,
@@ -100,11 +100,11 @@ Future<void> main() async {
               return bloc;
             },
           ),
-          // A task let out of a project lands on the day, so the day is
+          // A task let out of an artifact lands on the day, so the day is
           // read again whenever one moves.
-          BlocProvider<ProjectsCubit>(
-            create: (context) => ProjectsCubit(
-              repository: projectsRepository,
+          BlocProvider<ArtifactsCubit>(
+            create: (context) => ArtifactsCubit(
+              repository: artifactsRepository,
               onDayChanged: () =>
                   context.read<TimelineBloc>().add(const TimelineRequested()),
             ),

@@ -26,10 +26,10 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// every gesture on it.
 ///
 /// On the calendar ([preview]) a card also says what its notes start with
-/// and which project it is of, in the room its time already gives it and
+/// and which artifact it is of, in the room its time already gives it and
 /// never more: a card with room for a second line draws them under the
 /// title, as many lines as fit up to three; a shorter one shows no notes at
-/// all, and marks a project's task with the folders.
+/// all, and marks an artifact's task with the folders.
 ///
 /// It carries no gestures of its own. Tapping and dragging on the timeline
 /// are read by one listener over the whole list, which tells each card how it
@@ -43,7 +43,7 @@ class EventTile extends StatelessWidget {
     this.hidden = false,
     this.lifted = false,
     this.landing,
-    this.showProject = false,
+    this.showArtifact = false,
     this.preview = false,
     this.actionsKey,
     this.onPauseToggled,
@@ -73,10 +73,10 @@ class EventTile extends StatelessWidget {
   /// finger reads in place of its own.
   final ({DateTime start, DateTime end})? landing;
 
-  /// Whether the project the task is of goes under its title.
-  final bool showProject;
+  /// Whether the artifact the task is of goes under its title.
+  final bool showArtifact;
 
-  /// Whether the card says what its notes start with and its project's
+  /// Whether the card says what its notes start with and its artifact's
   /// name, within the height it is given (the calendar's).
   final bool preview;
 
@@ -151,14 +151,14 @@ class EventTile extends StatelessWidget {
   }
 
   /// The card's words: the title and its hours, then, given [lines] of room
-  /// under them, the project and the start of the notes.
+  /// under them, the artifact and the start of the notes.
   Widget _body(BuildContext context, {required int lines}) {
     final notes = preview ? notesPreview(card.notes) : '';
-    final project = preview ? card.projectTitle : null;
-    final under = lines > 0 && (notes.isNotEmpty || project != null);
+    final artifact = preview ? card.artifactTitle : null;
+    final under = lines > 0 && (notes.isNotEmpty || artifact != null);
     final mark =
         _mark ??
-        (preview && !under && project != null ? AppIcons.things : null);
+        (preview && !under && artifact != null ? AppIcons.artifacts : null);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -211,16 +211,16 @@ class EventTile extends StatelessWidget {
             Text.rich(
               TextSpan(
                 children: [
-                  if (project != null)
+                  if (artifact != null)
                     TextSpan(
-                      text: project,
+                      text: artifact,
                       style: AppTypography.labelStrong.copyWith(
                         color: _isFixed || card.isRoutine
                             ? _quiet
                             : AppColors.ink2,
                       ),
                     ),
-                  if (project != null && notes.isNotEmpty)
+                  if (artifact != null && notes.isNotEmpty)
                     const TextSpan(text: ' · '),
                   if (notes.isNotEmpty) TextSpan(text: notes),
                 ],
@@ -230,12 +230,12 @@ class EventTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-          if (showProject && card.projectTitle != null) ...[
+          if (showArtifact && card.artifactTitle != null) ...[
             const SizedBox(height: AppSpacing.s2),
             Align(
               alignment: Alignment.centerLeft,
               child: AppTag(
-                text: card.projectTitle!,
+                text: card.artifactTitle!,
                 fill: _isNow ? AppColors.fill : AppColors.fillStrong,
               ),
             ),

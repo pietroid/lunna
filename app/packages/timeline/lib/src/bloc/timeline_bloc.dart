@@ -174,7 +174,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
               placement: startTime == null
                   ? event.placement
                   : Placement.at(startTime),
-              projectId: event.projectId,
+              artifactId: event.artifactId,
               days: _days,
             ),
     );

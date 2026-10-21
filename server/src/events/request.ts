@@ -142,8 +142,8 @@ export function requireTask(dto: CreateTaskDto): TaskRequest {
     throw new BadRequestException('the backlog takes a task at its end');
   }
 
-  if (dto.projectId !== undefined && typeof dto.projectId !== 'string') {
-    throw new BadRequestException('projectId must be a string');
+  if (dto.artifactId !== undefined && typeof dto.artifactId !== 'string') {
+    throw new BadRequestException('artifactId must be a string');
   }
 
   return {
@@ -152,7 +152,7 @@ export function requireTask(dto: CreateTaskDto): TaskRequest {
     backlog,
     notBefore: backlog ? undefined : notBefore,
     index: dto.index === undefined ? undefined : requireIndex(dto.index),
-    ...(dto.projectId === undefined ? {} : { projectId: dto.projectId }),
+    ...(dto.artifactId === undefined ? {} : { artifactId: dto.artifactId }),
   };
 }
 

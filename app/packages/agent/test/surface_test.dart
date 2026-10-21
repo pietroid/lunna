@@ -36,8 +36,8 @@ void main() {
                 },
                 {
                   'id': 'b4',
-                  'component': 'ProjectPeek',
-                  'project': {'path': '/b4'},
+                  'component': 'ArtifactPeek',
+                  'artifact': {'path': '/b4'},
                 },
                 {'id': 'b5', 'component': 'Carousel'},
               ],
@@ -96,16 +96,16 @@ void main() {
         CaptionBlock,
         DayBlock,
         ChoicesBlock,
-        ProjectBlock,
+        ArtifactBlock,
       ]);
       final day = reply.blocks[1] as DayBlock;
       expect(day.items.map((it) => it.kind), [PeekKind.fixed, PeekKind.free]);
       expect(day.free, 175);
       expect(reply.options.map((it) => it.say), [null, 'Deixa para amanhã']);
       expect(reply.plans.map((it) => it.id), ['p1']);
-      final project = (reply.blocks[3] as ProjectBlock).project;
-      expect(project.deadline, DateTime(2026, 11, 30));
-      expect(project.next.single.at, isNull);
+      final artifact = (reply.blocks[3] as ArtifactBlock).artifact;
+      expect(artifact.deadline, DateTime(2026, 11, 30));
+      expect(artifact.next.single.at, isNull);
       expect(reply.steps, ['Olhei hoje']);
     });
   });

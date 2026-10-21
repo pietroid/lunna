@@ -11,7 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template notes_dock}
-/// The foot of a page of notes (a task's, a project's): the agent's bar,
+/// The foot of a page of notes (a task's, an artifact's): the agent's bar,
 /// and beside it, where the + is on Tempo, a microphone that dictates.
 ///
 /// Dictating is not talking to the agent. The words go straight into
@@ -53,7 +53,7 @@ class NotesDock extends StatelessWidget {
   /// The notes dictation writes into.
   final LiveTextController notes;
 
-  /// What the agent's conversation is about: the page's task or project.
+  /// What the agent's conversation is about: the page's task or artifact.
   final AgentSubject? about;
 
   /// The recording, when handed in; otherwise the dock has its own, apart

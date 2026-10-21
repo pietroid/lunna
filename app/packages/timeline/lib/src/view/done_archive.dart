@@ -13,7 +13,7 @@ import 'package:timeline/src/widgets/widgets.dart';
 ///
 /// Opened from Menu ("Feitas"), over a [DoneArchiveCubit]. The days are
 /// headed the way the calendar heads them (Hoje, Ontem, then the date),
-/// each task is the card it was, with the hour it was done at, its project
+/// each task is the card it was, with the hour it was done at, its artifact
 /// and the start of its notes, and a tap opens its page ([onOpen]), where
 /// the notes can still be read and changed. The field at the top looks in
 /// the titles and the notes, on the server; older pages come in as the
@@ -193,7 +193,7 @@ class _Spinner extends StatelessWidget {
 
 /// {@template done_archive_tile}
 /// One task in the archive: the check, its name and the hour it was done
-/// at, then its project and the start of its notes, when it has them.
+/// at, then its artifact and the start of its notes, when it has them.
 /// {@endtemplate}
 class DoneArchiveTile extends StatelessWidget {
   /// {@macro done_archive_tile}
@@ -208,7 +208,7 @@ class DoneArchiveTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final notes = notesPreview(card.notes);
-    final project = card.projectTitle;
+    final artifact = card.artifactTitle;
 
     return Material(
       color: AppColors.fill,
@@ -251,12 +251,12 @@ class DoneArchiveTile extends StatelessWidget {
                   ),
                 ],
               ),
-              if (project != null || notes.isNotEmpty) ...[
+              if (artifact != null || notes.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.s2),
                 Row(
                   children: [
-                    if (project != null) ...[
-                      AppTag(text: project),
+                    if (artifact != null) ...[
+                      AppTag(text: artifact),
                       const SizedBox(width: AppSpacing.s2),
                     ],
                     Expanded(
