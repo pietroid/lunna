@@ -1,6 +1,6 @@
 # A console for the agent queue, with no server to keep
 
-2026-10-21 · RFC · proposed (issue #14; deep-research pass not run)
+2026-10-21 · RFC · proposed (issue #14; round 2: Hermes and OpenClaw; deep-research pass not run)
 
 ## In one minute
 
@@ -18,8 +18,10 @@ third-party: every tool on offer replaces a part that already works.**
 - **Do:** turn the review page into the **console**: what is running, what
   waits for you, the week's usage. It reads a status issue that the queue
   keeps up to date.
-- **Not needed:** a backend, or Vibe Kanban, Happy or GitHub Actions
-  runners (see [the table](./data/options.md)).
+- **Not needed:** a backend, or Vibe Kanban, Happy, Hermes, OpenClaw or
+  GitHub Actions runners (see [the table](./data/options.md)). Hermes and
+  OpenClaw would put a second agent, on a second bill, in front of
+  `claude -p`, which is what the queue already runs.
 - **You decide:** a budget ceiling (**stop new runs at 85% of the week**,
   recommended), and whether to also use Remote Control for ad-hoc sessions
   (**yes, by hand**, recommended).
@@ -47,6 +49,13 @@ third-party: every tool on offer replaces a part that already works.**
    sunsetting" ([README](https://raw.githubusercontent.com/BloopAI/vibe-kanban/HEAD/README.md)).
    *For us:* the queue is ~680 lines we understand. The console is a
    static page over GitHub's API, so it has no server to patch. *New*
+5. **"The harness that holds the login holds the bill."**
+   Claude Code, [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance):
+   subscription sign-in is "designed to support ordinary use of Claude Code
+   and other native Anthropic applications"; other products "should use API
+   key authentication". *For us:* any manager that is not `claude` itself
+   either shells out to `claude -p` (as the queue does) or pays per token.
+   Hermes's own brain would be the second case. *New*
 4. **"Approval belongs on the action"**, a level deeper. See
    [the concept](../concepts.md#approval-on-the-action). GitHub's docs say
    "Pull request authors cannot approve their own pull requests"
@@ -150,6 +159,19 @@ own edit history, and it needs no new scope.
 - Vibe Kanban has a board and diff review, but it is sunsetting, and its
   board would replace GitHub as the record.
 - GitHub's Agent HQ bills through Copilot, not your subscription.
+- Hermes and OpenClaw are personal-agent gateways (chat apps in, an agent
+  of their own out). See [below](#hermes-openclaw-and-other-agent-gateways).
+
+> **Q:** havent you considered hermes or similar options?
+
+> **A:** Not in round 1; now in
+> [their own section](#hermes-openclaw-and-other-agent-gateways). You'd
+> text "research X" on Telegram, Hermes's own model (on an API key: the
+> subscription covers only Claude Code) calls its `claude-code` skill,
+> which runs `claude -p`, and a summary comes back. That is the queue with
+> a paid dispatcher in front, no gates, and a gateway to patch. The phone
+> chat it adds, Remote Control gives for free. Recommendation stands;
+> Hermes is decision 6.
 
 ## Decisions for you
 
@@ -190,6 +212,14 @@ own edit history, and it needs no new scope.
      no PR.
    - (b) Retire the local one.
 
+6. **A chat gateway (Hermes) for ad-hoc work.**
+   - (a) **Not now** *(recommended)*: Remote Control covers chat-from-the-phone
+     with no second bill and nothing to patch.
+   - (b) Try Hermes on the Mac, Telegram only, with a cheap OpenRouter model
+     as dispatcher and the `claude-code` skill in print mode. Cost: a
+     per-token bill for the dispatcher, a gateway process to keep updated,
+     and a second record of work beside GitHub.
+
 ## Decided unattended
 
 - **Topic and scope.** The question was framed as "keep Claude Code, add
@@ -199,6 +229,12 @@ own edit history, and it needs no new scope.
   Control were judged from their docs and READMEs. None was run on the
   Mac, which an unattended run shouldn't change.
 - **Every decision above is marked with its recommended option.**
+- **Round 2 (Hermes).** The note asked about Hermes "or similar", read as
+  the self-hosted personal-agent gateways: Hermes Agent and OpenClaw.
+  Coding-agent multiplexers (Claude Squad, Conductor and the like) were
+  left out, since they are desktop screens for live sessions, the niche
+  Remote Control already fills. Neither gateway was installed. No Phase 4
+  pass: the note did not ask for one.
 
 ## Deeper
 
@@ -268,6 +304,43 @@ There is nothing to test here yet: `queue.mjs` exports `answers`,
     Copilot. Secondary sources only, and they disagree on which plans get
     it. *For us:* a different bill, so out.
 
+### Hermes, OpenClaw and other agent gateways
+
+Both are MIT, self-hosted, and built the same way: one **gateway** process
+that holds the chat connections (Telegram, WhatsApp, Slack, Discord,
+Signal…), a cron, and **an agent loop of their own** that picks a model
+and tools on every message [13][15].
+
+| Part | What it is | Who owns it | Example |
+|---|---|---|---|
+| Gateway | the process that talks to the chat apps | Hermes / OpenClaw, on your Mac or a VPS | a Telegram bot that takes "research X" |
+| Dispatcher | the agent that reads the message and picks a tool | Hermes's loop, on **your API key** | an OpenRouter model choosing the `claude-code` skill |
+| Worker | the agent that writes the code | Anthropic: `claude -p`, on the subscription | the same command `queue.mjs` runs |
+| Gates, PRs, budget | what stops and waits for you | nobody: neither has them | today, `.tool/queue` |
+
+What we read:
+
+1. **Hermes and Claude Code.** Hermes ships a `claude-code` skill: print
+   mode (`-p`) for one-shot tasks, tmux for multi-turn, `-w` for a
+   worktree, and "never send a blind `Enter` on a timer to approve
+   prompts" [14]. A PR to make `claude -p` a full Hermes *provider* was
+   closed "as not-planned per standing maintainer policy" (July 2026) [16].
+   *For us:* Claude Code is a tool Hermes calls, never its brain.
+2. **The bill.** Subscription OAuth is for "ordinary use of Claude Code
+   and other native Anthropic applications"; others "should use API key
+   authentication" [17]. OpenClaw's own docs say to reuse the `claude` CLI
+   login on the same host and "do not copy an OAuth token into OpenClaw",
+   and recommend an API key "for shared production automation" [15].
+   *For us:* the dispatcher is a second, per-token bill.
+3. **Maintenance.** OpenClaw's CVE-2026-25253 (CVSS 8.8): a crafted link
+   made the Control UI hand its gateway token to an attacker, even on
+   localhost; the fix needed a manual update [18]. *For us:* the burden the
+   issue asked to avoid, and the failure case of idea 3.
+4. **What they do well.** One chat for every phone app, cron with delivery
+   to the chat, command approval [13]. *For us:* the phone side is what
+   Remote Control and the ntfy push already cover; nothing here replaces
+   the gates.
+
 ### Rollout
 
 | Phase | Ships | Fixes | Size |
@@ -293,6 +366,13 @@ There is nothing to test here yet: `queue.mjs` exports `answers`,
 11. ntfy, *Publishing*. https://docs.ntfy.sh/publish/: `http` actions with headers and body; "the topic is essentially a password".
 12. letsdatascience, *GitHub adds Claude and Codex to Copilot* (secondary). https://letsdatascience.com/news/github-adds-claude-and-codex-to-copilot-3ae28203: Agent HQ, Copilot billing.
 
+13. NousResearch/hermes-agent, README. https://github.com/NousResearch/hermes-agent: MIT; one gateway for Telegram, Discord, Slack, WhatsApp, Signal; cron; command approval; any provider.
+14. Hermes docs, *Claude Code* skill. https://hermes-agent.nousresearch.com/docs/user-guide/skills/bundled/autonomous-ai-agents/autonomous-ai-agents-claude-code: print mode, tmux for interactive, `-w` worktrees, read prompts before approving.
+15. OpenClaw docs, [overview](https://docs.openclaw.ai/) and [Anthropic provider](https://docs.openclaw.ai/providers/anthropic): one gateway, browser dashboard; reuse the Claude CLI login on its host, API key for shared automation.
+16. hermes-agent PR #40528. https://github.com/NousResearch/hermes-agent/pull/40528: `claude -p` as provider, closed as not planned (2026-07-14).
+17. Claude Code, *Legal and compliance*. https://code.claude.com/docs/en/legal-and-compliance: subscription OAuth for Claude Code and native apps; API keys for other products.
+18. runZero, *OpenClaw CVE-2026-25253*. https://www.runzero.com/blog/openclaw/: one-click gateway token theft, CVSS 8.8, fixed in 2026.1.29 (secondary; exposure counts vary by source).
+
 Measured here: [`data/latency.md`](./data/latency.md) ([`code/latency.mjs`](./code/latency.mjs));
 the options compared: [`data/options.md`](./data/options.md).
 
@@ -302,6 +382,9 @@ the options compared: [`data/options.md`](./data/options.md).
 - Happy's push notifications and how it starts sessions (not stated in
   its README).
 - Whether Dispatch needs the Desktop app open.
+- Hermes's star count and release pace (the README showed ~256k stars on
+  2026-10-21; secondary sources disagree), and whether a third-party
+  `claude -p` provider plugin for Hermes is maintained.
 
 A Phase 4 pass would check these, and re-read the options table against
 current releases.

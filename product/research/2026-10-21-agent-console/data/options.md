@@ -14,3 +14,10 @@ the design / RFC / review stops that wait for an answer and leave a PR.
 | Vibe Kanban (BloopAI) | **sunsetting**; community after the company shut down | local web app, a worktree per card | yes, via the agent's own login | its own board and diff review, not GitHub gates | board yes, budget no | rejected: maintenance risk is the point |
 | claude-code-action on GitHub Actions | Anthropic + GitHub | GitHub runners (or a self-hosted one) | `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (Pro/Max) | event-driven; you rebuild the gates as workflows | Actions tab; no budget | later, if the Mac must go; self-hosted runner on a public repo is unsafe |
 | GitHub Agent HQ / Copilot agents (Claude inside Copilot) | GitHub | GitHub's cloud | **no**: Copilot billing | yes, GitHub's own | GitHub's mission control | rejected: different bill, no Mac |
+
+Added in round 2 (the note "havent you considered hermes or similar options?"):
+
+| Option | Who maintains it | Runs Claude where | Uses the subscription | Gates and PRs | Queue, budget view | Fit |
+|---|---|---|---|---|---|---|
+| Hermes Agent (NousResearch, MIT) | community, Nous Research | the Mac or a VPS; its `claude-code` skill runs `claude -p` | the worker yes (it is `claude`); its own dispatcher model **no**, per-token | no; command approval only | chat replies, cron; no budget | later (decision 6); a paid dispatcher in front of what the queue runs |
+| OpenClaw (MIT) | community | the Mac or a VPS, one gateway; reuses the `claude` CLI login on its host | same as Hermes; docs advise an API key for automation | no | browser dashboard of sessions; no budget | rejected: same shape, plus a gateway with a 2026 one-click token-theft CVE to keep patched |
