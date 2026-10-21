@@ -93,7 +93,7 @@ recommendations. For agent work that means `tool-design`,
 ## Phase 3: Write the RFC
 
 The reader is an engineer **learning AI engineering**, often on a phone
-(the RFC is the PR description). So the RFC is short, says what to do
+(the queue's PR links the RFC as a page, `.tool/review.html`). So the RFC is short, says what to do
 before why, and teaches a few ideas well rather than many in passing.
 It is written in layers: each one is enough to stop at, and the next one
 goes deeper.
