@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The queue: GitHub issues worked by Claude Code on this Mac, one at a time.
 //
-//   .tool/queue setup            labels, a push topic, the LaunchAgent; sends a test push
+//   .tool/queue setup            labels, a push topic, the LaunchAgent, Pages; sends a test push
 //   .tool/queue run              the loop the LaunchAgent keeps alive (a pass a minute)
 //   .tool/queue tick             one pass, in the foreground
 //   .tool/queue ls               the issues it knows and where each one is
@@ -293,9 +293,17 @@ function readme(cfg, st, sha) {
   return md;
 }
 
+// The review page (.tool/review.html on GitHub Pages) for the PR's README,
+// once Pages is on: the RFC drawn, commented on by selecting its text.
+export function reviewUrl(cfg, st) {
+  const site = st.pr && st.doc && trySh('gh', ['api', `repos/${cfg.repo}/pages`, '--jq', '.html_url']);
+  return site ? `${site.replace(/\/?$/, '/')}review.html?pr=${st.pr}&path=${encodeURI(st.doc)}` : null;
+}
+const pageLine = (url) => (url ? `\n\n📝 [Read it as a page and comment on its text](${url})` : '');
+
 function prBody(cfg, st, sha, line) {
   const qs = st.questions?.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
-  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${qs}\n\n### Usage\n\n${usageTable(st.runs)}\n\n---\n\n${readme(cfg, st, sha)}`;
+  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${pageLine(reviewUrl(cfg, st))}${qs}\n\n### Usage\n\n${usageTable(st.runs)}\n\n---\n\n${readme(cfg, st, sha)}`;
 }
 
 function syncPr(cfg, st, line) {
@@ -374,7 +382,7 @@ async function work(cfg, st) {
   const board = st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png')) ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
   const qs = st.questions.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
   st.gate = gate;
-  st.gateAt = comment(cfg, st.issue, `${icon} **${head}**: #${st.pr}\n\n${st.summary}${board}${qs}\n\n${ask}\n\n<sub>${usageLine(st.runs)}</sub>`);
+  st.gateAt = comment(cfg, st.issue, `${icon} **${head}**: #${st.pr}\n\n${st.summary}${pageLine(reviewUrl(cfg, st))}${board}${qs}\n\n${ask}\n\n<sub>${usageLine(st.runs)}</sub>`);
   st.next = null;
   setStatus(cfg, st, 'waiting');
   await push(cfg, { title: `#${st.issue} ${head}: ${st.title}`, message: `${st.summary}\n\n${usageLine(st.runs)}`, tags: [tag], priority: 4, click: st.url });
@@ -550,6 +558,9 @@ async function setup() {
   };
   writeJson(configPath, cfg);
   for (const [name, color, description] of LABELS) gh(['label', 'create', name, '-R', repo, '--color', color, '--description', description, '--force']);
+  // Pages built by Actions, for the review page (.github/workflows/review-page.yml).
+  const pages = trySh('gh', ['api', `repos/${repo}/pages`, '--jq', '.html_url'])
+    ?? trySh('gh', ['api', '-X', 'POST', `repos/${repo}/pages`, '-f', 'build_type=workflow', '--jq', '.html_url']);
 
   const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   mkdirSync(dirname(plistPath), { recursive: true });
@@ -570,6 +581,7 @@ async function setup() {
   start();
   await push(cfg, { title: 'Lunna queue is on', message: `Watching ${repo} for issues labelled ${KINDS.join(', ')}.`, tags: ['white_check_mark'], click: `https://github.com/${repo}/issues` });
   console.log(`✓ labels on ${repo}, LaunchAgent ${AGENT} loaded, test push sent
+  ${pages ? `✓ review page: ${pages}review.html (live after the next push to main touching it, or: gh workflow run review-page.yml)` : '✗ GitHub Pages could not be turned on: Settings → Pages → Source: GitHub Actions'}
   phone: install ntfy (App Store / Play Store), tap +, topic ${cfg.topic}, server ntfy.sh
          (or open https://ntfy.sh/${cfg.topic} on the phone)
   then open an issue with the "Create" template and watch for the 👀`);

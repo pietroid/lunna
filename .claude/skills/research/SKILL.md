@@ -188,7 +188,9 @@ installing any third-party skill:
 The person comments in one of two places, and both end up in the file:
 
 - **On GitHub**, from the queue: a comment on a line of the README in the
-  PR's *Files changed* (the phone app does this too). The run's prompt
+  PR's *Files changed* (the phone app does this too), or text selected
+  on the review page (`.tool/review.html`), which posts the same line
+  comments, with the selection quoted under the comment. The run's prompt
   quotes each as ``On `<file>` line N (thread T), about: > the line`` and
   the comment. A leading `Q:`, `Learn:`, `Decision:` or `Note:` is its
   kind; with none, a question is a `Q` and anything else a `Note`.

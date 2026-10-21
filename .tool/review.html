@@ -1,0 +1,403 @@
+<!doctype html>
+<!--
+  The RFC (or any Markdown in a PR) as a page, with the PR's line comments
+  under the blocks they are about. Select text or tap + to draft a Q, Learn,
+  Decision or Note; Send posts every draft as one PR review, so the queue
+  reads them as line comments and answers under each.
+
+    https://<owner>.github.io/<repo>/review.html?pr=7&path=product/research/…/README.md
+
+  Static: GitHub Pages serves it (.github/workflows/review-page.yml), and it
+  talks to api.github.com straight from the browser. Sending needs a
+  fine-grained token for this repo (Pull requests: read and write), kept in
+  this browser's localStorage only. See .tool/README.md, "review".
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #fbf8f7; --ink: #241c1c; --ink2: #6b5f5f; --line: #ece4e2;
+    --fill: #f3eceb; --accent: #c9302c; --draft: #fdecea; --thread: #f4f1ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151414; --ink: #ece8e6; --ink2: #a39b98; --line: #2b2828;
+      --fill: #1f1d1d; --accent: #ff6b5e; --draft: #3a2222; --thread: #2a2721;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.6 Onest, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg);
+           border-bottom: 1px solid var(--line); padding: 10px 16px;
+           display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--ink2); }
+  header b { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header a { color: var(--ink2); margin-left: auto; white-space: nowrap; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 140px; }
+  main img { max-width: 100%; height: auto; border-radius: 8px; }
+  .block { position: relative; border-radius: 10px; padding: 2px 36px 2px 10px; margin: 0 -10px; }
+  .block > :first-child { margin-top: 8px; }
+  .block > :last-child { margin-bottom: 8px; }
+  .block.picked { background: var(--fill); }
+  .add { position: absolute; right: 4px; top: 8px; width: 28px; height: 28px; border: 0;
+         border-radius: 50%; background: var(--fill); color: var(--ink2); font: 18px/28px Onest, sans-serif; cursor: pointer; }
+  pre { background: var(--fill); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  code { font-size: .9em; }
+  table { border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; }
+  th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+  blockquote { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--fill); }
+  blockquote p { margin: 0; }
+  .thread, .draft, .composer { margin: 4px 0 12px; padding: 10px 12px; border-radius: 10px; font-size: 15px; }
+  .thread { background: var(--thread); }
+  .thread .c + .c { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; }
+  .thread .who, .draft .who { font-size: 12px; color: var(--ink2); }
+  .thread p, .draft p { margin: 4px 0; }
+  .draft { background: var(--draft); }
+  .draft button { float: right; border: 0; background: none; color: var(--ink2); font-size: 18px; cursor: pointer; }
+  .composer { background: var(--fill); }
+  .composer .quote { font-size: 14px; color: var(--ink2); font-style: italic; margin-bottom: 8px; }
+  .kinds { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  button.pill { border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer;
+                font: 500 14px Onest, sans-serif; background: var(--bg); color: var(--ink2); }
+  button.pill.on, button.pill.go { background: var(--accent); color: #fff; }
+  textarea, input { width: 100%; border: 0; border-radius: 8px; padding: 8px 10px;
+                    background: var(--bg); color: var(--ink); font: 16px/1.5 Onest, sans-serif; }
+  textarea { min-height: 80px; resize: vertical; }
+  .actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+  footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; background: var(--bg);
+           border-top: 1px solid var(--line); padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+           display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--ink2); }
+  footer span { margin-right: auto; }
+  footer button:disabled { opacity: .4; }
+  .msg { padding: 24px 0; color: var(--ink2); }
+  .msg a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header><b id="name">Review</b><a id="pr" target="_blank"></a></header>
+<main id="doc"><p class="msg">Loading…</p></main>
+<footer><span id="status"></span><button class="pill on" id="quote" hidden>Comment on selection</button><button class="pill go" id="send" disabled>Send</button></footer>
+
+<script id="core">
+// No DOM in this script, so a check can run it in Node.
+const KINDS = ['Q', 'Learn', 'Decision', 'Note'];
+
+// A block is a run of non-blank lines; a fenced code block stays one block
+// even with blank lines inside it. Lines counted from 1, as GitHub does.
+function blocksOf(text) {
+  const lines = text.split('\n');
+  const blocks = [];
+  let start = -1;
+  let fence = null;
+  const close = (end) => blocks.push({ start: start + 1, end, text: lines.slice(start, end).join('\n') });
+  for (let i = 0; i < lines.length; i++) {
+    const marker = lines[i].match(/^\s*(```|~~~)/)?.[1];
+    if (fence) {
+      if (marker === fence) fence = null;
+      continue;
+    }
+    if (marker) {
+      if (start < 0) start = i;
+      fence = marker;
+    } else if (lines[i].trim() === '') {
+      if (start >= 0) close(i);
+      start = -1;
+    } else if (start < 0) {
+      start = i;
+    }
+  }
+  if (start >= 0) close(lines.length);
+  return blocks;
+}
+
+// What a line of Markdown reads as, near enough to find selected text in it.
+const plain = (s) => s
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/<[^>]+>/g, '')
+  .replace(/[*_`~|>#]/g, '')
+  .replace(/[“”"‘’']/g, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLowerCase();
+
+// The lines a draft is about: the line the selected text starts on, or the
+// whole block when nothing was selected (or the text can't be found).
+function linesFor(block, quote) {
+  const q = plain(quote ?? '');
+  if (q) {
+    const lines = block.text.split('\n');
+    for (const len of [40, 20, 8]) {
+      const head = q.slice(0, len);
+      const i = lines.findIndex((l) => plain(l).includes(head));
+      if (i >= 0) return { start: block.start + i, end: block.start + i };
+    }
+  }
+  return { start: block.start, end: block.end };
+}
+
+const bodyOf = (d) => `${d.kind}: ${d.text.trim()}` + (d.quote ? `\n\n> ${d.quote.trim().replace(/\s+/g, ' ')}` : '');
+
+// One review: each draft a comment on its lines, sent together so the queue
+// takes them as one round.
+function reviewOf(drafts, path, sha) {
+  return {
+    commit_id: sha,
+    event: 'COMMENT',
+    body: '',
+    comments: drafts.map((d) => ({
+      path,
+      body: bodyOf(d),
+      line: d.end,
+      side: 'RIGHT',
+      ...(d.start < d.end ? { start_line: d.start, start_side: 'RIGHT' } : {}),
+    })),
+  };
+}
+
+// When GitHub refuses the review (a line outside the PR's diff), the drafts
+// go as one plain comment on the PR, each naming its file and line.
+const fallbackOf = (drafts, path) => drafts
+  .map((d) => `On \`${path}\` line ${d.start}${d.start < d.end ? `–${d.end}` : ''}:\n\n${bodyOf(d)}`)
+  .join('\n\n---\n\n');
+
+// The PR's line comments on this file, as threads, each under the block
+// holding its line (the line it was left on, when it has moved since).
+function threadsOf(comments, path, blocks) {
+  const roots = comments.filter((c) => c.path === path && !c.in_reply_to_id);
+  return roots.map((root) => {
+    const line = root.line ?? root.original_line ?? 1;
+    const at = blocks.findIndex((b) => line >= b.start && line <= b.end);
+    return {
+      block: at >= 0 ? at : blocks.length - 1,
+      outdated: root.line == null,
+      comments: [root, ...comments.filter((c) => c.in_reply_to_id === root.id)],
+    };
+  });
+}
+</script>
+
+<script>
+const params = new URLSearchParams(location.search);
+const [owner, name] = (params.get('repo') ??
+  (location.hostname.endsWith('.github.io') ? `${location.hostname.split('.')[0]}/${location.pathname.split('/')[1]}` : 'pietroid/lunna')).split('/');
+const repo = `${owner}/${name}`;
+const pr = params.get('pr');
+let path = params.get('path');
+const TOKEN = 'lunna-review-token';
+const draftKey = () => `lunna-review:${repo}#${pr}:${path}`;
+
+let head = null;      // the PR's head: { sha, ref }
+let blocks = [];
+let threads = [];
+let drafts = [];
+let composing = null; // { block, quote, kind, text }
+
+const $ = (id) => document.getElementById(id);
+const status = (s) => ($('status').textContent = s);
+
+async function api(url, opts = {}) {
+  const token = localStorage.getItem(TOKEN);
+  const res = await fetch(`https://api.github.com/${url}`, {
+    ...opts,
+    headers: { accept: 'application/vnd.github+json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...opts.headers },
+  });
+  if (!res.ok) throw Object.assign(new Error(`${res.status} ${(await res.json().catch(() => ({}))).message ?? res.statusText}`), { status: res.status });
+  return opts.raw ? res.text() : res.json();
+}
+
+async function load() {
+  if (!pr) return fail('Open this page with ?pr=<number> (and &path=<file.md>), as the queue\'s comment links it.');
+  const p = await api(`repos/${repo}/pulls/${pr}`);
+  head = { sha: p.head.sha, ref: p.head.ref };
+  $('pr').textContent = `#${pr}`;
+  $('pr').href = p.html_url;
+  if (!path) {
+    const files = await api(`repos/${repo}/pulls/${pr}/files?per_page=100`);
+    path = files.map((f) => f.filename).find((f) => /^product\/.*README\.md$/.test(f)) ?? files.find((f) => f.filename.endsWith('.md'))?.filename;
+    if (!path) return fail('This PR changes no Markdown.');
+  }
+  const [text, comments] = await Promise.all([
+    api(`repos/${repo}/contents/${path}?ref=${head.sha}`, { raw: true, headers: { accept: 'application/vnd.github.raw' } }),
+    api(`repos/${repo}/pulls/${pr}/comments?per_page=100`),
+  ]);
+  $('name').textContent = path.split('/').slice(-2).join('/');
+  document.title = $('name').textContent;
+  blocks = blocksOf(text);
+  threads = threadsOf(comments, path, blocks);
+  drafts = JSON.parse(localStorage.getItem(draftKey()) ?? '[]');
+  render();
+}
+
+function fail(message) {
+  $('doc').innerHTML = `<p class="msg"></p>`;
+  $('doc').firstChild.textContent = message;
+}
+
+// Relative links in the Markdown point at the PR's files: pictures at its
+// head commit, the rest on its branch.
+function absolute(el) {
+  const dir = path.split('/').slice(0, -1);
+  const resolve = (rel) => {
+    const parts = [...dir];
+    for (const seg of rel.split('#')[0].split('/')) seg === '..' ? parts.pop() : seg !== '.' && parts.push(seg);
+    return parts.join('/');
+  };
+  const relative = (u) => u && !/^([a-z]+:|#|\/)/i.test(u);
+  el.querySelectorAll('img').forEach((img) => {
+    const src = img.getAttribute('src');
+    if (relative(src)) img.src = `https://raw.githubusercontent.com/${repo}/${head.sha}/${resolve(src)}`;
+  });
+  el.querySelectorAll('a').forEach((a) => {
+    const href = a.getAttribute('href');
+    if (relative(href)) a.href = `https://github.com/${repo}/blob/${head.ref}/${resolve(href)}`;
+    a.target = '_blank';
+  });
+}
+
+const who = (c) => `${c.user?.login ?? '?'} · ${new Date(c.created_at).toLocaleString()}`;
+
+function render() {
+  const main = $('doc');
+  main.innerHTML = '';
+  blocks.forEach((b, i) => {
+    const el = document.createElement('section');
+    el.className = 'block' + (composing?.block === i ? ' picked' : '');
+    el.dataset.i = i;
+    el.innerHTML = marked.parse(b.text);
+    absolute(el);
+    const add = document.createElement('button');
+    add.className = 'add';
+    add.textContent = '+';
+    add.title = 'Comment on this block';
+    add.onclick = () => compose(i, '');
+    el.prepend(add);
+    main.append(el);
+    for (const t of threads.filter((t) => t.block === i)) {
+      const box = document.createElement('div');
+      box.className = 'thread';
+      for (const c of t.comments) {
+        const row = document.createElement('div');
+        row.className = 'c';
+        row.innerHTML = `<div class="who"></div>${marked.parse(c.body)}`;
+        row.firstChild.textContent = who(c) + (c === t.comments[0] && t.outdated ? ' · on an earlier version' : '');
+        box.append(row);
+      }
+      main.append(box);
+    }
+    drafts.forEach((d, n) => {
+      if (d.block !== i) return;
+      const box = document.createElement('div');
+      box.className = 'draft';
+      box.innerHTML = `<button title="Delete">×</button><div class="who">draft · line ${d.start}${d.start < d.end ? '–' + d.end : ''}</div>${marked.parse(bodyOf(d))}`;
+      box.firstChild.onclick = () => { drafts.splice(n, 1); keep(); render(); };
+      main.append(box);
+    });
+    if (composing?.block === i) main.append(composer());
+  });
+  $('send').disabled = !drafts.length;
+  $('send').textContent = drafts.length ? `Send ${drafts.length}` : 'Send';
+  status(threads.length ? `${threads.length} thread${threads.length > 1 ? 's' : ''}` : 'Select text or tap + to comment');
+}
+
+const keep = () => localStorage.setItem(draftKey(), JSON.stringify(drafts));
+
+function compose(block, quote) {
+  composing = { block, quote, kind: composing?.kind ?? 'Q', text: composing?.text ?? '' };
+  $('quote').hidden = true;
+  $('status').hidden = false;
+  render();
+  document.querySelector('.composer textarea')?.focus();
+}
+
+function composer() {
+  const box = document.createElement('div');
+  box.className = 'composer';
+  if (composing.quote) {
+    const q = document.createElement('div');
+    q.className = 'quote';
+    q.textContent = '“' + composing.quote + '”';
+    box.append(q);
+  }
+  const kinds = document.createElement('div');
+  kinds.className = 'kinds';
+  for (const k of KINDS) {
+    const b = document.createElement('button');
+    b.className = 'pill' + (k === composing.kind ? ' on' : '');
+    b.textContent = k;
+    b.onclick = () => { composing.kind = k; render(); };
+    kinds.append(b);
+  }
+  const area = document.createElement('textarea');
+  area.value = composing.text;
+  area.placeholder = 'A question, something to go deeper on, a decision…';
+  area.oninput = () => (composing.text = area.value);
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  const cancel = document.createElement('button');
+  cancel.className = 'pill';
+  cancel.textContent = 'Cancel';
+  cancel.onclick = () => { composing = null; render(); };
+  const ok = document.createElement('button');
+  ok.className = 'pill go';
+  ok.textContent = 'Add';
+  ok.onclick = () => {
+    if (!composing.text.trim()) return;
+    drafts.push({ ...composing, ...linesFor(blocks[composing.block], composing.quote) });
+    composing = null;
+    keep();
+    render();
+  };
+  actions.append(cancel, ok);
+  box.append(kinds, area, actions);
+  return box;
+}
+
+// On a phone a selection has no mouseup, so a button offers it.
+let picked = null;
+document.addEventListener('selectionchange', () => {
+  const sel = getSelection();
+  const quote = sel.toString().trim();
+  const block = sel.anchorNode?.parentElement?.closest?.('.block');
+  picked = quote && block ? { block: Number(block.dataset.i), quote } : null;
+  $('quote').hidden = !picked;
+  $('status').hidden = !!picked;
+});
+$('quote').onclick = () => picked && compose(picked.block, picked.quote);
+
+$('send').onclick = async () => {
+  let token = localStorage.getItem(TOKEN);
+  if (!token) {
+    token = prompt('A GitHub fine-grained token for ' + repo + ' with "Pull requests: read and write" (github.com → Settings → Developer settings → Fine-grained tokens). It stays in this browser.');
+    if (!token?.trim()) return;
+    localStorage.setItem(TOKEN, token.trim());
+  }
+  $('send').disabled = true;
+  status('Sending…');
+  try {
+    try {
+      await api(`repos/${repo}/pulls/${pr}/reviews`, { method: 'POST', body: JSON.stringify(reviewOf(drafts, path, head.sha)) });
+    } catch (e) {
+      if (e.status !== 422) throw e;
+      await api(`repos/${repo}/issues/${pr}/comments`, { method: 'POST', body: JSON.stringify({ body: fallbackOf(drafts, path) }) });
+    }
+    drafts = [];
+    keep();
+    await load();
+    status('Sent. The queue answers under each comment in a few minutes.');
+  } catch (e) {
+    if (e.status === 401 || e.status === 403) localStorage.removeItem(TOKEN);
+    status(`Not sent (${e.message}). Your drafts are kept.`);
+    $('send').disabled = false;
+  }
+};
+
+load().catch((e) => fail(`Could not load the PR: ${e.message}`));
+</script>
+</body>
+</html>
