@@ -8,7 +8,8 @@ idea already here one line and a link, and goes one level deeper on it
 RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-queue](./2026-10-17-agent-queue/README.md) ·
 [agent-ui](./2026-10-17-agent-ui/README.md) ·
-[posthog](./2026-10-21-posthog/README.md)
+[posthog](./2026-10-21-posthog/README.md) ·
+[multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md)
 
 ## Tools: what the model is given
 
@@ -70,7 +71,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents).
 - **Here:** read the day, propose, reply: hard-coded, one round-trip fewer.
-- **Met in:** agent-reliability §4.2.
+- **Met in:** agent-reliability §4.2; multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent).
 
 ### The model arranges, the server states facts
 > The model may lay out the answer; only the server writes the facts in it.
@@ -114,7 +115,35 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents).
 - **Here:** each queue phase is a fresh `claude -p` that reads the topic folder.
-- **Met in:** agent-queue §literature 4.
+- **Met in:** agent-queue §literature 4; multica-on-the-mac, decision 1 (Multica resumes the issue's session instead).
+
+### One writer per queue
+> One queue, one writer: everything else is a screen.
+
+- **Read:** M. Thompson, [Single Writer Principle](https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html).
+- **Here:** `queue.mjs` alone starts runs and opens gates; Multica draws the state and relays answers.
+- **Met in:** multica-on-the-mac, idea 1.
+
+### Mirror by level, not by edge
+> Each pass, compute the whole desired state and fix what differs.
+
+- **Read:** Kubernetes, [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/); the failure case, [multica #1120](https://github.com/multica-ai/multica/issues/1120) (a one-off import drifts).
+- **Here:** every tick maps `.git/queue/` onto Multica's statuses (`code/mirror.mjs`).
+- **Met in:** multica-on-the-mac, idea 2.
+
+### Skip permissions only inside a box
+> Skipping permissions is for a container, not your home folder.
+
+- **Read:** Claude Code, [Permission modes](https://code.claude.com/docs/en/permission-modes): `bypassPermissions` for "isolated containers and VMs only".
+- **Here:** the queue runs `auto`; Multica's daemon would run `bypassPermissions` as you, so it isn't installed.
+- **Met in:** multica-on-the-mac, idea 4.
+
+### Private network before public port
+> Reach it privately before you open a port.
+
+- **Read:** Tailscale, [Serve](https://tailscale.com/kb/1312/serve) (tailnet only; Funnel is the public one).
+- **Here:** the phone reaches Multica on the Mac over the tailnet; nothing listens outside it.
+- **Met in:** multica-on-the-mac, idea 5.
 
 ## Observability: seeing what happened
 
