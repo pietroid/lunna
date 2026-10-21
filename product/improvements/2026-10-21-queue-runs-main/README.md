@@ -34,7 +34,14 @@ too.
 - **Where the queue runs from:** its own worktree of `origin/main`
   (`<worktrees>/.runner`), moved to main's tip after every pass. The other
   option was to fast-forward the main checkout from the daemon, and I
-  turned it down because that checkout is the one you work in.
+  turned it down because that checkout is the one you work in. Main has
+  since shipped exactly that (`pullCheckout`, only on a clean `main`), and
+  the merge keeps both: it pulls the checkout until the handover, and is a
+  no-op on the runner, which is detached.
+- **Merging main:** main also restarts the queue with `launchctl kickstart
+  -k` instead of exiting, and drops the lock first. It now drops the lock
+  only if it holds it, since the handover holds it to make the restarted
+  copy exit while it moves the LaunchAgent.
 - **PR description:** short for every kind (create, research, improve), not
   only RFCs, so all PRs have one shape. A create PR keeps its board image.
 - **The handover was started for real** on this Mac (`.tool/queue adopt`),
