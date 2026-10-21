@@ -174,6 +174,9 @@ class AppIcons {
   /// Entregas: the queue of what she delivers, one on top of the other.
   static const artifacts = AppIconData.phosphor(PhosphorIconsRegular.stack);
 
+  /// A category of the catalogue: several types kept together.
+  static const category = AppIconData.phosphor(PhosphorIconsRegular.folder);
+
   /// A goal: an amount, or a count, to reach in a stretch of time.
   static const goal = AppIconData.phosphor(PhosphorIconsRegular.target);
 

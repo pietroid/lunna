@@ -24,6 +24,7 @@ class ArtifactsPage extends StatefulWidget {
     required this.now,
     required this.freeMinutes,
     required this.freeUntil,
+    this.delivered = const [],
     this.shown = 5,
     this.initialShelf = const Shelf(),
     this.onSearch,
@@ -37,6 +38,10 @@ class ArtifactsPage extends StatefulWidget {
 
   /// Every delivery not yet made, in order of priority.
   final List<Artifact> queue;
+
+  /// What was delivered lately, which with the queue says which kinds she
+  /// uses most.
+  final List<Artifact> delivered;
 
   /// The catalogue's shelves, which filter the queue.
   final List<CatalogCategory> categories;
@@ -189,6 +194,7 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
               const SizedBox(height: AppSpacing.s3),
               ShelfFilter(
                 categories: widget.categories,
+                used: [...widget.queue, ...widget.delivered],
                 value: _shelf,
                 onChanged: (shelf) => setState(() => _shelf = shelf),
               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:l10n/l10n.dart';
@@ -70,7 +72,7 @@ const _produtos = CatalogCategory(
   name: 'Produtos',
   types: [_relatorio, _curso],
 );
-const _categories = [_atendimentos, _conteudo, _produtos];
+const List<CatalogCategory> _categories = [_atendimentos, _conteudo, _produtos];
 
 DateTime _day(int month, int day) => DateTime(2026, month, day);
 
@@ -243,7 +245,7 @@ class _PreviewApp extends StatelessWidget {
               done: _done,
               categories: _categories,
               now: _now,
-              initialShelf: const Shelf(category: 'atend', type: 'mapa'),
+              initialShelf: const Shelf(type: 'mapa'),
             )
           : const _Shell(),
     );
@@ -274,18 +276,22 @@ class _ShellState extends State<_Shell> {
             deadline: _day(10, 23),
           );
         case 5:
-          showGoalSheet(
-            context,
-            now: _now,
-            initialAmount: 10000,
-            initialNext: true,
+          unawaited(
+            showGoalSheet(
+              context,
+              now: _now,
+              initialAmount: 10000,
+              initialNext: true,
+            ),
           );
         case 6:
-          showArtifactSheet(
-            context,
-            categories: const [],
-            goals: _goals,
-            now: _now,
+          unawaited(
+            showArtifactSheet(
+              context,
+              categories: const [],
+              goals: _goals,
+              now: _now,
+            ),
           );
       }
     });
@@ -297,15 +303,17 @@ class _ShellState extends State<_Shell> {
     String? name,
     DateTime? deadline,
   }) {
-    showArtifactSheet(
-      context,
-      categories: _categories,
-      goals: _goals,
-      now: _now,
-      initialCategory: category,
-      initialType: type,
-      initialName: name,
-      initialDeadline: deadline,
+    unawaited(
+      showArtifactSheet(
+        context,
+        categories: _categories,
+        goals: _goals,
+        now: _now,
+        initialCategory: category,
+        initialType: type,
+        initialName: name,
+        initialDeadline: deadline,
+      ),
     );
   }
 
@@ -321,7 +329,8 @@ class _ShellState extends State<_Shell> {
         now: _now,
         freeMinutes: 26 * 60,
         freeUntil: DateTime(2026, 10, 31, 23, 59),
-        initialShelf: const Shelf(category: 'atend'),
+        delivered: _done,
+        initialShelf: const Shelf(category: 'cont'),
         onNewGoal: () => showGoalSheet(context, now: _now),
       ),
       floatingActionButton: AppFab(

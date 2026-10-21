@@ -43,14 +43,14 @@
     {
      "id": "F",
      "x": 376,
-     "y": 400,
-     "label": "Shelves",
-     "text": "Catalogue categories filter the queue. Todas by default; here Atendimentos is picked."
+     "y": 376,
+     "label": "One filter line",
+     "text": "Todas, then the 3 kinds she uses most (queued + delivered), then the shelves, marked with a folder. One line, scrolls sideways; here the shelf Conteúdo is picked and scrolled into sight."
     },
     {
      "id": "G",
      "x": 20,
-     "y": 505,
+     "y": 445,
      "label": "A delivery",
      "text": "Name · value; kind · time (or worked of total, or steps) · due day. Bar once work has started. Order is priority; hold to drag, as in Lista."
     },
@@ -67,20 +67,13 @@
      "y": 185,
      "label": "More goals",
      "text": "Goals scroll sideways: active first, then future ones, drawn quiet with their start day."
-    },
-    {
-     "id": "J",
-     "x": 376,
-     "y": 448,
-     "label": "Kinds",
-     "text": "Once a shelf is picked, its kinds come in a second line under it (Todos os tipos first). With Todas there is no second line, so a kind is never picked without its shelf."
     }
    ]
   },
   {
    "png": "img/mockup-2.png",
    "title": "2 · Every delivery, searched",
-   "why": "The tab shows the top 5 of the queue; the rest, and what was delivered, live here, filtered down to one kind.",
+   "why": "The tab shows the top 5 of the queue; the rest, and what was delivered, live here, filtered down to one kind or one shelf.",
    "pins": [
     {
      "id": "A",
@@ -92,30 +85,23 @@
     {
      "id": "B",
      "x": 376,
-     "y": 176,
-     "label": "Shelves",
-     "text": "The same two-line filter as the tab: the shelf, then its kind. Here Atendimentos › Mapa astral."
+     "y": 152,
+     "label": "Same line",
+     "text": "The same one-line filter as the tab. Here the kind Mapa astral, the most used, picked straight away: every natal chart, queued and delivered, without typing."
     },
     {
      "id": "C",
      "x": 110,
-     "y": 280,
+     "y": 208,
      "label": "Na fila",
      "text": "Queue matches, in priority order."
     },
     {
      "id": "D",
      "x": 115,
-     "y": 519,
+     "y": 447,
      "label": "Feitas",
      "text": "Delivered, newest first, with the day. They are what fills the goals."
-    },
-    {
-     "id": "E",
-     "x": 376,
-     "y": 224,
-     "label": "Kinds",
-     "text": "Every natal chart, queued and delivered, without typing a word."
     }
    ]
   },

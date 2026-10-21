@@ -1316,9 +1316,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get artifactsAll => 'Todas';
 
   @override
-  String get artifactsAllTypes => 'Todos os tipos';
-
-  @override
   String artifactsSeeAll(int count) {
     return 'Ver todas as $count';
   }

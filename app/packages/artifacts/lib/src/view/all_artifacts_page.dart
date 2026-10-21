@@ -111,6 +111,7 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                 const SizedBox(height: AppSpacing.s3),
                 ShelfFilter(
                   categories: widget.categories,
+                  used: [...widget.queue, ...widget.done],
                   value: _shelf,
                   onChanged: (shelf) => setState(() => _shelf = shelf),
                 ),

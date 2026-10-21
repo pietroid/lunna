@@ -1015,7 +1015,6 @@
     }
   },
   "artifactsAll": "Todas",
-  "artifactsAllTypes": "Todos os tipos",
   "artifactsSeeAll": "Ver todas as {count}",
   "@artifactsSeeAll": {
     "placeholders": {

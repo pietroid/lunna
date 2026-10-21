@@ -1,6 +1,6 @@
 # Entregas: deliveries, goals and the catalogue replace Projetos
 
-Status: **design, second round, waiting for approval** (issue #12).
+Status: **design, third round, waiting for approval** (issue #12).
 Sections 3–5 come with the build.
 
 ## 1. The prompt
@@ -69,6 +69,11 @@ questions and asked for one more thing:
 >
 > Please make the possibility to filter by each kind of product as well.
 
+The second round drew the types as a second line under a picked category,
+and the person replied:
+
+> No i mean, unify types with categories, like the most used types for example show up.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -78,10 +83,15 @@ Pins in [board.json](board.json). Drawn by the real app (Lunna), new
 [1](img/mockup-1.png) · [2](img/mockup-2.png) · [3](img/mockup-3.png) ·
 [4](img/mockup-4.png) · [5](img/mockup-5.png) · [6](img/mockup-6.png).
 
-**Second round:** screens 1 and 2 now filter by type as well as by
-category (pins 1F, 1J, 2B, 2E), and screen 6 is new: the catalogue as
-everyone first finds it, empty. Screens 3 and 4 show a catalogue after she
-has filled it.
+**Second round:** screens 1 and 2 filter by type as well as by category,
+and screen 6 is new: the catalogue as everyone first finds it, empty.
+Screens 3 and 4 show a catalogue after she has filled it.
+
+**Third round:** types and categories are **one filter line** (pins 1F,
+2B): *Todas*, then the three types she uses most, then the categories,
+each marked with a folder. The second line is gone. Screen 1 has the
+category Conteúdo picked (the line scrolls it into sight), screen 2 the
+type Mapa astral.
 
 ### The term: **Entrega**
 
@@ -99,14 +109,14 @@ Reels).
 1. **Entregas** takes Projetos's tab. On top, the **Metas** scroll sideways
    (active, then future). Under them, one line puts the **schedule** against
    them: the time the queue has due this month against the free hours left
-   on the agenda. Then the **Fila**, in priority order, filtered by category
-   and, inside a category, by type.
+   on the agenda. Then the **Fila**, in priority order, filtered by one
+   line: the types she uses most, then the categories.
    The example shows the three forces pulling against each other: even if
    the whole queue is delivered, October misses its goal by R$ 1.870, and
    the agenda has 26h free for 11h15 of work, so there is room for more
    clients.
-2. **Todas as entregas**: search by name, type or category, or pick a
-   category and a type; the queue's matches, then what was delivered.
+2. **Todas as entregas**: search by name, type or category, or pick one
+   from the same line; the queue's matches, then what was delivered.
 3. **Nova entrega** opens on the **catalogue**: pick a type and its time,
    price and splitting come with it. A one-off delivery with no type is
    the last row.
@@ -129,12 +139,11 @@ Reels).
 | 1C | Goal card: label · month, days left, amount "de" target, a two-part bar (delivered in accent, queued and due in the stretch in the accent wash), and what is still missing. |
 | 1D | "Nova meta" is a quiet pill; the accent stays on the +. |
 | 1E | The schedule line: hours the queue has due by the end of the month against the free hours on the agenda until then. |
-| 1F | Categories filter the queue (`AppSegmented`, scrolls sideways). |
-| 1J | Once a category is picked, its types come in a second line under it, "Todos os tipos" first. With "Todas" there is no second line, so a type is never picked without its category (`ShelfFilter`, shared with screen 2). |
+| 1F | **One filter line** (`ShelfFilter`, an `AppSegmented` that scrolls sideways): Todas, then the 3 types she uses most (by count in the queue and the delivered), then every category with a folder icon. One pick at a time, a type or a category; the picked one is scrolled into sight. |
 | 1G | A row shows the name and value, then the type, the time (or time worked of the total, or steps done) and the deadline. The bar appears once work has started. Order is priority; drag to reorder, as in Lista. |
 | 1H | The + writes a delivery. Same spot as on every tab. |
 | 1I | Future goals are drawn quiet, with the day they start. |
-| 2A–E | Search covers name, type and category, and the same two-line filter narrows it to one type. Results come in two sections: Na fila (priority order), then Feitas (newest first). |
+| 2A–D | Search covers name, type and category, and the same filter line narrows it to one type or one category. Results come in two sections: Na fila (priority order), then Feitas (newest first). |
 | 3A | One field both searches the catalogue and names a one-off delivery. |
 | 3B | "Editar" opens the catalogue's page (a later delivery). |
 | 3C | Each type has a default time, an optional price and an optional block length. |
@@ -154,8 +163,8 @@ Reels).
 | 6C | "Criar um tipo" is a quiet pill; making types belongs to the catalogue's page. |
 | 6D | The one-off delivery stays, and can be kept as a type afterwards. |
 
-New icons (Phosphor, wired in `AppIcons`): `artifacts` (stack), `goal`
-(target), `search` (magnifyingGlass), `catalog` (bookOpen), `value`
+New icons (Phosphor, wired in `AppIcons`): `artifacts` (stack),
+`category` (folder, on a category's chip), `goal` (target), `search` (magnifyingGlass), `catalog` (bookOpen), `value`
 (coins), `split` (rows). No sparkles, no new brand SVG.
 
 **References** (drawn from known patterns, not browsed):
@@ -185,10 +194,16 @@ Say otherwise on the issue.
    it.
 7. **The tab shows the first 5 of the queue**, then "Ver todas as N".
 8. Screens show Lunna only; Focus gets the same tokens.
-9. **The type filter is a second line under the categories**, shown only
-   once a category is picked, rather than one flat line of every type or a
-   filter sheet. A flat line would run to a dozen chips for an astrologer;
-   a sheet hides what is picked.
+9. **One line, most-used types first, then categories** (third round,
+   from the reply). Three types: with Todas and three categories that
+   already fills a phone and a half. "Most used" counts every delivery of
+   the type, queued or delivered, with no time window; ties keep the
+   catalogue's order; a type never used doesn't come in. A type picked
+   elsewhere that is not in the top three joins the line after them.
+   Categories are marked with a folder (`AppIcons.category`) so a shelf
+   reads differently from a type. The catalogue in Nova entrega (screen 3)
+   keeps its grouping by category; it could put the same three types on
+   top as "Mais usados" if wanted.
 10. **The filter is the same on the tab and on Todas as entregas**, and
     neither remembers it between visits (the build may keep it on the
     device, as `TimelineModeCubit` does, if it turns out to be wanted).
@@ -202,13 +217,18 @@ Say otherwise on the issue.
 - **A delivery's money counts when it is delivered** (`doneAt`), for now.
   No paid date.
 - **The catalogue starts empty** for everyone (screen 6). No seed.
-- **Filter by each type as well** (pins 1J, 2E).
+- **Filter by each type as well**, and then **unify types with
+  categories, the most used types showing up** (pins 1F, 2B).
 
 ### Open questions
 
-The first round's two are answered above. One new: should "Criar um tipo"
-open the small type sheet in this delivery (decided unattended, 11), or
-wait for the catalogue's page?
+The first round's two are answered above. Still open:
+
+1. Should "Criar um tipo" open the small type sheet in this delivery
+   (decided unattended, 11), or wait for the catalogue's page?
+2. Should Nova entrega's catalogue also open on the three most-used types
+   ("Mais usados") above the categories (decided unattended, 9: not for
+   now)?
 
 ## Build brief
 
@@ -219,7 +239,7 @@ queue commits them):**
 
 - `app/lib/artifacts_preview.dart`: preview entry point, scenes 1–6,
   fake catalogue, queue, delivered list and goals (2026-10-21). Scene 1
-  opens on Atendimentos, scene 2 on Atendimentos › Mapa astral, scene 6
+  opens on the category Conteúdo, scene 2 on the type Mapa astral, scene 6
   hands the sheet an empty catalogue.
 - `app/packages/artifacts/` is a new package. `models/models.dart` holds `CatalogType`,
   `CatalogCategory`, `Artifact`, `Goal`, `GoalKind` and `GoalPeriod`.
@@ -227,13 +247,15 @@ queue commits them):**
   are `artifacts_page.dart` (the tab), `goal_card.dart`, `artifact_row.dart`,
   `all_artifacts_page.dart`, `artifact_sheet.dart` (catalogue →
   details, and `_EmptyCatalog` when it holds nothing), `goal_sheet.dart`,
-  `sheet_frame.dart` and `shelf_filter.dart` (`Shelf`, a category and a
-  type, and the two-line `ShelfFilter` both lists use). They take their data
+  `sheet_frame.dart` and `shelf_filter.dart` (`Shelf`, a category or a
+  type, `mostUsedTypes`, and the one-line `ShelfFilter` both lists use). They take their data
   as constructor arguments: the build puts a cubit and a repository behind
   them.
-- `app/packages/app_ui/lib/src/app_icons/app_icons.dart`: six icons.
+- `app/packages/app_ui/lib/src/app_icons/app_icons.dart`: seven icons.
+- `app/packages/app_ui/lib/src/widgets/app_segmented.dart`: `selectedKey`,
+  so a line that scrolls can bring the picked segment into sight.
 - `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`): `shellArtifactsTab`,
-  `monthsLong`, `artifacts*` (`artifactsAllTypes`), `artifact*`, `goal*`,
+  `monthsLong`, `artifacts*`, `artifact*`, `goal*`,
   `catalog*` (`catalogEmpty*`, `catalogNewType`).
 - `app/pubspec.yaml`: depends on `artifacts`.
 
@@ -256,8 +278,12 @@ queue commits them):**
 
 - `ArtifactsCubit` + repository. The `Shelf` filter is view state, kept
   on the page and applied to the queue the app already has; Todas as
-  entregas also sends it to the server (`?category=&type=`) once the
+  entregas also sends it to the server (`?category=` or `?type=`) once the
   delivered list is paged.
+- **Most used types**: the server counts deliveries per type (queued and
+  delivered, all time) and `GET /api/artifacts` answers `topTypes` (the
+  ids, at most 3); the app's `mostUsedTypes` is then only the preview's
+  stand-in, since the app holds just a page of the delivered list.
 - The empty catalogue's "Criar um tipo" opens a small type sheet
   (`POST /api/catalog/types`); with no category yet, the same sheet
   names one. The tab replaces `ProjectsPage` in

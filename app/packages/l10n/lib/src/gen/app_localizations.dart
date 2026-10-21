@@ -2063,12 +2063,6 @@ abstract class AppLocalizations {
   /// **'Todas'**
   String get artifactsAll;
 
-  /// No description provided for @artifactsAllTypes.
-  ///
-  /// In pt, this message translates to:
-  /// **'Todos os tipos'**
-  String get artifactsAllTypes;
-
   /// No description provided for @artifactsSeeAll.
   ///
   /// In pt, this message translates to:

@@ -1,17 +1,19 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/src/models/models.dart';
+import 'package:flutter/rendering.dart';
 import 'package:l10n/l10n.dart';
 
-/// What a list of deliveries is kept to: a shelf of the catalogue, and
-/// within it one kind. Both null, everything.
+/// What a list of deliveries is kept to: one kind, or one shelf of the
+/// catalogue. Both null, everything.
 class Shelf {
   /// Creates a filter.
-  const Shelf({this.category, this.type});
+  const Shelf({this.category, this.type})
+    : assert(category == null || type == null, 'one or the other');
 
-  /// The shelf's id; null, every shelf.
+  /// The shelf's id; null when not kept to a shelf.
   final String? category;
 
-  /// The kind's id, always one on [category]; null, every kind on it.
+  /// The kind's id; null when not kept to a kind.
   final String? type;
 
   /// Whether [artifact] is kept.
@@ -20,24 +22,58 @@ class Shelf {
       (type == null || artifact.type?.id == type);
 }
 
+/// The kinds of [categories] she uses most, by how many of [used] are of
+/// each, the catalogue's order breaking ties; at most [count] of them, and
+/// none that was never used.
+List<CatalogType> mostUsedTypes(
+  List<CatalogCategory> categories,
+  Iterable<Artifact> used, {
+  int count = 3,
+}) {
+  final uses = <String, int>{};
+  for (final artifact in used) {
+    final id = artifact.type?.id;
+    if (id != null) uses[id] = (uses[id] ?? 0) + 1;
+  }
+  final kinds = [
+    for (final category in categories)
+      for (final type in category.types)
+        if (uses.containsKey(type.id)) type,
+  ];
+  // A stable sort, so the catalogue's order breaks ties.
+  final order = {for (final (i, t) in kinds.indexed) t.id: i};
+  kinds.sort((a, b) {
+    final byUse = uses[b.id]!.compareTo(uses[a.id]!);
+    return byUse != 0 ? byUse : order[a.id]!.compareTo(order[b.id]!);
+  });
+  return kinds.take(count).toList();
+}
+
 /// {@template shelf_filter}
-/// The catalogue's two levels as a filter: the shelves on one line and,
-/// once a shelf is picked, its kinds on a second line under it.
+/// The catalogue as one line of filters: "Todas", then the kinds she uses
+/// most, then the shelves, each marked with a folder.
 ///
-/// The second line only exists for a picked shelf, so with "Todas" the
-/// filter is a single line, and a kind is never picked without its shelf.
+/// A kind picked elsewhere that is not among the most used joins the line
+/// after them. The line scrolls sideways, and the picked one is brought
+/// into sight.
 /// {@endtemplate}
-class ShelfFilter extends StatelessWidget {
+class ShelfFilter extends StatefulWidget {
   /// {@macro shelf_filter}
   const ShelfFilter({
     required this.categories,
+    required this.used,
     required this.value,
     required this.onChanged,
+    this.top = 3,
     super.key,
   });
 
   /// The catalogue's shelves.
   final List<CatalogCategory> categories;
+
+  /// The deliveries whose kinds count as used: the queue and what was
+  /// delivered.
+  final Iterable<Artifact> used;
 
   /// What is picked.
   final Shelf value;
@@ -45,49 +81,100 @@ class ShelfFilter extends StatelessWidget {
   /// Called with what was picked.
   final ValueChanged<Shelf> onChanged;
 
+  /// How many of the most used kinds come into the line.
+  final int top;
+
+  @override
+  State<ShelfFilter> createState() => _ShelfFilterState();
+}
+
+class _ShelfFilterState extends State<ShelfFilter> {
+  final _scroll = ScrollController();
+  final GlobalKey _picked = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _reveal();
+  }
+
+  @override
+  void didUpdateWidget(ShelfFilter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.value.category != widget.value.category ||
+        oldWidget.value.type != widget.value.type) {
+      _reveal();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Scrolls the line, and only the line, so the picked one is in sight.
+  void _reveal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final box = _picked.currentContext?.findRenderObject();
+      if (box == null || !_scroll.hasClients) return;
+      final offset = RenderAbstractViewport.of(
+        box,
+      ).getOffsetToReveal(box, 0.5).offset;
+      final position = _scroll.position;
+      _scroll.jumpTo(
+        offset.clamp(position.minScrollExtent, position.maxScrollExtent),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final shelves = [null, ...categories];
-    final picked = categories
-        .where((c) => c.id == value.category)
-        .firstOrNull;
-    final kinds = [null, ...?picked?.types];
+    final value = widget.value;
+    final kinds = mostUsedTypes(
+      widget.categories,
+      widget.used,
+      count: widget.top,
+    );
+    if (value.type != null && !kinds.any((t) => t.id == value.type)) {
+      final picked = widget.categories
+          .expand((c) => c.types)
+          .where((t) => t.id == value.type)
+          .firstOrNull;
+      if (picked != null) kinds.add(picked);
+    }
+    final filters = [
+      const Shelf(),
+      for (final kind in kinds) Shelf(type: kind.id),
+      for (final category in widget.categories) Shelf(category: category.id),
+    ];
+    final names = {
+      for (final kind in kinds) kind.id: kind.name,
+      for (final category in widget.categories) category.id: category.name,
+    };
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          clipBehavior: Clip.none,
-          child: AppSegmented(
-            selected: shelves.indexWhere((c) => c?.id == value.category),
-            onSelected: (index) =>
-                onChanged(Shelf(category: shelves[index]?.id)),
-            segments: [
-              for (final shelf in shelves)
-                AppSegment(label: shelf?.name ?? l10n.artifactsAll),
-            ],
-          ),
+    return SingleChildScrollView(
+      controller: _scroll,
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: AppSegmented(
+        selectedKey: _picked,
+        selected: filters.indexWhere(
+          (f) => f.category == value.category && f.type == value.type,
         ),
-        if (picked != null) ...[
-          const SizedBox(height: AppSpacing.s2),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            child: AppSegmented(
-              selected: kinds.indexWhere((t) => t?.id == value.type),
-              onSelected: (index) => onChanged(
-                Shelf(category: picked.id, type: kinds[index]?.id),
-              ),
-              segments: [
-                for (final kind in kinds)
-                  AppSegment(label: kind?.name ?? l10n.artifactsAllTypes),
-              ],
-            ),
-          ),
+        onSelected: (index) => widget.onChanged(filters[index]),
+        segments: [
+          for (final filter in filters)
+            if (filter.category != null)
+              AppSegment(
+                label: names[filter.category]!,
+                iconData: AppIcons.category,
+              )
+            else
+              AppSegment(label: names[filter.type] ?? l10n.artifactsAll),
         ],
-      ],
+      ),
     );
   }
 }
