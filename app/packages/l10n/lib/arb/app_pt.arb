@@ -1015,6 +1015,7 @@
     }
   },
   "artifactsAll": "Todas",
+  "artifactsAllTypes": "Todos os tipos",
   "artifactsSeeAll": "Ver todas as {count}",
   "@artifactsSeeAll": {
     "placeholders": {
@@ -1087,6 +1088,10 @@
   "artifactSheetLooseHint": "Sem tipo do catálogo: você diz quanto tempo leva",
   "catalogTitle": "Catálogo",
   "catalogEdit": "Editar",
+  "catalogEmptyTitle": "Seu catálogo está vazio",
+  "catalogEmptyBody": "Crie um tipo para o que você entrega sempre, como um mapa astral ou um post. Ele já traz o tempo, o preço e como dividir no dia.",
+  "catalogNewType": "Criar um tipo",
+  "catalogEmptyLooseHint": "Você diz quanto tempo leva. Depois dá para guardá-la como tipo.",
   "artifactNameHint": "Nome da entrega",
   "artifactChangeType": "Trocar",
   "artifactTotalTime": "Tempo total",

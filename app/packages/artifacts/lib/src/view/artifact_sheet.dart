@@ -116,12 +116,16 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
 
   Widget _catalog(AppLocalizations l10n) {
     final query = _search.text.trim().toLowerCase();
+    // Everyone starts with an empty catalogue: it fills with her own kinds.
+    final empty = widget.categories.isEmpty;
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.s6),
       children: [
         AppTextField(
           controller: _search,
-          hintText: l10n.artifactSheetSearchHint,
+          hintText: empty
+              ? l10n.artifactNameHint
+              : l10n.artifactSheetSearchHint,
           onChanged: (_) => setState(() {}),
         ),
         const SizedBox(height: AppSpacing.s5),
@@ -136,12 +140,17 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
             Expanded(
               child: Text(l10n.catalogTitle, style: AppTypography.labelStrong),
             ),
-            Text(
-              l10n.catalogEdit,
-              style: AppTypography.label.copyWith(color: AppColors.ink3),
-            ),
+            if (!empty)
+              Text(
+                l10n.catalogEdit,
+                style: AppTypography.label.copyWith(color: AppColors.ink3),
+              ),
           ],
         ),
+        if (empty) ...[
+          const SizedBox(height: AppSpacing.s3),
+          _EmptyCatalog(onNewType: () {}),
+        ],
         for (final category in widget.categories) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -187,7 +196,9 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
                             style: AppTypography.bodyStrong,
                           ),
                           Text(
-                            l10n.artifactSheetLooseHint,
+                            empty
+                                ? l10n.catalogEmptyLooseHint
+                                : l10n.artifactSheetLooseHint,
                             style: AppTypography.label,
                           ),
                         ],
@@ -333,6 +344,44 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       if (goal.kind == GoalKind.count && goal.type?.id == type.id) return goal;
     }
     return null;
+  }
+}
+
+/// What the catalogue says before it holds anything: what a kind is for,
+/// and the way to write the first one.
+class _EmptyCatalog extends StatelessWidget {
+  const _EmptyCatalog({required this.onNewType});
+
+  final VoidCallback onNewType;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s1,
+        AppSpacing.s1,
+        AppSpacing.s1,
+        AppSpacing.s2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.catalogEmptyTitle, style: AppTypography.bodyStrong),
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            l10n.catalogEmptyBody,
+            style: AppTypography.label.copyWith(color: AppColors.ink2),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          AppPillButton(
+            iconData: AppIcons.plus,
+            label: l10n.catalogNewType,
+            onPressed: onNewType,
+          ),
+        ],
+      ),
+    );
   }
 }
 

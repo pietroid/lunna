@@ -4,7 +4,8 @@ import 'package:l10n/l10n.dart';
 
 /// Draws Entregas against fixed data, one scene per `?s=<n>`:
 /// 1 the tab, 2 every delivery searched, 3 the catalogue, 4 a delivery
-/// picked from it, 5 a goal. Nothing ships from here.
+/// picked from it, 5 a goal, 6 the catalogue as everyone first finds it,
+/// empty. Nothing ships from here.
 void main() => runApp(const _PreviewApp());
 
 final int _scene = int.tryParse(Uri.base.queryParameters['s'] ?? '') ?? 1;
@@ -242,7 +243,7 @@ class _PreviewApp extends StatelessWidget {
               done: _done,
               categories: _categories,
               now: _now,
-              initialQuery: 'mapa',
+              initialShelf: const Shelf(category: 'atend', type: 'mapa'),
             )
           : const _Shell(),
     );
@@ -279,6 +280,13 @@ class _ShellState extends State<_Shell> {
             initialAmount: 10000,
             initialNext: true,
           );
+        case 6:
+          showArtifactSheet(
+            context,
+            categories: const [],
+            goals: _goals,
+            now: _now,
+          );
       }
     });
   }
@@ -313,6 +321,7 @@ class _ShellState extends State<_Shell> {
         now: _now,
         freeMinutes: 26 * 60,
         freeUntil: DateTime(2026, 10, 31, 23, 59),
+        initialShelf: const Shelf(category: 'atend'),
         onNewGoal: () => showGoalSheet(context, now: _now),
       ),
       floatingActionButton: AppFab(

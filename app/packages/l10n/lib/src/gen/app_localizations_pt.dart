@@ -1316,6 +1316,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get artifactsAll => 'Todas';
 
   @override
+  String get artifactsAllTypes => 'Todos os tipos';
+
+  @override
   String artifactsSeeAll(int count) {
     return 'Ver todas as $count';
   }
@@ -1379,6 +1382,18 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get catalogEdit => 'Editar';
+
+  @override
+  String get catalogEmptyTitle => 'Seu catálogo está vazio';
+
+  @override
+  String get catalogEmptyBody => 'Crie um tipo para o que você entrega sempre, como um mapa astral ou um post. Ele já traz o tempo, o preço e como dividir no dia.';
+
+  @override
+  String get catalogNewType => 'Criar um tipo';
+
+  @override
+  String get catalogEmptyLooseHint => 'Você diz quanto tempo leva. Depois dá para guardá-la como tipo.';
 
   @override
   String get artifactNameHint => 'Nome da entrega';

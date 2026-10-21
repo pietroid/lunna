@@ -1,6 +1,7 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_row.dart';
+import 'package:artifacts/src/view/shelf_filter.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template all_artifacts_page}
@@ -8,7 +9,8 @@ import 'package:l10n/l10n.dart';
 /// made, newest first.
 ///
 /// The search reads the name, the kind and the shelf, so "mapa" finds every
-/// natal chart and "Camila" everything for her.
+/// natal chart and "Camila" everything for her; the shelves and their
+/// kinds narrow it further.
 /// {@endtemplate}
 class AllArtifactsPage extends StatefulWidget {
   /// {@macro all_artifacts_page}
@@ -18,6 +20,7 @@ class AllArtifactsPage extends StatefulWidget {
     required this.categories,
     required this.now,
     this.initialQuery = '',
+    this.initialShelf = const Shelf(),
     super.key,
   });
 
@@ -36,16 +39,19 @@ class AllArtifactsPage extends StatefulWidget {
   /// What the search starts with.
   final String initialQuery;
 
+  /// What the list is kept to when it opens.
+  final Shelf initialShelf;
+
   @override
   State<AllArtifactsPage> createState() => _AllArtifactsPageState();
 }
 
 class _AllArtifactsPageState extends State<AllArtifactsPage> {
   late final _search = TextEditingController(text: widget.initialQuery);
-  String? _category;
+  late Shelf _shelf = widget.initialShelf;
 
   bool _matches(Artifact a) {
-    if (_category != null && a.category?.id != _category) return false;
+    if (!_shelf.keeps(a)) return false;
     final query = _search.text.trim().toLowerCase();
     if (query.isEmpty) return true;
     return [
@@ -66,7 +72,6 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
     final l10n = context.l10n;
     final queue = widget.queue.where(_matches).toList();
     final done = widget.done.where(_matches).toList();
-    final shelves = [null, ...widget.categories];
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -104,17 +109,10 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: AppSpacing.s3),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: AppSegmented(
-                    selected: shelves.indexWhere((c) => c?.id == _category),
-                    onSelected: (index) =>
-                        setState(() => _category = shelves[index]?.id),
-                    segments: [
-                      for (final shelf in shelves)
-                        AppSegment(label: shelf?.name ?? l10n.artifactsAll),
-                    ],
-                  ),
+                ShelfFilter(
+                  categories: widget.categories,
+                  value: _shelf,
+                  onChanged: (shelf) => setState(() => _shelf = shelf),
                 ),
                 if (queue.isEmpty && done.isEmpty)
                   Padding(

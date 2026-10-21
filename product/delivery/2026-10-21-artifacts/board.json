@@ -35,22 +35,22 @@
     },
     {
      "id": "E",
-     "x": 40,
-     "y": 280,
+     "x": 24,
+     "y": 303,
      "label": "The agenda",
      "text": "The schedule force in one line: time the queue has due this month against the free hours left. 11h15 needed, 26h free: room for more clients."
     },
     {
      "id": "F",
      "x": 376,
-     "y": 376,
+     "y": 400,
      "label": "Shelves",
-     "text": "Catalogue categories filter the queue. Todas by default."
+     "text": "Catalogue categories filter the queue. Todas by default; here Atendimentos is picked."
     },
     {
      "id": "G",
-     "x": 75,
-     "y": 481,
+     "x": 20,
+     "y": 505,
      "label": "A delivery",
      "text": "Name · value; kind · time (or worked of total, or steps) · due day. Bar once work has started. Order is priority; hold to drag, as in Lista."
     },
@@ -67,41 +67,55 @@
      "y": 185,
      "label": "More goals",
      "text": "Goals scroll sideways: active first, then future ones, drawn quiet with their start day."
+    },
+    {
+     "id": "J",
+     "x": 376,
+     "y": 448,
+     "label": "Kinds",
+     "text": "Once a shelf is picked, its kinds come in a second line under it (Todos os tipos first). With Todas there is no second line, so a kind is never picked without its shelf."
     }
    ]
   },
   {
    "png": "img/mockup-2.png",
    "title": "2 · Every delivery, searched",
-   "why": "The tab shows the top 5 of the queue; the rest, and what was delivered, live here.",
+   "why": "The tab shows the top 5 of the queue; the rest, and what was delivered, live here, filtered down to one kind.",
    "pins": [
     {
      "id": "A",
      "x": 364,
-     "y": 91,
+     "y": 116,
      "label": "Search",
      "text": "Reads name, kind and shelf: “mapa” finds every natal chart, “Camila” everything for her."
     },
     {
      "id": "B",
      "x": 376,
-     "y": 152,
+     "y": 176,
      "label": "Shelves",
-     "text": "The same filter as the tab."
+     "text": "The same two-line filter as the tab: the shelf, then its kind. Here Atendimentos › Mapa astral."
     },
     {
      "id": "C",
      "x": 110,
-     "y": 207,
+     "y": 280,
      "label": "Na fila",
      "text": "Queue matches, in priority order."
     },
     {
      "id": "D",
      "x": 115,
-     "y": 447,
+     "y": 519,
      "label": "Feitas",
      "text": "Delivered, newest first, with the day. They are what fills the goals."
+    },
+    {
+     "id": "E",
+     "x": 376,
+     "y": 224,
+     "label": "Kinds",
+     "text": "Every natal chart, queued and delivered, without typing a word."
     }
    ]
   },
@@ -249,6 +263,41 @@
      "y": 751,
      "label": "Read back",
      "text": "The goal as a sentence, so what will be measured is never in doubt."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-6.png",
+   "title": "6 · The catalogue starts empty",
+   "why": "Nobody gets a seeded catalogue: the first Nova entrega says what a kind is for and offers to make one.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 376,
+     "y": 226,
+     "label": "Name first",
+     "text": "With no kinds to search, the field just names the delivery."
+    },
+    {
+     "id": "B",
+     "x": 376,
+     "y": 317,
+     "label": "Empty catalogue",
+     "text": "One title and one line on what a kind brings (time, price, splitting). No starter set, for an astrologer or anyone."
+    },
+    {
+     "id": "C",
+     "x": 20,
+     "y": 422,
+     "label": "Criar um tipo",
+     "text": "A quiet pill: the catalogue's own page, where kinds are made, is a later delivery."
+    },
+    {
+     "id": "D",
+     "x": 376,
+     "y": 510,
+     "label": "Avulsa",
+     "text": "Still there: time given by hand, and it can be kept as a kind afterwards."
     }
    ]
   }

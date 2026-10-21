@@ -3,6 +3,7 @@ import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_row.dart';
 import 'package:artifacts/src/view/goal_card.dart';
+import 'package:artifacts/src/view/shelf_filter.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template artifacts_page}
@@ -11,8 +12,8 @@ import 'package:l10n/l10n.dart';
 /// The three forces on one screen. The goals say what the month asks for;
 /// the line under them says what the agenda can give, the time the queue
 /// needs against the free time left in the stretch; the queue, in order of
-/// priority, is what both are spent on. The shelves of the catalogue filter
-/// the queue, and the list ends in a way to every delivery and a search.
+/// priority, is what both are spent on. The catalogue's shelves and kinds
+/// filter the queue, and the list ends in a way to every delivery and a search.
 /// {@endtemplate}
 class ArtifactsPage extends StatefulWidget {
   /// {@macro artifacts_page}
@@ -24,6 +25,7 @@ class ArtifactsPage extends StatefulWidget {
     required this.freeMinutes,
     required this.freeUntil,
     this.shown = 5,
+    this.initialShelf = const Shelf(),
     this.onSearch,
     this.onNewGoal,
     this.onSeeAll,
@@ -49,6 +51,9 @@ class ArtifactsPage extends StatefulWidget {
   /// The end of the stretch the free time is counted to.
   final DateTime freeUntil;
 
+  /// What the queue is kept to when it opens.
+  final Shelf initialShelf;
+
   /// How many of the queue are drawn before "Ver todas".
   final int shown;
 
@@ -66,17 +71,14 @@ class ArtifactsPage extends StatefulWidget {
 }
 
 class _ArtifactsPageState extends State<ArtifactsPage> {
-  /// The shelf the queue is kept to; null, every shelf.
-  String? _category;
+  /// What the queue is kept to.
+  late Shelf _shelf = widget.initialShelf;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final now = widget.now;
-    final queue = [
-      for (final a in widget.queue)
-        if (_category == null || a.category?.id == _category) a,
-    ];
+    final queue = widget.queue.where(_shelf.keeps).toList();
     int left(Iterable<Artifact> list) =>
         list.fold(0, (sum, a) => sum + a.minutes - a.doneMinutes);
     // What the stretch must hold: what is due before it ends.
@@ -85,7 +87,6 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
         (a) => a.deadline != null && a.deadline!.isBefore(widget.freeUntil),
       ),
     );
-    final shelves = [null, ...widget.categories];
 
     return SafeArea(
       bottom: false,
@@ -186,18 +187,10 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                 ),
               ),
               const SizedBox(height: AppSpacing.s3),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                child: AppSegmented(
-                  selected: shelves.indexWhere((c) => c?.id == _category),
-                  onSelected: (index) =>
-                      setState(() => _category = shelves[index]?.id),
-                  segments: [
-                    for (final shelf in shelves)
-                      AppSegment(label: shelf?.name ?? l10n.artifactsAll),
-                  ],
-                ),
+              ShelfFilter(
+                categories: widget.categories,
+                value: _shelf,
+                onChanged: (shelf) => setState(() => _shelf = shelf),
               ),
               const SizedBox(height: AppSpacing.s3),
               for (final artifact in queue.take(widget.shown)) ...[

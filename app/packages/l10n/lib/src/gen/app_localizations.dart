@@ -2063,6 +2063,12 @@ abstract class AppLocalizations {
   /// **'Todas'**
   String get artifactsAll;
 
+  /// No description provided for @artifactsAllTypes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Todos os tipos'**
+  String get artifactsAllTypes;
+
   /// No description provided for @artifactsSeeAll.
   ///
   /// In pt, this message translates to:
@@ -2164,6 +2170,30 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Editar'**
   String get catalogEdit;
+
+  /// No description provided for @catalogEmptyTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu catálogo está vazio'**
+  String get catalogEmptyTitle;
+
+  /// No description provided for @catalogEmptyBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Crie um tipo para o que você entrega sempre, como um mapa astral ou um post. Ele já traz o tempo, o preço e como dividir no dia.'**
+  String get catalogEmptyBody;
+
+  /// No description provided for @catalogNewType.
+  ///
+  /// In pt, this message translates to:
+  /// **'Criar um tipo'**
+  String get catalogNewType;
+
+  /// No description provided for @catalogEmptyLooseHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Você diz quanto tempo leva. Depois dá para guardá-la como tipo.'**
+  String get catalogEmptyLooseHint;
 
   /// No description provided for @artifactNameHint.
   ///
