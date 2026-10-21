@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The queue: GitHub issues worked by Claude Code on this Mac, one at a time.
 //
-//   .tool/queue setup            labels, a push topic, the LaunchAgent, Pages; sends a test push
+//   .tool/queue setup            labels, a push topic, the runner, the LaunchAgent, Pages; sends a test push
 //   .tool/queue run              the loop the LaunchAgent keeps alive (a pass a minute)
 //   .tool/queue tick             one pass, in the foreground
 //   .tool/queue ls               the issues it knows and where each one is
@@ -19,6 +19,10 @@
 // (conflicts resolved by another run), closes the issue and tells you. An
 // approved RFC, once merged, opens its own `create` issue (`implement`), so
 // research flows on into a build.
+//
+// The LaunchAgent runs the queue from its own worktree of origin/main
+// (<worktrees>/.runner), moved to main's tip on every pass, so what merges
+// is what runs: a run from the main checkout ran whatever it last pulled.
 //
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
@@ -144,7 +148,7 @@ Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion i
 - Work only in this worktree (${st.worktree}), branch ${st.branch}. Leave the work in its files: the queue commits, pushes and keeps the PR. Don't run git commit, push, checkout, merge, rebase or stash pop of anything you didn't stash, and don't run .tool/doc open.
 - Where a skill says to ask, or to stop for the person, take the option you would recommend, list it in the document under "Decided unattended", and go on. Write a question you can't decide into the document and into the structured output's questions.
 - Skip .tool/cost and session_cost: the queue measures every run and writes the figures in the PR.
-- Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README as the PR description, on a phone.
+- Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README on the review page, on a phone.
 - This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
 - A reply that starts "On `<file>` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
 - Finish with the structured output.`;
@@ -283,20 +287,6 @@ export const approves = (said) => said.every((c) => c.kind !== 'line' && APPROVE
 
 const raw = (cfg, sha, path) => `https://raw.githubusercontent.com/${cfg.repo}/${sha}/${path}`;
 
-// The topic's README, with its relative links made absolute so it reads
-// as a PR description: pictures at this commit, files on the branch.
-function readme(cfg, st, sha) {
-  const path = st.doc && join(st.worktree, st.doc);
-  if (!path || !existsSync(path)) return '';
-  const dir = posix.dirname(st.doc);
-  let md = readFileSync(path, 'utf8').replace(/(!?\[[^\]]*\]\(|src=")(?![a-z]+:|#|\/)([^)"\s]+)/gi, (_, lead, rel) => {
-    const p = posix.normalize(posix.join(dir, rel));
-    return lead + (/\.(png|jpe?g|gif|svg|webp)$/i.test(p) ? raw(cfg, sha, p) : `https://github.com/${cfg.repo}/blob/${st.branch}/${p}`);
-  });
-  if (md.length > 55000) md = md.slice(0, 55000) + `\n\n… cut here: [the whole README](https://github.com/${cfg.repo}/blob/${st.branch}/${st.doc}).`;
-  return md;
-}
-
 // The review page (.tool/review.html on GitHub Pages) for the PR's README,
 // once Pages is on: the RFC drawn, commented on by selecting its text.
 export function reviewUrl(cfg, st) {
@@ -305,22 +295,30 @@ export function reviewUrl(cfg, st) {
   return site ? `${site.replace(/^http:/, 'https:').replace(/\/?$/, '/')}review.html?repo=${cfg.repo}&pr=${st.pr}&path=${encodeURI(st.doc)}` : null;
 }
 const pageLine = (url) => (url ? `\n\n📝 [Read it as a page and comment on its text](${url})` : '');
+const boardOf = (st) => st.doc && posix.join(posix.dirname(st.doc), 'img/mockup-board.png');
+const hasBoard = (st) => !!st.doc && existsSync(join(st.worktree, boardOf(st)));
 
-function prBody(cfg, st, sha, line) {
+// Short on purpose: the README is read on the review page (or in Files
+// changed, where its lines take comments), not pasted here. A board stays,
+// since it is the design at a glance.
+export function prBody(cfg, st, sha, line, page = reviewUrl(cfg, st)) {
+  const file = st.doc ? `📄 [${posix.basename(posix.dirname(st.doc))}/README.md](https://github.com/${cfg.repo}/blob/${sha}/${st.doc})` : '';
+  const read = page ? `📝 **[Read it as a page and comment on its text](${page})**${file ? ` · ${file}` : ''}` : file;
+  const board = hasBoard(st) ? `\n\n![board](${raw(cfg, sha, boardOf(st))})` : '';
   const qs = st.questions?.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
-  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${pageLine(reviewUrl(cfg, st))}${qs}\n\n### Usage\n\n${usageTable(st.runs)}\n\n---\n\n${readme(cfg, st, sha)}`;
+  const usage = st.runs.length ? `\n\n<details><summary>Usage: ${usageLine(st.runs)}</summary>\n\n${usageTable(st.runs)}\n\n</details>` : '';
+  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${read ? `\n\n${read}` : ''}${board}${qs}${usage}`;
 }
 
 function syncPr(cfg, st, line) {
   const sha = git(st.worktree, 'rev-parse', 'HEAD');
-  const body = prBody(cfg, st, sha, line);
   if (!st.pr) {
-    const url = sh('gh', ['pr', 'create', '-R', cfg.repo, '--draft', '--base', 'main', '--head', st.branch, '--title', st.title, '--body-file', '-'], { input: body });
+    const url = sh('gh', ['pr', 'create', '-R', cfg.repo, '--draft', '--base', 'main', '--head', st.branch, '--title', st.title, '--body-file', '-'], { input: prBody(cfg, st, sha, line, null) });
     st.pr = +url.split('/').pop();
     save(st);
-  } else {
-    gh(['pr', 'edit', String(st.pr), '-R', cfg.repo, '--body-file', '-'], body);
   }
+  // Again once the PR has a number: the page's link needs it.
+  gh(['pr', 'edit', String(st.pr), '-R', cfg.repo, '--body-file', '-'], prBody(cfg, st, sha, line));
   return sha;
 }
 
@@ -332,8 +330,10 @@ function worktree(cfg, st) {
   const exists = trySh('git', ['rev-parse', '--verify', '-q', `refs/heads/${st.branch}`]);
   sh('git', ['worktree', 'add', '-q', ...(exists ? [st.worktree, st.branch] : ['-b', st.branch, st.worktree, 'origin/main'])]);
   // What git ignores but the app and the server need to run.
-  const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(root, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
-  for (const f of envs) if (existsSync(join(root, f))) copyFileSync(join(root, f), join(st.worktree, f));
+  // From the checkout the person works in: the runner has none of them.
+  const src = cfg.checkout ?? root;
+  const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(src, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
+  for (const f of envs) if (existsSync(join(src, f))) copyFileSync(join(src, f), join(st.worktree, f));
   trySh('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 });
 }
 
@@ -382,14 +382,13 @@ async function work(cfg, st) {
   git(st.worktree, 'push', '-q', '-u', 'origin', st.branch);
 
   const gate = gateOf(st, phase);
-  const hasBoard = !!st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png'));
-  const [icon, head, ask, tag] = headline(st, gate, hasBoard);
+  const [icon, head, ask, tag] = headline(st, gate, hasBoard(st));
   const sha = syncPr(cfg, st, `**${head}**, waiting for your reply on #${st.issue}.`);
   if (gate === 'review') trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
   for (const r of res.output.replies ?? []) {
     trySh('gh', ['api', '-X', 'POST', `repos/${cfg.repo}/pulls/${st.pr}/comments/${r.thread}/replies`, '--input', '-'], { input: JSON.stringify({ body: `${r.body}\n\n${MARK}` }) });
   }
-  const board = hasBoard ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
+  const board = hasBoard(st) ? `\n\n![board](${raw(cfg, sha, boardOf(st))})` : '';
   const qs = st.questions.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
   st.gate = gate;
   st.gateAt = comment(cfg, st.issue, `${icon} **${head}**: #${st.pr}\n\n${st.summary}${pageLine(reviewUrl(cfg, st))}${board}${qs}\n\n${ask}\n\n<sub>${usageLine(st.runs)}</sub>`);
@@ -563,6 +562,21 @@ async function tick(cfg) {
   }
 }
 
+// ---------------------------------------------------------------- the runner
+
+export const runnerDir = (cfg) => join(cfg.worktrees, '.runner');
+export const isRunner = (cfg) => existsSync(runnerDir(cfg)) && realpathSync(runnerDir(cfg)) === realpathSync(root);
+
+// The worktree the LaunchAgent runs from, detached at origin/main's tip.
+// Nobody edits it, so a forced checkout loses nothing.
+export function syncRunner(cfg) {
+  const dir = runnerDir(cfg);
+  sh('git', ['fetch', '-q', 'origin', 'main']);
+  if (!existsSync(dir)) sh('git', ['worktree', 'add', '-q', '--detach', dir, 'origin/main']);
+  else sh('git', ['checkout', '-q', '-f', '--detach', 'origin/main'], { cwd: dir });
+  return dir;
+}
+
 function locked() {
   const lock = join(home, 'lock');
   const pid = existsSync(lock) && +readFileSync(lock, 'utf8');
@@ -575,9 +589,13 @@ async function loop(once) {
   const loaded = statSync(fileURLToPath(import.meta.url)).mtimeMs;
   const cfg = config();
   if (locked()) fail('Another .tool/queue run is going.');
+  const runner = isRunner(cfg);
+  if (!once && !runner) log(`running from ${root}, not ${runnerDir(cfg)}: merged changes to the queue won't run until .tool/queue setup`);
   for (;;) {
     try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
     if (once) return;
+    // Main's tip, so a merged queue.mjs takes over at the check below.
+    if (runner) try { syncRunner(cfg); } catch (e) { log('runner sync failed:', e.stderr || e.message); }
     // An edited queue.mjs takes over at the next pass: exit, launchd starts it again.
     if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) return log('queue.mjs changed: restarting');
     await new Promise((r) => setTimeout(r, 60e3));
@@ -604,22 +622,25 @@ async function setup() {
     owner: gh(['api', 'user', '--jq', '.login']),
     topic: old.topic ?? `lunna-${randomBytes(12).toString('hex')}`,
     worktrees: old.worktrees ?? resolve(root, '..', `${basename(root)}-queue`),
+    checkout: old.checkout ?? root,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
+  if (!isRunner(cfg)) cfg.checkout = root;
   writeJson(configPath, cfg);
   for (const [name, color, description] of LABELS) gh(['label', 'create', name, '-R', repo, '--color', color, '--description', description, '--force']);
   // Pages built by Actions, for the review page (.github/workflows/review-page.yml).
   const pages = trySh('gh', ['api', `repos/${repo}/pages`, '--jq', '.html_url'])
     ?? trySh('gh', ['api', '-X', 'POST', `repos/${repo}/pages`, '-f', 'build_type=workflow', '--jq', '.html_url']);
 
+  const runner = syncRunner(cfg);
   const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
   mkdirSync(dirname(plistPath), { recursive: true });
   writeFileSync(plistPath, `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>${AGENT}</string>
-  <key>ProgramArguments</key><array><string>${xml(process.execPath)}</string><string>${xml(join(here, 'queue.mjs'))}</string><string>run</string></array>
-  <key>WorkingDirectory</key><string>${xml(root)}</string>
+  <key>ProgramArguments</key><array><string>${xml(process.execPath)}</string><string>${xml(join(runner, '.tool/queue.mjs'))}</string><string>run</string></array>
+  <key>WorkingDirectory</key><string>${xml(runner)}</string>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(process.env.PATH)}</string></dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -631,6 +652,7 @@ async function setup() {
   start();
   await push(cfg, { title: 'Lunna queue is on', message: `Watching ${repo} for issues labelled ${KINDS.join(', ')}.`, tags: ['white_check_mark'], click: `https://github.com/${repo}/issues` });
   console.log(`✓ labels on ${repo}, LaunchAgent ${AGENT} loaded, test push sent
+  ✓ runs from ${runner}, at origin/main (${git(runner, 'rev-parse', '--short', 'HEAD')}), moved to its tip every pass
   ${pages ? `✓ review page: ${pages}review.html (live after the next push to main or a queue/* branch touching it, or: gh workflow run review-page.yml)` : '✗ GitHub Pages could not be turned on: Settings → Pages → Source: GitHub Actions'}
   phone: install ntfy (App Store / Play Store), tap +, topic ${cfg.topic}, server ntfy.sh
          (or open https://ntfy.sh/${cfg.topic} on the phone)
@@ -650,6 +672,13 @@ function stop() {
 }
 
 function ls() {
+  const cfg = config();
+  const at = (ref, cwd) => trySh('git', ['rev-parse', '--short', ref], { cwd }) ?? '?';
+  const dir = runnerDir(cfg);
+  const plist = existsSync(plistPath) ? readFileSync(plistPath, 'utf8') : '';
+  console.log(!existsSync(dir) ? '✗ no runner: run .tool/queue setup'
+    : !plist.includes(dir) ? `✗ the LaunchAgent doesn't run from ${dir}: run .tool/queue setup`
+    : `✓ runner at ${at('HEAD', dir)} (origin/main ${at('origin/main')})`);
   const all = states().sort((a, b) => a.issue - b.issue);
   if (!all.length) return console.log('  nothing yet');
   for (const s of all) {

@@ -1,0 +1,30 @@
+✓ review link: https://pietroteruya.dev/lunna/review.html?repo=pietroid/lunna&pr=16&path=product/research/2026-10-21-agent-console/README.md
+✓ the body links the page
+✓ body 2030 chars (the old queue wrote 20286 on #16)
+
+----- body -----
+Closes #14 · `research` · **RFC ready**, waiting for your reply on #14.
+
+I wrote the RFC with no deep-research pass yet. It recommends keeping Claude Code and GitHub and adopting no third-party console: Vibe Kanban is sunsetting, Remote Control, Dispatch and Happy steer live sessions with no gates, and Agent HQ bills through Copilot. It proposes three changes. First, a listener that checks every 10 s even while a job runs; your comments now wait 69 s at the median and up to 54 min, measured with code/latency.mjs. Second, an Approve button on the review page and in the push, since GitHub won't let a PR's author approve it. Third, a pinned 'Queue' status issue that the review page draws as a console with usage and budget. Look first at decision 1 (the budget ceiling) and at the option comparison in data/options.md.
+
+📝 **[Read it as a page and comment on its text](https://pietroteruya.dev/lunna/review.html?repo=pietroid/lunna&pr=16&path=product/research/2026-10-21-agent-console/README.md)** · 📄 [2026-10-21-agent-console/README.md](https://github.com/pietroid/lunna/blob/296705a32dbd84a66b03cf14b1f4baed26820322/product/research/2026-10-21-agent-console/README.md)
+
+**Open questions**
+- Budget: should the queue stop starting runs above a share of the week (85% recommended, changed by commenting `budget N` on the status issue), or only show usage?
+
+<details><summary>Usage: 6 min · 2.4M in / 49k out · ~$2.00 API-eq · week +1 pts (now 21%)</summary>
+
+| Phase | Started (UTC) | Time | Turns | Tokens in (cache read) | Out | API-eq. | 5-hour window | Week |
+|---|---|---|---|---|---|---|---|---|
+| start | 10-21 19:11 | 6 min | 40 | 2.4M (2.1M) | 49k | $2.00 | 72→82% | 20→21% (+1) |
+| **Total** | | **6 min** | **40** | **2.4M** (2.1M) | **49k** | **$2.00** | | **+1 pts** |
+
+<sub>Billed to the subscription. API-eq. is what the same tokens would cost at API prices, not money spent. Window figures are `/usage` before and after each run, so they also count anything else on the account meanwhile.</sub>
+
+</details>
+----------------
+
+✓ runner created at origin/main (296705a)
+✓ runner is detached
+✓ a second sync moves it back to the tip
+✓ isRunner is false from this worktree
