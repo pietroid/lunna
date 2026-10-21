@@ -1,14 +1,16 @@
 ---
 name: research
-description: /research - research a problem in Lunna/Focus and write a thesis-style RFC in its own product/research/<date>-<slug>/ folder, with the data, code and reports behind it - trace the symptoms to the code, read the literature (papers, engineering posts, docs), recommend approaches with why and how, name the decisions the engineer must take, then verify the weakest claims with a deep-research pass and fold the corrections back in. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
+description: /research - research a problem in Lunna/Focus and write a short, layered RFC in its own product/research/<date>-<slug>/ folder (one minute on top, the change, then the evidence; a few ideas to keep, tracked across RFCs in product/research/concepts.md), with the data, code and reports behind it - trace the symptoms to the code, read the literature (papers, engineering posts, docs), recommend changes with why and how, name the decisions the engineer must take, answer their notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass and fold the corrections back in. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
 ---
 
 # Research: symptoms → thesis → verified RFC
 
 The output is one Markdown RFC per topic, written in the repo, never a
-Claude Doc or another hosted page (the user prefers files). It is short
-and dense. The test for every paragraph: does it tell the engineer
-something they'd act on, with a source or a `file:line` behind it?
+Claude Doc or another hosted page (the user prefers files; GitHub shows
+them, and takes comments on their lines). It is short, layered (a minute,
+then the change, then the evidence) and teaches a few ideas that stick.
+The test for every paragraph: does it tell the engineer something they'd
+act on or keep, with a source or a `file:line` behind it?
 
 Worked example of the whole flow:
 `product/research/2026-10-16-agent-reliability/`.
@@ -61,7 +63,8 @@ The literature only helps once you know what is actually broken.
    - Errors collapsed into one generic message.
 3. Note what tests exist and what they don't exercise (for example, a
    scripted model means the real one was never tested).
-4. Write the RFC skeleton and the diagnosis table **now**, and open it
+4. Write the RFC skeleton (Phase 3's headings) with the diagnosis table
+   under *Deeper* **now**, and open it
    for the user (`.tool/doc open <slug>`, in the background): the page
    redraws as the file grows, so they can follow and comment.
 
@@ -80,6 +83,8 @@ Send the searches in parallel, in one message. Then **open** the
 
 Map every finding onto **this** codebase in one sentence ("for us that
 means..."). A finding with no consequence for the code doesn't go in.
+Then pick the 3–5 that are worth learning for good (the *Ideas to keep*),
+checking `product/research/concepts.md` for those already met.
 
 If a project skill matches the topic, load it first and let it shape the
 recommendations. For agent work that means `tool-design`,
@@ -87,26 +92,60 @@ recommendations. For agent work that means `tool-design`,
 
 ## Phase 3: Write the RFC
 
-Sections, in this order:
+The reader is an engineer **learning AI engineering**, often on a phone
+(the RFC is the PR description). So the RFC is short, says what to do
+before why, and teaches a few ideas well rather than many in passing.
+It is written in layers: each one is enough to stop at, and the next one
+goes deeper.
 
-1. **Thesis.** The one-sentence conclusion in bold, then 2–3
-   paragraphs: why the symptoms happen, and the move that fixes them.
-   Say what is *not* needed (for example "this does not need RAG", and
-   why).
-2. **How it works today.** A small call-flow block and the facts that
-   matter (model, limits, timeouts).
-3. **Diagnosis.** A table: `# | Symptom | Root cause | Where`.
-4. **What the literature says, applied here.** A numbered list, one
-   source per item, each ending in what it means for us.
-5. **Recommendations**, in the user's priority order, with the priority
-   stated in the heading. Each has: what to change (concrete: tool
-   shapes, field names, the code to reuse), why, and how. Tables for
-   option-like things.
-6. **Decisions for you.** 3–6 choices only the engineer can make. Give
-   options, mark one *(recommended)*, and say what each costs.
-7. **Rollout.** A table: `Phase | Ships | Fixes | Size`. Phase 0 is
-   always measuring: evals or a baseline.
-8. **References.** Each with a link and the one line it supports.
+```
+# <Title>
+<date> · RFC · <status>
+
+## In one minute                 layer 1: ≤ 200 words, the whole RFC
+**The thesis, one sentence.**
+- **Do:** the 1–3 changes, a line each.
+- **Not needed:** what it does not take, and why, in a line.
+- **You decide:** each decision, a line, the recommended option named.
+
+## Ideas to keep                 layer 1→2: 3–5 ideas, no more
+1. **"A sentence that sticks."** (≤ 15 words, quotable)
+   Source, linked. *For us:* one line. *New* | *Deeper than* [concept](../concepts.md#anchor)
+
+## The change                    layer 2: what to do, why, how
+| # | Change | Fixes | Size |   then one ### per change, short:
+                                 what (names, shapes, the code to reuse), why, how.
+## Decisions for you             3–6, options, one marked (recommended), its cost
+## Decided unattended            (queue runs only)
+
+## Deeper                        layer 3: the evidence, for when it is wanted
+### How it works today           a small call-flow block and the facts
+### Diagnosis                    # | Symptom | Root cause | Where
+### The literature               one source per item, ending in what it means for us
+### Rollout                      Phase | Ships | Fixes | Size; phase 0 is measuring
+## References                    a link and the one line it supports
+```
+
+- **Budget.** Layer 1 under 200 words, the whole RFC under ~2,500 (the
+  first four ran 2,600–9,400, with 1,350–3,000 words before the first
+  recommendation; `product/improvements/2026-10-21-github-review-and-rfc-shape/`).
+  What does not fit is not cut, it waits: a later round adds it when the
+  person asks for it (below).
+- **Ideas to keep** are the learning. A good one is a claim with a
+  mechanism, short enough to repeat ("Grade the final state, not the
+  transcript"), from a source worth reading in full, with this repo's
+  case beside it. Teach from a concrete example before the general rule:
+  that is what the person's questions keep asking for ("I need more real
+  cases", "I have no idea what you are saying about evals").
+- **The concepts ledger.** `product/research/concepts.md` keeps every idea
+  an RFC taught, with its sentence, its source and the RFCs it was met in.
+  Read it before writing *Ideas to keep*: an idea already there gets one
+  line and a link, and this RFC goes one level deeper on it (a number, a
+  failure case, the paper behind the blog post), so each topic starts
+  where the last one stopped. Add the new ideas to it, and this RFC to
+  the *Met in* of the old ones, in the same pass.
+- A term the person may not know is explained the first time, in half a
+  sentence, or linked to its concept.
 
 If the user sends an idea mid-flight (for example "data / facts /
 doubts"), don't append it as an aside. Assess it honestly, give it its
@@ -146,17 +185,36 @@ installing any third-party skill:
 
 ## The user's notes
 
-The user comments on the RFC in the page `.tool/doc open` serves. Each
-comment is written into the file as a tagged blockquote under the block it
-is about: `> **Q:**`, `> **Learn:**`, `> **Decision (YYYY-MM-DD):**`,
-`> **Note:**`.
+The person comments in one of two places, and both end up in the file:
+
+- **On GitHub**, from the queue: a comment on a line of the README in the
+  PR's *Files changed* (the phone app does this too), or text selected
+  on the review page (`.tool/review.html`), which posts the same line
+  comments, with the selection quoted under the comment. The run's prompt
+  quotes each as ``On `<file>` line N (thread T), about: > the line`` and
+  the comment. A leading `Q:`, `Learn:`, `Decision:` or `Note:` is its
+  kind; with none, a question is a `Q` and anything else a `Note`.
+  Write it into the RFC under the block it is about, as below, answer it
+  there, and put a one- or two-sentence answer in the structured output's
+  `replies` under thread T: the queue posts it under their comment, where
+  they will read it.
+- **On the Mac**, in the page `.tool/doc open` serves, which writes the
+  note into the file itself.
+
+Either way a note is a tagged blockquote under its block: `> **Q:**`,
+`> **Learn:**`, `> **Decision (YYYY-MM-DD):**`, `> **Note:**`.
 
 - Read them with `.tool/doc notes <slug>` (or `--open` for unanswered
   questions only): line, kind and heading, without the rest of the RFC.
   Read the RFC itself only around the lines you must change.
 - Answer a question with `> **A:** …` right under it (a blank line
-  between). A **Decision** is binding: change the RFC to match, and drop
-  the alternatives it rules out from *Decisions for you*.
+  between). Answer the way *Ideas to keep* teaches: a real case first,
+  then the rule. A **Learn** asks to go deeper: answer it, and if the
+  answer is an idea worth keeping, add it to the concepts ledger.
+- A **Decision** is binding: change the RFC to match, and drop the
+  alternatives it rules out from *Decisions for you*.
+- "Deeper on X" adds a `### X` under *Deeper* (or a report in Phase 4),
+  not more words in layer 1.
 - Leave the notes in place; they are the record of how the RFC was argued.
 
 ## Approval: from RFC to build
@@ -184,9 +242,8 @@ prompt for it. Unanswered *Decisions for you* take the option marked
 End each phase with a short message:
 
 - the RFC path;
-- the thesis in 2–3 lines;
-- the recommendations in priority order, one line each;
-- the decisions, numbered;
+- its *In one minute*, as written;
+- the ideas it added to the concepts ledger, one line each;
 - anything skipped or unverified.
 
 Make sure the RFC is open for the user (`.tool/doc open <slug>`; it reuses

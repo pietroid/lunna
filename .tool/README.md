@@ -15,6 +15,7 @@ output are what make a session cheap.
 | `cost` | What a Claude Code session cost, per message, from its transcript |
 | `doc` | List, open and comment on the Markdown under `product/` |
 | `queue` | GitHub issues worked by Claude Code on this Mac, gate by gate |
+| `review.html` | The PR's README as a page on GitHub Pages, commented on by selecting text |
 
 ## `check`: what CI runs, on what changed
 
@@ -136,6 +137,30 @@ carries the totals.
   `approve` (or `ok`, `lgtm`, `aprovado`, 👍) **alone in its comment** goes
   on; anything else is feedback for another round. After a failure,
   `retry` reruns the phase. Closing the issue drops it.
+- **Commenting on a line.** In the PR's *Files changed* (the GitHub app
+  too), tap a line of the README and comment; start it with `Q:`,
+  `Learn:`, `Decision:` or `Note:` to say what it is. Submit them as one
+  review and the whole review is one round. The next run gets each with
+  its file, line and the line's text, writes it into the doc as a note
+  (`.tool/doc notes` reads them), and the queue posts the run's answer
+  under your comment. A line comment is never an approval.
+- **Commenting on the page.** Each gate's comment and the PR link
+  📝 *Read it as a page*: the README drawn as on GitHub, at
+  `https://pietroteruya.dev/lunna/review.html?pr=N&path=…` (Pages, under
+  the owner's domain), with the
+  PR's threads under the blocks they're about. Select text (or tap a
+  block's **+**), pick `Q`/`Learn`/`Decision`/`Note`, write, **Add**;
+  drafts wait in the phone's browser until **Send** posts them all as one
+  review of line comments, so it's the same round as above. The first
+  Send asks for a fine-grained token (this repo only, *Pull requests: read
+  and write*), kept in that browser's localStorage. The page is
+  `.tool/review.html`, static, published by
+  `.github/workflows/review-page.yml` on every push to `main` or a
+  `queue/*` branch that changes it (the `github-pages` environment allows
+  both), so a PR that changes the page can be reviewed on itself. Pages
+  is on (`setup` turns it on in a fork); without it the link is left out. A line outside the PR's diff makes
+  GitHub refuse the review, and the page sends the drafts as one plain PR
+  comment instead, each naming its line.
 - **Phone.** ntfy.sh: install the app and subscribe to the topic `setup`
   printed (it's in `.git/queue/config.json`). No account, no server.
 - **Only the owner.** The repo is public: issues and comments by anyone

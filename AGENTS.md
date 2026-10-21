@@ -109,10 +109,12 @@ product/
   spec/                 feature specs moved out of this file (agent, projects)
   delivery/             one folder per delivered feature: prompt, design, notes
   improvements/         one folder per /improve run: what changed, evidence, references
-  research/             one folder per topic: the RFC (README.md), data/, code/, reports/, notes/
+  research/             one folder per topic: the RFC (README.md), data/, code/, reports/, notes/;
+                        concepts.md, the ideas every RFC taught
 .tool/                  internal tools: check (CI on what changed), preview (prints),
                         cost (session tokens), doc (open/annotate Markdown),
-                        queue (GitHub issues worked unattended, gate by gate)
+                        queue (GitHub issues worked unattended, gate by gate),
+                        review.html (a PR's README on Pages, commented on by selection)
 ```
 
 ## Auth

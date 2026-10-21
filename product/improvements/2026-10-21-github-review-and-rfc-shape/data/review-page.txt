@@ -1,0 +1,24 @@
+✓ product/improvements/2026-10-21-github-review-and-rfc-shape/README.md at 2a47097  184 lines, 26 blocks, 183 in the diff
+✓ selection “Line comments need nothing new t…”  line 42, want 42
+✓ selection “RFCs are shorter, and come in la…”  line 13, want 13
+✓ selection “Measured by the queue: see the p…”  line 183, want 183
+✓ selection “Queue: what it reads…”  line 70, want 70
+✓ selection “29 of the 31 notes on the RFCs a…”  line 105, want 105
+✓ block 0 whole  lines 1–1
+✓ block 10 whole  lines 68–77
+✓ block 25 whole  lines 183–183
+✓ one review, one comment per draft
+✓ a draft reads as the queue expects  "Q: check\n\n> Line comments need nothing new to host, work in the GitHub app"
+✓ the fallback names file and line
+✓ threads under their blocks
+✓ GitHub took the review (pending, id 5599850334)  8 comments
+  fields: id node_id url pull_request_review_id diff_hunk path position original_position commit_id user body created_at updated_at html_url pull_request_url author_association _links original_commit_id reactions
+✓   on line 42  draft 42–42
+✓   on line 13  draft 13–13
+✓   on line 183  draft 183–183
+✓   on line 70  draft 70–70
+✓   on line 105  draft 105–105
+✓   on line 1  draft 1–1
+✓   on line 77  draft 68–77
+✓   on line 183  draft 183–183
+  deleted pending review 5599850334
