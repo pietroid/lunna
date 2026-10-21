@@ -5,7 +5,7 @@
   Decision or Note; Send posts every draft as one PR review, so the queue
   reads them as line comments and answers under each.
 
-    https://<owner>.github.io/<repo>/review.html?pr=7&path=product/research/…/README.md
+    https://pietroteruya.dev/lunna/review.html?pr=7&path=product/research/…/README.md
 
   Static: GitHub Pages serves it (.github/workflows/review-page.yml), and it
   talks to api.github.com straight from the browser. Sending needs a
@@ -15,6 +15,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<script>
+// The token is typed here: never on a page served over plain http.
+if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) location.replace(location.href.replace(/^http:/, 'https:'));
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Review</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">

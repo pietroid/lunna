@@ -139,7 +139,8 @@ carries the totals.
   under your comment. A line comment is never an approval.
 - **Commenting on the page.** Each gate's comment and the PR link
   📝 *Read it as a page*: the README drawn as on GitHub, at
-  `https://<owner>.github.io/<repo>/review.html?pr=N&path=…`, with the
+  `https://pietroteruya.dev/lunna/review.html?pr=N&path=…` (Pages, under
+  the owner's domain), with the
   PR's threads under the blocks they're about. Select text (or tap a
   block's **+**), pick `Q`/`Learn`/`Decision`/`Note`, write, **Add**;
   drafts wait in the phone's browser until **Send** posts them all as one
@@ -147,8 +148,10 @@ carries the totals.
   Send asks for a fine-grained token (this repo only, *Pull requests: read
   and write*), kept in that browser's localStorage. The page is
   `.tool/review.html`, static, published by
-  `.github/workflows/review-page.yml` once `setup` has turned Pages on;
-  until then the link is left out. A line outside the PR's diff makes
+  `.github/workflows/review-page.yml` on every push to `main` or a
+  `queue/*` branch that changes it (the `github-pages` environment allows
+  both), so a PR that changes the page can be reviewed on itself. Pages
+  is on (`setup` turns it on in a fork); without it the link is left out. A line outside the PR's diff makes
   GitHub refuse the review, and the page sends the drafts as one plain PR
   comment instead, each naming its line.
 - **Phone.** ntfy.sh: install the app and subscribe to the topic `setup`

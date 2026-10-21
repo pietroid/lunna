@@ -9,8 +9,13 @@
   Select a sentence (or tap a block's **+**), choose `Q`, `Learn`,
   `Decision` or `Note`, and write. **Send** posts all your drafts as one
   PR review of line comments, so the queue and its answers work as in
-  round 1, and the answers show up on the page under your text. One step
-  is yours: turn Pages on (`.tool/queue setup`, after the merge).
+  round 1, and the answers show up on the page under your text.
+- **Round 3: it's on.** Pages is on for the repo, at
+  [pietroteruya.dev/lunna/review.html](https://pietroteruya.dev/lunna/review.html)
+  (your domain already serves the user site, so project pages go under it).
+  The queue's push of this round deploys the page from this branch, so
+  this PR's own link should work before you approve. Merging deploys it
+  again from main.
 
   ![The review page on a phone: a selection, the composer, an answered thread](img/review-strip.png)
 
@@ -74,6 +79,35 @@ the issue.
 7. **Old RFCs are not rewritten.** They are records of how each argument
    went, and their notes point at their lines.
 
+### Round 3
+
+The person, on the issue:
+
+> Proceed with implementing with github pages. I loved the idea
+
+Decided unattended:
+
+1. **I turned Pages on myself** (`POST repos/…/pages`, source *GitHub
+   Actions*), because you asked to go ahead with Pages. This was the step
+   that round 2 had left to you.
+2. **Queue branches deploy the page too**, not only main. The workflow
+   runs on a push to `main` or `queue/**` that touches the page, and I
+   added `queue/*` to the `github-pages` environment's allowed branches
+   (it allowed only `main`). Without that, this PR's 📝 link would answer
+   404 until the merge, and you could not try the page on the phone before
+   approving it. The cost: a queue branch that changes `review.html` puts
+   its version live before review. Only your own runs make queue branches.
+   To undo it, delete the `queue/*` policy under Settings → Environments →
+   github-pages.
+3. **The page is HTTPS only.** Pages gives `http://pietroteruya.dev/lunna/`
+   until it has issued the certificate, and you paste the token into this
+   page. So the queue writes the link as `https://`, and the page sends
+   itself to `https://` if it is ever opened over `http://`. The apex
+   already serves HTTPS with the user site's certificate.
+4. **The link names the repo** (`?repo=pietroid/lunna`). The page guessed
+   the repo from a `*.github.io` host, and that guess fails on a custom
+   domain. Until now it worked only because the fallback is this repo.
+
 ### Round 2
 
 The person, on the issue:
@@ -120,11 +154,13 @@ The options are compared under *Evidence*. Decided unattended:
 | **Round 2:** publishing | | [`.github/workflows/review-page.yml`](../../../.github/workflows/review-page.yml) publishes it on Pages when it changes on main; `.tool/queue setup` turns Pages on (source: Actions) |
 | **Round 2:** queue | | The gate comment and the PR description link 📝 *Read it as a page* (`review.html?pr=N&path=<doc>`) when Pages is on |
 | **Round 2:** docs | | `.tool/README.md` ("Commenting on the page"), `/research`'s notes section, the Research template, `AGENTS.md` |
+| **Round 3:** Pages | Off | On, built by Actions, at `https://pietroteruya.dev/lunna/` |
+| **Round 3:** deploys | From `main` only | From `main` and `queue/*` (the workflow's trigger and the `github-pages` environment's branch policy) |
+| **Round 3:** link | `http://…/review.html?pr=N&path=…`, the repo guessed from the host | `https://…/review.html?repo=owner/name&pr=N&path=…`; the page moves itself off `http:` |
 
-### How to review an RFC on the page (round 2)
+### How to review an RFC on the page
 
-Once Pages is on (after the merge, run `.tool/queue setup`, or turn it on
-under Settings → Pages → Source: *GitHub Actions*):
+Pages is on (round 3). In a fork, `.tool/queue setup` turns it on.
 
 1. Tap 📝 *Read it as a page* in the ntfy push's gate comment.
 2. Long-press to select a sentence and tap **Comment on selection** (or
@@ -253,9 +289,29 @@ you named in the first message.
   - On the first screenshots, **Comment on selection** looked like plain
     text and the selected text had scrolled under the header. The button
     is now filled, and the status line hides while a selection is up.
-- ✗ Not verified, round 2: the Pages deploy and the page at its real
-  address. Pages is off until you run `setup`, and the workflow runs only
-  from main.
+- ✓ **Round 3,** Pages: `gh api repos/pietroid/lunna/pages` answers
+  `build_type: workflow`, `html_url: http://pietroteruya.dev/lunna/`. The
+  `github-pages` environment allows `main` and `queue/*`. The workflow
+  parses, with push branches `["main", "queue/**"]`.
+- ✓ **Round 3,** `reviewUrl` on PR #7 now gives
+  `https://pietroteruya.dev/lunna/review.html?repo=pietroid/lunna&pr=7&path=…`
+  (round 2 gave `null`, because Pages was off). `https://pietroteruya.dev/lunna/`
+  answers over HTTPS with the existing certificate (404 for now, because
+  nothing is deployed yet). The http→https rule moves a `pietroteruya.dev`
+  address and leaves `localhost` alone.
+- ✓ **Round 3,** I re-ran the checks on the changed page and queue:
+  `review-page.mjs 7 <README>` gave 13 ✓ (5 selections, 3 blocks, the
+  review, the fallback, the threads), `review-comments.mjs` gave 8 ✓, and
+  `review-shots.mjs` drew 41 blocks, showed the selection button, and gave
+  a `Learn` draft on line 53 and **Send 1**.
+- ✗ Not verified, round 3: the deploy itself and the page at its real
+  address. The workflow runs on the queue's push, after this session
+  ends, so the next round or you on the phone will be the first to see it.
+  If the 📝 link answers 404, look at the *Review page* run under Actions.
+- ✗ Not verified, round 3: `https_enforced`. GitHub refused to turn it on
+  ("The certificate has not finished being issued"). The link and the
+  page use HTTPS anyway. Turn it on under Settings → Pages once the
+  certificate is issued.
 - ✗ Not verified, round 2: a *submitted* review sent from the page with a
   phone token. The pending review used `gh`'s token and the same payload.
   Submitting it would have started a round of this very issue.
@@ -291,11 +347,20 @@ you named in the first message.
 - Round 2: when a selection is inside a long list or table, the composer
   opens under the whole block, which can be a scroll away from the
   selected text.
+- Round 3: deploys from `queue/*` aren't limited to the PR under review.
+  An abandoned branch's page stays live until the next deploy from main.
 - Round 2: a reply typed *on the page* under a thread. Today you reply in
   GitHub, or comment again on the page.
 
 ## 6. References
 
+- Changed in round 3: [`.github/workflows/review-page.yml`](../../../.github/workflows/review-page.yml)
+  (`queue/**`), [`.tool/review.html`](../../../.tool/review.html) (HTTPS),
+  [`.tool/queue.mjs`](../../../.tool/queue.mjs) (`reviewUrl`: https, `repo=`),
+  [`.tool/README.md`](../../../.tool/README.md); in the repo's settings,
+  Pages (on) and the `github-pages` environment (`queue/*`).
+- GitHub, [Deployment branch policies](https://docs.github.com/en/rest/deployments/branch-policies):
+  how `queue/*` was allowed to deploy to `github-pages`.
 - Changed in round 2: [`.tool/review.html`](../../../.tool/review.html) (new),
   [`.github/workflows/review-page.yml`](../../../.github/workflows/review-page.yml) (new),
   [`.tool/queue.mjs`](../../../.tool/queue.mjs) (`reviewUrl`, the link, Pages in `setup`),

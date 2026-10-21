@@ -297,7 +297,8 @@ function readme(cfg, st, sha) {
 // once Pages is on: the RFC drawn, commented on by selecting its text.
 export function reviewUrl(cfg, st) {
   const site = st.pr && st.doc && trySh('gh', ['api', `repos/${cfg.repo}/pages`, '--jq', '.html_url']);
-  return site ? `${site.replace(/\/?$/, '/')}review.html?pr=${st.pr}&path=${encodeURI(st.doc)}` : null;
+  // Pages answers http:// for a custom domain until its certificate is issued.
+  return site ? `${site.replace(/^http:/, 'https:').replace(/\/?$/, '/')}review.html?repo=${cfg.repo}&pr=${st.pr}&path=${encodeURI(st.doc)}` : null;
 }
 const pageLine = (url) => (url ? `\n\n📝 [Read it as a page and comment on its text](${url})` : '');
 
@@ -581,7 +582,7 @@ async function setup() {
   start();
   await push(cfg, { title: 'Lunna queue is on', message: `Watching ${repo} for issues labelled ${KINDS.join(', ')}.`, tags: ['white_check_mark'], click: `https://github.com/${repo}/issues` });
   console.log(`✓ labels on ${repo}, LaunchAgent ${AGENT} loaded, test push sent
-  ${pages ? `✓ review page: ${pages}review.html (live after the next push to main touching it, or: gh workflow run review-page.yml)` : '✗ GitHub Pages could not be turned on: Settings → Pages → Source: GitHub Actions'}
+  ${pages ? `✓ review page: ${pages}review.html (live after the next push to main or a queue/* branch touching it, or: gh workflow run review-page.yml)` : '✗ GitHub Pages could not be turned on: Settings → Pages → Source: GitHub Actions'}
   phone: install ntfy (App Store / Play Store), tap +, topic ${cfg.topic}, server ntfy.sh
          (or open https://ntfy.sh/${cfg.topic} on the phone)
   then open an issue with the "Create" template and watch for the 👀`);

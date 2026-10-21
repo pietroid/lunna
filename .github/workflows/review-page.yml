@@ -2,10 +2,12 @@ name: Review page
 
 # Publishes .tool/review.html on GitHub Pages: the RFC of a PR as a page you
 # comment on from the phone, each comment a PR line comment the queue reads.
-# Needs Pages set to "GitHub Actions" once (.tool/queue setup does it).
+# Needs Pages set to "GitHub Actions" once (.tool/queue setup does it). A
+# queue branch that changes the page deploys it too, so its PR is reviewed on
+# the page it brings; the github-pages environment allows main and queue/*.
 on:
   push:
-    branches: [main]
+    branches: [main, 'queue/**']
     paths: [.tool/review.html, .github/workflows/review-page.yml]
   workflow_dispatch:
 
