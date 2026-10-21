@@ -151,7 +151,7 @@ Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion i
 - Skip .tool/cost and session_cost: the queue measures every run and writes the figures in the PR.
 - Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README as the PR description, on a phone.
 - This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
-- A reply that starts "On `<file>` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
+- A reply that starts "On \`<file>\` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
 - Finish with the structured output.`;
 
 const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');
