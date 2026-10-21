@@ -79,6 +79,24 @@ the issue.
 7. **Old RFCs are not rewritten.** They are records of how each argument
    went, and their notes point at their lines.
 
+### Merge with main
+
+Main shipped the RFC → build flow while this was open (an approved RFC
+opens its `Implement: …` create issue; `.tool/queue implement`; the plan
+track). Three files conflicted, and each keeps both sides:
+
+- `research/SKILL.md` description: the short, layered RFC answering line
+  comments, plus "when approved it lands on main and its build is opened
+  as a /create issue".
+- `ISSUE_TEMPLATE/research.md`: comment on the page or on Files changed,
+  "approve" merges, and the queue then opens the build issue.
+- `.tool/queue.mjs`: main's `plan` and `rfc` headlines now say "here, or
+  on any line of the PR's Files changed" like the others; posting the
+  thread replies stays, next to main's `hasBoard`; the CLI keeps the
+  import guard (`main`) and gains `implement`.
+
+`.tool/check --all` passes, and `implement --dry-run` prints its issue.
+
 ### Round 3
 
 The person, on the issue:

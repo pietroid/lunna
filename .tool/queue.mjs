@@ -7,6 +7,7 @@
 //   .tool/queue ls               the issues it knows and where each one is
 //   .tool/queue log <issue>      the tail of that issue's last run
 //   .tool/queue stop | start     unload or load the LaunchAgent
+//   .tool/queue implement <rfc> [--dry-run]   open the create issue that builds an RFC on main
 //
 // An open issue of yours labelled create, research or improve is queued. Each
 // phase is a fresh headless `claude -p` in the issue's own worktree and
@@ -15,7 +16,9 @@
 // comment on the issue and a push to your phone. Your next comment on the
 // issue (or the PR) is the answer: "approve" alone goes on, anything else is
 // feedback for another round. At the last gate "approve" merges into main
-// (conflicts resolved by another run), closes the issue and tells you.
+// (conflicts resolved by another run), closes the issue and tells you. An
+// approved RFC, once merged, opens its own `create` issue (`implement`), so
+// research flows on into a build.
 //
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
@@ -28,7 +31,8 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
-const home = join(root, '.git', 'queue');
+// .git/queue of the main checkout, also from a worktree (where .git is a file).
+const home = join(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).trim(), 'queue');
 const configPath = join(home, 'config.json');
 const stateDir = join(home, 'issues');
 const logDir = join(home, 'logs');
@@ -152,9 +156,9 @@ function prompt(st, phase, reply) {
   const ask = `${st.title}\n\n${st.body ?? ''}`.trim();
   switch (`${st.kind}:${phase}`) {
     case 'create:design':
-      return `/create ${ask}\n\n---\nThis is the design session, unattended. Do Phase 1, then write the hand-off at once instead of waiting for approval (the person approves on the issue): the draft product/delivery/<YYYY-MM-DD>-<slug>/README.md with sections 1 and 2 and the Build brief, the board as img/mockup-board.png with board.json, and each screen as img/mockup-<n>.png. Section 1 quotes the issue. Keep the preview entry point and the new widgets in the worktree.`;
+      return `/create ${ask}\n\n---\nThis is the design session, unattended. Pick the track (Phase 0) and say which in the summary. Mockup track: do Phase 1, then write the hand-off at once instead of waiting for approval (the person approves on the issue): the draft product/delivery/<YYYY-MM-DD>-<slug>/README.md with sections 1 and 2 and the Build brief, the board as img/mockup-board.png with board.json, and each screen as img/mockup-<n>.png; keep the preview entry point and the new widgets in the worktree. Plan track: do Phase 1P and stop there, with no preview and no board. Section 1 quotes the issue.`;
     case 'create:revise':
-      return `/create ${st.title}\n\nThe design in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo Phase 2 on it, unattended: change the widgets, re-shoot what changed, update the board, img/ and the README (the reply goes in section 1; update the decisions and the Build brief). Stop at the hand-off again.`;
+      return `/create ${st.title}\n\nThe design in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo Phase 2 on it, unattended: change the widgets, re-shoot what changed, update the board, img/ and the README (the reply goes in section 1; update the decisions and the Build brief). On the plan track, change the plan instead. Stop at the hand-off again.`;
     case 'create:build':
       return `/create build ${slugOf(st.doc)}\n\nThe design was approved on the issue. Do Phases 3 and 4 unattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. In section 5 write "Measured by the queue: see the pull request." instead of .tool/cost tables.`;
     case 'create:fix':
@@ -353,8 +357,12 @@ const gateOf = (st, phase) => GATE[`${st.kind}:${phase}`] ?? 'review';
 const NEXT = { design: { approve: 'build', feedback: 'revise' }, review: { approve: 'merge', feedback: 'fix' } };
 const HEADLINE = {
   design: ['🎨', 'Design ready', 'Reply **approve** to build it, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'art'],
+  plan: ['📝', 'Plan ready', 'Reply **approve** to build it, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'memo'],
   review: ['✅', 'Ready for review', 'Reply **approve** to merge it into main (that deploys), or write what to fix: here, or on any line of the PR\'s **Files changed**.', 'white_check_mark'],
+  rfc: ['✅', 'RFC ready', 'Reply **approve** to merge it and queue its build as a new issue, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'white_check_mark'],
 };
+// A design gate with no board is the plan track (nothing to draw).
+const headline = (st, gate, board) => HEADLINE[gate === 'design' ? (board ? 'design' : 'plan') : st.kind === 'research' ? 'rfc' : 'review'];
 
 async function work(cfg, st) {
   const { phase, reply } = st.next;
@@ -374,13 +382,14 @@ async function work(cfg, st) {
   git(st.worktree, 'push', '-q', '-u', 'origin', st.branch);
 
   const gate = gateOf(st, phase);
-  const [icon, head, ask, tag] = HEADLINE[gate];
+  const hasBoard = !!st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png'));
+  const [icon, head, ask, tag] = headline(st, gate, hasBoard);
   const sha = syncPr(cfg, st, `**${head}**, waiting for your reply on #${st.issue}.`);
   if (gate === 'review') trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
   for (const r of res.output.replies ?? []) {
     trySh('gh', ['api', '-X', 'POST', `repos/${cfg.repo}/pulls/${st.pr}/comments/${r.thread}/replies`, '--input', '-'], { input: JSON.stringify({ body: `${r.body}\n\n${MARK}` }) });
   }
-  const board = st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png')) ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
+  const board = hasBoard ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
   const qs = st.questions.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
   st.gate = gate;
   st.gateAt = comment(cfg, st.issue, `${icon} **${head}**: #${st.pr}\n\n${st.summary}${pageLine(reviewUrl(cfg, st))}${board}${qs}\n\n${ask}\n\n<sub>${usageLine(st.runs)}</sub>`);
@@ -455,13 +464,53 @@ async function merge(cfg, st, attempt = 0) {
   }
   trySh('git', ['push', '-q', 'origin', '--delete', st.branch], { cwd: wt });
   const line = usageLine(st.runs);
-  comment(cfg, st.issue, `🚀 **Merged** in ${merged.sha.slice(0, 7)} (#${st.pr}). Pushing to main deploys it.\n\n### Usage\n\n${usageTable(st.runs)}`);
+  // An approved RFC goes on to its build: the next tick picks the issue up.
+  let next = '';
+  if (st.kind === 'research' && st.doc && existsSync(join(wt, st.doc))) {
+    try {
+      const url = implement(cfg, join(wt, st.doc), st.doc, { issue: st.issue, pr: st.pr });
+      next = `\n\nIts build is queued as ${url}: the plan (or the board) comes there.`;
+    } catch (e) {
+      next = `\n\n⚠️ Couldn't open its build issue (${String(e.stderr || e.message).trim().slice(0, 300)}): run \`.tool/queue implement ${st.doc}\`.`;
+    }
+  }
+  comment(cfg, st.issue, `🚀 **Merged** in ${merged.sha.slice(0, 7)} (#${st.pr}). Pushing to main deploys it.${next}\n\n### Usage\n\n${usageTable(st.runs)}`);
   trySh('gh', ['issue', 'close', String(st.issue), '-R', cfg.repo]);
   st.next = null;
   st.gate = null;
   setStatus(cfg, st, 'done');
   removeWorktree(st);
   await push(cfg, { title: `#${st.issue} merged: ${st.title}`, message: `Issue closed. ${line}`, tags: ['rocket'], priority: 4, click: `https://github.com/${cfg.repo}/pull/${st.pr}` });
+}
+
+// ---------------------------------------------------------------- RFC → build
+
+// The `create` issue that builds an RFC already on main. `file` is where to
+// read it now, `rfc` its path in the repo. Returns the issue's URL.
+function implement(cfg, file, rfc, from = {}, dry = false) {
+  const h1 = readFileSync(file, 'utf8').match(/^# (.+)$/m)?.[1]?.trim();
+  const title = `Implement: ${(h1 ?? slugOf(rfc)).replace(/^RFC:\s*/i, '')}`.slice(0, 120);
+  const source = from.issue ? `, approved in #${from.issue} and merged in #${from.pr}` : '';
+  const body = `Build what the RFC [${rfc}](https://github.com/${cfg.repo}/blob/main/${rfc}) recommends${source}.
+
+- Read it as the research (see "From an RFC" in the /create skill): what it recommends, in its priority order, and its Rollout are the spec.
+- A \`> **Decision**\` note in it is binding; every other decision takes the option marked *(recommended)*.
+- The plan (or the board, if it changes what the person sees) says which rollout phases this PR ships, Phase 0 first.`;
+  if (dry) return console.log(`title:  ${title}\nlabel:  create\nbody:\n${body}`);
+  return gh(['issue', 'create', '-R', cfg.repo, '--title', title, '--label', 'create', '--body-file', '-'], body);
+}
+
+function implementCli() {
+  const [rfc] = rest.filter((a) => !a.startsWith('--'));
+  if (!rfc) fail('usage: .tool/queue implement <product/research/…/README.md> [--dry-run]');
+  const file = resolve(root, rfc);
+  if (!existsSync(file)) fail(`${rfc}: no such file`);
+  const path = posix.normalize(rfc.replace(/^\.\//, ''));
+  const dry = rest.includes('--dry-run');
+  // The build's worktree starts from origin/main: the RFC must be there.
+  if (!dry && trySh('git', ['cat-file', '-e', `origin/main:${path}`]) === null) fail(`${path} is not on origin/main yet: merge the RFC first.`);
+  const url = implement(config(), file, path, {}, dry);
+  if (url) console.log(`✓ ${url}`);
 }
 
 // ---------------------------------------------------------------- the loop
@@ -539,7 +588,7 @@ async function loop(once) {
 
 const LABELS = [
   ['create', '1f883d', 'Queue: design, approve, build, approve, merge'],
-  ['research', '0969da', 'Queue: an RFC under product/research'],
+  ['research', '0969da', 'Queue: an RFC under product/research, then its build'],
   ['improve', '8250df', 'Queue: an /improve run'],
   ['agent:working', 'fbca04', 'The queue is working on it'],
   ['agent:waiting', 'd93f0b', 'Waiting for your reply'],
@@ -629,6 +678,6 @@ function tail(n) {
 const [command, ...rest] = process.argv.slice(2);
 // Run as a command, not imported (by a test of the functions it exports).
 const main = !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-const commands = { setup, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
-if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | stop | start');
+const commands = { setup, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), implement: implementCli, stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
+if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | implement <rfc> [--dry-run] | stop | start');
 if (main) await commands[command]();

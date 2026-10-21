@@ -1,6 +1,6 @@
 ---
 name: research
-description: /research - research a problem in Lunna/Focus and write a short, layered RFC in its own product/research/<date>-<slug>/ folder (one minute on top, the change, then the evidence; a few ideas to keep, tracked across RFCs in product/research/concepts.md), with the data, code and reports behind it - trace the symptoms to the code, read the literature (papers, engineering posts, docs), recommend changes with why and how, name the decisions the engineer must take, answer their notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass and fold the corrections back in. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
+description: /research - research a problem in Lunna/Focus and write a short, layered RFC in its own product/research/<date>-<slug>/ folder (one minute on top, the change, then the evidence; a few ideas to keep, tracked across RFCs in product/research/concepts.md), with the data, code and reports behind it - trace the symptoms to the code, read the literature (papers, engineering posts, docs), recommend changes with why and how, name the decisions the engineer must take, answer their notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass and fold the corrections back in. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
 ---
 
 # Research: symptoms → thesis → verified RFC
@@ -217,6 +217,26 @@ Either way a note is a tagged blockquote under its block: `> **Q:**`,
   not more words in layer 1.
 - Leave the notes in place; they are the record of how the RFC was argued.
 
+## Approval: from RFC to build
+
+An approved RFC goes on to its implementation without anyone writing the
+prompt for it. Unanswered *Decisions for you* take the option marked
+*(recommended)*, so mark one in each.
+
+- **In the queue**, "approve" on the issue merges the RFC into main and
+  opens `Implement: <RFC title>` as a `create` issue pointing at it
+  (`.tool/queue implement`). The queue picks it up within a minute: `/create`
+  reads the RFC as its research, plans (or mocks, if the first rollout
+  phases change the screen) and opens the PR, which waits at the plan gate.
+  Nothing to do in the session.
+- **In a session**, "approve" (or "build it") is the ask to land it and
+  hand it on, since the build's worktree starts from main:
+  `git switch -c research/<slug>`, `git add` the topic folder only, commit,
+  push, `gh pr create --fill`, `gh pr merge --squash --delete-branch`,
+  `git switch -` back, then `.tool/queue implement <RFC path>` and send its
+  issue URL. Without the queue running (`.tool/queue ls`), say instead:
+  "run `/clear`, then `/create <RFC path>`".
+
 ## Delivering
 
 End each phase with a short message:
@@ -227,4 +247,5 @@ End each phase with a short message:
 - anything skipped or unverified.
 
 Make sure the RFC is open for the user (`.tool/doc open <slug>`; it reuses
-a page already running). Don't commit unless asked.
+a page already running), and end with "reply **approve** to merge it and
+queue its build". Don't commit unless asked; approval is the ask.

@@ -1,22 +1,49 @@
 ---
-name: create
+description: /create - take a feature for Lunna/Focus from idea to delivery, fast - first pick the track: a UI change gets an annotated mockup drawn by the real Flutter app, with PNG prints; a change with nothing to draw (release tooling like Shorebird, CI, deploy, server-only rules, a migration) gets a one-page plan instead. Iterate on feedback, then, once approved, build it (`/create build <slug>`, a fresh session after a mockup) in the server and app, prove it (prints of the real build in both brands, or the commands that show it working), and record everything in a product/delivery/ folder. Use when asked for a design proposal, a mockup, "prints", "how would X look", to build a feature or a piece of tooling, or to implement an approved RFC from product/research/.
 description: /create - take a feature for Lunna/Focus from idea to delivery, fast - an annotated mockup drawn by the real Flutter app, with PNG prints; iterate on feedback, then, once approved, hand off and build it in a fresh session (`/create build <slug>`) in the server and app, screenshot the real build in both brands, and record everything in a product/delivery/ folder. Use when asked for a design proposal, a mockup, "prints", "how would X look", or to implement and deliver a feature that was mocked.
 ---
 
 # Create: proposal → delivery
 
-The flow has four phases in **two sessions**. Stop after each phase, send
-what it produced, and only go on when the user asks. Phases 1–2 (design)
-should be fast: one preview entry point, one `.tool/preview` per round.
+The flow has four phases. Stop after each phase, send what it produced,
+and only go on when the user asks. Phases 1–2 (design) should be fast.
 Phases 3–4 (build) are real engineering, and Phase 4 always closes a build.
 
-**The design session ends at approval.** When the user approves the
+## Phase 0: Pick the track
+
+The design is only as heavy as what the person will see. Decide before
+reading any widget, and say which track in the first message:
+
+| Track | When | Phases 1–2 produce |
+|-------|------|--------------------|
+| **Mockup** | the feature changes what the person sees or does: a screen, a sheet, a card, a gesture, copy | a board drawn by the real app (Phase 1 below) |
+| **Plan** | nothing to draw: release and build tooling (Shorebird code push, flavors, signing), CI, deploy, server-only rules, a migration, performance, a dependency bump | a one-page plan in the delivery README (Phase 1P below), no preview entry point, no board |
+
+A plan-track feature with a small UI touch (an "update available" banner)
+stays a plan: the plan names the widget and its copy, and Phase 4 shoots
+it. Switch to a mockup only when there's a layout decision to approve.
+A design session costs ~$3 and ~17 minutes (six deliveries, see
+`product/improvements/2026-10-21-skill-flow/`), all of it spent on prints;
+for a feature with no screen those prints show nothing.
+
+**From an RFC.** When the request points at an RFC in `product/research/`
+(an `Implement: …` issue does), the RFC is the research: read its summary (*Thesis* or
+*In one minute*), what it recommends (*Recommendations* or *The change*),
+*Decisions for you* with the notes under them, and *Rollout*, and nothing
+it already cites. A `> **Decision**` note is binding;
+any other decision takes the option marked *(recommended)*. Pick the track
+by what the RFC's first rollout phases change, and say in the plan or the
+board which phases this delivery ships (Phase 0, the measuring, first).
+Section 1 of the delivery links the RFC.
+
+**The mockup's design session ends at approval.** When the user approves the
 design ("great, now make the changes", "build it"), don't build in that
 session: write the hand-off (end of Phase 2) and tell the user to run
 `/clear` and then `/create build <slug>`. Every turn re-reads the whole
 conversation, so a build that starts at ~55k of context instead of the
 ~150k the design left behind costs a third less. The draft delivery README
-carries everything across.
+carries everything across. **A plan doesn't split**: its session never
+grows past the reading, so on approval go straight on to Phase 3 in it.
 
 `/create build <slug>` (or "build <slug>" in the arguments) starts at Phase 3,
 from `product/delivery/*-<slug>/README.md`.
@@ -83,7 +110,7 @@ costs one call and needs no readings along the way.
   totals, and add the two sessions together. The figures include the talk
   around the work, and wall-clock time includes the user's pauses; say so.
 
-## Phase 1: Mockup and prints
+## Phase 1: Mockup and prints (mockup track)
 
 **The mockup is always drawn by the real Flutter app**, never by HTML or an
 image editor: the same widgets, tokens, fonts and icons the build will ship,
@@ -115,6 +142,27 @@ decisions stated, not just pretty screens.
 5. **Look at the prints** (Read `board.png`) before sending: overflow stripes, grey boxes (a build exception), pins off their target or over text, clipped text. Fix and re-shoot once.
 6. **Send** the absolute paths of `board.png` and each screen, a short list of the decisions (entry point, icon, placement, the main rule of the flow), and any open questions. The preview entry point and the new widgets stay uncommitted; if the proposal is dropped, delete them.
 
+## Phase 1P: The plan (plan track)
+
+Instead of Phase 1. Write the draft
+`product/delivery/<YYYY-MM-DD>-<slug>/README.md` straight away, with
+section 1 (the prompt) and, as section 2, **The plan**, one screen of it:
+
+- **Approach**: what gets built and where, in 3–6 lines (the files or
+  folders, a new env var, a CI job, a route).
+- **References**: the docs of the exact tool and version (Shorebird's,
+  the SDK's), 2–4 links, each with the one line it supports. Open them;
+  a snippet is not a source.
+- **Decisions**: a table, `# | Decision | Chosen | Why`, the rows a
+  reviewer might want otherwise (a paid service, a new secret, a release
+  channel, what's left out).
+- **How it will be proved**: the commands or runs that will show it working
+  (a dry-run release, a test, a log line), since there are no prints.
+
+Then the **Build brief** (as at the end of Phase 2), and stop for approval.
+Feedback changes the plan in place; on approval go on to Phase 3 in the
+same session (it doesn't split).
+
 ## Phase 2: Iterate
 
 Feedback usually arrives as one-liners ("button location, icon, etc.", "remove that ugly icon"). Change the widgets, re-run `.tool/preview` (background) with only the scenes that changed, move the pins, look, re-send. When only pins moved, re-run `board.mjs` alone. An icon that changes becomes a real asset (SVG in `app/brands/<brand>/`, wired through `AppIcons`), never a stand-in.
@@ -126,7 +174,7 @@ Feedback usually arrives as one-liners ("button location, icon, etc.", "remove t
 from and Phase 4 removes:
 
 - the preview entry point and every file Phase 1 wrote or changed
-  (uncommitted, kept for the build);
+  (uncommitted, kept for the build), on the mockup track;
 - what the build must do on the server and in the app, as a short list;
 - the decisions taken in conversation that aren't in the pins;
 - the open questions;
@@ -137,7 +185,8 @@ Then stop, and tell the user, in two lines: the README path, and
 
 ## Phase 3: Build it
 
-Starts a new session with `/create build <slug>`. Read the draft README
+Starts a new session with `/create build <slug>` (a plan goes on in its own
+session, with all of this already read). Read the draft README
 (`product/delivery/*-<slug>/README.md`, its Build brief first) and the files
 it lists, and nothing of the design you can take from it. `AGENTS.md` is
 already in context: it is the spec of how the day works, and the build must
@@ -158,7 +207,8 @@ build touches (the agent, projects).
    - Colours come from tokens. Add a token (in both brands) rather than branching on the brand.
    - A modal sheet is its own route: hand it the blocs and repositories it reads (`BlocProvider.value`). A grey box in a release build is a build exception, very often this.
    - Inside a `BlocBuilder` builder, read `bloc.state`; `context.select` there throws.
-5. **Verify** with `.tool/check` (background): CI's checks on what changed,
+5. **Tooling** (release, CI, deploy): follow the vendor's docs for the exact versions in use (`app/pubspec.yaml`, `.github/workflows/`). Secrets go in GitHub Actions secrets or the env files and in `SETUP.md`, never in the tree. A step that needs a credential or an account this machine lacks is written, run as far as it goes (a dry run, `--help`, a local build), and named in section 4 as not run.
+6. **Verify** with `.tool/check` (background): CI's checks on what changed,
    the server's eslint, tsc and tests, `flutter analyze`, and every touched
    package's tests under both brands, one line per step. A failure prints
    the lines that explain it and the log's path; read more of the log only
@@ -167,15 +217,15 @@ build touches (the agent, projects).
 
 ## Phase 4: Prints of the real build, and the delivery folder
 
-1. **Screenshot the finished build**, through the same entry point:
+1. **Screenshot the finished build** when it changed what the person sees (always on the mockup track; on the plan track only for its UI touch, through a small `app/lib/<slug>_preview.dart`). With nothing to see, the proof is the plan's "How it will be proved" run for real: the commands and the lines they printed, in section 3. Through the same entry point:
    - Bring `app/lib/<slug>_preview.dart` up to the final code: its fakes now stand in for the real repositories (canned replies behind the real cubits), `DemoTimelineRepository` for the day, `?s=<n>` per scene (open the sheet, send a message, apply a plan).
    - `.tool/preview <slug> 1 2 3 4 --brands lunna,focus --out <scratchpad>/build` (background) builds both brands at once and shoots them: `<out>/<brand>/strip.png`, one `<n>.png` per scene.
    - Read the two strips: they catch real bugs (the grey sheet above was one).
    - **Delete the preview entry point** afterwards; it is not committed.
 2. **Finish `product/delivery/<YYYY-MM-DD>-<slug>/README.md`**, one Markdown document, with images in `img/` next to it. Sections 1 and 2 are there from the hand-off; replace the Build brief with sections 3–5:
    1. **The prompt**: every user message of the request, verbatim and in order, plus answers given to questions.
-   2. **The design**: the board as approved (`img/mockup-board.png`, plus `board.json`), the references, the decisions table matching the pins, and the icon.
-   3. **What was built**: strips of the real build in both brands, the contract (the rule that matters), the server files and routes, the app pieces, the tests (with counts, and any flaky test named), and **where the build differs from the mockup** and why.
+   2. **The design**: the board as approved (`img/mockup-board.png`, plus `board.json`), the references, the decisions table matching the pins, and the icon. On the plan track, **The plan** as approved.
+   3. **What was built**: strips of the real build in both brands (or, with nothing to see, the commands that prove it and what they printed), the contract (the rule that matters), the server files and routes, the app pieces, the tests (with counts, and any flaky test named), and **where the build differs from the mockup or the plan** and why.
    4. **How to turn it on**: env vars, commands, and what happens without them.
    5. **Cost and time**: the `.tool/cost` tables of both sessions (see Cost
       and time above), and the totals of the two. Say where USD came from,

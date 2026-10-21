@@ -99,6 +99,8 @@ page redraws whenever the file changes, from any editor.
 .tool/queue ls           # each issue, where it is, what it has used
 .tool/queue log 12       # the tail of #12's last run
 .tool/queue tick         # one pass in the foreground (stop the agent first)
+.tool/queue implement product/research/<topic>/README.md [--dry-run]
+                         # open the create issue that builds an RFC (it must be on main)
 .tool/queue stop|start   # unload / load the LaunchAgent
 ```
 
@@ -120,7 +122,12 @@ issue ─▶ 👀 ─▶ design ─▶ draft PR + comment + push ─▶ you repl
           ─▶ squash into main ─▶ issue closed ─▶ push
 ```
 
-Research and improve skip the design gate. **The PR description is the
+On a feature with nothing to draw (tooling, CI, a server rule), the design
+is a one-page plan instead of a board, and the gate says **Plan ready**.
+Research and improve skip the design gate. **An approved RFC goes on**:
+once merged, the queue opens `Implement: <RFC title>` as a `create` issue
+pointing at it, and the next pass plans it and opens its PR, so research
+flows into a build with one "approve". **The PR description is the
 topic's README** (delivery, RFC or report) with its pictures, under a usage
 table: per run, time, turns, tokens, API-equivalent USD and the 5-hour and
 weekly windows before and after (`claude -p /usage`, free). Each push
