@@ -5,6 +5,8 @@
       "Bash(.tool/check:*)",
       "Bash(.tool/preview:*)",
       "Bash(.tool/cost:*)",
+      "Bash(.tool/queue ls:*)",
+      "Bash(.tool/queue implement:*)",
       "Bash(.tool/mockup/shoot-flutter.sh:*)",
       "Bash(node .tool/mockup/board.mjs:*)",
       "Bash(flutter analyze:*)",
