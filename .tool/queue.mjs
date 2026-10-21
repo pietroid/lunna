@@ -8,6 +8,7 @@
 //   .tool/queue log <issue>      the tail of that issue's last run
 //   .tool/queue stop | start     unload or load the LaunchAgent
 //   .tool/queue implement <rfc> [--dry-run]   open the create issue that builds an RFC on main
+//   .tool/queue adopt            move the LaunchAgent onto the runner by itself, once main has it
 //
 // An open issue of yours labelled create, research or improve is queued. Each
 // phase is a fresh headless `claude -p` in the issue's own worktree and
@@ -27,7 +28,7 @@
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
 import { spawn, execFileSync } from 'node:child_process';
-import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, dirname, join, posix, resolve } from 'node:path';
@@ -37,10 +38,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 // .git/queue of the main checkout, also from a worktree (where .git is a file).
 const home = join(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).trim(), 'queue');
+// The checkout the person works in, whose .git holds home.
+const checkout = resolve(home, '..', '..');
 const configPath = join(home, 'config.json');
 const stateDir = join(home, 'issues');
 const logDir = join(home, 'logs');
-const AGENT = 'dev.pietroid.lunna-queue';
+const AGENT = process.env.LUNNA_QUEUE_AGENT ?? 'dev.pietroid.lunna-queue'; // another label only to test a handover
 const plistPath = join(homedir(), 'Library', 'LaunchAgents', `${AGENT}.plist`);
 const MARK = '<!-- lunna-queue -->';
 const KINDS = ['create', 'research', 'improve'];
@@ -331,7 +334,7 @@ function worktree(cfg, st) {
   sh('git', ['worktree', 'add', '-q', ...(exists ? [st.worktree, st.branch] : ['-b', st.branch, st.worktree, 'origin/main'])]);
   // What git ignores but the app and the server need to run.
   // From the checkout the person works in: the runner has none of them.
-  const src = cfg.checkout ?? root;
+  const src = checkout;
   const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(src, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
   for (const f of envs) if (existsSync(join(src, f))) copyFileSync(join(src, f), join(st.worktree, f));
   trySh('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 });
@@ -571,10 +574,92 @@ export const isRunner = (cfg) => existsSync(runnerDir(cfg)) && realpathSync(runn
 // Nobody edits it, so a forced checkout loses nothing.
 export function syncRunner(cfg) {
   const dir = runnerDir(cfg);
-  sh('git', ['fetch', '-q', 'origin', 'main']);
-  if (!existsSync(dir)) sh('git', ['worktree', 'add', '-q', '--detach', dir, 'origin/main']);
+  sh('git', ['fetch', '-q', 'origin', 'main'], { cwd: checkout });
+  if (!existsSync(dir)) sh('git', ['worktree', 'add', '-q', '--detach', dir, 'origin/main'], { cwd: checkout });
   else sh('git', ['checkout', '-q', '-f', '--detach', 'origin/main'], { cwd: dir });
   return dir;
+}
+
+// ---------------------------------------------------------------- the handover
+
+// Moving the LaunchAgent onto the runner needs no person: `adopt` starts a
+// handover whenever launchd runs another queue.mjs (from `run`, or by hand),
+// and it waits for main to have the runner, so it can start before the PR
+// that brings it is merged. It is a job of its own: launchd kills whatever a
+// job leaves behind when it exits, detached or not, so a child of the queue
+// would die with the queue it replaces. launchd starts it again if it fails
+// and after a restart, until it unloads itself.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const alive = (pid) => { try { return !!pid && process.kill(pid, 0); } catch { return false; } };
+const HELPER = `${AGENT}-handover`;
+const helperPlist = join(homedir(), 'Library', 'LaunchAgents', `${HELPER}.plist`);
+const READY = 'async function handover(';
+
+// What launchd has loaded under a label: its pid, node and the queue.mjs it runs.
+function jobOf(label) {
+  const out = trySh('launchctl', ['print', `gui/${uid()}/${label}`]);
+  if (!out) return null;
+  const args = out.match(/\n\targuments = \{\n([^}]*)\}/)?.[1].split('\n').map((l) => l.trim()).filter(Boolean) ?? [];
+  return { pid: +(out.match(/\n\tpid = (\d+)/)?.[1] ?? 0), node: args[0], script: args.find((a) => a.endsWith('queue.mjs')) };
+}
+
+// Quiet and quick, and a no-op once the queue runs from the runner.
+function adopt() {
+  if (process.platform !== 'darwin' || !existsSync(configPath)) return;
+  const job = jobOf(AGENT); // not loaded: stopped on purpose, or not set up
+  if (!job || job.script === join(runnerDir(config()), '.tool/queue.mjs')) return;
+  if (jobOf(HELPER)) return; // one is going: launchd restarts it if it fails
+  // A copy: the worktree this one runs from is removed when its PR merges.
+  const script = join(home, 'handover.mjs');
+  copyFileSync(fileURLToPath(import.meta.url), script);
+  const env = { PATH: process.env.PATH, ...(process.env.LUNNA_QUEUE_AGENT && { LUNNA_QUEUE_AGENT: AGENT }) };
+  writeFileSync(helperPlist, plist({ label: HELPER, args: [process.execPath, script, 'handover'], cwd: checkout, env, keepAlive: false }));
+  trySh('launchctl', ['bootout', `gui/${uid()}/${HELPER}`]);
+  // A fresh log: launchd refuses (EX_CONFIG) an output file it can't open,
+  // such as one a sandboxed session created, and the job never starts.
+  rmSync(join(home, 'handover.log'), { force: true });
+  sh('launchctl', ['bootstrap', `gui/${uid()}`, helperPlist]);
+  sh('launchctl', ['kickstart', `gui/${uid()}/${HELPER}`]);
+  console.log(`✓ handover started (${join(home, 'handover.log')})`);
+}
+
+async function handover() {
+  const cfg = config();
+  const runnerScript = join(runnerDir(cfg), '.tool/queue.mjs');
+  const ready = () => trySh('git', ['fetch', '-q', 'origin', 'main'], { cwd: checkout }) !== null
+    && (trySh('git', ['show', 'origin/main:.tool/queue.mjs'], { cwd: checkout }) ?? '').includes(READY);
+  for (let tries = 0; !ready(); tries++) {
+    if (tries === 0) log('handover: waiting for origin/main to have the runner');
+    await sleep(120e3);
+  }
+  syncRunner(cfg);
+  // Main's handover does the switch, not this copy, which may be older.
+  if (resolve(here, 'queue.mjs') !== runnerScript) {
+    return new Promise((r) => spawn(process.execPath, [runnerScript, 'handover'], { cwd: checkout, stdio: 'inherit' }).on('exit', (code) => r(process.exit(code ?? 1))));
+  }
+  const job = jobOf(AGENT);
+  if (job && job.script !== runnerScript) {
+    // The lock makes the copy launchd starts again exit at once ("Another
+    // .tool/queue run is going"); a newer mtime on its script ends the
+    // running one after its pass, so no run is cut off.
+    writeFileSync(join(home, 'lock'), String(process.pid));
+    if (alive(job.pid)) {
+      if (job.script && existsSync(job.script)) utimesSync(job.script, new Date(), new Date());
+      log(`handover: waiting for ${job.pid} (${job.script}) to finish its pass`);
+      while (alive(job.pid)) await sleep(2e3);
+    }
+    const old = existsSync(plistPath) ? readFileSync(plistPath, 'utf8') : '';
+    const path = old.match(/<key>PATH<\/key><string>([^<]*)<\/string>/)?.[1].replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+    writeQueuePlist(runnerDir(cfg), job.node ?? process.execPath, path ?? process.env.PATH);
+    rmSync(join(home, 'lock'), { force: true });
+    start();
+    log(`handover: ✓ the LaunchAgent runs ${runnerScript} (${git(runnerDir(cfg), 'rev-parse', '--short', 'HEAD')})`);
+    await push(cfg, { title: 'Lunna queue moved to its runner', message: 'From now on it runs what is merged into main.', tags: ['white_check_mark'] });
+  } else log(job ? 'handover: ✓ already on the runner' : 'handover: the LaunchAgent is not loaded, nothing to move');
+  // Done for good. Unloading this job ends this process, so it goes last.
+  rmSync(helperPlist, { force: true });
+  rmSync(join(home, 'handover.mjs'), { force: true });
+  trySh('launchctl', ['bootout', `gui/${uid()}/${HELPER}`]);
 }
 
 function locked() {
@@ -590,7 +675,7 @@ async function loop(once) {
   const cfg = config();
   if (locked()) fail('Another .tool/queue run is going.');
   const runner = isRunner(cfg);
-  if (!once && !runner) log(`running from ${root}, not ${runnerDir(cfg)}: merged changes to the queue won't run until .tool/queue setup`);
+  if (!once && !runner) { log(`running from ${root}, not ${runnerDir(cfg)}: handing over`); adopt(); }
   for (;;) {
     try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
     if (once) return;
@@ -622,10 +707,8 @@ async function setup() {
     owner: gh(['api', 'user', '--jq', '.login']),
     topic: old.topic ?? `lunna-${randomBytes(12).toString('hex')}`,
     worktrees: old.worktrees ?? resolve(root, '..', `${basename(root)}-queue`),
-    checkout: old.checkout ?? root,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   };
-  if (!isRunner(cfg)) cfg.checkout = root;
   writeJson(configPath, cfg);
   for (const [name, color, description] of LABELS) gh(['label', 'create', name, '-R', repo, '--color', color, '--description', description, '--force']);
   // Pages built by Actions, for the review page (.github/workflows/review-page.yml).
@@ -633,22 +716,7 @@ async function setup() {
     ?? trySh('gh', ['api', '-X', 'POST', `repos/${repo}/pages`, '-f', 'build_type=workflow', '--jq', '.html_url']);
 
   const runner = syncRunner(cfg);
-  const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  mkdirSync(dirname(plistPath), { recursive: true });
-  writeFileSync(plistPath, `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>${AGENT}</string>
-  <key>ProgramArguments</key><array><string>${xml(process.execPath)}</string><string>${xml(join(runner, '.tool/queue.mjs'))}</string><string>run</string></array>
-  <key>WorkingDirectory</key><string>${xml(runner)}</string>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(process.env.PATH)}</string></dict>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>ThrottleInterval</key><integer>60</integer>
-  <key>StandardOutPath</key><string>${xml(join(home, 'daemon.log'))}</string>
-  <key>StandardErrorPath</key><string>${xml(join(home, 'daemon.log'))}</string>
-</dict></plist>
-`);
+  writeQueuePlist(runner, process.execPath, process.env.PATH);
   start();
   await push(cfg, { title: 'Lunna queue is on', message: `Watching ${repo} for issues labelled ${KINDS.join(', ')}.`, tags: ['white_check_mark'], click: `https://github.com/${repo}/issues` });
   console.log(`✓ labels on ${repo}, LaunchAgent ${AGENT} loaded, test push sent
@@ -657,6 +725,30 @@ async function setup() {
   phone: install ntfy (App Store / Play Store), tap +, topic ${cfg.topic}, server ntfy.sh
          (or open https://ntfy.sh/${cfg.topic} on the phone)
   then open an issue with the "Create" template and watch for the 👀`);
+}
+
+function writeQueuePlist(runner, node, path) {
+  mkdirSync(dirname(plistPath), { recursive: true });
+  writeFileSync(plistPath, plist({ label: AGENT, args: [node, join(runner, '.tool/queue.mjs'), 'run'], cwd: runner, env: { PATH: path }, keepAlive: true }));
+}
+
+function plist({ label, args, cwd, env, keepAlive }) {
+  const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const out = join(home, keepAlive ? 'daemon.log' : 'handover.log');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>${label}</string>
+  <key>ProgramArguments</key><array>${args.map((a) => `<string>${xml(a)}</string>`).join('')}</array>
+  <key>WorkingDirectory</key><string>${xml(cwd)}</string>
+  <key>EnvironmentVariables</key><dict>${Object.entries(env).map(([k, v]) => `<key>${k}</key><string>${xml(v)}</string>`).join('')}</dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key>${keepAlive ? '<true/>' : '<dict><key>SuccessfulExit</key><false/></dict>'}
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>StandardOutPath</key><string>${xml(out)}</string>
+  <key>StandardErrorPath</key><string>${xml(out)}</string>
+</dict></plist>
+`;
 }
 
 const uid = () => process.getuid();
@@ -676,8 +768,9 @@ function ls() {
   const at = (ref, cwd) => trySh('git', ['rev-parse', '--short', ref], { cwd }) ?? '?';
   const dir = runnerDir(cfg);
   const plist = existsSync(plistPath) ? readFileSync(plistPath, 'utf8') : '';
-  console.log(!existsSync(dir) ? '✗ no runner: run .tool/queue setup'
-    : !plist.includes(dir) ? `✗ the LaunchAgent doesn't run from ${dir}: run .tool/queue setup`
+  console.log(jobOf(HELPER) ? `… handover waiting to move the LaunchAgent onto ${dir} (${join(home, 'handover.log')})`
+    : !existsSync(dir) ? '✗ no runner: run .tool/queue adopt (or setup)'
+    : !plist.includes(dir) ? `✗ the LaunchAgent doesn't run from ${dir} yet: it hands over on its own (${join(home, 'handover.log')}), or run .tool/queue adopt`
     : `✓ runner at ${at('HEAD', dir)} (origin/main ${at('origin/main')})`);
   const all = states().sort((a, b) => a.issue - b.issue);
   if (!all.length) return console.log('  nothing yet');
@@ -707,6 +800,6 @@ function tail(n) {
 const [command, ...rest] = process.argv.slice(2);
 // Run as a command, not imported (by a test of the functions it exports).
 const main = !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-const commands = { setup, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), implement: implementCli, stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
-if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | implement <rfc> [--dry-run] | stop | start');
+const commands = { setup, adopt, handover, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), implement: implementCli, stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
+if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | implement <rfc> [--dry-run] | stop | start | adopt');
 if (main) await commands[command]();

@@ -102,6 +102,7 @@ page redraws whenever the file changes, from any editor.
 .tool/queue implement product/research/<topic>/README.md [--dry-run]
                          # open the create issue that builds an RFC (it must be on main)
 .tool/queue stop|start   # unload / load the LaunchAgent
+.tool/queue adopt        # move a LaunchAgent that runs elsewhere onto the runner (it does it alone)
 ```
 
 Open an issue with the **Create**, **Research** or **Improve** template
@@ -140,8 +141,22 @@ worktree, `<worktrees>/.runner`, detached at `origin/main` and moved to
 its tip after every pass; a changed `queue.mjs` restarts it. Before this,
 it ran from the main checkout, which nobody pulled, so merged changes to
 the queue (the page link, an RFC's build issue) never ran. Env files for
-the issue worktrees still come from the main checkout (`checkout` in the
-config). `ls` prints the runner's commit, or ✗ with what to run.
+the issue worktrees still come from the main checkout (the one whose
+`.git` holds `.git/queue`). `ls` prints the runner's commit, or ✗ and
+where the handover is.
+
+**It moves onto the runner by itself.** A LaunchAgent that runs some other
+`queue.mjs` (an old one, from the main checkout) is handed over without
+anyone at the Mac: `adopt` loads a one-off job,
+`dev.pietroid.lunna-queue-handover`, that waits for `origin/main` to have
+the handover, brings the runner to main, waits for the running pass to end
+(it touches that script, so the old queue exits after its pass), rewrites
+the LaunchAgent onto the runner, reloads it, sends a push and unloads
+itself (`.git/queue/handover.log`). A queue running outside the runner
+calls `adopt` when it starts. It is its own launchd job because launchd
+kills everything a job leaves behind when it exits, so a child of the old
+queue would die with it. After that, a merge is all it takes: the runner
+moves to main after each pass and the new `queue.mjs` restarts it.
 
 - **Answering.** Your comments on the issue or its PR after the gate.
   `approve` (or `ok`, `lgtm`, `aprovado`, 👍) **alone in its comment** goes

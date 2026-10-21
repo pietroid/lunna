@@ -1,23 +1,34 @@
 ✓ review link: https://pietroteruya.dev/lunna/review.html?repo=pietroid/lunna&pr=16&path=product/research/2026-10-21-agent-console/README.md
 ✓ the body links the page
-✓ body 2030 chars (the old queue wrote 20286 on #16)
+✓ body 2731 chars (the old queue wrote 26847 on #16)
 
 ----- body -----
 Closes #14 · `research` · **RFC ready**, waiting for your reply on #14.
 
-I wrote the RFC with no deep-research pass yet. It recommends keeping Claude Code and GitHub and adopting no third-party console: Vibe Kanban is sunsetting, Remote Control, Dispatch and Happy steer live sessions with no gates, and Agent HQ bills through Copilot. It proposes three changes. First, a listener that checks every 10 s even while a job runs; your comments now wait 69 s at the median and up to 54 min, measured with code/latency.mjs. Second, an Approve button on the review page and in the push, since GitHub won't let a PR's author approve it. Third, a pinned 'Queue' status issue that the review page draws as a console with usage and budget. Look first at decision 1 (the budget ceiling) and at the option comparison in data/options.md.
+I looked at Hermes Agent and OpenClaw and updated the RFC. The recommendation hasn't changed. In both, a chat gateway sits in front of an agent of their own, and that agent calls `claude -p`, the same command the queue already runs. Anthropic's terms keep your subscription for Claude Code itself, so that agent would need a second bill with per-token API pricing. Neither has gates, PRs or a budget, and each is a long-running gateway you'd have to keep patched (OpenClaw had a one-click token-theft CVE in 2026).
 
-📝 **[Read it as a page and comment on its text](https://pietroteruya.dev/lunna/review.html?repo=pietroid/lunna&pr=16&path=product/research/2026-10-21-agent-console/README.md)** · 📄 [2026-10-21-agent-console/README.md](https://github.com/pietroid/lunna/blob/296705a32dbd84a66b03cf14b1f4baed26820322/product/research/2026-10-21-agent-console/README.md)
+Your question and its answer are under "Why not a third-party console". The evidence is in a new section, "Hermes, OpenClaw and other agent gateways", and both tools have rows in data/options.md. I added idea 5 and a matching ledger entry: "The harness that holds the login holds the bill". Look at decision 6: trying Hermes on Telegram with a cheap model in front of `claude -p`. I recommend not now, since Remote Control already gives you a chat from the phone at no extra cost.
+
+Not done:
+- I didn't run the deep-research pass, since you didn't ask for one.
+- Hermes's star count and release pace are unverified.
+- The RFC is now about 3,560 words, over the usual 2,500-word budget, mostly because of the new references.
+
+Reply **approve** to merge it and queue its build.
+
+📝 **[Read it as a page and comment on its text](https://pietroteruya.dev/lunna/review.html?repo=pietroid/lunna&pr=16&path=product/research/2026-10-21-agent-console/README.md)** · 📄 [2026-10-21-agent-console/README.md](https://github.com/pietroid/lunna/blob/b4fee6832dd42ccdc57b5d7097b088c729aeb071/product/research/2026-10-21-agent-console/README.md)
 
 **Open questions**
-- Budget: should the queue stop starting runs above a share of the week (85% recommended, changed by commenting `budget N` on the status issue), or only show usage?
+- Should the deep-research pass check the options table (Hermes, OpenClaw, Remote Control, Agent HQ) against current releases, or is this round enough to approve?
 
-<details><summary>Usage: 6 min · 2.4M in / 49k out · ~$2.00 API-eq · week +1 pts (now 21%)</summary>
+<details><summary>Usage: 9 min · 3.4M in / 75k out · ~$2.99 API-eq · week +1 pts (now 23%)</summary>
 
 | Phase | Started (UTC) | Time | Turns | Tokens in (cache read) | Out | API-eq. | 5-hour window | Week |
 |---|---|---|---|---|---|---|---|---|
 | start | 10-21 19:11 | 6 min | 40 | 2.4M (2.1M) | 49k | $2.00 | 72→82% | 20→21% (+1) |
-| **Total** | | **6 min** | **40** | **2.4M** (2.1M) | **49k** | **$2.00** | | **+1 pts** |
+| fix | 10-21 19:56 | 0 min | 1 | 0 (0) | 0 | $0.00 | 100→100% | 23→23% (+0) |
+| fix | 10-21 22:30 | 3 min | 23 | 974k (729k) | 26k | $1.00 | 0→5% | 23→23% (+0) |
+| **Total** | | **9 min** | **64** | **3.4M** (2.8M) | **75k** | **$2.99** | | **+1 pts** |
 
 <sub>Billed to the subscription. API-eq. is what the same tokens would cost at API prices, not money spent. Window figures are `/usage` before and after each run, so they also count anything else on the account meanwhile.</sub>
 
