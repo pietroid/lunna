@@ -1,4 +1,10 @@
 import { randomUUID } from 'crypto';
+import {
+  GoalKind,
+  GoalPeriod,
+  GoalStart,
+  StoredRow,
+} from '../artifacts/artifact.types';
 import { CalendarEvent } from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
 
@@ -7,12 +13,24 @@ import { Task } from '../tasks/task.types';
  * this is only what the card draws.
  */
 export type ChangeKind =
-  'add_task' | 'move_task' | 'add_event' | 'move_event' | 'to_backlog';
+  | 'add_task'
+  | 'move_task'
+  | 'add_event'
+  | 'move_event'
+  | 'to_backlog'
+  | 'add_artifact'
+  | 'edit_artifact'
+  | 'deliver'
+  | 'remove_artifact'
+  | 'move_artifact'
+  | 'add_kind'
+  | 'add_goal'
+  | 'remove_goal';
 
 /** One line of a plan, as the app draws it. */
 export interface PlanChange {
   kind: ChangeKind;
-  /** The card it moves. Absent for what it adds. */
+  /** The card or the delivery it changes. Absent for what it adds. */
   id?: string;
   title: string;
   minutes: number;
@@ -25,9 +43,29 @@ export interface PlanChange {
   /**
    * The place in the queue it takes, by the titles of the cards around it,
    * when it takes one rather than an hour: [at] is then only where the queue
-   * packs it now. Neither named is the end of the queue.
+   * packs it now. Neither named is the end of the queue. For a delivery
+   * moved, the deliveries around it.
    */
   place?: { after?: string; before?: string };
+  /** The name it had, when the change renames it. */
+  was?: string;
+  /** The delivery a task belongs to, by name. */
+  artifact?: string;
+  /** A delivery's deadline as the change leaves it, `YYYY-MM-DD`. */
+  deadline?: string;
+  /** A delivery's deadline before the change. */
+  wasDeadline?: string;
+  /** What it is worth, in whole reais: a delivery's value, a kind's price, a money goal's target. */
+  value?: number;
+  /**
+   * What goes with it: the tasks a new delivery starts with, the open ones
+   * a delivered one leaves, the ones a removed one takes along.
+   */
+  takes?: string[];
+  /** For a kind: the catalogue shelf it goes on. */
+  shelf?: string;
+  /** For a goal: what it counts, and over which stretch. */
+  goal?: { kind: GoalKind; period: GoalPeriod; target: number };
 }
 
 /** Something new a gesture writes down. */
@@ -36,12 +74,17 @@ export interface NewThing {
   minutes: number;
   /** Whether it is a fixed block (an event) rather than a task. */
   fixed: boolean;
+  /** The delivery it belongs to, by id. */
+  artifactId?: string;
+  /** The delivery it belongs to, made earlier in the same plan (`as`). */
+  artifactAs?: string;
 }
 
 /**
  * One change, as the gesture a person could have made by hand, with every
  * reference already resolved to an id. It is what the dry run makes and what
- * Aplicar makes, through the same code, so the two cannot disagree.
+ * Aplicar makes, through the same code, so the two cannot disagree. Each is
+ * declared once, in `actions/`.
  *
  * - `place`: a place in the queue, by the cards around it, as a drop between
  *   them. Under a card that keeps an hour it is that card's end plus the
@@ -50,6 +93,7 @@ export interface NewThing {
  *   a fixed block), as a drop in free room.
  * - `to_backlog`: into Depois eu priorizo, at its end.
  * - `swap`: two tasks trade places, as a long drag onto another card.
+ * - the deliveries', the catalogue's and the goals', as Entregas makes them.
  */
 export type Gesture =
   | {
@@ -61,7 +105,56 @@ export type Gesture =
     }
   | { do: 'at_hour'; id?: string; new?: NewThing; at: string }
   | { do: 'to_backlog'; id?: string; new?: NewThing }
-  | { do: 'swap'; id: string; with: string };
+  | { do: 'swap'; id: string; with: string }
+  | {
+      do: 'new_artifact';
+      /** The name later changes of the plan call it by. */
+      as?: string;
+      title: string;
+      typeId?: string;
+      /** Its kind, made earlier in the same plan. */
+      typeAs?: string;
+      deadline?: string;
+      minutes?: number;
+      value?: number;
+      at: 'top' | 'end';
+    }
+  | {
+      do: 'edit_artifact';
+      id: string;
+      edit: {
+        title?: string;
+        deadline?: string | null;
+        minutes?: number;
+        value?: number;
+      };
+    }
+  | { do: 'deliver'; id: string }
+  | { do: 'remove_artifact'; id: string; keepTasks: boolean }
+  | { do: 'move_artifact'; id: string; after?: string; before?: string }
+  | {
+      do: 'new_kind';
+      as?: string;
+      name: string;
+      shelf: string;
+      minutes: number;
+      price?: number;
+    }
+  | {
+      do: 'new_goal';
+      kind: GoalKind;
+      target: number;
+      period: GoalPeriod;
+      typeId?: string;
+      typeAs?: string;
+      start: GoalStart;
+    }
+  | { do: 'remove_goal'; id: string };
+
+/** The something new a gesture writes down, when it writes a card. */
+export function newOf(gesture: Gesture): NewThing | undefined {
+  return 'new' in gesture ? gesture.new : undefined;
+}
 
 /** What a plan took without being told, which its card names. */
 export type Assumption =
@@ -83,12 +176,19 @@ export interface Pushed {
   at: string;
 }
 
-/** What applying one change did, so undoing it is exact. */
-export type Undo =
-  | { kind: 'remove_task'; id: string }
-  | { kind: 'remove_event'; id: string }
-  | { kind: 'restore_task'; task: Task }
-  | { kind: 'restore_event'; event: CalendarEvent };
+/** One row a plan may touch, by where it is kept. */
+export type Row =
+  | { kind: 'task'; row: Task }
+  | { kind: 'event'; row: CalendarEvent }
+  | StoredRow;
+
+/**
+ * One step of taking a plan back: a row written back as it was (`put`,
+ * whether it changed or was removed), or one the plan made taken out
+ * (`drop`). Read off the stores before and after, so every row a gesture
+ * touched comes back, not only the one it named.
+ */
+export type Undo = { op: 'put'; it: Row } | { op: 'drop'; it: Row };
 
 /**
  * A proposal: changes the agent worked out, which nothing has made yet.
@@ -118,24 +218,48 @@ export interface Plan {
   applied?: { undo: Undo[]; touched: string[] };
 }
 
-/** How long a plan can wait for its answer. */
-const PLAN_TTL_MS = 2 * 60 * 60_000;
+/** What a plan is filed with. */
+export type NewPlan = Pick<
+  Plan,
+  'gestures' | 'changes' | 'pushed' | 'assumed'
+> &
+  Pick<Plan, 'group'>;
+
+/** How long a plan can wait for its answer, and be undone. */
+export const PLAN_TTL_MS = 2 * 60 * 60_000;
 
 /**
  * The plans waiting for an answer, and the ones that can still be undone.
  *
- * In memory, like the calendar cache: one server process owns them, which is
- * the deployment. A plan lost to a restart is a plan the user asks for again.
+ * Postgres in production ([PgPlanStore]), so an undo outlives a deploy:
+ * a plan may delete a delivery, and its undo is the only way back. Memory in
+ * the tests ([MemoryPlanStore]).
  */
-export class PlanStore {
+export abstract class PlanStore {
+  abstract put(userId: string, made: NewPlan): Promise<Plan>;
+
+  /** [userId]'s plan [id], when it is theirs and still fresh. */
+  abstract get(userId: string, id: string): Promise<Plan | undefined>;
+
+  /** Writes down what became of [plan]: applied, with its undo, or not. */
+  abstract save(plan: Plan): Promise<void>;
+
+  /**
+   * Whether another answer to the same question was already applied: a
+   * quick reply beside [plan], or the plan a quick reply was offered beside.
+   */
+  abstract answered(plan: Plan): Promise<boolean>;
+}
+
+/** The plans, in memory. Behaves like the Postgres store. */
+export class MemoryPlanStore extends PlanStore {
   private readonly _plans = new Map<string, Plan>();
 
-  constructor(private readonly _now: () => number = Date.now) {}
+  constructor(private readonly _now: () => number = Date.now) {
+    super();
+  }
 
-  put(
-    userId: string,
-    made: Pick<Plan, 'gestures' | 'changes' | 'pushed' | 'assumed'>,
-  ): Plan {
+  put(userId: string, made: NewPlan): Promise<Plan> {
     this._prune();
 
     const plan: Plan = {
@@ -144,32 +268,39 @@ export class PlanStore {
       ...made,
       createdAt: this._now(),
     };
+    if (plan.group === undefined) delete plan.group;
     this._plans.set(plan.id, plan);
 
-    return plan;
+    return Promise.resolve(plan);
   }
 
-  /** [userId]'s plan [id], when it is theirs and still fresh. */
-  get(userId: string, id: string): Plan | undefined {
+  get(userId: string, id: string): Promise<Plan | undefined> {
     const plan = this._plans.get(id);
-    if (plan === undefined || plan.userId !== userId) return undefined;
-    if (this._now() - plan.createdAt > PLAN_TTL_MS) return undefined;
+    if (plan === undefined || plan.userId !== userId) {
+      return Promise.resolve(undefined);
+    }
+    if (this._now() - plan.createdAt > PLAN_TTL_MS) {
+      return Promise.resolve(undefined);
+    }
 
-    return plan;
+    return Promise.resolve(plan);
   }
 
-  /**
-   * Whether another answer to the same question was already applied: a
-   * quick reply beside [plan], or the plan a quick reply was offered beside.
-   */
-  answered(plan: Plan): boolean {
+  save(plan: Plan): Promise<void> {
+    this._plans.set(plan.id, plan);
+    return Promise.resolve();
+  }
+
+  answered(plan: Plan): Promise<boolean> {
     const group = plan.group ?? plan.id;
     for (const other of this._plans.values()) {
       if (other.id === plan.id || other.applied === undefined) continue;
-      if (other.id === group || other.group === group) return true;
+      if (other.id === group || other.group === group) {
+        return Promise.resolve(true);
+      }
     }
 
-    return false;
+    return Promise.resolve(false);
   }
 
   private _prune(): void {

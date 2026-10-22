@@ -92,9 +92,11 @@ app/
 server/
   src/
     agent/              the agent: OpenRouter client, tools, the board
-                        (refs, dates, artifacts), the answer and its A2UI
+                        (refs, dates, artifacts), actions/ (the registry:
+                        one Action per verb), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
-                        conversations (ConversationStore), evals/
+                        conversations (ConversationStore), plans
+                        (PlanStore), evals/
     analytics/          PostHog: the provider, the route → event table
     auth/               Better Auth instance + SessionGuard
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
@@ -107,6 +109,7 @@ server/
     routines/           routine CRUD and day expansion
     time/               work hours, zones, the scheduler
   drizzle/              generated SQL migrations (committed)
+  tool/coverage.mjs     which routes the agent reaches; every handler hands to a service
 deploy/                 docker-compose.yml, nginx.conf, web.Dockerfile
 product/
   spec/                 feature specs moved out of this file (agent, artifacts)
@@ -484,7 +487,13 @@ can see itself. Voice becomes text on the phone and reaches the server as
 an ordinary turn. **The model answers with one `answer` tool whose blocks
 name what to show (plan, choices, day, cards, artifact); the server fills
 every fact and sends one A2UI v0.9 surface (`ui`)**, and nothing the
-person reads carries a ref (`speakable`). Agent changes are measured with `npm run eval:agent`
+person reads carries a ref (`speakable`). **Each verb is one `Action` in
+`agent/actions/`** (args, resolve, make through the same service the
+button calls, the card's line); the schema, the dry run, Aplicar and the
+card all read the registry, and Desfazer restores a snapshot of the rows
+the plan touched, so a new control is one entry. Today it moves cards on
+the day and makes, edits, delivers, moves and deletes deliveries, kinds
+and goals; plans are kept in Postgres. Agent changes are measured with `npm run eval:agent`
 (real model, costs money, never in CI). The tools, the plan rules, the
 routes, the conversations and voice are in
 [product/spec/agent.md](./product/spec/agent.md): read it before touching

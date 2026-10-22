@@ -1,6 +1,13 @@
 import { Day } from '../events/timeline.service';
 import { Timeline } from '../events/entities/event.entity';
-import { Artifact } from '../artifacts/artifact.types';
+import {
+  Artifact,
+  CatalogCategory,
+  CatalogType,
+  Goal,
+  GoalView,
+} from '../artifacts/artifact.types';
+import { measureGoals } from '../artifacts/artifacts.service';
 import { Task } from '../tasks/task.types';
 import {
   addMinutes,
@@ -29,6 +36,9 @@ const MIN_FREE_MINUTES = 15;
 
 /** How many backlog tasks the model is shown. */
 const MAX_BACKLOG = 30;
+
+/** How many delivered deliveries the model is shown, the latest first. */
+const MAX_DELIVERED = 5;
 
 /** One card, as the model refers to it. */
 export interface BoardCard {
@@ -67,6 +77,23 @@ export interface BoardArtifact {
   tasks: Task[];
 }
 
+/** A kind of the catalogue, as the board names it. */
+export interface BoardKind {
+  /** `k1`. */
+  ref: string;
+  type: CatalogType;
+  /** The name of its shelf. */
+  shelf: string;
+}
+
+/** A goal, as the board names it, measured now. */
+export interface BoardGoal {
+  /** `g1`. */
+  ref: string;
+  goal: Goal;
+  view: GoalView;
+}
+
 /** What a board is built with besides the day. */
 export interface BoardOptions {
   /**
@@ -78,6 +105,9 @@ export interface BoardOptions {
   artifacts?: Artifact[];
   /** Every task of an artifact, done ones included. */
   artifactTasks?: Task[];
+  categories?: CatalogCategory[];
+  types?: CatalogType[];
+  goals?: Goal[];
 }
 
 const WEEKDAYS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
@@ -123,6 +153,9 @@ export class Board {
   readonly today: string;
   /** Every artifact, oldest first; the index names the open ones. */
   readonly artifacts: BoardArtifact[];
+  /** The catalogue's kinds, shelf by shelf. */
+  readonly kinds: BoardKind[];
+  readonly goals: BoardGoal[];
   private readonly _byRef: Map<string, BoardCard>;
   private readonly _refs: Map<string, string>;
   /** The rows the cards were read from, for what the timeline leaves out. */
@@ -206,6 +239,28 @@ export class Board {
       artifact,
       tasks: tasks_.filter((task) => task.artifactId === artifact.id),
     }));
+
+    const shelves = options.categories ?? [];
+    this.kinds = shelves.flatMap((shelf) =>
+      (options.types ?? [])
+        .filter((type) => type.categoryId === shelf.id)
+        .map((type) => ({
+          ref: this._assign(type.id, 'k'),
+          type,
+          shelf: shelf.name,
+        })),
+    );
+    const measured = measureGoals(
+      options.goals ?? [],
+      options.artifacts ?? [],
+      this.today,
+      zone,
+    );
+    this.goals = measured.map((view) => ({
+      ref: this._assign(view.id, 'g'),
+      goal: (options.goals ?? []).find((it) => it.id === view.id)!,
+      view,
+    }));
   }
 
   get zone(): Zone {
@@ -230,9 +285,26 @@ export class Board {
     return this.artifacts.find((it) => it.artifact.id === id);
   }
 
-  /** The title a ref stands for, a card's or an artifact's. */
+  /** The kind under [ref] (`k1`). */
+  kind(ref: string): BoardKind | undefined {
+    const said = ref.trim().toLowerCase();
+    return this.kinds.find((it) => it.ref === said);
+  }
+
+  /** The goal under [ref] (`g1`). */
+  goal(ref: string): BoardGoal | undefined {
+    const said = ref.trim().toLowerCase();
+    return this.goals.find((it) => it.ref === said);
+  }
+
+  /** The title a ref stands for: a card's, an artifact's or a kind's. */
   title(ref: string): string | undefined {
-    return this.ref(ref)?.title ?? this.artifact(ref)?.artifact.title;
+    return (
+      this.ref(ref)?.title ??
+      this.artifact(ref)?.artifact.title ??
+      this.kind(ref)?.type.name ??
+      (this.goal(ref) === undefined ? undefined : 'a meta')
+    );
   }
 
   /**
@@ -478,9 +550,27 @@ export class Board {
         : this.artifacts
             .filter((it) => it.artifact.doneAt === undefined)
             .map((it) => `  ${this.artifactLine(it)}`)),
-      '',
-      'Free room:',
     );
+    const delivered = this.artifacts
+      .filter((it) => it.artifact.doneAt !== undefined)
+      .sort((a, b) => b.artifact.doneAt!.localeCompare(a.artifact.doneAt!))
+      .slice(0, MAX_DELIVERED);
+    if (delivered.length > 0) {
+      lines.push(
+        'Delivered lately:',
+        ...delivered.map((it) => `  ${this.artifactLine(it)}`),
+      );
+    }
+    if (this.kinds.length > 0) {
+      lines.push(
+        'Catalogue (kinds):',
+        ...this.kinds.map((it) => `  ${this.kindLine(it)}`),
+      );
+    }
+    if (this.goals.length > 0) {
+      lines.push('Goals:', ...this.goals.map((it) => `  ${this.goalLine(it)}`));
+    }
+    lines.push('', 'Free room:');
     for (const day of [...shown].sort()) {
       const free = this.free(day);
       lines.push(
@@ -543,18 +633,61 @@ export class Board {
     return `${card.ref} · ${card.title} · ${kind}${extra === '' ? '' : ` (${extra})`} · ${when}${artifact === undefined ? '' : ` · artifact ${artifact}`}`;
   }
 
-  /** "p2 · Tese · due 30/11 · 6 open tasks, 2 with an hour". */
+  /**
+   * "p2 · Tese · Mapa astral · due 30/11 · 6 open tasks, 2 with an hour ·
+   * 12h of 20h · R$ 1.500", or "· delivered 12/10" for one delivered.
+   */
   artifactLine(it: BoardArtifact): string {
+    const { artifact } = it;
     const open = it.tasks.filter((task) => task.doneAt === undefined);
     const timed = open.filter((task) => !task.backlog).length;
-    const due = it.artifact.deadline;
+    const due = artifact.deadline;
+    const kind = this.kinds.find((k) => k.type.id === artifact.typeId);
+    const done = it.tasks
+      .filter((task) => task.doneAt !== undefined)
+      .reduce((sum, task) => sum + task.minutes, 0);
     return [
       it.ref,
-      it.artifact.title,
-      ...(due === undefined
+      artifact.title,
+      ...(kind === undefined ? [] : [kind.type.name]),
+      ...(due === undefined ? [] : [`due ${ddmm(due)}`]),
+      artifact.doneAt === undefined
+        ? `${open.length} open tasks, ${timed} with an hour`
+        : `delivered ${ddmm(isoDayIn(new Date(artifact.doneAt), this.zone))}`,
+      ...(artifact.minutes === undefined || artifact.doneAt !== undefined
         ? []
-        : [`due ${due.slice(8, 10)}/${due.slice(5, 7)}`]),
-      `${open.length} open tasks, ${timed} with an hour`,
+        : [
+            `${formatSpan(done * 60_000)} of ${formatSpan(artifact.minutes * 60_000)}`,
+          ]),
+      ...(artifact.value === undefined ? [] : [reais(artifact.value)]),
+    ].join(' · ');
+  }
+
+  /** "k1 · Mapa astral · Atendimentos · 1h30 · R$ 250". */
+  kindLine(it: BoardKind): string {
+    return [
+      it.ref,
+      it.type.name,
+      it.shelf,
+      formatSpan(it.type.minutes * 60_000),
+      ...(it.type.price === undefined ? [] : [reais(it.type.price)]),
+    ].join(' · ');
+  }
+
+  /**
+   * "g1 · money · R$ 4.000 per month · delivered R$ 1.250, queued R$ 2.000",
+   * or "g2 · count of Mapa astral · 3 per week · delivered 1, queued 2".
+   */
+  goalLine(it: BoardGoal): string {
+    const { view } = it;
+    const money = view.kind === 'money';
+    const amount = (n: number) => (money ? reais(n) : String(n));
+    const kind = this.kinds.find((k) => k.type.id === view.typeId);
+    return [
+      it.ref,
+      money ? 'money' : `count of ${kind?.type.name ?? 'a kind'}`,
+      `${amount(view.target)} per ${view.period}${view.start > this.today ? ` from ${ddmm(view.start)}` : ''}`,
+      `delivered ${amount(view.done)}, queued ${amount(view.queued)}`,
     ].join(' · ');
   }
 
@@ -641,6 +774,16 @@ export function daysBetween(a: string, b: string): number {
 /** The weekday of "2026-10-16", 0 for Sunday. */
 function weekdayOf(day: string): number {
   return new Date(`${day}T12:00:00Z`).getUTCDay();
+}
+
+/** "30/11" of "2026-11-30". */
+function ddmm(day: string): string {
+  return `${day.slice(8, 10)}/${day.slice(5, 7)}`;
+}
+
+/** "R$ 1.500". */
+function reais(value: number): string {
+  return `R$ ${String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 }
 
 /** "3h10", "45 min". */

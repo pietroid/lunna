@@ -905,6 +905,49 @@
       }
     }
   },
+  "agentChangeOpenLeft": "{count, plural, =1{1 tarefa ainda aberta} other{{count} tarefas ainda abertas}}",
+  "@agentChangeOpenLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "agentChangeArtifactBefore": "na fila, antes de {title}",
+  "@agentChangeArtifactBefore": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "agentChangeArtifactAfter": "na fila, depois de {title}",
+  "@agentChangeArtifactAfter": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "agentChangeNewKind": "novo tipo",
+  "agentChangeNewGoal": "nova meta",
+  "agentChangeRemoveGoal": "apagar a meta",
+  "agentGoalPerWeek": "{amount} por semana",
+  "@agentGoalPerWeek": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "agentGoalPerMonth": "{amount} por mês",
+  "@agentGoalPerMonth": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "agentFree": "{span} livre",
   "@agentFree": {
     "placeholders": {

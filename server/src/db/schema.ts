@@ -469,6 +469,35 @@ export const agentMessage = pgTable(
 );
 
 /**
+ * A plan the agent proposed, kept until it is answered and, once applied,
+ * with what undoing it writes back.
+ *
+ * In Postgres rather than memory because a plan may delete a delivery, and
+ * an undo lost to a deploy would be a delivery lost. Read back for two hours
+ * (`PLAN_TTL_MS`), then pruned.
+ */
+export const agentPlan = pgTable(
+  'agent_plan',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** The plan a quick reply was offered beside. */
+    groupId: uuid('group_id'),
+    /** Its gestures, its card and what it took without being told. */
+    body: jsonb('body').$type<unknown>().notNull(),
+    /** Once applied: the undo and the ids it touched. */
+    applied: jsonb('applied').$type<unknown>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index('agent_plan_user_created_idx').on(table.userId, table.createdAt),
+    index('agent_plan_group_idx').on(table.groupId),
+  ],
+);
+
+/**
  * What a link says about itself: its page's title, its site and its
  * picture, read once and kept for everyone, since a link's preview is the
  * same for all who paste it.
@@ -498,6 +527,7 @@ export const schema = {
   task,
   event,
   agentMessage,
+  agentPlan,
   linkPreview,
 };
 
@@ -510,4 +540,5 @@ export type CatalogTypeRow = typeof catalogType.$inferSelect;
 export type ArtifactRow = typeof artifact.$inferSelect;
 export type GoalRow = typeof goal.$inferSelect;
 export type AgentMessageRow = typeof agentMessage.$inferSelect;
+export type AgentPlanRow = typeof agentPlan.$inferSelect;
 export type LinkPreviewRow = typeof linkPreview.$inferSelect;

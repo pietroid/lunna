@@ -15,7 +15,25 @@ export interface World {
     opts?: { at?: string; backlog?: boolean; artifact?: string },
   ): Promise<void>;
   /** An artifact, answering its id for its tasks' `artifact`. */
-  artifact(title: string, deadline?: string): Promise<string>;
+  artifact(
+    title: string,
+    deadline?: string,
+    opts?: { value?: number; kind?: string },
+  ): Promise<string>;
+  /** A kind of the catalogue, on a shelf, answering its id. */
+  kind(
+    name: string,
+    shelf: string,
+    minutes: number,
+    price?: number,
+  ): Promise<string>;
+  /** A goal, from this stretch on. */
+  goal(
+    kind: 'money' | 'count',
+    target: number,
+    period: 'week' | 'month',
+    typeId?: string,
+  ): Promise<void>;
   /** A fixed block at "YYYY-MM-DD HH:mm". */
   event(title: string, at: string, minutes?: number): Promise<void>;
 }
@@ -31,9 +49,26 @@ export interface Seen {
   backlog: boolean;
 }
 
+/** A delivery, as a check reads it. */
+export interface SeenArtifact {
+  title: string;
+  done: boolean;
+  deadline?: string;
+  value?: number;
+  /** Its kind's name. */
+  kind?: string;
+  /** Its tasks' titles, done ones included. */
+  tasks: string[];
+}
+
 /** The day after the turn, and after Aplicar when there was a plan. */
 export interface State {
   cards: Seen[];
+  /** Every delivery, open ones in their order, then the delivered. */
+  artifacts: SeenArtifact[];
+  /** The catalogue's kinds, by name. */
+  kinds: string[];
+  goals: { kind: 'money' | 'count'; target: number; period: string }[];
   /** The tasks with an hour, in the list's order. */
   queue: string[];
   /** Every card titled like [title], any case or accent. */
@@ -66,6 +101,7 @@ export interface Case {
 }
 
 const FRIDAY = '2026-10-16';
+const OCTOBER_30 = '2026-10-30';
 const SATURDAY = '2026-10-17';
 
 /** A check that [title] is there exactly once, at [at] when given. */
@@ -90,6 +126,20 @@ function all(...checks: ((state: State) => true | string)[]) {
       if (result !== true) return result;
     }
     return true;
+  };
+}
+
+/** A check that exactly one delivery is like [title], and passes [ok]. */
+function delivery(
+  title: string,
+  ok: (it: SeenArtifact) => true | string = () => true,
+) {
+  return (state: State): true | string => {
+    const found = state.artifacts.filter((it) =>
+      it.title.toLowerCase().includes(title.toLowerCase()),
+    );
+    if (found.length !== 1) return `${found.length} deliveries like ${title}`;
+    return ok(found[0]);
   };
 }
 
@@ -409,5 +459,135 @@ export const CASES: Case[] = [
     said: ['o que tem no depois eu priorizo?', 'coloca o boleto hoje às 17h'],
     expect: 'plan',
     check: once('Pagar boleto', `${FRIDAY} 17:00`),
+  },
+
+  // ---- Deliveries, the catalogue and the goals (RFC agent-full-surface) --
+  // Each built around the verb's trap (its "Writes, verb by verb").
+  {
+    id: 'delivery-new-with-tasks',
+    why: 'new_artifact: a delivery and its tasks in one plan (forward refs)',
+    said: 'cria a entrega Curso de tarot pra 30/10 com duas tarefas: gravar as aulas, 2 horas, e editar, 1 hora',
+    expect: 'plan',
+    check: delivery('Curso de tarot', (it) =>
+      it.deadline !== OCTOBER_30
+        ? `due ${it.deadline ?? 'never'}`
+        : it.tasks.length !== 2
+          ? `${it.tasks.length} tasks: ${it.tasks.join(', ')}`
+          : true,
+    ),
+  },
+  {
+    id: 'delivery-twice',
+    why: 'new_artifact: "cria a Tese" when it exists makes a second one',
+    setup: async (w) => {
+      await w.artifact('Tese', '2026-11-30');
+    },
+    said: 'cria a entrega tese pra 30/11',
+    expect: 'either',
+    check: delivery('Tese'),
+  },
+  {
+    id: 'delivery-task-for-it',
+    why: 'new { artifact }: a task written into the wrong delivery',
+    setup: async (w) => {
+      await w.artifact('Tese', '2026-11-30');
+      await w.artifact('Curso de tarot', OCTOBER_30);
+    },
+    said: 'anota revisar bibliografia na tese, 1 hora, no depois eu priorizo',
+    expect: 'plan',
+    check: all(
+      once('Revisar bibliografia', undefined, 60),
+      delivery('Tese', (it) =>
+        it.tasks.some((t) => /bibliografia/i.test(t))
+          ? true
+          : `Tese has ${it.tasks.join(', ') || 'no tasks'}`,
+      ),
+    ),
+  },
+  {
+    id: 'deliver-open-tasks',
+    why: 'deliver: with tasks still open, the money counts now',
+    setup: async (w) => {
+      const tese = await w.artifact('Tese', '2026-11-30', { value: 1500 });
+      await w.task('Revisão final', 60, { backlog: true, artifact: tese });
+    },
+    said: 'entreguei a tese hoje',
+    expect: 'either',
+    check: delivery('Tese', (it) => (it.done ? true : 'still open')),
+  },
+  {
+    id: 'kind-named-loosely',
+    why: 'new_artifact { kind }: "um mapa" for Mapa astral',
+    setup: async (w) => {
+      await w.kind('Mapa astral', 'Atendimentos', 90, 250);
+      await w.kind('Leitura de tarot', 'Atendimentos', 60, 150);
+    },
+    said: 'novo mapa pra Ana, entrega dia 30/10',
+    expect: 'plan',
+    check: delivery('Ana', (it) =>
+      it.kind === 'Mapa astral' ? true : `kind ${it.kind ?? 'none'}`,
+    ),
+  },
+  {
+    id: 'goal-amount-unsaid',
+    why: 'new_goal: an amount nobody said',
+    said: 'cria uma meta de faturamento mensal',
+    expect: 'ask',
+  },
+  {
+    id: 'goal-said',
+    why: 'new_goal: money per month, as said',
+    said: 'quero faturar 4 mil por mês',
+    expect: 'plan',
+    check: (s) =>
+      s.goals.some(
+        (it) =>
+          it.kind === 'money' && it.target === 4000 && it.period === 'month',
+      )
+        ? true
+        : `goals: ${JSON.stringify(s.goals)}`,
+  },
+  {
+    id: 'kind-new',
+    why: 'new_kind: a kind with its shelf, length and price',
+    said: 'adiciona no catálogo o tipo leitura de tarot, em atendimentos, 1 hora, 150 reais',
+    expect: 'plan',
+    check: (s) =>
+      s.kinds.some((it) => /tarot/i.test(it))
+        ? true
+        : `kinds: ${s.kinds.join(', ') || 'none'}`,
+  },
+  {
+    id: 'remove-cascade',
+    why: 'remove_artifact: its six backlog tasks go with it, so it asks first',
+    setup: async (w) => {
+      const mudanca = await w.artifact('Mudança');
+      for (const title of [
+        'Caixas',
+        'Frete',
+        'Faxina',
+        'Chaves',
+        'Internet',
+        'Endereço',
+      ]) {
+        await w.task(title, 30, { backlog: true, artifact: mudanca });
+      }
+    },
+    said: 'apaga a entrega da mudança',
+    expect: 'ask',
+  },
+  {
+    id: 'delivery-reorder',
+    why: 'move_artifact: the queue of deliveries, by name',
+    setup: async (w) => {
+      await w.artifact('Tese', '2026-11-30');
+      await w.artifact('Curso de tarot', OCTOBER_30);
+    },
+    said: 'passa o curso de tarot na frente da tese',
+    expect: 'plan',
+    check: (s) => {
+      const open = s.artifacts.filter((it) => !it.done).map((it) => it.title);
+      return open[0] === 'Curso de tarot' ? true : `queue: ${open.join(' → ')}`;
+    },
   },
 ];

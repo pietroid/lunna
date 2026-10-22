@@ -124,9 +124,11 @@ diagrams in the same colours (`:::key` draws a node lime), GitHub alerts
 ```
 
 Open an issue with the **Create**, **Research** or **Improve** template
-(it adds the label). A LaunchAgent polls every minute and works one issue at
-a time, each phase a fresh `claude -p` in its own worktree
-(`../lunna-queue/<n>-<slug>`, branch `queue/<n>-<slug>`):
+(it adds the label). A LaunchAgent polls every minute and works up to two
+issues at a time (only one of them merging), so a short round never waits
+behind a long build; each phase is a fresh `claude -p` in its own worktree
+(`../lunna-queue/<n>-<slug>`, branch `queue/<n>-<slug>`). `ls` marks the ones
+running and for how long:
 
 ```
 issue ─▶ 👀 ─▶ design ─▶ draft PR + comment + push ─▶ you reply
@@ -156,7 +158,7 @@ page, or in *Files changed*. Each push carries the totals.
 
 **It runs what is merged.** The LaunchAgent runs `queue.mjs` from its own
 worktree, `<worktrees>/.runner`, detached at `origin/main` and moved to
-its tip after every pass; a changed `queue.mjs` restarts it. Before this,
+its tip after every pass; a changed `queue.mjs` starts no new run and restarts it once none is going. Before this,
 it ran from the main checkout, which nobody pulled, so merged changes to
 the queue (the page link, an RFC's build issue) never ran. Env files for
 the issue worktrees still come from the main checkout (the one whose
@@ -209,7 +211,9 @@ moves to main after each pass and the new `queue.mjs` restarts it.
 - **Only the owner.** The repo is public: issues and comments by anyone
   else are never read.
 - **Limits.** A run that hits the usage limit pauses until the window
-  resets and picks up from its files. The Mac must be awake (`caffeinate`
+  resets and picks up from its files. Two runs at once spend the window
+  twice as fast, and a run's before/after window figures include the other
+  run's use. The Mac must be awake (`caffeinate`
   holds it while a run goes; closing the lid still sleeps it).
 - **State** is in `.git/queue/`: one JSON per issue, the stream-json log of
   every run in `logs/`, the agent's own output in `daemon.log`.

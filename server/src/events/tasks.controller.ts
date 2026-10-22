@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -117,14 +116,7 @@ export class TasksController {
   ): Promise<Timeline> {
     const trace = Trace.start(user.id);
     trace.log('turn.begin', { kind: 'task' });
-    const task = requireTask(dto);
-    if (
-      task.artifactId !== undefined &&
-      (await this.artifacts.get(owner(user), task.artifactId)) === undefined
-    ) {
-      throw new BadRequestException('Essa entrega não existe mais.');
-    }
-    await this.layout.createTask(owner(user), task, trace);
+    await this.layout.createTask(owner(user), requireTask(dto), trace);
 
     return this._answer(user, days);
   }

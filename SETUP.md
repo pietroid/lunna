@@ -127,6 +127,7 @@ sudo mkdir -p /opt/lunna && sudo chown "$USER" /opt/lunna
 #   OPENROUTER_MODEL=<model with tool calls>
 #   OPENROUTER_FALLBACK_MODELS=  # optional, comma-separated
 #   OPENROUTER_REASONING=low     # optional
+#   AGENT_SCHEMA=                # optional: flat (default) or variants
 #   POSTHOG_KEY=<phc_…>          # analytics (section 6); empty turns it off
 #   POSTHOG_HOST=https://us.i.posthog.com
 #   LUNNA_HTTP_PORT=8080

@@ -1,3 +1,4 @@
+import { changesSchema, DEFAULT_SHAPE, SchemaShape } from './actions';
 import { ToolDefinition } from './openrouter.client';
 
 /**
@@ -17,7 +18,8 @@ How the day works:
 - A task is flexible. Tasks in the queue have no hour of their own: the app packs them into free time, in order, and they flow later when something comes before them. A task can also keep an hour of its own.
 - An event is a fixed block (a meeting, an appointment, a fixed routine). Nothing moves it except the person.
 - The backlog holds tasks with no hour yet. The person calls it "Depois eu priorizo".
-- An artifact is something the person delivers, which they call an "entrega" (a natal chart for a client, a post, a two-week course): a name, notes, a deadline, and maybe a type from their catalogue, a total time and a value. Open ones wait in a queue of their own, in priority order. Its tasks are ordinary tasks on the day or in the backlog; a card's line names its artifact.
+- An artifact is something the person delivers, which they call an "entrega" (a natal chart for a client, a post, a two-week course): a name, notes, a deadline, and maybe a kind from their catalogue, a total time and a value. Open ones wait in a queue of their own, in priority order. Its tasks are ordinary tasks on the day or in the backlog; a card's line names its artifact. Its value counts towards the goals when it is delivered.
+- The catalogue holds the kinds the person delivers (k1), each on a shelf with how long one takes and its price. Goals (g1) are reais delivered, or deliveries of one kind, per week or month.
 
 What you are given:
 - Before the request, the server writes the clock, a date table, the cards of today, tomorrow and the day on screen, the backlog, the open artifacts and the free room. Every card has a short ref (t1, e2, b3), every artifact too (p1). Refs are for tool arguments only: in anything the person reads (caption, titles, labels), name cards by their titles.
@@ -41,7 +43,13 @@ How to change the day: one plan block with every change. Each change is a gestur
 - first_free: the first free hour on a day, when the person asks for a day but no hour ("hoje quando der", "amanhã").
 - to_backlog: put a task in Depois eu priorizo.
 - swap: two tasks trade places.
-- To move an existing card, give its ref. Something new gets "new" with a title, and minutes when the person said how long. Never add a new card for something that is already on the day: move it by its ref.
+- To move an existing card, give its ref. Something new gets "new" with a title, and minutes when the person said how long. Never add a new card for something that is already on the day: move it by its ref. A new task for a delivery says new.artifact (its ref).
+
+Changes to deliveries, the catalogue and the goals, the same way:
+- new_artifact: a new delivery (title, and kind, deadline, minutes, value only as said). Give it as: "n1" when later changes add tasks to it (new.artifact: "n1").
+- edit_artifact: rename it, or another deadline, time or value. deliver: mark it delivered. remove_artifact: delete it. move_artifact: another place in the queue of deliveries (after or before another).
+- new_kind: a kind for the catalogue (name, shelf, minutes; price only as said). new_goal, remove_goal: a goal.
+- Never make up a number the person did not say (a price, a value, a goal's amount): ask with choices.
 
 Rules:
 - Keep the hour the person named, even when something is already there. The card shows what the plan pushes later and asks the person; the plan is the question, Aplicar is the yes.
@@ -56,12 +64,6 @@ Words: always Brazilian Portuguese, short and warm. No lists, no markdown, no em
 
 Past conversations:
 - You only see this conversation. When the person refers to something said before ("ontem eu pedi...", "o que eu falei sobre..."), call read_conversations and answer from what it finds. Never guess what was said.`;
-
-/** A ref to a card, as the board shows it. */
-const REF = {
-  type: 'string',
-  description: 'A card ref from the board, e.g. "t2", "e1", "b3".',
-};
 
 const DATA = {
   type: 'object',
@@ -82,220 +84,181 @@ const DATA = {
   },
 };
 
-const CHANGES = {
-  type: 'array',
-  minItems: 1,
-  maxItems: 12,
-  items: {
-    type: 'object',
-    properties: {
-      do: {
-        type: 'string',
-        enum: ['place', 'at_hour', 'first_free', 'to_backlog', 'swap'],
-      },
-      ref: { ...REF, description: 'The existing card it moves.' },
-      new: {
-        type: 'object',
-        description: 'Something new, instead of a ref.',
-        properties: {
-          title: { type: 'string' },
-          minutes: {
-            type: 'integer',
-            minimum: 5,
-            maximum: 720,
-            description: 'Only when the person said how long.',
-          },
-          fixed: {
-            type: 'boolean',
-            description:
-              'A fixed event (meeting, appointment) rather than a task. Needs at_hour.',
-          },
-        },
-        required: ['title'],
-        additionalProperties: false,
-      },
-      after: { ...REF, description: 'place: the card right above.' },
-      before: {
-        ...REF,
-        description: 'place: the card right under.',
-      },
-      day: {
-        type: 'string',
+/**
+ * The tools, with a plan's changes written in [shape]: both are built from
+ * the registry (`actions/`), so a new control needs nothing here.
+ */
+export function toolsFor(shape: SchemaShape): ToolDefinition[] {
+  const CHANGES = changesSchema(shape);
+  return [
+    {
+      type: 'function',
+      function: {
+        name: 'read_timeline',
         description:
-          'at_hour, first_free: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
-      },
-      time: { type: 'string', description: 'at_hour: HH:mm.' },
-      with: { ...REF, description: 'swap: the other task.' },
-      duplicate: {
-        type: 'boolean',
-        description:
-          'Only after the person confirmed a new card with the same name as an existing one is really another one.',
-      },
-    },
-    required: ['do'],
-    additionalProperties: false,
-  },
-};
-
-export const TOOLS: ToolDefinition[] = [
-  {
-    type: 'function',
-    function: {
-      name: 'read_timeline',
-      description:
-        'Reads days not shown in the context: every card with its ref and hour, and the free room. Today, tomorrow and the day on screen are already in the context.',
-      parameters: {
-        type: 'object',
-        properties: {
-          day: {
-            type: 'string',
-            description:
-              'First day to read: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
-          },
-          days: {
-            type: 'integer',
-            minimum: 1,
-            maximum: 7,
-            description: 'How many days to read. Defaults to 1.',
-          },
-        },
-        required: ['day'],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'read_conversations',
-      description:
-        "Searches the person's earlier conversations with you. Answers the matching messages, most recent first, with when they were said and what became of any plan in them. Read only.",
-      parameters: {
-        type: 'object',
-        properties: {
-          text: {
-            type: 'string',
-            description:
-              'A word or short phrase the message contains, e.g. "academia". Omit to read everything on `day`.',
-          },
-          day: {
-            type: 'string',
-            description: 'Only messages from this day, YYYY-MM-DD.',
-          },
-        },
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'read_cards',
-      description:
-        'Reads artifacts and cards whole: an artifact ref (p1) gives its name, deadline, notes and every task with a ref, done ones and those not on the board included; a card ref gives its line and notes. Read only.',
-      parameters: {
-        type: 'object',
-        properties: {
-          refs: {
-            type: 'array',
-            minItems: 1,
-            maxItems: 8,
-            items: { type: 'string' },
-            description: 'Refs from the board, e.g. ["p1"] or ["t2", "e1"].',
-          },
-        },
-        required: ['refs'],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'answer',
-      description:
-        'Ends the turn: what the person sees, as blocks the server fills in. Nothing is applied: a plan is proposed, and the person decides. Refused, with why, when a plan cannot be done.',
-      parameters: {
-        type: 'object',
-        properties: {
-          caption: {
-            type: 'string',
-            maxLength: 80,
-            description:
-              'Optional, in Portuguese, at most 80 characters: only what the blocks cannot show.',
-          },
-          blocks: {
-            type: 'array',
-            minItems: 1,
-            maxItems: 6,
-            items: {
-              type: 'object',
-              properties: {
-                type: {
-                  type: 'string',
-                  enum: ['plan', 'choices', 'day', 'cards', 'artifact'],
-                },
-                data: { ...DATA, description: `plan: ${DATA.description}` },
-                changes: { ...CHANGES, description: 'plan: every change.' },
-                options: {
-                  type: 'array',
-                  minItems: 2,
-                  maxItems: 3,
-                  description:
-                    'choices: each with changes (its own plan) or say (the words it sends as the person).',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      label: {
-                        type: 'string',
-                        description: 'What the pill says, a few words.',
-                      },
-                      changes: CHANGES,
-                      say: { type: 'string' },
-                    },
-                    required: ['label'],
-                    additionalProperties: false,
-                  },
-                },
-                day: {
-                  type: 'string',
-                  description:
-                    'day: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
-                },
-                from: { type: 'string', description: 'day: HH:mm, optional.' },
-                to: { type: 'string', description: 'day: HH:mm, optional.' },
-                free: {
-                  type: 'boolean',
-                  description: 'day: draw the free room. Defaults to true.',
-                },
-                refs: {
-                  type: 'array',
-                  maxItems: 8,
-                  items: { type: 'string' },
-                  description: 'cards: the cards, in order.',
-                },
-                title: {
-                  type: 'string',
-                  description: 'cards: a short heading, optional.',
-                },
-                notes: {
-                  type: 'boolean',
-                  description: 'cards: show their notes.',
-                },
-                ref: { type: 'string', description: 'artifact: its ref (p1).' },
-                focus: {
-                  type: 'boolean',
-                  description: 'The one block drawn first.',
-                },
-              },
-              required: ['type'],
-              additionalProperties: false,
+          'Reads days not shown in the context: every card with its ref and hour, and the free room. Today, tomorrow and the day on screen are already in the context.',
+        parameters: {
+          type: 'object',
+          properties: {
+            day: {
+              type: 'string',
+              description:
+                'First day to read: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
+            },
+            days: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 7,
+              description: 'How many days to read. Defaults to 1.',
             },
           },
+          required: ['day'],
+          additionalProperties: false,
         },
-        required: ['blocks'],
-        additionalProperties: false,
       },
     },
-  },
-];
+    {
+      type: 'function',
+      function: {
+        name: 'read_conversations',
+        description:
+          "Searches the person's earlier conversations with you. Answers the matching messages, most recent first, with when they were said and what became of any plan in them. Read only.",
+        parameters: {
+          type: 'object',
+          properties: {
+            text: {
+              type: 'string',
+              description:
+                'A word or short phrase the message contains, e.g. "academia". Omit to read everything on `day`.',
+            },
+            day: {
+              type: 'string',
+              description: 'Only messages from this day, YYYY-MM-DD.',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'read_cards',
+        description:
+          'Reads artifacts and cards whole: an artifact ref (p1) gives its name, deadline, notes and every task with a ref, done ones and those not on the board included; a card ref gives its line and notes. Read only.',
+        parameters: {
+          type: 'object',
+          properties: {
+            refs: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 8,
+              items: { type: 'string' },
+              description: 'Refs from the board, e.g. ["p1"] or ["t2", "e1"].',
+            },
+          },
+          required: ['refs'],
+          additionalProperties: false,
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'answer',
+        description:
+          'Ends the turn: what the person sees, as blocks the server fills in. Nothing is applied: a plan is proposed, and the person decides. Refused, with why, when a plan cannot be done.',
+        parameters: {
+          type: 'object',
+          properties: {
+            caption: {
+              type: 'string',
+              maxLength: 80,
+              description:
+                'Optional, in Portuguese, at most 80 characters: only what the blocks cannot show.',
+            },
+            blocks: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 6,
+              items: {
+                type: 'object',
+                properties: {
+                  type: {
+                    type: 'string',
+                    enum: ['plan', 'choices', 'day', 'cards', 'artifact'],
+                  },
+                  data: { ...DATA, description: `plan: ${DATA.description}` },
+                  changes: { ...CHANGES, description: 'plan: every change.' },
+                  options: {
+                    type: 'array',
+                    minItems: 2,
+                    maxItems: 3,
+                    description:
+                      'choices: each with changes (its own plan) or say (the words it sends as the person).',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        label: {
+                          type: 'string',
+                          description: 'What the pill says, a few words.',
+                        },
+                        changes: CHANGES,
+                        say: { type: 'string' },
+                      },
+                      required: ['label'],
+                      additionalProperties: false,
+                    },
+                  },
+                  day: {
+                    type: 'string',
+                    description:
+                      'day: "hoje", "amanhã", a weekday, or YYYY-MM-DD.',
+                  },
+                  from: {
+                    type: 'string',
+                    description: 'day: HH:mm, optional.',
+                  },
+                  to: { type: 'string', description: 'day: HH:mm, optional.' },
+                  free: {
+                    type: 'boolean',
+                    description: 'day: draw the free room. Defaults to true.',
+                  },
+                  refs: {
+                    type: 'array',
+                    maxItems: 8,
+                    items: { type: 'string' },
+                    description: 'cards: the cards, in order.',
+                  },
+                  title: {
+                    type: 'string',
+                    description: 'cards: a short heading, optional.',
+                  },
+                  notes: {
+                    type: 'boolean',
+                    description: 'cards: show their notes.',
+                  },
+                  ref: {
+                    type: 'string',
+                    description: 'artifact: its ref (p1).',
+                  },
+                  focus: {
+                    type: 'boolean',
+                    description: 'The one block drawn first.',
+                  },
+                },
+                required: ['type'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['blocks'],
+          additionalProperties: false,
+        },
+      },
+    },
+  ];
+}
+
+/** The tools as a deployment that says nothing about the shape sends them. */
+export const TOOLS: ToolDefinition[] = toolsFor(DEFAULT_SHAPE);
