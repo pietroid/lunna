@@ -1,63 +1,93 @@
 # Multica on the Mac, beside the GitHub queue
 
-2026-10-21 · RFC · revised 2026-10-22 after review (issue #18) · deep-research pass not run
+2026-10-21 · RFC · revised 2026-10-22 twice after review (issue #18) · deep-research pass not run
 
 ## In one minute
 
-**Run Multica on the Mac as a second, separate queue: its own backlog,
-its own agent, the same repo. Each issue lives in one queue only, so the
-two never run the same work. Compare them for two weeks.**
+**Run Multica as a second, separate queue, served at
+`multica.pietroteruya.dev` through a Cloudflare tunnel, signed in with
+your email only. The Mac hosts the server and the first agent; any other
+machine can add an agent by dialing the same address.**
 
-- **Do:** the [setup list](#the-setup-list) below: about an evening, no
-  code in this repo.
-- **Do:** run Multica's daemon as a separate macOS user (`multica`), not
-  as you. It starts `claude` with permission checks off.
-- **Do:** keep a short [scorecard](#the-scorecard) for both, so "who wins"
-  has an answer.
-- **Not needed:** the mirror from the first draft (ruled out by your
-  decision), Multica's GitHub App, a public URL.
-- **You decide:** what Multica's agent hands back: **a PR on GitHub**
-  (recommended) or only a local branch.
+- **Do:** the [setup list](#the-setup-list): about an evening, no code in
+  this repo.
+- **Do:** run each daemon as a separate `multica` user, on every machine.
+  It starts `claude` with permission checks off, and on a public URL your
+  login is the only thing between the internet and that shell.
+- **Do:** lock sign-in to one address (`ALLOWED_EMAILS`, no sign-up) and
+  send the codes by email (Gmail SMTP), so the iPhone can sign in away
+  from the Mac.
+- **Do:** keep a [scorecard](#the-scorecard) for both queues for two weeks.
+- **Not needed:** Tailscale, a password, Cloudflare Access, opening a port.
+- **You decide:** the iPhone app or the web app on the home screen
+  (both work; recommended: start with the web app, build the app if you
+  miss notifications).
 
 > **Decision (2026-10-22):** Write succint command to use multica in
 > parallel with github. We will test both and see who wins. No problem of
 > having separate backlogs and ticketing system. Just write me a list of
 > what I need to setup
 
+> **Decision (2026-10-22):** proceed with that and I want to use the
+> iphone and the webapp. I can serve it on multica.pietroteruya.dev for
+> example, and it should have authentication with a password or account
+> (if that's possible). Consider that I will run multica on other places
+
+> **A:** Done, with one correction: **Multica has no password login.**
+> It signs in with an account, two ways: a 6-digit code sent to your
+> email, or Google on the web ([auth setup](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/auth-setup.mdx)).
+> The iPhone app only does the email code (`apps/mobile/app/(auth)/login.tsx`),
+> so the setup uses the code everywhere and adds Google as an option.
+> The code is a fair lock for one person: it lives 10 minutes, dies after
+> 5 wrong tries, and one is sent per minute
+> (`server/internal/handler/auth.go:362`, `verification_code.sql:11`), and
+> only your address can ever get an account. Serving it publicly replaces
+> Tailscale (steps 1, 2 and 8 changed), and "other places" became
+> [Running it elsewhere](#running-it-elsewhere): more machines as agents,
+> or the server itself moved.
+
 ## Ideas to keep
 
 1. **"One queue, one writer."** Separate backlogs keep that true: an
-   issue is in GitHub *or* in Multica, never both, so no run happens
-   twice. See [one writer per queue](../concepts.md#one-writer-per-queue).
-   *Deeper:* the shared thing left is the Claude subscription. Both
-   queues spend the same weekly limit, so cap Multica at one run at a
-   time.
+   issue is in GitHub *or* in Multica, never both. See
+   [one writer per queue](../concepts.md#one-writer-per-queue). The
+   shared thing left is the Claude subscription: every daemon spends the
+   same weekly limit, so cap each one at one run.
 2. **"The boundary is the daemon user."** Multica,
    [Security model](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/security-model.mdx):
    "a run can read your SSH keys, edit your shell profile, and delete your
-   documents". It recommends "a dedicated Unix user" as the lightest fix.
-   *For us:* a `multica` user with its own `claude` login and a GitHub
-   token for `pietroid/lunna` only. *Deeper than*
+   documents"; the lightest fix is "a dedicated Unix user". *For us:* a
+   `multica` user on every machine, with its own `claude` login and a
+   GitHub token for `pietroid/lunna` only. *Deeper than*
    [skip permissions only inside a box](../concepts.md#skip-permissions-only-inside-a-box).
-3. **"A gate in code can't be skipped; a gate in a prompt can."** This is
-   now what the trial measures. The queue's "approve" is a regex
-   (`queue.mjs:44`). In Multica, stopping for you is a line in the agent's
-   instructions. See [workflow before agent](../concepts.md#workflow-before-agent).
-4. **"Reach it privately before you open a port."** Tailscale Serve: only
-   your devices can open it. See
-   [private network before public port](../concepts.md#private-network-before-public-port).
+3. **"A gate in code can't be skipped; a gate in a prompt can."** What
+   the trial measures. The queue's "approve" is a regex (`queue.mjs:44`);
+   in Multica, stopping for you is a line in the agent's instructions. See
+   [workflow before agent](../concepts.md#workflow-before-agent).
+4. **"On a public URL, the login is a shell."** Anyone who signs in can
+   assign an issue to an agent that runs code on the Mac with no
+   questions asked. So the login gets the care a shell would: one
+   allowed address, no sign-up, codes that only your inbox receives.
+   *Deeper than* [private network before public port](../concepts.md#private-network-before-public-port),
+   which this RFC first followed and you overrode: a public port is fine
+   once you know what it opens.
+5. **"Everything dials out, so nothing is tied to a machine."** The
+   tunnel connector and every daemon open their own connections to the
+   outside ([Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/):
+   "outbound-only connections"). No port opens on the Mac, and the name
+   `multica.pietroteruya.dev` stays the same when the server moves. *New.*
 
 ## The setup list
 
 `you$` is your account; `multica$` is the agent's (`sudo -iu multica`).
+`<host>` is `multica.pietroteruya.dev`.
 
-**1. Docker and Tailscale (you)**
+**1. Docker and the tunnel connector (you)**
 
 ```bash
-you$ brew install --cask orbstack tailscale    # open both once; sign in to Tailscale
+you$ brew install --cask orbstack       # open it once; it starts at login
+you$ brew install cloudflared
 ```
-
-Install Tailscale on the phone too, with the same account.
 
 **2. The server (you, once)**
 
@@ -71,36 +101,67 @@ In `.env`, set:
 ```
 JWT_SECRET=<output of: openssl rand -hex 32>
 MULTICA_IMAGE_TAG=v0.6.5
-ALLOWED_EMAILS=<your email>
 DO_NOT_TRACK=1
+
+FRONTEND_ORIGIN=https://multica.pietroteruya.dev
+CORS_ALLOWED_ORIGINS=https://multica.pietroteruya.dev
+MULTICA_PUBLIC_URL=https://multica.pietroteruya.dev
+MULTICA_TRUSTED_PROXIES=127.0.0.1/32
+
+ALLOW_SIGNUP=false
+ALLOWED_EMAILS=<your email>
+WORKSPACE_CREATION_ALLOWED_EMAILS=<your email>
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=<your gmail>
+SMTP_PASSWORD=<a Gmail app password>
+SMTP_FROM_EMAIL=<your gmail>
 ```
 
-Then start it:
+The app password comes from Google Account → Security → App passwords
+(it needs 2-step verification on). Keep `JWT_SECRET` somewhere safe: it
+signs every session and token, and a moved server needs the same one.
 
 ```bash
 you$ docker compose -f docker-compose.selfhost.yml up -d
-you$ tailscale serve --bg 3000
 ```
 
-The second command gives you `https://<mac>.<tailnet>.ts.net`.
+**3. The tunnel (Cloudflare dashboard, you)**
 
-**3. First sign-in (you)**
+Zero Trust → Networks → Tunnels → **Create a tunnel** → Cloudflared, name
+it `mac`. It shows an install command; run it on the Mac:
 
-- Open `http://localhost:3000` and enter your email. With no email
-  service set up, the code shows up in the server log:
-  `docker compose -f docker-compose.selfhost.yml logs backend | grep "Verification code"`.
+```bash
+you$ sudo cloudflared service install <token>   # a LaunchDaemon: starts at boot
+```
+
+Then add two public hostnames, **in this order** (the first match wins):
+
+| Subdomain | Domain | Path | Service |
+|---|---|---|---|
+| `multica` | `pietroteruya.dev` | `^/ws(/.*)?$` | `http://localhost:8080` |
+| `multica` | `pietroteruya.dev` | (empty) | `http://localhost:3000` |
+
+The web app sends `/api` to the backend by itself; only the websocket
+needs the first row
+([same-origin layout](https://github.com/multica-ai/multica/blob/main/SELF_HOSTING_ADVANCED.md#same-origin-recommended)).
+This is a second tunnel; the Pi's stays as it is.
+
+**4. First sign-in (you)**
+
+- Open `https://<host>`, enter your email, type the code from your inbox.
 - Create the workspace, then a project `Lunna`.
-- Set `ALLOW_SIGNUP=false` in `.env` and run `up -d` again.
-- In **Settings → API Token**, make a token for the daemon (`mul_…`).
+- In **Settings → API Token**, make a token for the Mac's daemon (`mul_…`).
 
-**4. The agent's macOS user (you, once)**
+**5. The agent's macOS user (you, once)**
 
 ```bash
 you$ sudo sysadminctl -addUser multica -fullName "Multica agent" -password '<pick one>'
 you$ sudo -iu multica
 ```
 
-**5. Tools and credentials for that user (`multica$`)**
+**6. Tools and credentials for that user (`multica$`)**
 
 ```bash
 multica$ curl -fsSL https://claude.ai/install.sh | bash   # then run `claude` once and /login
@@ -111,16 +172,15 @@ multica$ git config --global user.name "Multica agent"
 multica$ git config --global user.email "<your noreply address>"
 ```
 
-`brew`, `gh` and `node` from `/opt/homebrew/bin` work as they are. The
-repo needs `flutter` and `npm` on that user's `PATH` too.
+The repo also needs `flutter` and `npm` on that user's `PATH`.
 
-**6. The daemon (`multica$`)**
+**7. The daemon (`multica$`)**
 
 ```bash
 multica$ brew install multica-ai/tap/multica    # if `multica` isn't there yet
-multica$ multica config set server_url http://localhost:8080
-multica$ multica config set app_url http://localhost:3000
-multica$ multica login --token                  # the mul_ token from step 3
+multica$ multica config set server_url http://localhost:8080   # same machine: skip the tunnel
+multica$ multica config set app_url https://multica.pietroteruya.dev
+multica$ multica login --token                  # the mul_ token from step 4
 multica$ MULTICA_DAEMON_MAX_CONCURRENT_TASKS=1 multica daemon start
 multica$ multica daemon status
 ```
@@ -129,86 +189,155 @@ multica$ multica daemon status
 again. `daemon autostart` installs a LaunchAgent, which only starts when
 that user logs in, and the `multica` user never does.
 
-**7. The agent and the repo (web app)**
+**8. The agent and the repo (web app)**
 
-- **Settings → Runtimes**: the Mac should show up, as user `multica`.
-- **Settings → Code**: add `https://github.com/pietroid/lunna.git`.
-- Add it to the project `Lunna` as a resource (GitHub repository). Each run
-  then gets its own worktree and its own branch, `agent/<agent>/<issue>`.
-  Multica never merges it.
-- **Settings → Agents**: create `lunna` with the Claude Code runtime, and
-  set its concurrency to 1. Give it these instructions:
+- **Settings → Runtimes**: the Mac shows up, as user `multica`.
+- **Settings → Code**: add `https://github.com/pietroid/lunna.git`, and
+  add it to the project `Lunna` as a repository. Each run gets its own
+  worktree and branch, `agent/<agent>/<issue>`; Multica never merges.
+- **Settings → Agents**: create `lunna-mac` on the Mac's runtime, with the
+  Claude Code tool and concurrency 1. Its instructions:
 
   > Read AGENTS.md first. For an issue that asks for research, use
   > /research; for a feature, use /create. Stop at each gate the skill
   > names and wait for my comment. When I say "approve", push the branch
   > and open a PR with `gh pr create`, labelled `multica`. Never merge.
 
-**8. The phone**
+**9. The iPhone**
 
-Open the `ts.net` address in Safari and add it to the home screen.
+- **Web app:** open `https://<host>` in Safari → Share → Add to Home
+  Screen. Sign in with the code.
+- **Native app** (optional): Multica isn't on the App Store; it's built
+  from source with Xcode, on the Mac, with the phone on USB
+  ([Mobile app](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx)):
 
-**9. Try it**
+  ```bash
+  you$ cd ~/multica && pnpm install
+  you$ printf 'EXPO_PUBLIC_API_URL=https://multica.pietroteruya.dev\nEXPO_PUBLIC_WEB_URL=https://multica.pietroteruya.dev\n' \
+         > apps/mobile/.env.production.local
+  you$ pnpm ios:mobile:device:prod:release
+  ```
 
-Create an issue in Multica, assign it to `lunna`, and answer it from the
-phone. Leave GitHub issues to the queue, and never file the same work in
-both.
+  With a free Apple ID it stops opening after 7 days; run the last line
+  again to re-sign. The app derives its websocket from the API address
+  (`wss://<host>/ws`, `apps/mobile/data/realtime/realtime-provider.tsx:54`),
+  so step 3's first row serves it too.
+
+**10. Try it**
+
+Create an issue in Multica, assign it to `lunna-mac`, answer it from the
+phone. Leave GitHub issues to the queue; never file the same work in both.
+
+## Running it elsewhere
+
+**Another machine as an agent** (a second Mac, a Linux box, the Pi). The
+server stays where it is; the new machine dials it:
+
+1. Steps 5 and 6 there: a `multica` user (on Linux, `sudo useradd -m
+   multica`, or a container), its own `claude` login and repo token.
+2. In the web app, a new API token for it.
+3. As that user:
+
+   ```bash
+   multica$ multica config set server_url https://multica.pietroteruya.dev
+   multica$ multica config set app_url https://multica.pietroteruya.dev
+   multica$ multica login --token
+   multica$ MULTICA_DAEMON_MAX_CONCURRENT_TASKS=1 multica daemon start
+   ```
+
+4. It shows up as a new runtime. An agent is bound to one runtime
+   ([Agents](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/agents.mdx)),
+   so create `lunna-<machine>` with the same instructions and assign
+   issues to whichever should run them. A machine that is off keeps its
+   issues waiting; nothing is lost.
+
+A machine that should talk to a second Multica server too (a work one,
+say) uses a profile: `multica setup self-host --profile work
+--server-url … --app-url …`, then `multica daemon start --profile work`
+([CLI and daemon](https://github.com/multica-ai/multica/blob/main/CLI_AND_DAEMON.md#profiles)).
+
+**The server moved** (off the Mac, onto something always on): copy the
+database and `.env` (the same `JWT_SECRET`, or every token dies), start
+the stack there, install a tunnel connector there with the same two
+hostnames, and stop the Mac's. Daemons elsewhere keep working, since they
+only know the name. The Mac's own daemon then points at the public URL,
+like any other. The exact dump/restore commands are not written here; ask
+for them when it happens.
 
 ## The scorecard
 
-Two weeks, one row per issue, kept in `data/scorecard.md`:
+Two weeks, one row per issue, in `data/scorecard.md`:
 
 | Issue | Queue | Ask → PR (hours) | Your comments | Rounds | Merged as is? | Went wrong |
 |---|---|---|---|---|---|---|
 
 At the end, also check: did Multica ever skip a gate, did a run touch
-anything outside its worktree, and which app you opened more on the phone.
-The queue writes each run's cost in its PR. For Multica, read it from the
-run details if they show it (not checked).
+anything outside its worktree, which app you opened more on the phone,
+and whether any sign-in arrived that wasn't you (the backend log).
 
 ## Decisions for you
 
 1. **What Multica's agent hands back.**
    - (a) **A PR on GitHub, labelled `multica`** *(recommended)*: CI runs
-     and you merge in the same place, so the comparison is fair. Cost: one
-     extra token, scoped to the repo.
-   - (b) Only the local `agent/…` branch. You review with `git diff` on
-     the Mac and merge by hand.
-2. **Where the daemon runs.**
-   - (a) **A `multica` macOS user** *(recommended)*: the lightest
-     boundary the docs offer.
-   - (b) As you. Cost: runs can reach your keys, `~/.claude` and every
-     other repo you have.
-3. **Which phone app.** (a) **The web app on the home screen**
-   *(recommended)*. (b) The iOS app built in Xcode: it expires after 7
-   days with a free Apple ID.
+     and you merge in the same place, so the comparison is fair.
+   - (b) Only the local `agent/…` branch, reviewed with `git diff`.
+2. **Which iPhone client.**
+   - (a) **The web app on the home screen first** *(recommended)*: no
+     Xcode, no re-signing. Cost: whether it fits a phone screen is not
+     checked.
+   - (b) The native app too: built once, re-signed every 7 days on a
+     free Apple ID (yearly with the $99 developer program).
+3. **Google sign-in on the web.**
+   - (a) **Email code only** *(recommended)*: one way in, the same on web
+     and phone.
+   - (b) Add Google: an OAuth client in Lunna's Google Cloud project,
+     redirect `https://<host>/auth/callback`, `GOOGLE_CLIENT_ID` and
+     `GOOGLE_CLIENT_SECRET` in `.env`. The phone app still uses the code.
+4. **A second lock in front (Cloudflare Access).**
+   - (a) **No** *(recommended)*: the iPhone app and the daemons on other
+     machines can't pass Access's login page, so they would need holes
+     in it for `/api` and `/ws`, which is where everything goes anyway.
+   - (b) Yes, on the web only, if you drop the native app and keep the
+     other daemons on `localhost` (i.e. no other machines).
 
 ## Decided unattended
 
-- **The mirror is gone.** You chose separate backlogs, so the first
-  draft's mirror (status, gate comment and answers kept in sync between
-  the two) is no longer needed. Its dry run and script were removed from
-  the folder; they are still in the branch history.
-- **The agent's instructions name the skills.** Multica reads skills from
-  `.claude/skills/` (ref 9), so `/research` and `/create` work there. The
-  gates are only as strong as the prompt (idea 3), which is part of what
-  the trial tests.
-- **One run at a time**, on both the daemon and the agent, because the
-  queue uses the same Claude subscription.
+- **Same host for app and API** (`multica.pietroteruya.dev`, the
+  websocket by path), not `api.` + `app.`. Multica calls it the layout
+  "least likely to break and the safer one": the session cookie stays on
+  one host.
+- **Gmail SMTP for the codes**, not Resend: Resend needs a verified
+  sending domain; your Gmail needs one app password. Without either, the
+  code only appears in the server log on the Mac.
+- **Sign-up off from the start.** `ALLOWED_EMAILS` lets your address in
+  even with `ALLOW_SIGNUP=false` (`auth.go:264`), so there is no window
+  where anyone can register.
+- **The Mac's daemon talks to `localhost`**, so it keeps running when
+  the tunnel or the internet is down.
+- **One agent per machine** (`lunna-mac`, `lunna-<machine>`), since an
+  agent is bound to one runtime.
+- **One run at a time** on every daemon and agent: all share one Claude
+  subscription.
 - **v0.6.5 is pinned** (released 2026-10-21; Multica releases "most
   weekdays"). Upgrade on purpose.
-- **Nothing was installed.** Every command comes from Multica's docs at
-  commit `fd6fc2c` (2026-10-23) and was not run on the Mac.
+- **The mirror from the first draft is gone** (separate backlogs); it is
+  in the branch history.
+- **Phase 4 (deep research) was not run**: the review didn't ask for it,
+  and every new claim was read in Multica's source at commit `fd6fc2c`.
+- **Nothing was installed or run on the Mac.**
 
 ## Deeper
 
-### How the two run side by side
+### How it runs
 
 ```
-GitHub issue ──▶ .tool/queue (you, auto mode) ──▶ PR
-Multica issue ─▶ multica daemon (user multica, bypassPermissions)
-                   └▶ worktree of pietroid/lunna ─▶ agent/lunna/<issue> ─▶ PR (label multica)
-both: one Claude subscription · phone: GitHub app + ntfy | Multica web over Tailscale
+iPhone (web or app) ─┐
+browser anywhere ────┼─ https://multica.pietroteruya.dev ─ Cloudflare ─┐
+daemon, other machine┘                                                 │ tunnel (dials out)
+                                         Mac: cloudflared ─┬─ /ws → :8080 backend (Go)
+                                                           └─ /*  → :3000 web (Next; /api → :8080)
+                                         Mac: daemon (user multica) ─ localhost:8080
+GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunna-<machine>/<issue> ─▶ PR (label multica)
 ```
 
 ### Multica, as read for this RFC
@@ -216,43 +345,51 @@ both: one Claude subscription · phone: GitHub app + ntfy | Multica web over Tai
 | | What it does | Ref |
 |---|---|---|
 | Server | Go API `:8080`, Next.js `:3000`, Postgres 17, bound to 127.0.0.1 | 2, 3 |
-| Repo | Repository resource: a worktree per run, a branch per issue, never merged | 19 |
+| Same origin | Next rewrites `/api`, `/auth`, `/uploads` to the backend; `/ws` is not rewritten | 21 |
+| Origins | `CORS_ALLOWED_ORIGINS` also gates the websocket; default is localhost only (403 otherwise) | 21 |
+| Login | Email code (6 digits, 10 min, 5 tries) or Google on web; no password | 22, `auth.go` |
+| Sign-up | `ALLOWED_EMAILS` wins over `ALLOW_SIGNUP=false`; existing users can always sign in | `auth.go:253` |
+| iPhone | Built from source; API address baked in by `.env.production.local`; email code only | 10 |
 | Daemon | `claude --permission-mode bypassPermissions`, as the user who starts it | 6 |
-| Limits | 20 runs per daemon and 6 per agent by default; `MULTICA_DAEMON_MAX_CONCURRENT_TASKS` | 8 |
-| Login | `multica login --token` for a user with no browser | 12 |
-| Phone | Web app; iOS from source; no Android | 10 |
+| Agents | Each bound to one runtime (one machine) | 23 |
+| Limits | 20 runs per daemon, 6 per agent by default | 8 |
 
 ### Still unverified (check on install)
 
-- Whether Tailscale Serve on `:3000` alone is enough, or the websocket
-  also needs `:8080`.
-- Whether the web app works well on a phone screen.
-- Whether the `multica` user can clone with `gh auth setup-git`, or the
-  repository resource needs an SSH deploy key.
-- Whether a daemon started from `sudo -iu multica` keeps running after
-  that shell closes.
-- How much memory the stack uses at idle on the 16 GB Air (`docker stats`).
+- The tunnel's path rule: that the dashboard keeps the `/ws` row first,
+  and live updates arrive on the phone (a comment shows without reload).
+- That the iPhone app's websocket passes the origin check (it is not a
+  browser, so it may send no `Origin`).
+- That a remote daemon works through the Next rewrites with
+  `server_url` on the public host (the docs show a separate `api.` host).
+- That the web app fits a phone screen.
+- That a daemon started from `sudo -iu multica` keeps running after that
+  shell closes, and what the stack costs in memory on the 16 GB Air.
 
 ### Rollout
 
 | Phase | Ships | Size |
 |-------|-------|------|
-| 0 | Setup list, steps 1 to 8, and the checks above | evening |
-| 1 | Two weeks: new research goes to one queue or the other; fill in the scorecard | n/a |
-| 2 | Keep the winner. If it is GitHub, run `make selfhost-stop` and delete the user. If it is Multica, reopen this RFC to move the backlog over | XS |
+| 0 | Setup list, steps 1 to 10, and the checks above | evening |
+| 1 | Two weeks: new work goes to one queue or the other; scorecard | n/a |
+| 2 | Keep the winner. If GitHub: `docker compose down`, delete the tunnel and the user. If Multica: move the backlog, maybe the server to an always-on machine | XS–S |
 
 ## References
 
 1. multica-ai/multica, README. https://github.com/multica-ai/multica: Go, Next.js, Postgres; the daemon spawns agent CLIs; "We release most weekdays".
-2. Multica, `docker-compose.selfhost.yml`. https://github.com/multica-ai/multica/blob/main/docker-compose.selfhost.yml: ports bound to 127.0.0.1; `ALLOWED_EMAILS`, `ALLOW_SIGNUP`, `DO_NOT_TRACK`, `MULTICA_IMAGE_TAG`.
-3. Multica, SELF_HOSTING.md. https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md: `JWT_SECRET` required; the login code goes to the backend log when there is no email; `multica config set server_url`, `daemon start`.
+2. Multica, `docker-compose.selfhost.yml`. https://github.com/multica-ai/multica/blob/main/docker-compose.selfhost.yml: ports bound to 127.0.0.1; the env names used in step 2.
+3. Multica, SELF_HOSTING.md. https://github.com/multica-ai/multica/blob/main/SELF_HOSTING.md: `JWT_SECRET` required; `setup self-host --server-url`.
 6. Multica docs, *Security model*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/security-model.mdx: `bypassPermissions`; no sandbox; dedicated user, container or VM.
-8. Multica docs, *Daemon and runtimes*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/daemon-runtimes.mdx: 20 runs per daemon, 6 per agent; `MULTICA_DAEMON_MAX_CONCURRENT_TASKS`.
-9. Multica docs, *AI coding tools comparison*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/providers.mdx: skills from `.claude/skills/`; session resumed per issue.
-10. Multica docs, *Mobile app (iOS)*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx: not on the App Store; 7-day free signing.
-12. Multica docs, *CLI*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/cli.mdx: `login --token` for a machine with no browser; `repo add`.
+8. Multica docs, *Daemon and runtimes*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/daemon-runtimes.mdx: 20 runs per daemon, 6 per agent.
+9. Multica docs, *AI coding tools comparison*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/providers.mdx: skills from `.claude/skills/`.
+10. Multica docs, *Mobile app (iOS)*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx: built from source; 7-day free signing; `.env.production.local` for a self-hosted server.
+12. Multica docs, *CLI*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/cli.mdx: `login --token` for a machine with no browser.
 14. Claude Code, *Permission modes*. https://code.claude.com/docs/en/permission-modes: `bypassPermissions` for "isolated containers and VMs only".
 16. M. Thompson, *Single Writer Principle*. https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html: one execution context owns all mutations.
-17. Tailscale, *Serve*. https://tailscale.com/kb/1312/serve: shares with your tailnet only, over HTTPS.
-19. Multica docs, *Project resources*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/project-resources.mdx: repository resources run in worktrees; branch `agent/<agent>/<issue>`; "Multica never merges it for you".
-20. Multica, CLI_AND_DAEMON.md, *Boot autostart*. https://github.com/multica-ai/multica/blob/main/CLI_AND_DAEMON.md: autostart is a LaunchAgent, so it only runs when that user logs in.
+19. Multica docs, *Project resources*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/project-resources.mdx: worktree per run; "Multica never merges it for you".
+20. Multica, CLI_AND_DAEMON.md. https://github.com/multica-ai/multica/blob/main/CLI_AND_DAEMON.md: autostart is a LaunchAgent; profiles for several servers.
+21. Multica, SELF_HOSTING_ADVANCED.md, *Reverse proxy* and *Same origin*. https://github.com/multica-ai/multica/blob/main/SELF_HOSTING_ADVANCED.md#reverse-proxy: `/ws` must reach `:8080` directly; set `CORS_ALLOWED_ORIGINS` to the public origin.
+22. Multica docs, *Auth setup*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/auth-setup.mdx: email codes by Resend or SMTP, Google on top.
+23. Multica docs, *Agents*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/agents.mdx: an agent "drives an AI coding tool through its bound runtime".
+24. Cloudflare, *Cloudflare Tunnel*. https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/: outbound-only connector; no inbound port.
+25. Google, *Sign in with app passwords*. https://support.google.com/accounts/answer/185833: app passwords for SMTP; need 2-step verification.
