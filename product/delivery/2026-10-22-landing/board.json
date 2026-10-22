@@ -1,0 +1,164 @@
+{
+ "screens": [
+  {
+   "png": "img/shot-1.png",
+   "w": 1440,
+   "h": 900,
+   "title": "1 · The web page opens on the agent",
+   "why": "A computer's first screen says Lunna is asked, not filled in, and the phone beside it proves it by answering.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 815,
+     "y": 150,
+     "label": "Headline",
+     "text": "\"Diga o que precisa. O dia se arruma.\" replaces \"Seu dia, no lugar.\": the agent is the promise, the timeline is how it keeps it. The pitch names the plan you approve and the deliveries."
+    },
+    {
+     "id": "B",
+     "x": 345,
+     "y": 465,
+     "label": "Three chapters = the app's tabs",
+     "text": "Peça, Tempo, Entregas, one under the other. The chosen one is filled (AppColors.fill) and says its line; the others are a name to tap. Peça is the agent's crescent (AppIcons.agent) in accent; no sparkles."
+    },
+    {
+     "id": "C",
+     "x": 795,
+     "y": 560,
+     "label": "Experimente pedir",
+     "text": "Two example asks as pills (arrow-up icon, as the send button). A tap opens the agent in the phone and sends it, as if typed there. The first one is asked on load."
+    },
+    {
+     "id": "D",
+     "x": 1140,
+     "y": 296,
+     "label": "The phone is the app",
+     "text": "The real AgentSheet over Tempo, on a scripted DemoAgentRepository: thinking dots, the reply, the PlanCard. Nothing reaches a server."
+    },
+    {
+     "id": "E",
+     "x": 1228,
+     "y": 677,
+     "label": "Aplicar works",
+     "text": "Applying writes the plan on the demo day, and closing the sheet shows it on Tempo; the chapter beside it follows to Tempo."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-2.png",
+   "w": 1440,
+   "h": 900,
+   "title": "2 · Entregas, chosen beside the phone",
+   "why": "The deliveries tab, which the old page never showed, gets a chapter of its own and the phone switches to it.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 375,
+     "y": 660,
+     "label": "Chapter Entregas",
+     "text": "Stack icon (AppIcons.artifacts), as on the tab. Its line: what you owe, with deadline and value; the month's goal; the hours the queue needs against the agenda's free ones."
+    },
+    {
+     "id": "B",
+     "x": 1198,
+     "y": 330,
+     "label": "Real ArtifactsPage",
+     "text": "The goal (Faturamento · outubro), the schedule line and the Fila, from a DemoArtifactsRepository seeded as an astrologer's month."
+    },
+    {
+     "id": "C",
+     "x": 1122,
+     "y": 775,
+     "label": "Bar is live, both ways",
+     "text": "Tapping Tempo or Entregas in the phone moves the choice beside it (one DemoController). Menu stays drawn and inert."
+    },
+    {
+     "id": "D",
+     "x": 1236,
+     "y": 690,
+     "label": "+ follows the tab",
+     "text": "On Entregas the FAB opens the new-delivery sheet, as in the app; on Tempo it sits beside the ask bar (AskDock)."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-3.png",
+   "w": 1440,
+   "h": 900,
+   "title": "3 · Under the first screen",
+   "why": "The rest of the app in three short columns, then the day said in four lines.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 330,
+     "y": 381,
+     "label": "Também no app",
+     "text": "Rotinas, Lembretes and Voz (new). Tempo left this row: it is a chapter now."
+    },
+    {
+     "id": "B",
+     "x": 305,
+     "y": 634,
+     "label": "No dia a dia",
+     "text": "Four lines, opening with asking (\"Peça, e veja o plano antes de aplicar\") and closing with a delivery (\"Feche uma entrega e veja a meta andar\")."
+    },
+    {
+     "id": "C",
+     "x": 700,
+     "y": 808,
+     "label": "Privacy and footer",
+     "text": "Unchanged: what PostHog records, said before anyone signs in."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-4.png",
+   "title": "4 · On a phone: no phone in the page",
+   "why": "The screen already is a phone; a drawn one would be a thumbnail. Each chapter shows its piece of the app instead.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 366,
+     "y": 150,
+     "label": "Same headline",
+     "text": "40 px instead of 56; the pitch follows."
+    },
+    {
+     "id": "B",
+     "x": 124,
+     "y": 458,
+     "label": "Peça, first",
+     "text": "The first ask as the sheet draws it, the reply and the real PlanCard. Aplicar here only marks it applied: there is no day to change before signing in."
+    },
+    {
+     "id": "C",
+     "x": 370,
+     "y": 736,
+     "label": "Plan card",
+     "text": "PlanCard from packages/agent, unchanged."
+    }
+   ]
+  },
+  {
+   "png": "img/shot-5.png",
+   "title": "5 · On a phone: Entregas",
+   "why": "Tempo is said in words (a phone already knows a day); Entregas gets its goal and the next two deliveries.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 176,
+     "y": 37,
+     "label": "Chapter Entregas",
+     "text": "Accent stack icon, the same line as on the web."
+    },
+    {
+     "id": "B",
+     "x": 370,
+     "y": 170,
+     "label": "GoalCard + ArtifactRow",
+     "text": "The app's own widgets from packages/artifacts, read-only here, from the same demo data as the wide page's phone."
+    }
+   ]
+  }
+ ]
+}

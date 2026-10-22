@@ -6,18 +6,24 @@ import 'package:api_client/api_client.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:auth/auth.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lunna/app/app.dart';
 import 'package:lunna/auth_token_provider.dart';
 import 'package:lunna/bootstrap.dart';
 import 'package:lunna/config.dart';
+import 'package:lunna/demo/demo_clock.dart';
 import 'package:lunna/links/api_link_previews.dart';
 import 'package:lunna/notifications/background_refresh.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
-Future<void> main() async {
+// The whole app runs on a clock the landing page's demo can move to a
+// working hour; signed in, nothing moves it.
+Future<void> main() => withClock(DemoClock.around(clock), _main);
+
+Future<void> _main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Off without a key: dev builds, CI and the previews send nothing.
