@@ -122,7 +122,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** M. Thompson, [Single Writer Principle](https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html).
 - **Here:** `queue.mjs` alone starts runs and opens gates. In the trial, Multica gets its own backlog, so each issue still has one writer; the one thing both share is the Claude subscription's weekly limit.
-- **Met in:** multica-on-the-mac, idea 1 (first draft: Multica as a screen; revised: two queues, separate backlogs; second revision: every daemon on every machine shares the Claude subscription, so one run each).
+- **Met in:** multica-on-the-mac, idea 1 (first draft: Multica as a screen; revised: two queues, separate backlogs; second revision: the daemon shares the Claude subscription with the queue, so one run at a time).
 
 ### Mirror by level, not by edge
 > Each pass, compute the whole desired state and fix what differs.
@@ -136,7 +136,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Claude Code, [Permission modes](https://code.claude.com/docs/en/permission-modes): `bypassPermissions` for "isolated containers and VMs only".
 - **Here:** the queue runs `auto`; Multica's daemon runs `bypassPermissions`, so it runs as a separate `multica` macOS user, with its own `claude` login and a GitHub token for one repo. Multica's own docs: "the boundary is the daemon user".
-- **Met in:** multica-on-the-mac, idea 4, then idea 2 (deeper: the dedicated user as the lightest boundary; second revision: one on every machine that runs a daemon).
+- **Met in:** multica-on-the-mac, idea 4, then idea 2 (deeper: the dedicated user as the lightest boundary; second revision: one on every machine that runs a daemon; fourth: the Mac only).
 
 ### Private network before public port
 > Reach it privately before you open a port.
@@ -153,11 +153,11 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Met in:** multica-on-the-mac, idea 4 (second revision).
 
 ### Everything dials out
-> Everything dials out, so nothing is tied to a machine.
+> The tunnel dials out, so no port opens.
 
 - **Read:** Cloudflare, [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/): an outbound-only connector, no inbound port.
-- **Here:** the tunnel connector and each Multica daemon open their own connections, so no port opens on the Mac, more machines join by dialing the name, and the server can move without touching them.
-- **Met in:** multica-on-the-mac, idea 5 (second revision).
+- **Here:** the `cloudflared` connector on the Mac opens its own connection to Cloudflare and requests come back down it, so nothing listens on the Mac's network. (The second revision also had more machines' daemons dial in; the fourth kept the Mac only.)
+- **Met in:** multica-on-the-mac, idea 5 (second revision; narrowed in the fourth).
 
 ## Observability: seeing what happened
 

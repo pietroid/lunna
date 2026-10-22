@@ -1,17 +1,17 @@
 # Multica on the Mac, beside the GitHub queue
 
-2026-10-21 · RFC · revised 2026-10-22 three times after review (issue #18) · deep-research pass not run
+2026-10-21 · RFC · revised 2026-10-22 four times after review (issue #18) · deep-research pass not run
 
 ## In one minute
 
 **Run Multica as a second, separate queue, served at
 `multica.pietroteruya.dev` through a Cloudflare tunnel, signed in with
-your email only. The Mac hosts the server and the first agent; any other
-machine can add an agent by dialing the same address.**
+your email only. The Mac hosts the server and the one agent, and nothing
+else does.**
 
 - **Do:** the [setup list](#the-setup-list): about an evening, no code in
   this repo.
-- **Do:** run each daemon as a separate `multica` user, on every machine.
+- **Do:** run the daemon as a separate `multica` user on the Mac.
   It starts `claude` with permission checks off, and on a public URL your
   login is the only thing between the internet and that shell.
 - **Do:** lock sign-in to one address (`ALLOWED_EMAILS`, no sign-up) and
@@ -45,8 +45,8 @@ machine can add an agent by dialing the same address.**
 > (`server/internal/handler/auth.go:362`, `verification_code.sql:11`), and
 > only your address can ever get an account. Serving it publicly replaces
 > Tailscale (steps 1, 2 and 8 changed), and "other places" became
-> [Running it elsewhere](#running-it-elsewhere): more machines as agents,
-> or the server itself moved.
+> *Running it elsewhere* (deleted in the fourth revision, below): more
+> machines as agents, or the server itself moved.
 
 > **Decision (2026-10-22):** native app built in xcode! / yep, can be the
 > simples, email code / no, run multica in my own mac.
@@ -63,18 +63,31 @@ machine can add an agent by dialing the same address.**
 > a native client through, since it sends no `Origin` or its own host
 > (`server/internal/realtime/hub.go:165`).
 
+> **Decision (2026-10-22):** (on the issue, asked whether to delete
+> *Running it elsewhere* if Multica runs on the Mac and nothing else)
+> Yeah you can delete it
+
+> **A:** Deleted. Multica now runs on the Mac alone: one server, one
+> daemon, one agent (`lunna-mac`). Everything that only served other
+> machines went with it: the second agent, "on every machine", the
+> remote-daemon check in *Still unverified*, and the diagram's other
+> machine. Idea 5 is now about the tunnel alone (no port opens on the
+> Mac). The steps themselves did not change; only the comment on step 7.
+> If you ever do want a second machine, the earlier revision in this
+> PR's history has the four commands.
+
 ## Ideas to keep
 
 1. **"One queue, one writer."** Separate backlogs keep that true: an
    issue is in GitHub *or* in Multica, never both. See
    [one writer per queue](../concepts.md#one-writer-per-queue). The
-   shared thing left is the Claude subscription: every daemon spends the
-   same weekly limit, so cap each one at one run.
+   shared thing left is the Claude subscription: the queue and the
+   daemon spend the same weekly limit, so cap the daemon at one run.
 2. **"The boundary is the daemon user."** Multica,
    [Security model](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/security-model.mdx):
    "a run can read your SSH keys, edit your shell profile, and delete your
    documents"; the lightest fix is "a dedicated Unix user". *For us:* a
-   `multica` user on every machine, with its own `claude` login and a
+   `multica` user on the Mac, with its own `claude` login and a
    GitHub token for `pietroid/lunna` only. *Deeper than*
    [skip permissions only inside a box](../concepts.md#skip-permissions-only-inside-a-box).
 3. **"A gate in code can't be skipped; a gate in a prompt can."** What
@@ -88,11 +101,11 @@ machine can add an agent by dialing the same address.**
    *Deeper than* [private network before public port](../concepts.md#private-network-before-public-port),
    which this RFC first followed and you overrode: a public port is fine
    once you know what it opens.
-5. **"Everything dials out, so nothing is tied to a machine."** The
-   tunnel connector and every daemon open their own connections to the
-   outside ([Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/):
-   "outbound-only connections"). No port opens on the Mac, and the name
-   `multica.pietroteruya.dev` stays the same when the server moves. *New.*
+5. **"The tunnel dials out, so no port opens."** The connector on the
+   Mac opens its own connection to Cloudflare
+   ([Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/):
+   "outbound-only connections"), and requests come back down it. Nothing
+   listens on the Mac's network, and the router is never touched. *New.*
 
 ## The setup list
 
@@ -195,7 +208,7 @@ The repo also needs `flutter` and `npm` on that user's `PATH`.
 
 ```bash
 multica$ brew install multica-ai/tap/multica    # if `multica` isn't there yet
-multica$ multica config set server_url http://localhost:8080   # same machine: skip the tunnel
+multica$ multica config set server_url http://localhost:8080   # straight to the backend, not through the tunnel
 multica$ multica config set app_url https://multica.pietroteruya.dev
 multica$ multica login --token                  # the mul_ token from step 4
 multica$ MULTICA_DAEMON_MAX_CONCURRENT_TASKS=1 multica daemon start
@@ -257,34 +270,6 @@ The web app is the same account: `https://<host>` in any browser.
 Create an issue in Multica, assign it to `lunna-mac`, answer it from the
 phone. Leave GitHub issues to the queue; never file the same work in both.
 
-## Running it elsewhere
-
-**Another machine as an agent** (a second Mac, a Linux box, the Pi). The
-server stays where it is; the new machine dials it:
-
-1. Steps 5 and 6 there: a `multica` user (on Linux, `sudo useradd -m
-   multica`, or a container), its own `claude` login and repo token.
-2. In the web app, a new API token for it.
-3. As that user:
-
-   ```bash
-   multica$ multica config set server_url https://multica.pietroteruya.dev
-   multica$ multica config set app_url https://multica.pietroteruya.dev
-   multica$ multica login --token
-   multica$ MULTICA_DAEMON_MAX_CONCURRENT_TASKS=1 multica daemon start
-   ```
-
-4. It shows up as a new runtime. An agent is bound to one runtime
-   ([Agents](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/agents.mdx)),
-   so create `lunna-<machine>` with the same instructions and assign
-   issues to whichever should run them. A machine that is off keeps its
-   issues waiting; nothing is lost.
-
-**The server stays on the Mac** (your decision). Should that ever
-change, the move is the database, `.env` with the same `JWT_SECRET`, and
-a tunnel connector on the new host under the same name. The other
-machines would not notice.
-
 ## The scorecard
 
 Two weeks, one row per issue, in `data/scorecard.md`:
@@ -324,24 +309,22 @@ start.
   where anyone can register.
 - **The Mac's daemon talks to `localhost`**, so it keeps running when
   the tunnel or the internet is down.
-- **One agent per machine** (`lunna-mac`, `lunna-<machine>`), since an
-  agent is bound to one runtime.
-- **One run at a time** on every daemon and agent: all share one Claude
-  subscription.
+- **One run at a time** on the daemon and the agent: they share one
+  Claude subscription with the GitHub queue.
 - **v0.6.5 is pinned** (released 2026-10-21; Multica releases "most
   weekdays"). Upgrade on purpose.
 - **The mirror from the first draft is gone** (separate backlogs); it is
   in the branch history.
-- **"run multica in my own mac" is read as: the server and the first
-  agent stay on the Mac, with no Cloudflare Access.** Agents on other
-  machines (your earlier "I will run multica on other places") still
-  work, since they dial the Mac through the tunnel. If you meant the
-  Mac only, skip *Running it elsewhere*: nothing else changes.
+- **Mac only** (your answer on the issue): *Running it elsewhere* is
+  deleted, along with every mention of other machines. Moving the server
+  later is not written up either; it would be the database, `.env` with
+  the same `JWT_SECRET`, and a connector under the same name.
 - **The app's bundle id is `dev.pietroteruya.multica`**, a name under
   your domain. Multica's default id may belong to their Apple team, and
   then Xcode refuses to sign it.
 - **Phase 4 (deep research) was not run**: the review didn't ask for it,
-  and every new claim was read in Multica's source at commit `fd6fc2c`.
+  and every claim was read in Multica's source at commit `fd6fc2c`. The
+  fourth revision only removed text.
 - **Nothing was installed or run on the Mac.**
 
 ## Deeper
@@ -350,12 +333,12 @@ start.
 
 ```
 iPhone (web or app) ─┐
-browser anywhere ────┼─ https://multica.pietroteruya.dev ─ Cloudflare ─┐
-daemon, other machine┘                                                 │ tunnel (dials out)
+browser anywhere ────┴─ https://multica.pietroteruya.dev ─ Cloudflare ─┐
+                                                                       │ tunnel (dials out)
                                          Mac: cloudflared ─┬─ /ws → :8080 backend (Go)
                                                            └─ /*  → :3000 web (Next; /api → :8080)
                                          Mac: daemon (user multica) ─ localhost:8080
-GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunna-<machine>/<issue> ─▶ PR (label multica)
+GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunna-mac/<issue> ─▶ PR (label multica)
 ```
 
 ### Multica, as read for this RFC
@@ -377,8 +360,6 @@ GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunn
 
 - The tunnel's path rule: that the dashboard keeps the `/ws` row first,
   and live updates arrive on the phone (a comment shows without reload).
-- That a remote daemon works through the Next rewrites with
-  `server_url` on the public host (the docs show a separate `api.` host).
 - That a daemon started from `sudo -iu multica` keeps running after that
   shell closes, and what the stack costs in memory on the 16 GB Air.
 
