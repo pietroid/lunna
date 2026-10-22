@@ -71,7 +71,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents).
 - **Here:** read the day, propose, reply: hard-coded, one round-trip fewer.
-- **Met in:** agent-reliability §4.2; multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent).
+- **Met in:** agent-reliability §4.2; multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent; the trial measures whether it does).
 
 ### The model arranges, the server states facts
 > The model may lay out the answer; only the server writes the facts in it.
@@ -121,22 +121,22 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > One queue, one writer: everything else is a screen.
 
 - **Read:** M. Thompson, [Single Writer Principle](https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html).
-- **Here:** `queue.mjs` alone starts runs and opens gates; Multica draws the state and relays answers.
-- **Met in:** multica-on-the-mac, idea 1.
+- **Here:** `queue.mjs` alone starts runs and opens gates. In the trial, Multica gets its own backlog, so each issue still has one writer; the one thing both share is the Claude subscription's weekly limit.
+- **Met in:** multica-on-the-mac, idea 1 (first draft: Multica as a screen; revised: two queues, separate backlogs).
 
 ### Mirror by level, not by edge
 > Each pass, compute the whole desired state and fix what differs.
 
 - **Read:** Kubernetes, [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/); the failure case, [multica #1120](https://github.com/multica-ai/multica/issues/1120) (a one-off import drifts).
-- **Here:** every tick maps `.git/queue/` onto Multica's statuses (`code/mirror.mjs`).
-- **Met in:** multica-on-the-mac, idea 2.
+- **Here:** proposed as a mirror from `.git/queue/` onto Multica's statuses; dropped when the person chose separate backlogs.
+- **Met in:** multica-on-the-mac, first draft, idea 2.
 
 ### Skip permissions only inside a box
 > Skipping permissions is for a container, not your home folder.
 
 - **Read:** Claude Code, [Permission modes](https://code.claude.com/docs/en/permission-modes): `bypassPermissions` for "isolated containers and VMs only".
-- **Here:** the queue runs `auto`; Multica's daemon would run `bypassPermissions` as you, so it isn't installed.
-- **Met in:** multica-on-the-mac, idea 4.
+- **Here:** the queue runs `auto`; Multica's daemon runs `bypassPermissions`, so it runs as a separate `multica` macOS user, with its own `claude` login and a GitHub token for one repo. Multica's own docs: "the boundary is the daemon user".
+- **Met in:** multica-on-the-mac, idea 4, then idea 2 (deeper: the dedicated user as the lightest boundary).
 
 ### Private network before public port
 > Reach it privately before you open a port.
