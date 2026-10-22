@@ -83,6 +83,12 @@ export abstract class CalendarStore {
    */
   abstract remove(user: CalendarUser, event: CalendarEvent): Promise<void>;
 
+  /**
+   * Writes [event] back as it was, id and all: what undoing a removal does.
+   * An event already there is left as it is.
+   */
+  abstract revive(user: CalendarUser, event: CalendarEvent): Promise<void>;
+
   abstract routines(user: CalendarUser): Promise<CalendarRoutine[]>;
 
   abstract insertRoutine(
@@ -246,6 +252,13 @@ export class MemoryCalendarStore extends CalendarStore {
       this._events.delete(event.id);
     }
 
+    return Promise.resolve();
+  }
+
+  revive(user: CalendarUser, event: CalendarEvent): Promise<void> {
+    const stored = this._events.get(event.id);
+    if (stored === undefined) this.seed(user, event);
+    else if (stored.userId === user.id) stored.cancelled = false;
     return Promise.resolve();
   }
 

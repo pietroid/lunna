@@ -9,6 +9,8 @@ import { AgentService } from './agent.service';
 import { ConversationStore } from './conversation.store';
 import { PgConversationStore } from './pg-conversation.store';
 import { OpenRouterClient } from './openrouter.client';
+import { PlanStore } from './plan';
+import { PgPlanStore } from './pg-plan.store';
 
 /** Lunna, the agent: reads the day, proposes changes, applies them. */
 @Module({
@@ -24,6 +26,7 @@ import { OpenRouterClient } from './openrouter.client';
     AgentService,
     OpenRouterClient,
     { provide: ConversationStore, useClass: PgConversationStore },
+    { provide: PlanStore, useClass: PgPlanStore },
   ],
 })
 export class AgentModule {}

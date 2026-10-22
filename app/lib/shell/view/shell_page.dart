@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agent/agent.dart';
+import 'package:analytics/analytics.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -52,10 +53,15 @@ class _ShellPageState extends State<ShellPage> {
   /// What Agora's "Mudar horário" does: brings Menu forward.
   late final _openDayHours = OpenDayHours(() => _onSelected(_menuIndex));
 
+  /// The name each tab is reported under: they are one route, so the
+  /// router never sees them change.
+  static const _screens = ['Tempo', 'Entregas', 'Menu'];
+
   @override
   void initState() {
     super.initState();
     unawaited(context.read<ArtifactsCubit>().load());
+    unawaited(AnalyticsScope.of(context).screen(_screens[_index]));
   }
 
   void _onSelected(int index) {
@@ -66,6 +72,9 @@ class _ShellPageState extends State<ShellPage> {
     }
     if (index == _artifactsIndex) {
       unawaited(context.read<ArtifactsCubit>().load());
+    }
+    if (index != _index) {
+      unawaited(AnalyticsScope.of(context).screen(_screens[index]));
     }
     setState(() => _index = index);
   }

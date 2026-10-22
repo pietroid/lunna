@@ -576,31 +576,55 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routinesDelete => 'Excluir rotina';
 
   @override
-  String get landingHeadline => 'Seu dia, no lugar.';
+  String get landingHeadline => 'Diga o que precisa. O dia se arruma.';
 
   @override
   String landingPitch(String brand) {
     String _temp0 = intl.Intl.selectLogic(
       brand,
       {
-        'lunna': 'A Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e a Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.',
-        'other': 'O Focus é um sistema pessoal de organização. Anote o que precisa ser feito e o Focus dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.',
+        'lunna': 'A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.',
+        'other': 'O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.',
       },
     );
     return '$_temp0';
   }
 
   @override
-  String get landingDemoHint => 'O celular ao lado é o app de verdade. Toque no + para anotar algo, ou num bloco para abri-lo.';
+  String get landingDemoHint => 'O celular ao lado é o app de verdade, com um dia de exemplo. Toque, arraste e peça.';
 
   @override
-  String get landingHowTitle => 'Como funciona';
+  String get landingChapterAskTitle => 'Peça';
 
   @override
-  String get landingPartTimelineTitle => 'Tempo';
+  String landingChapterAskText(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.',
+        'other': 'Escreva ou fale o que precisa. O Focus lê o seu dia, monta um plano e espera o seu sim.',
+      },
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get landingPartTimelineText => 'O dia como uma fila: o que está rodando agora, o que vem ainda hoje e o que fica para amanhã.';
+  String get landingChapterTimeTitle => 'Tempo';
+
+  @override
+  String get landingChapterTimeText => 'O dia como uma fila: cada coisa com a sua hora, e quando algo atrasa o resto anda junto.';
+
+  @override
+  String get landingChapterDeliveriesTitle => 'Entregas';
+
+  @override
+  String get landingChapterDeliveriesText => 'O que você deve a alguém, com prazo e valor. A meta do mês, e as horas que as entregas pedem contra as que a agenda tem livres.';
+
+  @override
+  String get landingTry => 'Experimente pedir';
+
+  @override
+  String get landingMoreTitle => 'Também no app';
 
   @override
   String get landingPartRoutinesTitle => 'Rotinas';
@@ -615,10 +639,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingPartRemindersText => 'Um aviso quando é hora de começar, outro perto do fim, e um bom dia e um boa noite.';
 
   @override
+  String get landingPartVoiceTitle => 'Voz';
+
+  @override
+  String get landingPartVoiceText => 'Segure o microfone para pedir, ou dite direto nas notas de uma tarefa.';
+
+  @override
   String get landingDayTitle => 'No dia a dia';
 
   @override
-  String get landingUseWrite => 'Anote o que precisa ser feito.';
+  String get landingUseAsk => 'Peça, e veja o plano antes de aplicar.';
 
   @override
   String get landingUseHour => 'Dê a cada coisa a sua hora.';
@@ -627,7 +657,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingUsePause => 'Pause, estenda ou adie, e o resto do dia anda junto.';
 
   @override
-  String get landingUseRoutine => 'Deixe a rotina se repetir sozinha.';
+  String get landingUseDeliver => 'Feche uma entrega e veja a meta andar.';
+
+  @override
+  String get landingPrivacy => 'Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.';
 
   @override
   String landingFooter(String brand) {
@@ -664,6 +697,57 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get demoDentist => 'Marcar dentista';
+
+  @override
+  String get demoAskStudy => 'Encaixa 2h de estudo amanhã de manhã e tira as fotos da viagem do Depois';
+
+  @override
+  String get demoAskDelivery => 'Cria a entrega do mapa da Carla para sexta';
+
+  @override
+  String get demoReplyStudy => 'Depois do dentista, às 9:30, a manhã está livre. Fica assim:';
+
+  @override
+  String get demoReplyDelivery => 'Mapa astral leva 3 h, em blocos de 1 h. Fica assim:';
+
+  @override
+  String get demoStepLooked => 'Olhei amanhã';
+
+  @override
+  String get demoStepFree => 'Achei 09:35–12:00 livre';
+
+  @override
+  String get demoStepCatalogue => 'Mapa astral no catálogo: 3 h, R\$ 350';
+
+  @override
+  String get demoStudy => 'Estudar para a prova';
+
+  @override
+  String get demoTypeChart => 'Mapa astral';
+
+  @override
+  String get demoTypePost => 'Post';
+
+  @override
+  String get demoShelfSessions => 'Atendimentos';
+
+  @override
+  String get demoShelfContent => 'Conteúdo';
+
+  @override
+  String get demoDeliveryCarla => 'Mapa astral · Carla';
+
+  @override
+  String get demoDeliveryRenata => 'Mapa astral · Renata';
+
+  @override
+  String get demoDeliveryPost => 'Post: Lua cheia em Touro';
+
+  @override
+  String get demoDeliveryJulia => 'Mapa astral · Júlia';
+
+  @override
+  String get demoDeliveryPedro => 'Mapa astral · Pedro';
 
   @override
   String agentAsk(String brand) {
@@ -1145,6 +1229,46 @@ class AppLocalizationsPt extends AppLocalizations {
       zero: 'apagar a entrega',
     );
     return '$_temp0';
+  }
+
+  @override
+  String agentChangeOpenLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarefas ainda abertas',
+      one: '1 tarefa ainda aberta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agentChangeArtifactBefore(String title) {
+    return 'na fila, antes de $title';
+  }
+
+  @override
+  String agentChangeArtifactAfter(String title) {
+    return 'na fila, depois de $title';
+  }
+
+  @override
+  String get agentChangeNewKind => 'novo tipo';
+
+  @override
+  String get agentChangeNewGoal => 'nova meta';
+
+  @override
+  String get agentChangeRemoveGoal => 'apagar a meta';
+
+  @override
+  String agentGoalPerWeek(String amount) {
+    return '$amount por semana';
+  }
+
+  @override
+  String agentGoalPerMonth(String amount) {
+    return '$amount por mês';
   }
 
   @override

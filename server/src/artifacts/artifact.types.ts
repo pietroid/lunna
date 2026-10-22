@@ -223,3 +223,13 @@ export type ArtifactRecord = Omit<NewArtifact, 'blockMinutes'> & {
   /** Absent: the end of the queue. */
   position?: number;
 };
+
+/**
+ * One row the artifact store keeps, by table: what undo writes back as it
+ * was, id and all.
+ */
+export type StoredRow =
+  | { kind: 'artifact'; row: Artifact }
+  | { kind: 'category'; row: CatalogCategory }
+  | { kind: 'type'; row: CatalogType }
+  | { kind: 'goal'; row: Goal };

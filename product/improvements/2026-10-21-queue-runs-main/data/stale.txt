@@ -1,0 +1,15 @@
+$ .tool/queue ls
+✗ no runner: run .tool/queue setup
+#1  create   done                       PR #2  Improvements
+      31 min · 16.3M in / 119k out · ~$9.17 API-eq · week +4 pts (now 8%)
+#3  research waiting on you (review)    PR #4  Use shorebird for instant deploy on mobile
+
+$ .tool/queue implement product/research/2026-10-21-posthog/README.md --dry-run
+title:  Implement: PostHog: users, errors and replays
+label:  create
+body:
+
+# the LaunchAgent and the file it runs
+<string>/Users/pietro/Documents/pietroid.dev/lunna/.tool/queue.mjs</string>
+main checkout: 5daf05d, 5 behind origin/main; queue.mjs      579 lines, 'implement' 0x, 'reviewUrl' 0x
+origin/main queue.mjs:      683 lines, 'implement' 10x

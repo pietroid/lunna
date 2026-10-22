@@ -1,4 +1,5 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
@@ -10,7 +11,21 @@ class _Task {
     this.minutes, {
     this.startedAt,
     this.backlog = false,
+    this.anchor,
   });
+
+  /// A copy, for a [DemoTimelineRepository.snapshot].
+  _Task copy() =>
+      _Task(
+          id,
+          title,
+          minutes,
+          startedAt: startedAt,
+          backlog: backlog,
+          anchor: anchor,
+        )
+        ..notes = notes
+        ..pausedAt = pausedAt;
 
   final String id;
   String title;
@@ -23,6 +38,20 @@ class _Task {
 
   /// Whether it waits in the backlog, with no hour.
   bool backlog;
+
+  /// The hour it keeps, or null while it takes its turn in the queue.
+  DateTime? anchor;
+}
+
+/// {@template demo_day}
+/// The demo's day as it stood at one moment, to be put back by
+/// [DemoTimelineRepository.restore].
+/// {@endtemplate}
+class DemoDay {
+  const DemoDay._(this._tasks, this._events);
+
+  final List<_Task> _tasks;
+  final List<TimelineEvent> _events;
 }
 
 /// {@template demo_timeline_repository}
@@ -30,8 +59,9 @@ class _Task {
 ///
 /// It is what the landing page's phone and the preview entry point run on,
 /// so the timeline can be used without a backend or a login. What the server
-/// would work out, where each task in the queue lands among the fixed
-/// blocks, is worked out here just closely enough to look right.
+/// would work out, where each task lands among the fixed blocks, is worked
+/// out here just closely enough to look right: the anchored ones at their
+/// hours, then the queue in the room left.
 /// {@endtemplate}
 class DemoTimelineRepository implements TimelineRepository {
   /// {@macro demo_timeline_repository}
@@ -39,7 +69,7 @@ class DemoTimelineRepository implements TimelineRepository {
   /// [resting] leaves out the task that would be running, so the day starts
   /// on the break between two blocks instead.
   DemoTimelineRepository(AppLocalizations l10n, {bool resting = false}) {
-    final now = DateTime.now();
+    final now = clock.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1, 9);
 
     _tasks.addAll([
@@ -68,6 +98,22 @@ class DemoTimelineRepository implements TimelineRepository {
   final _events = <TimelineEvent>[];
   var _next = 0;
 
+  /// The day as it stands now.
+  DemoDay snapshot() => DemoDay._(
+    [for (final task in _tasks) task.copy()],
+    [..._events],
+  );
+
+  /// Puts back the day [day] was taken of.
+  void restore(DemoDay day) {
+    _tasks
+      ..clear()
+      ..addAll([for (final task in day._tasks) task.copy()]);
+    _events
+      ..clear()
+      ..addAll(day._events);
+  }
+
   @override
   Future<Timeline> fetch({int days = TimelineRepository.defaultDays}) async =>
       _timeline(days);
@@ -85,9 +131,9 @@ class DemoTimelineRepository implements TimelineRepository {
       title,
       minutes,
       backlog: placement.backlog,
+      anchor: placement.at,
     );
-    // The demo keeps no hours of its own: something written down at one
-    // takes its turn at the end of the queue instead.
+    if (placement.minutes case final minutes?) task.minutes = minutes;
     final queue = _tasks.where((it) => !it.backlog).toList();
     final index = placement.index;
     if (index != null && index < queue.length) {
@@ -132,7 +178,9 @@ class DemoTimelineRepository implements TimelineRepository {
         at < list.length ? _tasks.indexOf(list[at]) : _tasks.length,
         task,
       );
-      task.backlog = backlog;
+      task
+        ..backlog = backlog
+        ..anchor = backlog ? null : after;
       if (backlog) task.startedAt = null;
       if (minutes != null) task.minutes = minutes;
       if (start) _begin(task);
@@ -150,7 +198,9 @@ class DemoTimelineRepository implements TimelineRepository {
       _tasks
         ..remove(task)
         ..insert(0, task);
-      task.backlog = false;
+      task
+        ..backlog = false
+        ..anchor = null;
       _begin(task);
     }
     return _timeline(days);
@@ -161,7 +211,10 @@ class DemoTimelineRepository implements TimelineRepository {
     String id, {
     int minutes = 15,
     int days = TimelineRepository.defaultDays,
-  }) async => _timeline(days);
+  }) async {
+    _task(id)?.anchor = clock.now().add(Duration(minutes: minutes));
+    return _timeline(days);
+  }
 
   @override
   Future<Timeline> applyTiming(
@@ -193,7 +246,7 @@ class DemoTimelineRepository implements TimelineRepository {
     String id, {
     int days = TimelineRepository.defaultDays,
   }) async {
-    _task(id)?.pausedAt = DateTime.now();
+    _task(id)?.pausedAt = clock.now();
     return _timeline(days);
   }
 
@@ -284,14 +337,14 @@ class DemoTimelineRepository implements TimelineRepository {
     for (final other in _tasks) {
       other.startedAt = null;
     }
-    task.startedAt = DateTime.now();
+    task.startedAt = clock.now();
   }
 
   /// The day as the server would draw it: the begun task where it began,
-  /// the rest of the queue one after another in the first room among the
-  /// fixed blocks.
+  /// each anchored one at its hour or the first room after it, and the rest
+  /// of the queue one after another in the room left.
   Timeline _timeline(int days) {
-    final now = DateTime.now();
+    final now = clock.now();
     final dayAt = DateTime(now.year, now.month, now.day);
     final until = DateTime(dayAt.year, dayAt.month, dayAt.day + days);
     final busy = [..._events];
@@ -299,14 +352,23 @@ class DemoTimelineRepository implements TimelineRepository {
     var cursor = now;
 
     final queue = _tasks.where((it) => !it.backlog);
+    final waiting = queue.where((it) => it.startedAt == null);
+    final anchored = waiting.where((it) => it.anchor != null).toList()
+      ..sort((a, b) => a.anchor!.compareTo(b.anchor!));
     for (final task in [
       ...queue.where((it) => it.startedAt != null),
-      ...queue.where((it) => it.startedAt == null),
+      ...anchored,
+      ...waiting.where((it) => it.anchor == null),
     ]) {
       final duration = Duration(minutes: task.minutes);
+      final from = switch (task.anchor) {
+        final anchor? when anchor.isAfter(now) => anchor,
+        _? => now,
+        null => cursor,
+      };
       final start =
           task.startedAt ??
-          TimelinePlan.nextFreeStart(busy, duration, now: cursor);
+          TimelinePlan.nextFreeStart(busy, duration, now: from);
       final card = TimelineEvent(
         id: task.id,
         title: task.title,
@@ -324,8 +386,16 @@ class DemoTimelineRepository implements TimelineRepository {
 
       tasks.add(card);
       busy.add(card);
-      cursor = card.endTime.add(TimelinePlan.gap);
+      if (task.anchor == null || task.startedAt != null) {
+        cursor = card.endTime.add(TimelinePlan.gap);
+      }
     }
+    // The running one first, then by their hours.
+    tasks.sort(
+      (a, b) => a.started != b.started
+          ? (a.started ? -1 : 1)
+          : a.startTime.compareTo(b.startTime),
+    );
 
     final cards =
         [

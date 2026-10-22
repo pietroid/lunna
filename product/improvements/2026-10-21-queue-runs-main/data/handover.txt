@@ -1,0 +1,39 @@
+19:51:28 stale daemon pid 48905 runs $T/checkout/.tool/queue.mjs
+✓ handover started ($T/checkout/.git/queue/handover.log)
+19:51:31 handover jobs: 1 (want 1, its own launchd job: dev.pietroid.lunna-queue-test-handover)
+19:51:31 merging the PR into the test origin
+19:54:29 handover took 178s after the merge
+--- handover.log
+2026-10-21T22:51:28 handover: waiting for origin/main to have the runner
+2026-10-21T22:53:30 handover: waiting for 48905 ($T/checkout/.tool/queue.mjs) to finish its pass
+2026-10-21T22:54:28 handover: ✓ the LaunchAgent runs $T/wt/.runner/.tool/queue.mjs (73a8017)
+--- daemon.log
+2026-10-21T22:51:25 tick failed: GraphQL: Could not resolve to a Repository with the name 'pietroid/no-such-repo-for-a-test'. (repository)
+
+2026-10-21T22:52:26 tick failed: GraphQL: Could not resolve to a Repository with the name 'pietroid/no-such-repo-for-a-test'. (repository)
+
+2026-10-21T22:53:26 tick failed: GraphQL: Could not resolve to a Repository with the name 'pietroid/no-such-repo-for-a-test'. (repository)
+
+2026-10-21T22:54:27 tick failed: GraphQL: Could not resolve to a Repository with the name 'pietroid/no-such-repo-for-a-test'. (repository)
+
+2026-10-21T22:54:27 queue.mjs changed: restarting
+2026-10-21T22:54:28 tick failed: GraphQL: Could not resolve to a Repository with the name 'pietroid/no-such-repo-for-a-test'. (repository)
+
+--- launchd now
+	arguments = {
+		/opt/homebrew/bin/node
+		$T/wt/.runner/.tool/queue.mjs
+		run
+	}
+pid 50150
+✓ the stale pid 48905 is gone
+✓ launchd runs the runner's queue.mjs
+✓ the runner is at the test origin's main
+✓ the new daemon is alive
+✓ the handover job unloaded itself and its plist is gone
+✓ the checkout was not changed (still the stale commit, clean)
+19:54:34 stale copies launchd started in between, sent off by the lock: 0
+--- ls from the runner
+✓ runner at 73a8017 (origin/main 73a8017)
+  nothing yet
+exit 0

@@ -95,19 +95,22 @@ page redraws whenever the file changes, from any editor.
 ## `queue`: issues in, merged PRs out
 
 ```bash
-.tool/queue setup        # once: labels, a push topic, the LaunchAgent, a test push
-.tool/queue ls           # each issue, where it is, what it has used
+.tool/queue setup        # once: labels, a push topic, the runner, the LaunchAgent, a test push
+.tool/queue ls           # the runner's commit, then each issue, where it is, what it has used
 .tool/queue log 12       # the tail of #12's last run
 .tool/queue tick         # one pass in the foreground (stop the agent first)
 .tool/queue implement product/research/<topic>/README.md [--dry-run]
                          # open the create issue that builds an RFC (it must be on main)
 .tool/queue stop|start   # unload / load the LaunchAgent
+.tool/queue adopt        # move a LaunchAgent that runs elsewhere onto the runner (it does it alone)
 ```
 
 Open an issue with the **Create**, **Research** or **Improve** template
-(it adds the label). A LaunchAgent polls every minute and works one issue at
-a time, each phase a fresh `claude -p` in its own worktree
-(`../lunna-queue/<n>-<slug>`, branch `queue/<n>-<slug>`):
+(it adds the label). A LaunchAgent polls every minute and works up to two
+issues at a time (only one of them merging), so a short round never waits
+behind a long build; each phase is a fresh `claude -p` in its own worktree
+(`../lunna-queue/<n>-<slug>`, branch `queue/<n>-<slug>`). `ls` marks the ones
+running and for how long:
 
 ```
 issue ─▶ 👀 ─▶ design ─▶ draft PR + comment + push ─▶ you reply
@@ -127,11 +130,35 @@ is a one-page plan instead of a board, and the gate says **Plan ready**.
 Research and improve skip the design gate. **An approved RFC goes on**:
 once merged, the queue opens `Implement: <RFC title>` as a `create` issue
 pointing at it, and the next pass plans it and opens its PR, so research
-flows into a build with one "approve". **The PR description is the
-topic's README** (delivery, RFC or report) with its pictures, under a usage
-table: per run, time, turns, tokens, API-equivalent USD and the 5-hour and
-weekly windows before and after (`claude -p /usage`, free). Each push
-carries the totals.
+flows into a build with one "approve". **The PR description is short**:
+the run's summary, the link to the review page (and to the README at that
+commit), the board if there is one, the open questions, and the usage
+folded under a line (per run, time, turns, tokens, API-equivalent USD and
+the 5-hour and weekly windows before and after, from `claude -p /usage`,
+free). The topic's README itself (delivery, RFC or report) is read on the
+page, or in *Files changed*. Each push carries the totals.
+
+**It runs what is merged.** The LaunchAgent runs `queue.mjs` from its own
+worktree, `<worktrees>/.runner`, detached at `origin/main` and moved to
+its tip after every pass; a changed `queue.mjs` starts no new run and restarts it once none is going. Before this,
+it ran from the main checkout, which nobody pulled, so merged changes to
+the queue (the page link, an RFC's build issue) never ran. Env files for
+the issue worktrees still come from the main checkout (the one whose
+`.git` holds `.git/queue`). `ls` prints the runner's commit, or ✗ and
+where the handover is.
+
+**It moves onto the runner by itself.** A LaunchAgent that runs some other
+`queue.mjs` (an old one, from the main checkout) is handed over without
+anyone at the Mac: `adopt` loads a one-off job,
+`dev.pietroid.lunna-queue-handover`, that waits for `origin/main` to have
+the handover, brings the runner to main, waits for the running pass to end
+(it touches that script, so the old queue exits after its pass), rewrites
+the LaunchAgent onto the runner, reloads it, sends a push and unloads
+itself (`.git/queue/handover.log`). A queue running outside the runner
+calls `adopt` when it starts. It is its own launchd job because launchd
+kills everything a job leaves behind when it exits, so a child of the old
+queue would die with it. After that, a merge is all it takes: the runner
+moves to main after each pass and the new `queue.mjs` restarts it.
 
 - **Answering.** Your comments on the issue or its PR after the gate.
   `approve` (or `ok`, `lgtm`, `aprovado`, 👍) **alone in its comment** goes
@@ -144,8 +171,8 @@ carries the totals.
   its file, line and the line's text, writes it into the doc as a note
   (`.tool/doc notes` reads them), and the queue posts the run's answer
   under your comment. A line comment is never an approval.
-- **Commenting on the page.** Each gate's comment and the PR link
-  📝 *Read it as a page*: the README drawn as on GitHub, at
+- **Commenting on the page.** Each gate's comment and the PR's description
+  link 📝 *Read it as a page*: the README drawn as on GitHub, at
   `https://pietroteruya.dev/lunna/review.html?pr=N&path=…` (Pages, under
   the owner's domain), with the
   PR's threads under the blocks they're about. Select text (or tap a
@@ -166,7 +193,9 @@ carries the totals.
 - **Only the owner.** The repo is public: issues and comments by anyone
   else are never read.
 - **Limits.** A run that hits the usage limit pauses until the window
-  resets and picks up from its files. The Mac must be awake (`caffeinate`
+  resets and picks up from its files. Two runs at once spend the window
+  twice as fast, and a run's before/after window figures include the other
+  run's use. The Mac must be awake (`caffeinate`
   holds it while a run goes; closing the lid still sleeps it).
 - **State** is in `.git/queue/`: one JSON per issue, the stream-json log of
   every run in `logs/`, the agent's own output in `daemon.log`.

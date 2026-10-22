@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-// The queue: GitHub issues worked by Claude Code on this Mac, one at a time.
+// The queue: GitHub issues worked by Claude Code on this Mac, two at a time.
 //
-//   .tool/queue setup            labels, a push topic, the LaunchAgent, Pages; sends a test push
+//   .tool/queue setup            labels, a push topic, the runner, the LaunchAgent, Pages; sends a test push
 //   .tool/queue run              the loop the LaunchAgent keeps alive (a pass a minute)
 //   .tool/queue tick             one pass, in the foreground
 //   .tool/queue ls               the issues it knows and where each one is
 //   .tool/queue log <issue>      the tail of that issue's last run
 //   .tool/queue stop | start     unload or load the LaunchAgent
 //   .tool/queue implement <rfc> [--dry-run]   open the create issue that builds an RFC on main
+//   .tool/queue adopt            move the LaunchAgent onto the runner by itself, once main has it
 //
 // An open issue of yours labelled create, research or improve is queued. Each
 // phase is a fresh headless `claude -p` in the issue's own worktree and
@@ -20,10 +21,14 @@
 // approved RFC, once merged, opens its own `create` issue (`implement`), so
 // research flows on into a build.
 //
+// The LaunchAgent runs the queue from its own worktree of origin/main
+// (<worktrees>/.runner), moved to main's tip on every pass, so what merges
+// is what runs: a run from the main checkout ran whatever it last pulled.
+//
 // The repo is public: only issues and comments by its owner are ever read.
 // State and logs live in .git/queue/, never in the tree.
 import { spawn, execFileSync } from 'node:child_process';
-import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { homedir } from 'node:os';
 import { basename, dirname, join, posix, resolve } from 'node:path';
@@ -33,10 +38,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 // .git/queue of the main checkout, also from a worktree (where .git is a file).
 const home = join(execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: root, encoding: 'utf8' }).trim(), 'queue');
+// The checkout the person works in, whose .git holds home.
+const checkout = resolve(home, '..', '..');
 const configPath = join(home, 'config.json');
 const stateDir = join(home, 'issues');
 const logDir = join(home, 'logs');
-const AGENT = 'dev.pietroid.lunna-queue';
+const AGENT = process.env.LUNNA_QUEUE_AGENT ?? 'dev.pietroid.lunna-queue'; // another label only to test a handover
 const plistPath = join(homedir(), 'Library', 'LaunchAgents', `${AGENT}.plist`);
 const MARK = '<!-- lunna-queue -->';
 const KINDS = ['create', 'research', 'improve'];
@@ -49,10 +56,29 @@ const BUT = /\b(but|mas|except|exceto|change|muda|mude|troca|troque|remove|tira|
 const isApproval = (text) => { const t = text.trim(); return APPROVE.test(t) || (t.split(/\s+/).length <= 8 && GO.test(t) && !BUT.test(t)); };
 const RETRY = /^(retry|again|de novo|tenta de novo)[\s.!]*$/iu;
 const RUN_LIMIT_MS = 4 * 3600e3;
+// Issues worked at once, so a short round waits for no long build. Only one
+// of them merges at a time: both would push to main and run .tool/check --all.
+const JOBS = 2;
+const running = new Map(); // issue → phase
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 << 20, ...opts }).trim();
 const trySh = (...a) => { try { return sh(...a); } catch { return null; } };
+// For what takes minutes: sh would hold up the other job and the ticks.
+// Rejects like execFileSync, with the output on e.stdout and e.stderr.
+const shAsync = (cmd, args, { timeout, ...opts } = {}) => new Promise((done, failed) => {
+  const child = spawn(cmd, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], ...opts });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', (c) => { stdout = (stdout + c).slice(-(1 << 20)); });
+  child.stderr.on('data', (c) => { stderr = (stderr + c).slice(-(1 << 20)); });
+  const timer = timeout && setTimeout(() => child.kill('SIGTERM'), timeout);
+  child.on('error', failed);
+  child.on('close', (code, signal) => {
+    clearTimeout(timer);
+    if (code === 0) return done(stdout.trim());
+    failed(Object.assign(new Error(`${cmd} exited with ${code ?? signal}`), { stdout, stderr }));
+  });
+});
 const gh = (args, input) => sh('gh', args, input === undefined ? {} : { input });
 const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
 const git = (wt, ...args) => sh('git', args, { cwd: wt });
@@ -149,7 +175,7 @@ Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion i
 - Work only in this worktree (${st.worktree}), branch ${st.branch}. Leave the work in its files: the queue commits, pushes and keeps the PR. Don't run git commit, push, checkout, merge, rebase or stash pop of anything you didn't stash, and don't run .tool/doc open.
 - Where a skill says to ask, or to stop for the person, take the option you would recommend, list it in the document under "Decided unattended", and go on. Write a question you can't decide into the document and into the structured output's questions.
 - Skip .tool/cost and session_cost: the queue measures every run and writes the figures in the PR.
-- Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README as the PR description, on a phone.
+- Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README on the review page, on a phone.
 - This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
 - A reply that starts "On \`<file>\` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
 - Finish with the structured output.`;
@@ -288,20 +314,6 @@ export const approves = (said) => said.every((c) => c.kind !== 'line' && isAppro
 
 const raw = (cfg, sha, path) => `https://raw.githubusercontent.com/${cfg.repo}/${sha}/${path}`;
 
-// The topic's README, with its relative links made absolute so it reads
-// as a PR description: pictures at this commit, files on the branch.
-function readme(cfg, st, sha) {
-  const path = st.doc && join(st.worktree, st.doc);
-  if (!path || !existsSync(path)) return '';
-  const dir = posix.dirname(st.doc);
-  let md = readFileSync(path, 'utf8').replace(/(!?\[[^\]]*\]\(|src=")(?![a-z]+:|#|\/)([^)"\s]+)/gi, (_, lead, rel) => {
-    const p = posix.normalize(posix.join(dir, rel));
-    return lead + (/\.(png|jpe?g|gif|svg|webp)$/i.test(p) ? raw(cfg, sha, p) : `https://github.com/${cfg.repo}/blob/${st.branch}/${p}`);
-  });
-  if (md.length > 55000) md = md.slice(0, 55000) + `\n\n… cut here: [the whole README](https://github.com/${cfg.repo}/blob/${st.branch}/${st.doc}).`;
-  return md;
-}
-
 // The review page (.tool/review.html on GitHub Pages) for the PR's README,
 // once Pages is on: the RFC drawn, commented on by selecting its text.
 export function reviewUrl(cfg, st) {
@@ -310,36 +322,46 @@ export function reviewUrl(cfg, st) {
   return site ? `${site.replace(/^http:/, 'https:').replace(/\/?$/, '/')}review.html?repo=${cfg.repo}&pr=${st.pr}&path=${encodeURI(st.doc)}` : null;
 }
 const pageLine = (url) => (url ? `\n\n📝 [Read it as a page and comment on its text](${url})` : '');
+const boardOf = (st) => st.doc && posix.join(posix.dirname(st.doc), 'img/mockup-board.png');
+const hasBoard = (st) => !!st.doc && existsSync(join(st.worktree, boardOf(st)));
 
-function prBody(cfg, st, sha, line) {
+// Short on purpose: the README is read on the review page (or in Files
+// changed, where its lines take comments), not pasted here. A board stays,
+// since it is the design at a glance.
+export function prBody(cfg, st, sha, line, page = reviewUrl(cfg, st)) {
+  const file = st.doc ? `📄 [${posix.basename(posix.dirname(st.doc))}/README.md](https://github.com/${cfg.repo}/blob/${sha}/${st.doc})` : '';
+  const read = page ? `📝 **[Read it as a page and comment on its text](${page})**${file ? ` · ${file}` : ''}` : file;
+  const board = hasBoard(st) ? `\n\n![board](${raw(cfg, sha, boardOf(st))})` : '';
   const qs = st.questions?.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
-  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${pageLine(reviewUrl(cfg, st))}${qs}\n\n### Usage\n\n${usageTable(st.runs)}\n\n---\n\n${readme(cfg, st, sha)}`;
+  const usage = st.runs.length ? `\n\n<details><summary>Usage: ${usageLine(st.runs)}</summary>\n\n${usageTable(st.runs)}\n\n</details>` : '';
+  return `Closes #${st.issue} · \`${st.kind}\` · ${line}\n\n${st.summary ?? ''}${read ? `\n\n${read}` : ''}${board}${qs}${usage}`;
 }
 
 function syncPr(cfg, st, line) {
   const sha = git(st.worktree, 'rev-parse', 'HEAD');
-  const body = prBody(cfg, st, sha, line);
   if (!st.pr) {
-    const url = sh('gh', ['pr', 'create', '-R', cfg.repo, '--draft', '--base', 'main', '--head', st.branch, '--title', st.title, '--body-file', '-'], { input: body });
+    const url = sh('gh', ['pr', 'create', '-R', cfg.repo, '--draft', '--base', 'main', '--head', st.branch, '--title', st.title, '--body-file', '-'], { input: prBody(cfg, st, sha, line, null) });
     st.pr = +url.split('/').pop();
     save(st);
-  } else {
-    gh(['pr', 'edit', String(st.pr), '-R', cfg.repo, '--body-file', '-'], body);
   }
+  // Again once the PR has a number: the page's link needs it.
+  gh(['pr', 'edit', String(st.pr), '-R', cfg.repo, '--body-file', '-'], prBody(cfg, st, sha, line));
   return sha;
 }
 
 // ---------------------------------------------------------------- the worktree
 
-function worktree(cfg, st) {
+async function worktree(cfg, st) {
   if (existsSync(st.worktree)) return;
   sh('git', ['fetch', '-q', 'origin', 'main']);
   const exists = trySh('git', ['rev-parse', '--verify', '-q', `refs/heads/${st.branch}`]);
   sh('git', ['worktree', 'add', '-q', ...(exists ? [st.worktree, st.branch] : ['-b', st.branch, st.worktree, 'origin/main'])]);
   // What git ignores but the app and the server need to run.
-  const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(root, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
-  for (const f of envs) if (existsSync(join(root, f))) copyFileSync(join(root, f), join(st.worktree, f));
-  trySh('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 });
+  // From the checkout the person works in: the runner has none of them.
+  const src = checkout;
+  const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(src, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
+  for (const f of envs) if (existsSync(join(src, f))) copyFileSync(join(src, f), join(st.worktree, f));
+  await shAsync('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 }).catch(() => {});
 }
 
 function commit(st, message) {
@@ -372,8 +394,9 @@ const headline = (st, gate, board) => HEADLINE[gate === 'design' ? (board ? 'des
 async function work(cfg, st) {
   const { phase, reply } = st.next;
   log(`#${st.issue} ${phase}`);
+  st.since = Date.now();
   setStatus(cfg, st, 'working');
-  worktree(cfg, st);
+  await worktree(cfg, st);
   if (phase === 'merge') return merge(cfg, st);
 
   const res = await claude(st, phase, prompt(st, phase, reply));
@@ -387,14 +410,13 @@ async function work(cfg, st) {
   git(st.worktree, 'push', '-q', '-u', 'origin', st.branch);
 
   const gate = gateOf(st, phase);
-  const hasBoard = !!st.doc && existsSync(join(st.worktree, dirname(st.doc), 'img/mockup-board.png'));
-  const [icon, head, ask, tag] = headline(st, gate, hasBoard);
+  const [icon, head, ask, tag] = headline(st, gate, hasBoard(st));
   const sha = syncPr(cfg, st, `**${head}**, waiting for your reply on #${st.issue}.`);
   if (gate === 'review') trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
   for (const r of res.output.replies ?? []) {
     trySh('gh', ['api', '-X', 'POST', `repos/${cfg.repo}/pulls/${st.pr}/comments/${r.thread}/replies`, '--input', '-'], { input: JSON.stringify({ body: `${r.body}\n\n${MARK}` }) });
   }
-  const board = hasBoard ? `\n\n![board](${raw(cfg, sha, posix.join(posix.dirname(st.doc), 'img/mockup-board.png'))})` : '';
+  const board = hasBoard(st) ? `\n\n![board](${raw(cfg, sha, boardOf(st))})` : '';
   const qs = st.questions.length ? `\n\n**Open questions**\n${st.questions.map((q) => `- ${q}`).join('\n')}` : '';
   st.gate = gate;
   st.gateAt = comment(cfg, st.issue, `${icon} **${head}**: #${st.pr}\n\n${st.summary}${pageLine(reviewUrl(cfg, st))}${board}${qs}\n\n${ask}\n\n<sub>${usageLine(st.runs)}</sub>`);
@@ -446,12 +468,12 @@ async function merge(cfg, st, attempt = 0) {
       git(wt, 'commit', '-q', '--no-edit');
     }
     // Main moved under the branch: CI's checks, here, before it lands.
-    const check = () => { try { sh(join(wt, '.tool/check'), ['--all'], { cwd: wt, timeout: 3600e3 }); return null; } catch (e) { return `${e.stdout ?? ''}${e.stderr ?? ''}`.slice(-4000); } };
-    let failure = check();
+    const check = async () => { try { await shAsync(join(wt, '.tool/check'), ['--all'], { cwd: wt, timeout: 3600e3 }); return null; } catch (e) { return `${e.stdout ?? ''}${e.stderr ?? ''}`.slice(-4000); } };
+    let failure = await check();
     if (failure) {
       if (!(await fix('checks', failure))) return;
       commit(st, `${st.kind}(#${st.issue}): fix checks after merging main`);
-      failure = check();
+      failure = await check();
       if (failure) return stopped(cfg, st, 'merge', null, { run: { log: st.runs.at(-1).log }, why: `.tool/check --all still fails:\n${failure}` });
     }
   }
@@ -556,16 +578,120 @@ async function tick(cfg) {
     save(st);
     log(`#${st.issue} answered: ${st.next.phase}`);
   }
-  // One job per pass: merges first, then whatever was asked first.
-  const ready = states().filter((s) => s.next && open.some((i) => i.number === s.issue))
+  // Fill the free slots: merges first, then whatever was asked first. The
+  // jobs go on in the background; the next passes keep reading the answers.
+  const ready = states().filter((s) => s.next && !running.has(s.issue) && open.some((i) => i.number === s.issue))
     .sort((a, b) => (b.next.phase === 'merge') - (a.next.phase === 'merge') || a.issue - b.issue);
-  const st = ready[0];
-  if (!st) return;
-  const { phase, reply } = st.next;
-  try { await work(cfg, st); } catch (e) {
-    // git, gh or the network, not the model: stop at a gate rather than loop on it.
-    await stopped(cfg, st, phase, reply, { run: { log: join(home, 'daemon.log') }, why: String(e.stderr || e.message).slice(-1500) });
+  for (const st of ready) {
+    if (running.size >= JOBS) break;
+    if (st.next.phase === 'merge' && [...running.values()].includes('merge')) continue;
+    const { phase, reply } = st.next;
+    running.set(st.issue, phase);
+    work(cfg, st)
+      // git, gh or the network, not the model: stop at a gate rather than loop on it.
+      .catch((e) => stopped(cfg, st, phase, reply, { run: { log: join(home, 'daemon.log') }, why: String(e.stderr || e.message).slice(-1500) }))
+      .catch((e) => log(`#${st.issue} failed to stop:`, e.stderr || e.message))
+      .finally(() => running.delete(st.issue));
   }
+}
+
+const idle = async () => { while (running.size) await new Promise((r) => setTimeout(r, 5e3)); };
+
+// ---------------------------------------------------------------- the runner
+
+export const runnerDir = (cfg) => join(cfg.worktrees, '.runner');
+export const isRunner = (cfg) => existsSync(runnerDir(cfg)) && realpathSync(runnerDir(cfg)) === realpathSync(root);
+
+// The worktree the LaunchAgent runs from, detached at origin/main's tip.
+// Nobody edits it, so a forced checkout loses nothing.
+export function syncRunner(cfg) {
+  const dir = runnerDir(cfg);
+  sh('git', ['fetch', '-q', 'origin', 'main'], { cwd: checkout });
+  if (!existsSync(dir)) sh('git', ['worktree', 'add', '-q', '--detach', dir, 'origin/main'], { cwd: checkout });
+  else sh('git', ['checkout', '-q', '-f', '--detach', 'origin/main'], { cwd: dir });
+  return dir;
+}
+
+// ---------------------------------------------------------------- the handover
+
+// Moving the LaunchAgent onto the runner needs no person: `adopt` starts a
+// handover whenever launchd runs another queue.mjs (from `run`, or by hand),
+// and it waits for main to have the runner, so it can start before the PR
+// that brings it is merged. It is a job of its own: launchd kills whatever a
+// job leaves behind when it exits, detached or not, so a child of the queue
+// would die with the queue it replaces. launchd starts it again if it fails
+// and after a restart, until it unloads itself.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const alive = (pid) => { try { return !!pid && process.kill(pid, 0); } catch { return false; } };
+const HELPER = `${AGENT}-handover`;
+const helperPlist = join(homedir(), 'Library', 'LaunchAgents', `${HELPER}.plist`);
+const READY = 'async function handover(';
+
+// What launchd has loaded under a label: its pid, node and the queue.mjs it runs.
+function jobOf(label) {
+  const out = trySh('launchctl', ['print', `gui/${uid()}/${label}`]);
+  if (!out) return null;
+  const args = out.match(/\n\targuments = \{\n([^}]*)\}/)?.[1].split('\n').map((l) => l.trim()).filter(Boolean) ?? [];
+  return { pid: +(out.match(/\n\tpid = (\d+)/)?.[1] ?? 0), node: args[0], script: args.find((a) => a.endsWith('queue.mjs')) };
+}
+
+// Quiet and quick, and a no-op once the queue runs from the runner.
+function adopt() {
+  if (process.platform !== 'darwin' || !existsSync(configPath)) return;
+  const job = jobOf(AGENT); // not loaded: stopped on purpose, or not set up
+  if (!job || job.script === join(runnerDir(config()), '.tool/queue.mjs')) return;
+  if (jobOf(HELPER)) return; // one is going: launchd restarts it if it fails
+  // A copy: the worktree this one runs from is removed when its PR merges.
+  const script = join(home, 'handover.mjs');
+  copyFileSync(fileURLToPath(import.meta.url), script);
+  const env = { PATH: process.env.PATH, ...(process.env.LUNNA_QUEUE_AGENT && { LUNNA_QUEUE_AGENT: AGENT }) };
+  writeFileSync(helperPlist, plist({ label: HELPER, args: [process.execPath, script, 'handover'], cwd: checkout, env, keepAlive: false }));
+  trySh('launchctl', ['bootout', `gui/${uid()}/${HELPER}`]);
+  // A fresh log: launchd refuses (EX_CONFIG) an output file it can't open,
+  // such as one a sandboxed session created, and the job never starts.
+  rmSync(join(home, 'handover.log'), { force: true });
+  sh('launchctl', ['bootstrap', `gui/${uid()}`, helperPlist]);
+  sh('launchctl', ['kickstart', `gui/${uid()}/${HELPER}`]);
+  console.log(`✓ handover started (${join(home, 'handover.log')})`);
+}
+
+async function handover() {
+  const cfg = config();
+  const runnerScript = join(runnerDir(cfg), '.tool/queue.mjs');
+  const ready = () => trySh('git', ['fetch', '-q', 'origin', 'main'], { cwd: checkout }) !== null
+    && (trySh('git', ['show', 'origin/main:.tool/queue.mjs'], { cwd: checkout }) ?? '').includes(READY);
+  for (let tries = 0; !ready(); tries++) {
+    if (tries === 0) log('handover: waiting for origin/main to have the runner');
+    await sleep(120e3);
+  }
+  syncRunner(cfg);
+  // Main's handover does the switch, not this copy, which may be older.
+  if (resolve(here, 'queue.mjs') !== runnerScript) {
+    return new Promise((r) => spawn(process.execPath, [runnerScript, 'handover'], { cwd: checkout, stdio: 'inherit' }).on('exit', (code) => r(process.exit(code ?? 1))));
+  }
+  const job = jobOf(AGENT);
+  if (job && job.script !== runnerScript) {
+    // The lock makes the copy launchd starts again exit at once ("Another
+    // .tool/queue run is going"); a newer mtime on its script ends the
+    // running one after its pass, so no run is cut off.
+    writeFileSync(join(home, 'lock'), String(process.pid));
+    if (alive(job.pid)) {
+      if (job.script && existsSync(job.script)) utimesSync(job.script, new Date(), new Date());
+      log(`handover: waiting for ${job.pid} (${job.script}) to finish its pass`);
+      while (alive(job.pid)) await sleep(2e3);
+    }
+    const old = existsSync(plistPath) ? readFileSync(plistPath, 'utf8') : '';
+    const path = old.match(/<key>PATH<\/key><string>([^<]*)<\/string>/)?.[1].replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+    writeQueuePlist(runnerDir(cfg), job.node ?? process.execPath, path ?? process.env.PATH);
+    rmSync(join(home, 'lock'), { force: true });
+    start();
+    log(`handover: ✓ the LaunchAgent runs ${runnerScript} (${git(runnerDir(cfg), 'rev-parse', '--short', 'HEAD')})`);
+    await push(cfg, { title: 'Lunna queue moved to its runner', message: 'From now on it runs what is merged into main.', tags: ['white_check_mark'] });
+  } else log(job ? 'handover: ✓ already on the runner' : 'handover: the LaunchAgent is not loaded, nothing to move');
+  // Done for good. Unloading this job ends this process, so it goes last.
+  rmSync(helperPlist, { force: true });
+  rmSync(join(home, 'handover.mjs'), { force: true });
+  trySh('launchctl', ['bootout', `gui/${uid()}/${HELPER}`]);
 }
 
 function locked() {
@@ -578,8 +704,9 @@ function locked() {
 
 // The queue merges through GitHub, so nothing pulls the checkout it runs
 // from: fast-forward it to origin/main after each pass, so what was merged is
-// what runs (the mtime check above then restarts it). Only on main with a
+// what runs (the mtime check in loop then restarts it). Only on main with a
 // clean tree: work in progress is never touched, and then it just waits.
+// It matters only until the handover: the runner is detached, so a no-op there.
 function pullCheckout() {
   if (trySh('git', ['symbolic-ref', '--short', 'HEAD']) !== 'main' || trySh('git', ['status', '--porcelain'])) return;
   if (trySh('git', ['fetch', '-q', 'origin', 'main']) === null) return;
@@ -590,15 +717,25 @@ async function loop(once) {
   const loaded = statSync(fileURLToPath(import.meta.url)).mtimeMs;
   const cfg = config();
   if (locked()) fail('Another .tool/queue run is going.');
+  const runner = isRunner(cfg);
+  if (!once && !runner) { log(`running from ${root}, not ${runnerDir(cfg)}: handing over`); adopt(); }
   for (;;) {
-    try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
-    if (once) return;
-    // An edited queue.mjs takes over at the next pass: exit, launchd starts it again.
+    const edited = statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded;
+    // An edited queue.mjs starts no job: it takes over once the running ones end.
+    if (!edited) try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
+    if (once) return idle();
+    // Main's tip, so a merged queue.mjs takes over at the check below.
+    if (runner) try { syncRunner(cfg); } catch (e) { log('runner sync failed:', e.stderr || e.message); }
     pullCheckout();
-    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) {
+    // An edited queue.mjs takes over at the next pass with nothing running:
+    // the restart kills every child of the job.
+    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded && !running.size) {
       // Not by exiting: launchd defers a KeepAlive job that exited cleanly ("inefficient").
       log('queue.mjs changed: restarting');
-      rmSync(join(home, 'lock'), { force: true });
+      // The lock only if it is ours: a handover holds it so the copy launchd
+      // starts again exits at once, until it has moved the LaunchAgent.
+      const lock = join(home, 'lock');
+      if (existsSync(lock) && +readFileSync(lock, 'utf8') === process.pid) rmSync(lock, { force: true });
       if (trySh('launchctl', ['kickstart', '-k', `gui/${process.getuid()}/${AGENT}`]) !== null) await new Promise(() => {}); // killed by it
       return;
     }
@@ -634,29 +771,40 @@ async function setup() {
   const pages = trySh('gh', ['api', `repos/${repo}/pages`, '--jq', '.html_url'])
     ?? trySh('gh', ['api', '-X', 'POST', `repos/${repo}/pages`, '-f', 'build_type=workflow', '--jq', '.html_url']);
 
-  const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  mkdirSync(dirname(plistPath), { recursive: true });
-  writeFileSync(plistPath, `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>Label</key><string>${AGENT}</string>
-  <key>ProgramArguments</key><array><string>${xml(process.execPath)}</string><string>${xml(join(here, 'queue.mjs'))}</string><string>run</string></array>
-  <key>WorkingDirectory</key><string>${xml(root)}</string>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${xml(process.env.PATH)}</string></dict>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>ThrottleInterval</key><integer>60</integer>
-  <key>StandardOutPath</key><string>${xml(join(home, 'daemon.log'))}</string>
-  <key>StandardErrorPath</key><string>${xml(join(home, 'daemon.log'))}</string>
-</dict></plist>
-`);
+  const runner = syncRunner(cfg);
+  writeQueuePlist(runner, process.execPath, process.env.PATH);
   start();
   await push(cfg, { title: 'Lunna queue is on', message: `Watching ${repo} for issues labelled ${KINDS.join(', ')}.`, tags: ['white_check_mark'], click: `https://github.com/${repo}/issues` });
   console.log(`✓ labels on ${repo}, LaunchAgent ${AGENT} loaded, test push sent
+  ✓ runs from ${runner}, at origin/main (${git(runner, 'rev-parse', '--short', 'HEAD')}), moved to its tip every pass
   ${pages ? `✓ review page: ${pages}review.html (live after the next push to main or a queue/* branch touching it, or: gh workflow run review-page.yml)` : '✗ GitHub Pages could not be turned on: Settings → Pages → Source: GitHub Actions'}
   phone: install ntfy (App Store / Play Store), tap +, topic ${cfg.topic}, server ntfy.sh
          (or open https://ntfy.sh/${cfg.topic} on the phone)
   then open an issue with the "Create" template and watch for the 👀`);
+}
+
+function writeQueuePlist(runner, node, path) {
+  mkdirSync(dirname(plistPath), { recursive: true });
+  writeFileSync(plistPath, plist({ label: AGENT, args: [node, join(runner, '.tool/queue.mjs'), 'run'], cwd: runner, env: { PATH: path }, keepAlive: true }));
+}
+
+function plist({ label, args, cwd, env, keepAlive }) {
+  const xml = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const out = join(home, keepAlive ? 'daemon.log' : 'handover.log');
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>${label}</string>
+  <key>ProgramArguments</key><array>${args.map((a) => `<string>${xml(a)}</string>`).join('')}</array>
+  <key>WorkingDirectory</key><string>${xml(cwd)}</string>
+  <key>EnvironmentVariables</key><dict>${Object.entries(env).map(([k, v]) => `<key>${k}</key><string>${xml(v)}</string>`).join('')}</dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key>${keepAlive ? '<true/>' : '<dict><key>SuccessfulExit</key><false/></dict>'}
+  <key>ThrottleInterval</key><integer>60</integer>
+  <key>StandardOutPath</key><string>${xml(out)}</string>
+  <key>StandardErrorPath</key><string>${xml(out)}</string>
+</dict></plist>
+`;
 }
 
 const uid = () => process.getuid();
@@ -672,10 +820,19 @@ function stop() {
 }
 
 function ls() {
+  const cfg = config();
+  const at = (ref, cwd) => trySh('git', ['rev-parse', '--short', ref], { cwd }) ?? '?';
+  const dir = runnerDir(cfg);
+  const plist = existsSync(plistPath) ? readFileSync(plistPath, 'utf8') : '';
+  console.log(jobOf(HELPER) ? `… handover waiting to move the LaunchAgent onto ${dir} (${join(home, 'handover.log')})`
+    : !existsSync(dir) ? '✗ no runner: run .tool/queue adopt (or setup)'
+    : !plist.includes(dir) ? `✗ the LaunchAgent doesn't run from ${dir} yet: it hands over on its own (${join(home, 'handover.log')}), or run .tool/queue adopt`
+    : `✓ runner at ${at('HEAD', dir)} (origin/main ${at('origin/main')})`);
   const all = states().sort((a, b) => a.issue - b.issue);
   if (!all.length) return console.log('  nothing yet');
   for (const s of all) {
-    const where = s.next ? `next: ${s.next.phase}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
+    const where = s.next && s.status === 'working' && s.since ? `running: ${s.next.phase} (${fmtMin(Date.now() - s.since)})`
+      : s.next ? `next: ${s.next.phase}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
     console.log(`#${s.issue}  ${s.kind.padEnd(8)} ${where.padEnd(26)} ${s.pr ? `PR #${s.pr}  ` : ''}${s.title}`);
     if (s.runs.length) console.log(`      ${usageLine(s.runs)}`);
   }
@@ -700,6 +857,6 @@ function tail(n) {
 const [command, ...rest] = process.argv.slice(2);
 // Run as a command, not imported (by a test of the functions it exports).
 const main = !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
-const commands = { setup, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), implement: implementCli, stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
-if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | implement <rfc> [--dry-run] | stop | start');
+const commands = { setup, adopt, handover, run: () => loop(false), tick: () => loop(true), ls, log: () => tail(rest[0]), implement: implementCli, stop, start: () => { start(); console.log(`✓ ${AGENT} loaded`); } };
+if (main && !commands[command]) fail('usage: .tool/queue setup | run | tick | ls | log <issue> | implement <rfc> [--dry-run] | stop | start | adopt');
 if (main) await commands[command]();

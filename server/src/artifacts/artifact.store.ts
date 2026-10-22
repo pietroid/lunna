@@ -8,6 +8,7 @@ import {
   ArtifactRecord,
   NewCatalogType,
   NewGoal,
+  StoredRow,
 } from './artifact.types';
 
 /**
@@ -63,6 +64,18 @@ export abstract class ArtifactStore {
   abstract insertGoal(user: CalendarUser, goal: NewGoal): Promise<Goal>;
 
   abstract removeGoal(user: CalendarUser, id: string): Promise<void>;
+
+  /** Forgets a kind; what was of it keeps no kind. */
+  abstract removeType(user: CalendarUser, id: string): Promise<void>;
+
+  /** Forgets a shelf and the kinds on it. */
+  abstract removeCategory(user: CalendarUser, id: string): Promise<void>;
+
+  /**
+   * Writes [it] back as it was, id and all: what undoing a removal does. A
+   * row already there is left as it is.
+   */
+  abstract revive(user: CalendarUser, it: StoredRow): Promise<void>;
 }
 
 type Owned<T> = T & { userId: string };
@@ -182,6 +195,39 @@ export class MemoryArtifactStore extends ArtifactStore {
 
   removeGoal(user: CalendarUser, id: string): Promise<void> {
     if (this._goals.get(id)?.userId === user.id) this._goals.delete(id);
+    return Promise.resolve();
+  }
+
+  removeType(user: CalendarUser, id: string): Promise<void> {
+    if (this._types.get(id)?.userId !== user.id) return Promise.resolve();
+    this._types.delete(id);
+    for (const it of this._artifacts.values()) {
+      if (it.typeId === id) delete it.typeId;
+    }
+    for (const [goalId, it] of this._goals) {
+      if (it.typeId === id) this._goals.delete(goalId);
+    }
+    return Promise.resolve();
+  }
+
+  async removeCategory(user: CalendarUser, id: string): Promise<void> {
+    if (this._categories.get(id)?.userId !== user.id) return;
+    for (const type of await this.types(user)) {
+      if (type.categoryId === id) await this.removeType(user, type.id);
+    }
+    this._categories.delete(id);
+  }
+
+  revive(user: CalendarUser, it: StoredRow): Promise<void> {
+    const table: Map<string, Owned<object>> = {
+      artifact: this._artifacts,
+      category: this._categories,
+      type: this._types,
+      goal: this._goals,
+    }[it.kind];
+    if (!table.has(it.row.id)) {
+      table.set(it.row.id, { ...it.row, userId: user.id });
+    }
     return Promise.resolve();
   }
 }

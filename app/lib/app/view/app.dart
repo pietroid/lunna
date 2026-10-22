@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agent/agent.dart';
+import 'package:analytics/analytics.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,61 +19,79 @@ import 'package:timeline/timeline.dart';
 /// {@endtemplate}
 class App extends StatelessWidget {
   /// {@macro app}
-  App({required String initialLocation, super.key})
-    : _router = GoRouter(
-        initialLocation: initialLocation,
-        routes: [
-          GoRoute(path: '/', builder: (context, state) => const ShellPage()),
-          // One block of time, opened from the timeline.
-          GoRoute(
-            path: '/evento/:id',
-            builder: (context, state) => EventPage(
-              id: state.pathParameters['id']!,
-              dock: NotesDock.task,
-            ),
-          ),
-          // The routines: what happens every day, and on which days.
-          GoRoute(
-            path: '/rotina',
-            builder: (context, state) => const RoutinesPage(),
-          ),
-          // Everything done, opened from Menu.
-          GoRoute(
-            path: '/feitas',
-            builder: (context, state) => BlocProvider(
-              create: (context) {
-                final cubit = DoneArchiveCubit(
-                  repository: context.read<TimelineRepository>(),
-                );
-                unawaited(cubit.load());
-                return cubit;
-              },
-              child: DoneArchivePage(
-                // A finished task is not on the timeline, so its page is
-                // handed the card the archive drew.
-                onOpen: (card) => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => EventPage(
-                      id: card.id,
-                      finished: card,
-                      dock: NotesDock.task,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Signed out, the app is its own landing page.
-          GoRoute(
-            path: '/auth',
-            builder: (context, state) => AuthScreen(
-              authRepository: context.read<AuthRepository>(),
-              onAuthenticated: () => context.go('/'),
-              child: const LandingPage(),
-            ),
-          ),
-        ],
-      );
+  ///
+  /// Each route has a `name`, which is the screen PostHog reports.
+  App({
+    required String initialLocation,
+    this.analytics = const NoAnalytics(),
+    super.key,
+  }) : _router = GoRouter(
+         initialLocation: initialLocation,
+         observers: analytics.navigatorObservers,
+         routes: [
+           // The tabs are one route; ShellPage reports each as a screen.
+           GoRoute(
+             path: '/',
+             name: 'Inicio',
+             builder: (context, state) => const ShellPage(),
+           ),
+           // One block of time, opened from the timeline.
+           GoRoute(
+             path: '/evento/:id',
+             name: 'Evento',
+             builder: (context, state) => EventPage(
+               id: state.pathParameters['id']!,
+               dock: NotesDock.task,
+             ),
+           ),
+           // The routines: what happens every day, and on which days.
+           GoRoute(
+             path: '/rotina',
+             name: 'Rotina',
+             builder: (context, state) => const RoutinesPage(),
+           ),
+           // Everything done, opened from Menu.
+           GoRoute(
+             path: '/feitas',
+             name: 'Feitas',
+             builder: (context, state) => BlocProvider(
+               create: (context) {
+                 final cubit = DoneArchiveCubit(
+                   repository: context.read<TimelineRepository>(),
+                 );
+                 unawaited(cubit.load());
+                 return cubit;
+               },
+               child: DoneArchivePage(
+                 // A finished task is not on the timeline, so its page is
+                 // handed the card the archive drew.
+                 onOpen: (card) => Navigator.of(context).push(
+                   MaterialPageRoute<void>(
+                     builder: (_) => EventPage(
+                       id: card.id,
+                       finished: card,
+                       dock: NotesDock.task,
+                     ),
+                   ),
+                 ),
+               ),
+             ),
+           ),
+           // Signed out, the app is its own landing page.
+           GoRoute(
+             path: '/auth',
+             name: 'Entrada',
+             builder: (context, state) => AuthScreen(
+               authRepository: context.read<AuthRepository>(),
+               onAuthenticated: () => context.go('/'),
+               child: const LandingPage(),
+             ),
+           ),
+         ],
+       );
+
+  /// Where screens are reported, and what wraps the app for replays.
+  final Analytics analytics;
 
   final GoRouter _router;
 
@@ -94,14 +113,16 @@ class App extends StatelessWidget {
           unawaited(context.read<NotificationScheduler>().sync());
         }
       },
-      child: MaterialApp.router(
-        debugShowCheckedModeBanner: false,
-        onGenerateTitle: (context) => context.l10n.appName(AppBrand.id),
-        theme: AppTheme.current,
-        locale: const Locale('pt', 'BR'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        routerConfig: _router,
+      child: analytics.wrap(
+        MaterialApp.router(
+          debugShowCheckedModeBanner: false,
+          onGenerateTitle: (context) => context.l10n.appName(AppBrand.id),
+          theme: AppTheme.current,
+          locale: const Locale('pt', 'BR'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: _router,
+        ),
       ),
     );
   }

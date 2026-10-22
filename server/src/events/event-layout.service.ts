@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { ArtifactStore } from '../artifacts/artifact.store';
 import { CalendarService } from '../calendar/calendar.service';
 import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
@@ -65,6 +67,8 @@ export class EventLayoutService {
     private readonly _timeline: TimelineService,
     private readonly _calendar: CalendarService,
     private readonly _tasks: TaskStore,
+    /** Where a task's delivery is looked up; absent where none is made. */
+    @Optional() private readonly _artifacts?: ArtifactStore,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -228,6 +232,13 @@ export class EventLayoutService {
     trace: Trace,
     now = new Date(),
   ): Promise<string> {
+    if (
+      request.artifactId !== undefined &&
+      this._artifacts !== undefined &&
+      (await this._artifacts.get(user, request.artifactId)) === undefined
+    ) {
+      throw new BadRequestException('Essa entrega não existe mais.');
+    }
     const day = await this._timeline.day(user, 1, now);
 
     if (request.backlog) {

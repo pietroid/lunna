@@ -1204,4 +1204,454 @@ describe('the agent', () => {
       ).toBe(new Date(`${TOMORROW}T09:00:00-03:00`).toISOString());
     });
   });
+
+  describe('deliveries, the catalogue and the goals', () => {
+    /** Every row a plan can touch, as the stores keep it. */
+    const rows = async () => {
+      const artifacts = app.get(ArtifactStore);
+      const tasks = app.get(TaskStore);
+      return {
+        artifacts: await artifacts.list(USER),
+        categories: await artifacts.categories(USER),
+        types: await artifacts.types(USER),
+        goals: await artifacts.goals(USER),
+        tasks: [
+          ...(await tasks.pending(USER)),
+          ...(await tasks.ofArtifacts(USER)),
+        ].sort((a, b) => a.id.localeCompare(b.id)),
+      };
+    };
+
+    /** A delivery with backlog tasks of its own. */
+    const delivery = async (
+      title: string,
+      tasks: string[] = [],
+      extra: { value?: number; deadline?: string } = {},
+    ) => {
+      const artifacts = app.get(ArtifactStore);
+      const store = app.get(TaskStore);
+      const artifact = await artifacts.insert(USER, { title, ...extra });
+      for (const name of tasks) {
+        const id = ((await task(name, 30, true)).body as Timeline).backlog.find(
+          (it) => it.title === name,
+        )!.id;
+        await store.update(USER, {
+          ...(await store.get(USER, id))!,
+          artifactId: artifact.id,
+        });
+      }
+      return artifact;
+    };
+
+    /** Applies [planId], then undoes it, checking the rows came back whole. */
+    const applyAndUndo = async (planId: string, check: () => Promise<void>) => {
+      const before = await rows();
+      expect((await post(`/agent/plans/${planId}/apply?days=3`)).status).toBe(
+        201,
+      );
+      await check();
+      expect((await post(`/agent/plans/${planId}/undo?days=3`)).status).toBe(
+        201,
+      );
+      expect(await rows()).toEqual(before);
+    };
+
+    it('writes a delivery with its tasks in one plan, and undoes it to nothing', async () => {
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'tese pra sexta com duas tarefas' },
+            changes: [
+              {
+                do: 'new_artifact',
+                as: 'n1',
+                title: 'Tese',
+                deadline: '2026-03-13',
+                value: 1500,
+              },
+              {
+                do: 'to_backlog',
+                new: { title: 'Bibliografia', minutes: 60, artifact: 'n1' },
+              },
+              {
+                do: 'to_backlog',
+                new: { title: 'Revisão', minutes: 90, artifact: 'n1' },
+              },
+            ],
+          }),
+      ];
+
+      const reply = (
+        await ask('Cria a entrega Tese pra sexta com duas tarefas')
+      ).body as AgentReply;
+      const plan = reply.plan!;
+
+      expect(plan.changes[0]).toEqual({
+        kind: 'add_artifact',
+        title: 'Tese',
+        minutes: 0,
+        deadline: '2026-03-13',
+        value: 1500,
+        routine: false,
+        takes: ['Bibliografia', 'Revisão'],
+      });
+      expect(plan.changes[1]).toMatchObject({
+        kind: 'to_backlog',
+        title: 'Bibliografia',
+        artifact: 'Tese',
+      });
+      // Nothing is written until Aplicar.
+      expect(await app.get(ArtifactStore).list(USER)).toEqual([]);
+
+      await applyAndUndo(plan.id, async () => {
+        const [tese] = await app.get(ArtifactStore).list(USER);
+        expect(tese).toMatchObject({ title: 'Tese', value: 1500 });
+        const theirs = await app.get(TaskStore).ofArtifacts(USER);
+        expect(theirs.map((it) => [it.title, it.artifactId])).toEqual([
+          ['Bibliografia', tese.id],
+          ['Revisão', tese.id],
+        ]);
+      });
+      expect(await app.get(ArtifactStore).list(USER)).toEqual([]);
+    });
+
+    it('delivers with work left, drawing what is left, and undoes it', async () => {
+      await delivery('Tese', ['Revisão'], { value: 1500 });
+      model.steps = [
+        (messages) =>
+          propose({
+            data: { what: 'entregar a tese' },
+            changes: [{ do: 'deliver', ref: artifactRef(messages, 'Tese') }],
+          }),
+      ];
+
+      const plan = ((await ask('Entreguei a tese')).body as AgentReply).plan!;
+
+      expect(plan.changes[0]).toMatchObject({
+        kind: 'deliver',
+        title: 'Tese',
+        value: 1500,
+        takes: ['Revisão'],
+      });
+      await applyAndUndo(plan.id, async () => {
+        const [tese] = await app.get(ArtifactStore).list(USER);
+        expect(tese.doneAt).toBe(NOW.toISOString());
+      });
+    });
+
+    it('asks once before a delete that takes more than three tasks, and brings every one back', async () => {
+      await delivery('Mudança', ['Caixas', 'Frete', 'Faxina', 'Chaves']);
+      model.steps = [
+        (messages) =>
+          propose({
+            data: { what: 'apagar a mudança' },
+            changes: [
+              { do: 'remove_artifact', ref: artifactRef(messages, 'Mudança') },
+            ],
+          }),
+      ];
+
+      const reply = (await ask('Apaga a entrega da mudança'))
+        .body as AgentReply;
+
+      expect(reply.plan).toBeUndefined();
+      expect(reply.reply).toBe(
+        'A entrega Mudança leva junto 4 tarefas do Depois eu priorizo. Apago todas, ou só a entrega?',
+      );
+      expect(reply.options.map((it) => it.label)).toEqual([
+        'Apagar as 4',
+        'Só a entrega',
+      ]);
+      const [all, only] = reply.options.map((it) => it.plan);
+      expect(all.changes[0]).toMatchObject({
+        kind: 'remove_artifact',
+        takes: ['Caixas', 'Frete', 'Faxina', 'Chaves'],
+      });
+      expect(only.changes[0].takes).toBeUndefined();
+
+      await applyAndUndo(all.id, async () => {
+        expect(await app.get(ArtifactStore).list(USER)).toEqual([]);
+        expect((await day()).backlog).toEqual([]);
+      });
+
+      // The other answer keeps the tasks, belonging to none.
+      expect((await post(`/agent/plans/${only.id}/apply?days=3`)).status).toBe(
+        201,
+      );
+      expect((await day()).backlog.map((it) => it.title)).toEqual([
+        'Caixas',
+        'Frete',
+        'Faxina',
+        'Chaves',
+      ]);
+    });
+
+    it('refuses a delivery that is already there, so the model asks', async () => {
+      await delivery('Tese');
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'tese' },
+            changes: [{ do: 'new_artifact', title: 'tese' }],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toBe(
+            '"Tese" is already a delivery (p1). Use its ref, or confirm with the person that this is another one and send duplicate: true.',
+          );
+          return say('Você já tem a Tese. É outra?')(messages);
+        },
+      ];
+
+      const turn = await ask('Cria a entrega tese');
+      expect(turn.status).toBe(201);
+      expect((turn.body as AgentReply).plan).toBeUndefined();
+    });
+
+    it('takes a kind named loosely, and asks when two kinds are alike', async () => {
+      const artifacts = app.get(ArtifactStore);
+      const shelf = await artifacts.insertCategory(USER, {
+        name: 'Atendimentos',
+        position: 0,
+      });
+      await artifacts.insertType(USER, {
+        categoryId: shelf.id,
+        name: 'Mapa astral',
+        minutes: 90,
+        price: 250,
+        position: 0,
+      });
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'um mapa pra Ana' },
+            changes: [{ do: 'new_artifact', title: 'Ana', kind: 'mapa' }],
+          }),
+      ];
+
+      const plan = ((await ask('Novo mapa pra Ana')).body as AgentReply).plan!;
+      expect(plan.changes[0]).toMatchObject({
+        kind: 'add_artifact',
+        minutes: 90,
+        value: 250,
+      });
+      await applyAndUndo(plan.id, async () => {
+        const [ana] = await artifacts.list(USER);
+        expect(ana).toMatchObject({ title: 'Ana', minutes: 90, value: 250 });
+      });
+
+      await artifacts.insertType(USER, {
+        categoryId: shelf.id,
+        name: 'Mapa natal',
+        minutes: 60,
+        position: 1,
+      });
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'um mapa pro Bruno' },
+            changes: [{ do: 'new_artifact', title: 'Bruno', kind: 'mapa' }],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toBe(
+            'k1 "Mapa astral" and k2 "Mapa natal" both match "mapa": ask the person which, with choices.',
+          );
+          return say('Qual mapa?')(messages);
+        },
+      ];
+      const bruno = await ask('Novo mapa pro Bruno');
+      expect(bruno.status).toBe(201);
+      expect((bruno.body as AgentReply).plan).toBeUndefined();
+    });
+
+    it('writes a kind and a goal that counts it, and takes both back', async () => {
+      model.steps = [
+        (messages) => {
+          expect(messages.at(-1)!.content).not.toContain('Catalogue');
+          return propose({
+            data: { what: 'tipo post e meta de 3 por semana' },
+            changes: [
+              {
+                do: 'new_kind',
+                as: 'n1',
+                name: 'Post',
+                shelf: 'Conteúdo',
+                minutes: 45,
+              },
+              {
+                do: 'new_goal',
+                measure: 'count',
+                kind: 'n1',
+                target: 3,
+                period: 'week',
+              },
+            ],
+          });
+        },
+      ];
+
+      const asked = await ask('Quero 3 posts por semana');
+      expect(asked.status).toBe(201);
+      const plan = (asked.body as AgentReply).plan!;
+      expect(plan.changes.map((it) => it.kind)).toEqual([
+        'add_kind',
+        'add_goal',
+      ]);
+      expect(plan.changes[1]).toMatchObject({
+        title: 'Post',
+        goal: { kind: 'count', period: 'week', target: 3 },
+      });
+
+      await applyAndUndo(plan.id, async () => {
+        const artifacts = app.get(ArtifactStore);
+        const [post_] = await artifacts.types(USER);
+        expect(post_).toMatchObject({ name: 'Post', minutes: 45 });
+        expect(await artifacts.goals(USER)).toMatchObject([
+          { kind: 'count', typeId: post_.id, target: 3, period: 'week' },
+        ]);
+      });
+
+      // Read on the next turn's board, by ref.
+      await post(`/agent/plans/${plan.id}/apply?days=3`);
+      model.steps = [say('Certo.')];
+      expect((await ask('E as metas?')).status).toBe(201);
+      const context = model.seen.at(-1)!.at(-1)!.content;
+      expect(context).toContain(
+        'Catalogue (kinds):\n  k1 · Post · Conteúdo · 45 min',
+      );
+      expect(context).toContain(
+        'Goals:\n  g1 · count of Post · 3 per week · delivered 0, queued 0',
+      );
+    });
+
+    it('removes a goal, and the deliveries stay', async () => {
+      await app.get(ArtifactStore).insertGoal(USER, {
+        kind: 'money',
+        target: 4000,
+        period: 'month',
+        starts: '2026-03-01',
+      });
+      await delivery('Tese', [], { value: 1500, deadline: '2026-03-20' });
+      model.steps = [
+        (messages) => {
+          expect(messages.at(-1)!.content).toContain(
+            'g1 · money · R$ 4.000 per month · delivered R$ 0, queued R$ 1.500',
+          );
+          return propose({
+            data: { what: 'tirar a meta' },
+            changes: [{ do: 'remove_goal', ref: 'g1' }],
+          });
+        },
+      ];
+
+      const asked = await ask('Tira a meta');
+      expect(asked.status).toBe(201);
+      const plan = (asked.body as AgentReply).plan!;
+      expect(plan.changes[0]).toMatchObject({
+        kind: 'remove_goal',
+        title: 'Faturamento',
+        goal: { kind: 'money', period: 'month', target: 4000 },
+      });
+      await applyAndUndo(plan.id, async () => {
+        expect(await app.get(ArtifactStore).goals(USER)).toEqual([]);
+        expect(await app.get(ArtifactStore).list(USER)).toHaveLength(1);
+      });
+    });
+
+    it('moves a delivery in its queue and gives another a new deadline', async () => {
+      await delivery('Tese', [], { deadline: '2026-03-20' });
+      await delivery('Curso');
+      model.steps = [
+        (messages) =>
+          propose({
+            data: { what: 'curso antes da tese, tese pro dia 27' },
+            changes: [
+              {
+                do: 'move_artifact',
+                ref: artifactRef(messages, 'Curso'),
+                before: artifactRef(messages, 'Tese'),
+              },
+              {
+                do: 'edit_artifact',
+                ref: artifactRef(messages, 'Tese'),
+                deadline: '2026-03-27',
+              },
+            ],
+          }),
+      ];
+
+      const plan = (
+        (await ask('Curso antes da tese, e a tese pro dia 27'))
+          .body as AgentReply
+      ).plan!;
+      expect(plan.changes).toMatchObject([
+        { kind: 'move_artifact', title: 'Curso', place: { before: 'Tese' } },
+        {
+          kind: 'edit_artifact',
+          title: 'Tese',
+          deadline: '2026-03-27',
+          wasDeadline: '2026-03-20',
+        },
+      ]);
+      await applyAndUndo(plan.id, async () => {
+        const list = await app.get(ArtifactStore).list(USER);
+        expect(list.map((it) => [it.title, it.deadline])).toEqual([
+          ['Curso', undefined],
+          ['Tese', '2026-03-27'],
+        ]);
+      });
+    });
+
+    it('writes a new task into the delivery whose page it was asked on', async () => {
+      const tese = await delivery('Tese');
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'bibliografia' },
+            changes: [
+              { do: 'to_backlog', new: { title: 'Bibliografia', minutes: 60 } },
+            ],
+          }),
+      ];
+
+      const reply = (
+        await post('/agent/turn', {
+          messages: [{ role: 'user', text: 'Anota bibliografia' }],
+          about: { artifactId: tese.id },
+        })
+      ).body as AgentReply;
+
+      expect(reply.plan!.changes[0]).toMatchObject({ artifact: 'Tese' });
+      await post(`/agent/plans/${reply.plan!.id}/apply?days=3`);
+      const [bibliografia] = await app.get(TaskStore).ofArtifacts(USER);
+      expect(bibliografia).toMatchObject({
+        title: 'Bibliografia',
+        artifactId: tese.id,
+      });
+    });
+
+    it('refuses an argument a verb does not take', async () => {
+      await delivery('Tese');
+      model.steps = [
+        (messages) =>
+          propose({
+            data: { what: 'entregar' },
+            changes: [
+              {
+                do: 'deliver',
+                ref: artifactRef(messages, 'Tese'),
+                time: '10:00',
+              },
+            ],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toBe('deliver takes no time.');
+          return say('Certo.')(messages);
+        },
+      ];
+
+      const turn = await ask('Entrega a tese às 10');
+      expect(turn.status).toBe(201);
+      expect((turn.body as AgentReply).plan).toBeUndefined();
+    });
+  });
 });

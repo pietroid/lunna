@@ -1,15 +1,18 @@
 import { randomUUID } from 'crypto';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CalendarService } from '../calendar/calendar.service';
 import { CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
 import { EventLayoutService } from '../events/event-layout.service';
-import {
-  Day,
-  intervalOfTask,
-  TimelineService,
-} from '../events/timeline.service';
+import { TimelineService } from '../events/timeline.service';
 import { ArtifactStore } from '../artifacts/artifact.store';
+import { ArtifactsService } from '../artifacts/artifacts.service';
 import { TaskStore } from '../tasks/task.store';
 import {
   addMinutes,
@@ -21,7 +24,6 @@ import {
 import {
   addDaysIn,
   formatTimeIn,
-  instantOf,
   isoDayIn,
   isoIn,
   sameDayIn,
@@ -40,10 +42,31 @@ import {
   summary,
   toA2ui,
 } from './answer';
-import { SYSTEM_PROMPT, TOOLS } from './agent.prompt';
+import {
+  actionOf,
+  ACTIONS,
+  DEFAULT_SHAPE,
+  Draft,
+  Refusal,
+  Resolving,
+  SCHEMA_SHAPES,
+  SchemaShape,
+  Subject,
+} from './actions';
+import { SYSTEM_PROMPT, toolsFor } from './agent.prompt';
 import { Board, BoardCard, HORIZON_DAYS, noonOf } from './board';
 import { ConversationStore, PlanStatus } from './conversation.store';
-import { Hands, make, sandbox, takeBack } from './gestures';
+import {
+  Hands,
+  handsOver,
+  Made,
+  make,
+  sandbox,
+  Seed,
+  snapshot,
+  takeBack,
+  undoOf,
+} from './gestures';
 import {
   ChatMessage,
   ModelOutcome,
@@ -55,13 +78,16 @@ import { speakable } from './speech';
 import {
   Assumption,
   Gesture,
-  NewThing,
+  MemoryPlanStore,
+  newOf,
   Plan,
   PlanChange,
   PlanStore,
   Pushed,
-  Undo,
 } from './plan';
+import { ToolDefinition } from './openrouter.client';
+
+export type { Subject } from './actions';
 
 /** One message of the conversation, as the app keeps it. */
 export interface AgentMessage {
@@ -70,12 +96,6 @@ export interface AgentMessage {
   /** How long it took to say, when the user spoke it. */
   voiceSeconds?: number;
 }
-
-/**
- * What a conversation is about, when it was opened from a page rather than
- * from Tempo: a task's or an artifact's.
- */
-export type Subject = { taskId: string } | { artifactId: string };
 
 /** How much of a subject's notes the model reads. */
 const MAX_NOTES = 2000;
@@ -130,31 +150,14 @@ export interface Suggestion {
   plan: PlanView;
 }
 
-/**
- * The model asked for something that cannot be: told to the model, in its
- * terms, for it to fix or to ask the person about.
- */
-class Refusal extends Error {}
-
-/** One of the model's changes, every reference in it resolved. */
-interface Draft {
-  gesture: Gesture;
-  /** What the server found resolving it, for the person to read. */
-  facts: string[];
-  assumed: Assumption[];
-  /** The card it moves, when it moves one. */
-  card?: BoardCard;
-  /** For a place: the titles of the cards around it. */
-  place?: { after?: string; before?: string };
-  /** Whether it may be a card already there under another name. */
-  duplicate: boolean;
-}
-
 /** Everything one turn works from. */
 interface Turn {
   user: CalendarUser;
   conversationId: string;
   board: Board;
+  /** The rows the board was read from, which every dry run starts from. */
+  seed: Seed;
+  about?: Subject;
   now: Date;
   trace: Trace;
   steps: string[];
@@ -196,11 +199,11 @@ const MAX_PUSHED = 8;
 /** How many past messages one search hands the model. */
 const MAX_FOUND = 20;
 
-/** How long something new takes when nobody said. */
-const DEFAULT_MINUTES = 30;
-
 /** How many conversations' refs are kept in memory. */
 const MAX_CONVERSATIONS_HELD = 500;
+
+/** A delete that takes more tasks with it than this is asked about first. */
+const MAX_SILENT_CASCADE = 3;
 
 /**
  * Lunna's agent: it reads the day and proposes changes to it.
@@ -214,9 +217,12 @@ const MAX_CONVERSATIONS_HELD = 500;
  */
 @Injectable()
 export class AgentService {
-  private readonly _plans = new PlanStore();
+  private readonly _plans: PlanStore;
   /** The suggestion last offered to each person, so it is offered once. */
   private readonly _suggested = new Map<string, Plan>();
+  /** The tools, a plan's changes in the shape `AGENT_SCHEMA` names. */
+  private readonly _tools: ToolDefinition[];
+  private readonly _deliveries: ArtifactsService;
   /**
    * The doubt each conversation was last left with, by one of its answers'
    * plans: answered by typing rather than a tap, the options missed.
@@ -233,7 +239,19 @@ export class AgentService {
     private readonly _tasks: TaskStore,
     private readonly _artifacts: ArtifactStore,
     private readonly _conversations: ConversationStore,
-  ) {}
+    @Optional() plans?: PlanStore,
+    @Optional() config?: ConfigService,
+  ) {
+    this._plans = plans ?? new MemoryPlanStore();
+    this._tools = toolsFor(schemaShapeOf(config?.get<string>('AGENT_SCHEMA')));
+    this._deliveries = handsOver(
+      _calendar,
+      _tasks,
+      _artifacts,
+      _timeline,
+      _layout,
+    ).deliveries;
+  }
 
   get configured(): boolean {
     return this._model.configured;
@@ -245,6 +263,8 @@ export class AgentService {
       layout: this._layout,
       calendar: this._calendar,
       tasks: this._tasks,
+      artifacts: this._artifacts,
+      deliveries: this._deliveries,
     };
   }
 
@@ -268,11 +288,11 @@ export class AgentService {
     const asked = this._asked.get(conversation);
     if (asked !== undefined) {
       this._asked.delete(conversation);
-      const option = this._plans.get(user.id, asked);
+      const option = await this._plans.get(user.id, asked);
       if (
         option !== undefined &&
         option.applied === undefined &&
-        !this._plans.answered(option)
+        !(await this._plans.answered(option))
       ) {
         trace.log('agent.doubtAnswered', { via: 'text' });
       }
@@ -399,6 +419,11 @@ export class AgentService {
       ];
     }
 
+    const kind = board.kind(ref);
+    if (kind !== undefined) return [`  ${board.kindLine(kind)}`];
+    const goal = board.goal(ref);
+    if (goal !== undefined) return [`  ${board.goalLine(goal)}`];
+
     const card = board.ref(ref);
     if (card === undefined) return [`  No card or artifact ${ref}.`];
     return [`  ${board.line(card)}`, ...notes(card.notes)];
@@ -418,15 +443,26 @@ export class AgentService {
     trace: Trace,
     now: Date,
   ): Promise<Omit<TurnResult, 'conversationId'>> {
-    const [day, artifacts, artifactTasks] = await Promise.all([
-      this._timeline.day(user, HORIZON_DAYS, now),
-      this._artifacts.list(user),
-      this._tasks.ofArtifacts(user),
-    ]);
-    const board = new Board(day, this._timeline.view(day), {
-      refs: this._refsOf(conversationId),
+    const [day, artifacts, artifactTasks, categories, types, goals] =
+      await Promise.all([
+        this._timeline.day(user, HORIZON_DAYS, now),
+        this._artifacts.list(user),
+        this._tasks.ofArtifacts(user),
+        this._artifacts.categories(user),
+        this._artifacts.types(user),
+        this._artifacts.goals(user),
+      ]);
+    const seed: Seed = {
+      day,
       artifacts,
       artifactTasks,
+      categories,
+      types,
+      goals,
+    };
+    const board = new Board(day, this._timeline.view(day), {
+      refs: this._refsOf(conversationId),
+      ...seed,
     });
     const subject =
       about === undefined
@@ -436,6 +472,8 @@ export class AgentService {
       user,
       conversationId,
       board,
+      seed,
+      about,
       now,
       trace,
       steps: [],
@@ -568,7 +606,7 @@ export class AgentService {
     turn: Turn,
     messages: ChatMessage[],
     iteration: number,
-    tools = TOOLS,
+    tools = this._tools,
   ): Promise<ModelOutcome> {
     const outcome = await turn.trace.span('agent.model', { iteration }, () =>
       this._model.generate(messages, tools),
@@ -592,7 +630,7 @@ export class AgentService {
     trace: Trace,
     now = new Date(),
   ): Promise<string[]> {
-    const plan = this._plans.get(user.id, planId);
+    const plan = await this._plans.get(user.id, planId);
     if (plan === undefined) {
       throw new AgentError(
         'refused',
@@ -607,7 +645,7 @@ export class AgentService {
         HttpStatus.CONFLICT,
       );
     }
-    if (this._plans.answered(plan)) {
+    if (await this._plans.answered(plan)) {
       throw new AgentError(
         'refused',
         'Essa pergunta já foi respondida com outra opção.',
@@ -615,19 +653,28 @@ export class AgentService {
       );
     }
 
-    const undo: Undo[] = [];
+    const hands = this._hands;
     const touched: string[] = [];
+    const made: Made = new Map();
+    // Read once first, so what a read writes by itself (the days of
+    // routines, a paused block's end) is not taken for the plan's.
+    await hands.timeline.day(user, 1, now);
+    const before = await snapshot(hands, user, now);
 
     try {
       for (const gesture of plan.gestures) {
-        touched.push(await make(this._hands, user, gesture, undo, trace, now));
+        touched.push(await make(hands, user, gesture, made, trace, now));
       }
     } catch (error) {
       trace.warn('agent.applyFailed', {
         planId,
         error: error instanceof Error ? error.message : String(error),
       });
-      await takeBack(this._hands, user, undo, trace);
+      await takeBack(
+        hands,
+        user,
+        undoOf(before, await snapshot(hands, user, now)),
+      );
       throw new AgentError(
         'drift',
         'Seu dia mudou desde esse plano e ele não cabe mais. Peça de novo.',
@@ -635,7 +682,11 @@ export class AgentService {
       );
     }
 
-    plan.applied = { undo, touched };
+    plan.applied = {
+      undo: undoOf(before, await snapshot(hands, user, now)),
+      touched,
+    };
+    await this._plans.save(plan);
     await this._mark(user, plan.group ?? planId, 'applied', trace);
     trace.log('agent.applied', {
       planId,
@@ -651,7 +702,7 @@ export class AgentService {
 
   /** Takes an applied plan back, every change of it, and leaves it a plan. */
   async undo(user: CalendarUser, planId: string, trace: Trace): Promise<void> {
-    const plan = this._plans.get(user.id, planId);
+    const plan = await this._plans.get(user.id, planId);
     if (plan?.applied === undefined) {
       throw new AgentError(
         'refused',
@@ -660,9 +711,10 @@ export class AgentService {
       );
     }
 
-    await takeBack(this._hands, user, plan.applied.undo, trace);
+    await takeBack(this._hands, user, plan.applied.undo);
     // Back to a proposal: the card offers Aplicar again.
     plan.applied = undefined;
+    await this._plans.save(plan);
     await this._mark(user, plan.group ?? planId, 'undone', trace);
     trace.log('agent.undone', { planId });
   }
@@ -716,15 +768,18 @@ export class AgentService {
       if (!sameDayIn(slot.start, now, zone)) continue;
 
       const at = slot.start.toISOString();
-      const last = this._suggested.get(user.id);
+      const kept = this._suggested.get(user.id);
+      const last =
+        kept === undefined
+          ? undefined
+          : await this._plans.get(user.id, kept.id);
       const offered =
         last !== undefined &&
-        this._plans.get(user.id, last.id) !== undefined &&
         last.applied === undefined &&
         last.changes[0]?.id === task.id &&
         last.changes[0]?.at === at
           ? last
-          : this._plans.put(user.id, {
+          : await this._plans.put(user.id, {
               gestures: [{ do: 'at_hour', id: task.id, at }],
               changes: [
                 {
@@ -990,9 +1045,7 @@ export class AgentService {
       const changes = Array.isArray(it.changes) ? it.changes : [];
       if (changes.length > 0) {
         try {
-          const drafts = changes.map((change) =>
-            this._draft(turn, change as Record<string, unknown>, false),
-          );
+          const drafts = this._drafts(turn, changes, false);
           for (const draft of drafts) turn.steps.push(...draft.facts);
           const plan = await this._rehearse(turn, drafts, group);
           options.push({ label, plan: planView(plan) });
@@ -1096,13 +1149,7 @@ export class AgentService {
       throw new Refusal('A plan needs at least one change.');
 
     const data = (args.data ?? {}) as Record<string, unknown>;
-    const drafts = raw.map((item) =>
-      this._draft(
-        turn,
-        item as Record<string, unknown>,
-        typeof data.minutes === 'number',
-      ),
-    );
+    const drafts = this._drafts(turn, raw, typeof data.minutes === 'number');
     for (const draft of drafts) turn.steps.push(...draft.facts);
 
     const doubt = await this._doubt(turn, drafts);
@@ -1113,26 +1160,19 @@ export class AgentService {
     // Something new with no hour said: the hour is the agent's proposal,
     // and the backlog is always one tap away.
     const options: QuickReply[] = [];
-    const fresh = drafts.filter(
-      (it) => it.gesture.do !== 'swap' && it.gesture.new !== undefined,
-    );
+    const fresh = drafts.filter((it) => newOf(it.gesture) !== undefined);
     const unsaid = typeof data.when !== 'string' || data.when.trim() === '';
+    const thing = fresh.length === 1 ? newOf(fresh[0].gesture) : undefined;
     if (
       drafts.length === 1 &&
-      fresh.length === 1 &&
+      thing !== undefined &&
       unsaid &&
       fresh[0].gesture.do !== 'to_backlog' &&
-      fresh[0].gesture.do !== 'swap' &&
-      fresh[0].gesture.new?.fixed !== true
+      thing.fixed !== true
     ) {
       const backlog = await this._rehearse(
         turn,
-        [
-          {
-            ...fresh[0],
-            gesture: { do: 'to_backlog', new: fresh[0].gesture.new },
-          },
-        ],
+        [{ ...fresh[0], gesture: { do: 'to_backlog', new: thing } }],
         plan.id,
       );
       options.push({ label: 'Deixar para depois', plan: planView(backlog) });
@@ -1152,8 +1192,11 @@ export class AgentService {
   ): Promise<Proposal | undefined> {
     const { board } = turn;
 
+    const cascade = await this._cascade(turn, drafts);
+    if (cascade !== undefined) return cascade;
+
     for (const [index, draft] of drafts.entries()) {
-      const thing = draft.gesture.do === 'swap' ? undefined : draft.gesture.new;
+      const thing = newOf(draft.gesture);
       if (thing === undefined || draft.duplicate) continue;
 
       const card = board.alike(thing.title).find((it) => !it.started);
@@ -1210,7 +1253,10 @@ export class AgentService {
   /** [draft] made on [card] instead of on something new, when it can be. */
   private _asMove(draft: Draft, card: BoardCard): Draft | undefined {
     const g = draft.gesture;
-    if (g.do === 'swap' || card.foreign) return undefined;
+    if (card.foreign) return undefined;
+    if (g.do !== 'at_hour' && g.do !== 'place' && g.do !== 'to_backlog') {
+      return undefined;
+    }
     if (card.kind === 'event' && g.do !== 'at_hour') return undefined;
     if (card.kind === 'task' && g.do === 'to_backlog' && card.backlog) {
       return undefined;
@@ -1242,17 +1288,22 @@ export class AgentService {
   ): Promise<Plan> {
     const { user, board, now, trace } = turn;
     const before = board.day;
-    const hands = sandbox(user, before);
+    const hands = sandbox(user, turn.seed);
     const ids: string[] = [];
+    const made: Made = new Map();
 
     for (const draft of drafts) {
-      ids.push(await make(hands, user, draft.gesture, [], trace, now));
+      ids.push(await make(hands, user, draft.gesture, made, trace, now));
     }
     const after = await hands.timeline.day(user, HORIZON_DAYS, now);
 
-    const changes = drafts.map((draft, i) =>
-      this._view(board, after, draft, ids[i]),
-    );
+    const changes = drafts.map((draft, i) => {
+      const action = actionOf(draft.gesture.do);
+      if (action?.line === undefined) {
+        throw new Error(`Nothing draws ${draft.gesture.do}`);
+      }
+      return action.line({ board, after, drafts }, draft, ids[i]);
+    });
 
     // Nothing pushes an event, so one laid on another is two things at
     // once: the person is asked, never handed the overlap.
@@ -1318,300 +1369,156 @@ export class AgentService {
       });
     }
 
-    const plan = this._plans.put(user.id, {
+    return this._plans.put(user.id, {
       gestures: drafts.map((it) => it.gesture),
       changes,
       pushed: pushed
         .sort((a, b) => Date.parse(a.before) - Date.parse(b.before))
         .slice(0, MAX_PUSHED),
       assumed: dedupeAssumed(drafts.flatMap((it) => it.assumed)),
+      group,
     });
-    plan.group = group;
-
-    return plan;
   }
 
-  /** How the card draws [draft], made as card [id] on the day [after]. */
-  private _view(
-    board: Board,
-    after: Day,
-    draft: Draft,
-    id: string,
-  ): PlanChange {
-    const g = draft.gesture;
-    const thing: NewThing | undefined = g.do === 'swap' ? undefined : g.new;
-    const card = draft.card;
-    const common = {
-      ...(card === undefined ? {} : { id: card.id }),
-      title: thing?.title ?? card!.title,
-      minutes: thing?.minutes ?? card!.minutes,
-      ...(card?.start === undefined
-        ? {}
-        : { before: card.start.toISOString() }),
-      routine: card?.routine ?? false,
-    };
+  /**
+   * A delete that takes more than a few tasks with it is asked about once,
+   * before any plan: all of them, or only the delivery.
+   */
+  private async _cascade(
+    turn: Turn,
+    drafts: Draft[],
+  ): Promise<Proposal | undefined> {
+    const index = drafts.findIndex(
+      (it) =>
+        it.gesture.do === 'remove_artifact' &&
+        !it.gesture.keepTasks &&
+        (it.view?.takes?.length ?? 0) > MAX_SILENT_CASCADE,
+    );
+    if (index < 0) return undefined;
 
-    if (g.do === 'to_backlog') return { kind: 'to_backlog', ...common };
-
-    const event = after.events.find((it) => it.id === id);
-    if (event !== undefined && event.taskId === undefined) {
-      return {
-        kind: thing === undefined ? 'move_event' : 'add_event',
-        ...common,
-        at: event.startTime,
-      };
-    }
-
-    const interval = intervalOfTask(after, id);
-    if (interval === undefined) {
-      throw new Error(`The dry run lost "${common.title}"`);
-    }
+    const draft = drafts[index];
+    const going = draft.view!.takes!.length;
+    const group = randomUUID();
+    const swapIn = (replacement: Draft) =>
+      drafts.map((it, i) => (i === index ? replacement : it));
+    const all = await this._rehearse(turn, drafts, group);
+    const only = await this._rehearse(
+      turn,
+      swapIn({
+        ...draft,
+        gesture: {
+          ...(draft.gesture as { do: 'remove_artifact'; id: string }),
+          keepTasks: true,
+        },
+      }),
+      group,
+    );
 
     return {
-      kind: thing === undefined ? 'move_task' : 'add_task',
-      ...common,
-      at: interval.start.toISOString(),
-      ...(draft.place === undefined ? {} : { place: draft.place }),
+      kind: 'doubt',
+      reply: `A entrega ${draft.view!.title} leva junto ${going} tarefas do Depois eu priorizo. Apago todas, ou só a entrega?`,
+      options: [
+        { label: `Apagar as ${going}`, plan: planView(all) },
+        { label: 'Só a entrega', plan: planView(only) },
+      ],
     };
   }
 
   /**
-   * One of the model's changes, read: the refs resolved to cards, the day
-   * and hour to an instant, and what was not said taken as a default that
-   * the card then names. Refuses, in the model's terms, what cannot be.
+   * A plan's changes, read in order, each through its action: an earlier
+   * change may name what it makes (`as`) for the later ones.
+   */
+  private _drafts(turn: Turn, raw: unknown[], lengthSaid: boolean): Draft[] {
+    const declared: Resolving['declared'] = new Map();
+    return raw.map((item) =>
+      this._draft(
+        turn,
+        (item ?? {}) as Record<string, unknown>,
+        lengthSaid,
+        declared,
+      ),
+    );
+  }
+
+  /**
+   * One of the model's changes, read by the action it names: the refs
+   * resolved to cards, the day and hour to an instant, and what was not said
+   * taken as a default that the card then names. Refuses, in the model's
+   * terms, what cannot be.
    */
   private _draft(
     turn: Turn,
     item: Record<string, unknown>,
     lengthSaid: boolean,
+    declared: Resolving['declared'],
   ): Draft {
     const { board, now } = turn;
-    const kind = item.do;
-    const facts: string[] = [];
-    const assumed: Assumption[] = [];
-
-    const cardOf = (value: unknown, what: string): BoardCard | undefined => {
-      if (value === undefined || value === null || value === '')
-        return undefined;
-      const card = typeof value === 'string' ? board.ref(value) : undefined;
-      if (card === undefined) {
-        throw new Refusal(
-          `No card ${JSON.stringify(value)} for ${what}. Use a ref from the board (t1, e1, b1), or read_timeline for other days.`,
-        );
-      }
-      facts.push(`Achei ${board.describe(card)}`);
-      return card;
-    };
-    const movable = (card: BoardCard) => {
-      if (card.foreign) {
-        throw new Refusal(
-          `${card.ref} "${card.title}" is not Lunna's: it is never moved.`,
-        );
-      }
-      if (card.started) {
-        throw new Refusal(
-          `${card.ref} "${card.title}" has already started: nothing begun is moved.`,
-        );
-      }
-      return card;
-    };
-
-    const card = cardOf(item.ref, 'ref');
-    if (card !== undefined) movable(card);
-
-    const rawNew = item.new as Record<string, unknown> | undefined;
-    let thing: NewThing | undefined;
-    if (rawNew !== undefined && rawNew !== null) {
-      if (card !== undefined)
-        throw new Refusal('Give either ref or new, not both.');
-      const title = typeof rawNew.title === 'string' ? rawNew.title.trim() : '';
-      if (title === '') throw new Refusal('new needs a title.');
-      const given =
-        typeof rawNew.minutes === 'number' && Number.isFinite(rawNew.minutes);
-      const minutes = given
-        ? clampInt(rawNew.minutes, 5, 720, DEFAULT_MINUTES)
-        : DEFAULT_MINUTES;
-      // A length the person did not say is the agent's choice, whoever
-      // picked it, and the card names it.
-      if (!given || !lengthSaid) assumed.push({ kind: 'minutes', minutes });
-      thing = {
-        title: title.slice(0, 200),
-        minutes,
-        fixed: rawNew.fixed === true,
-      };
-    }
-    const duplicate = item.duplicate === true;
-
-    if (kind !== 'swap' && card === undefined && thing === undefined) {
+    const action = actionOf(item.do);
+    if (action === undefined) {
       throw new Refusal(
-        `${String(kind)} needs a ref (an existing card) or new (something new).`,
+        `Unknown change "${String(item.do)}": use ${ACTIONS.map((it) => it.name).join(', ')}.`,
       );
     }
-    const target = card === undefined ? { new: thing } : { id: card.id };
-
-    switch (kind) {
-      case 'place': {
-        if (card?.kind === 'event' || thing?.fixed === true) {
-          throw new Refusal(
-            'A fixed event takes an hour, not a place in the queue: use at_hour.',
-          );
-        }
-        const after = cardOf(item.after, 'after');
-        const before = cardOf(item.before, 'before');
-        if ((after ?? before)?.id === card?.id && card !== undefined) {
-          throw new Refusal('A card cannot be placed next to itself.');
-        }
-        if (after?.backlog === true || before?.backlog === true) {
-          throw new Refusal(
-            'Backlog cards have no place in the queue: name cards from the day.',
-          );
-        }
-        if (after === undefined && before === undefined)
-          assumed.push({ kind: 'end_of_queue' });
-
-        return {
-          gesture: {
-            do: 'place',
-            ...target,
-            after: after?.id,
-            before: before?.id,
-          },
-          facts,
-          assumed,
-          card,
-          place: { after: after?.title, before: before?.title },
-          duplicate,
-        };
-      }
-
-      case 'at_hour': {
-        const day = this._day(turn, item.day, facts);
-        const time =
-          typeof item.time === 'string'
-            ? /^(\d{1,2}):(\d{2})$/.exec(item.time.trim())
-            : null;
-        if (time === null || Number(time[1]) > 23 || Number(time[2]) > 59) {
-          throw new Refusal(
-            `at_hour needs time as HH:mm, got ${String(item.time)}.`,
-          );
-        }
-        const [year, month, date] = day.split('-').map(Number);
-        const at = instantOf(
-          {
-            year,
-            month,
-            day: date,
-            hour: Number(time[1]),
-            minute: Number(time[2]),
-            second: 0,
-          },
-          board.zone,
-        );
-        if (at.getTime() < now.getTime() - 60_000) {
-          throw new Refusal(
-            `${board.when(at)} has already passed. Ask the person for another hour.`,
-          );
-        }
-
-        const fixed = thing?.fixed === true || card?.kind === 'event';
-        const window = board.window(day);
-        const minutes = thing?.minutes ?? card!.minutes;
-        if (
-          !fixed &&
-          (at < window.start || addMinutes(at, minutes) > window.end)
-        ) {
-          throw new Refusal(
-            `${board.when(at)} is outside the working day (${formatTimeIn(window.start, board.zone)}–${formatTimeIn(window.end, board.zone)}): nothing is scheduled there. Ask the person.`,
-          );
-        }
-
-        return {
-          gesture: { do: 'at_hour', ...target, at: at.toISOString() },
-          facts,
-          assumed,
-          card,
-          duplicate,
-        };
-      }
-
-      case 'first_free': {
-        if (item.day === undefined || item.day === '')
-          assumed.push({ kind: 'today' });
-        const day = this._day(turn, item.day ?? 'hoje', facts);
-        if (board.over(day)) {
-          throw new Refusal(
-            `The working day of ${board.dayLabel(day)} is over: nothing more fits. Ask the person whether amanhã will do.`,
-          );
-        }
-        const minutes = thing?.minutes ?? card!.minutes;
-        const room = board
-          .free(day)
-          .find(
-            (it) => it.end.getTime() - it.start.getTime() >= minutes * 60_000,
-          );
-        if (room === undefined) {
-          throw new Refusal(
-            `There are no ${minutes} free minutes ${board.dayLabel(day)}. Ask the person.`,
-          );
-        }
-        facts.push(
-          `Livre ${board.dayLabel(day)}: ${formatTimeIn(room.start, board.zone)}–${formatTimeIn(room.end, board.zone)}`,
-        );
-
-        return {
-          gesture: { do: 'at_hour', ...target, at: room.start.toISOString() },
-          facts,
-          assumed,
-          card,
-          duplicate,
-        };
-      }
-
-      case 'to_backlog': {
-        if (card?.kind === 'event' || thing?.fixed === true) {
-          throw new Refusal(
-            'Only tasks go to the backlog, never a fixed event.',
-          );
-        }
-        if (card?.backlog === true) {
-          throw new Refusal(`${card.ref} is already in the backlog.`);
-        }
-        return {
-          gesture: { do: 'to_backlog', ...target },
-          facts,
-          assumed,
-          card,
-          duplicate,
-        };
-      }
-
-      case 'swap': {
-        const other = cardOf(item.with, 'with');
-        if (card === undefined || other === undefined) {
-          throw new Refusal('swap needs ref and with, two tasks on the day.');
-        }
-        movable(other);
-        for (const it of [card, other]) {
-          if (it.kind === 'event' || it.backlog) {
-            throw new Refusal(
-              `${it.ref} "${it.title}" cannot swap: only tasks on the day trade places.`,
-            );
-          }
-        }
-        return {
-          gesture: { do: 'swap', id: card.id, with: other.id },
-          facts,
-          assumed,
-          card,
-          duplicate,
-        };
-      }
-
-      default:
-        throw new Refusal(
-          `Unknown change "${String(kind)}": use place, at_hour, first_free, to_backlog or swap.`,
-        );
+    // An argument the verb does not take is refused, not guessed at; an
+    // empty one (the flat shape lets the model fill every field) is not one.
+    for (const [key, value] of Object.entries(item)) {
+      if (key === 'do' || key in action.args) continue;
+      if (value === undefined || value === null || value === '') continue;
+      if (value === false) continue;
+      throw new Refusal(`${action.name} takes no ${key}.`);
     }
+
+    const facts: string[] = [];
+    const r: Resolving = {
+      board,
+      now,
+      about: turn.about,
+      lengthSaid,
+      declared,
+      facts,
+      assumed: [],
+      card(value, what) {
+        if (value === undefined || value === null || value === '')
+          return undefined;
+        const card = typeof value === 'string' ? board.ref(value) : undefined;
+        if (card === undefined) {
+          throw new Refusal(
+            `No card ${JSON.stringify(value)} for ${what}. Use a ref from the board (t1, e1, b1), or read_timeline for other days.`,
+          );
+        }
+        facts.push(`Achei ${board.describe(card)}`);
+        return card;
+      },
+      movable(card) {
+        if (card.foreign) {
+          throw new Refusal(
+            `${card.ref} "${card.title}" is not Lunna's: it is never moved.`,
+          );
+        }
+        if (card.started) {
+          throw new Refusal(
+            `${card.ref} "${card.title}" has already started: nothing begun is moved.`,
+          );
+        }
+        return card;
+      },
+      artifact(value, what) {
+        if (value === undefined || value === null || value === '')
+          return undefined;
+        const it =
+          typeof value === 'string' ? board.artifact(value) : undefined;
+        if (it === undefined) {
+          throw new Refusal(
+            `No delivery ${JSON.stringify(value)} for ${what}. Use a delivery ref from the board (p1).`,
+          );
+        }
+        facts.push(`Achei a entrega ${it.artifact.title}`);
+        return it;
+      },
+      day: (value) => this._day(turn, value, facts),
+    };
+
+    return action.resolve(r, item);
   }
 
   /** The day a change names, noting what a word like "amanhã" came to. */
@@ -1762,4 +1669,11 @@ function planView(plan: Plan): PlanView {
     pushed: plan.pushed,
     assumed: plan.assumed,
   };
+}
+
+/** The shape `AGENT_SCHEMA` names, or the default for anything else. */
+function schemaShapeOf(value: string | undefined): SchemaShape {
+  return SCHEMA_SHAPES.includes(value as SchemaShape)
+    ? (value as SchemaShape)
+    : DEFAULT_SHAPE;
 }

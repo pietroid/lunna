@@ -9,6 +9,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-queue](./2026-10-17-agent-queue/README.md) ·
 [agent-ui](./2026-10-17-agent-ui/README.md) ·
 [posthog](./2026-10-21-posthog/README.md) ·
+[agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
 [multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md)
 
 ## Tools: what the model is given
@@ -25,7 +26,14 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Paramanayakam et al., [Less is more](https://arxiv.org/abs/2411.15399) (DATE 2025): fewer tools per task, better calls, up to 70% faster.
 - **Here:** new abilities are gesture kinds inside one `answer` tool, not new tools.
-- **Met in:** agent-ui §4.7.
+- **Met in:** agent-ui §4.7; agent-full-surface, idea 4 (RAG-MCP: >90% under ~30 tools, failure past ~100; Anthropic's tool search only past 10 tools or 10K tokens, so ~35 gesture kinds in one enum need distinct verbs instead). Its Q/A: count **definitions** (the menu, which overlaps) apart from **calls** (each one a chance to miss: 0.97³ = 91%); one `answer` call carries a plan of many changes, and each verb carries only its own arguments.
+
+### Declare once, reached by every caller
+> One action, declared once, reached by every caller.
+
+- **Read:** Android, [AppFunctions](https://developer.android.com/ai/appfunctions) (experimental): one annotated function, a generated schema, the app's own repository behind it.
+- **Here:** a gesture and its route call the same service method; a rule left in a controller is one the agent skips.
+- **Met in:** agent-full-surface, idea 3 and change 1.
 
 ### Free text to reason, schemas to choose
 > Strict JSON hurts reasoning and helps classification.
@@ -92,7 +100,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Microsoft Agent Framework's `approval_mode` ([Chaganti](https://ravichaganti.com/blog/human-in-the-loop-with-function-approvals-in-microsoft-agent-framework/)).
 - **Here:** every change is a plan and Aplicar is the yes; the server, not the prompt, says what needs it.
-- **Met in:** agent-ui §4.8.
+- **Met in:** agent-ui §4.8; agent-full-surface, idea 2 (GateArena: a confirmation bound to the call's exact parameters, harm 37.5–60% → 2.5%).
 
 ### Guardrails are not redress
 > Preventing harm and undoing it are different properties; build the undo.
@@ -102,6 +110,13 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Met in:** agent-ui §4.9.
 
 ## Measuring and running
+
+### Writes are where agents fail
+> Agents fail on the steps that change things, not the ones that read.
+
+- **Read:** [SABER](https://arxiv.org/html/2512.07850v1) (2025): writes are 14–18% of τ-bench steps; each wrong one cuts the odds of success by up to 92–96%, a wrong read by under 10%.
+- **Here:** reads stay generous; every new write gesture gets a dry run, refusals and an eval case. Every eval failure recorded so far (`two-matches`, `blocked-by-event`, `from-backlog-today`) was a write; behind Aplicar, a wrong write is a wrong plan the person taps through.
+- **Met in:** agent-full-surface, idea 1 (and its Q/A, with the trap of each new verb under *Writes, verb by verb*).
 
 ### pass^k: grade the final state
 > Grade the final state, k times; right three times in four feels broken.
