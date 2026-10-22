@@ -7,6 +7,10 @@ import 'package:dio/dio.dart';
 /// {@template api_client}
 /// Dio-based HTTP client with automatic authentication headers and token
 /// refresh on `401` responses.
+///
+/// `onServerError` hears of every answer the server failed (a 5xx): not a
+/// refusal, which is a 4xx it wrote on purpose, and not a dropped network,
+/// which is the device's.
 /// {@endtemplate}
 class ApiClient {
   /// {@macro api_client}
@@ -14,6 +18,7 @@ class ApiClient {
     required String baseUrl,
     required TokenProvider tokenProvider,
     Dio? dio,
+    this._onServerError,
   }) : _dio =
            dio ??
            Dio(
@@ -37,6 +42,7 @@ class ApiClient {
   }
 
   final Dio _dio;
+  final void Function(DioException error)? _onServerError;
 
   /// Performs a `GET` request to [path].
   Future<Response<T>> get<T>(
@@ -101,6 +107,8 @@ class ApiClient {
             'stackTrace': error.stackTrace.toString(),
           },
         );
+        final status = error.response?.statusCode;
+        if (status != null && status >= 500) _onServerError?.call(error);
         handler.next(error);
       },
     );

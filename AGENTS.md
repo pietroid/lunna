@@ -75,11 +75,13 @@ app/
   brands/               per-brand icons, splash and web assets (+ README)
   env/                  <brand>.<env>.json defines (examples committed)
   tool/brand_web.sh     stamps a brand on a web build
-  lib/                  shell, home (Tempo), routines page, landing, demo,
+  lib/                  shell, home (Tempo), routines page, landing + demo
+                        (the signed-out page, the app on fakes),
                         links (the real LinkPreviews)
   packages/
     agent/              the agent: ask bar, sheet, the answer's surface
                         (decoder, peeks, plan card), suggestion, voice
+    analytics/          PostHog behind one seam (Analytics, NoAnalytics)
     api_client/         Dio + bearer token interceptor
     app_ui/             the design system: AppBrand, theme, tokens, widgets
     auth/               Better Auth client: Google sign-in, token store
@@ -93,6 +95,7 @@ server/
                         (refs, dates, artifacts), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
                         conversations (ConversationStore), evals/
+    analytics/          PostHog: the provider, the route → event table
     auth/               Better Auth instance + SessionGuard
     calendar/           CalendarService (cache) over CalendarStore (Postgres)
     db/                 Drizzle schema + pool + boot-time migrations
@@ -485,6 +488,27 @@ person reads carries a ref (`speakable`). Agent changes are measured with `npm r
 routes, the conversations and voice are in
 [product/spec/agent.md](./product/spec/agent.md): read it before touching
 `server/src/agent/` or `app/packages/agent/`.
+
+### The landing page
+
+Signed out, the app is `LandingPage` (`app/lib/landing/`): the agent, Tempo
+and Entregas as three chapters beside a phone running the real app on
+fakes (`app/lib/demo/`), or on a narrow screen each chapter's piece of it.
+**The demo never reaches a server**, and while it is up **the app's clock
+reads 10:00** (`DemoClock`, wrapped around the app in `main.dart`), so
+code there reads `clock.now()`, never `DateTime.now()`. See
+[product/spec/landing.md](./product/spec/landing.md).
+
+## Analytics
+
+PostHog (US cloud, one project for both brands) hears of each write that
+succeeded, by route, from `LoggingInterceptor`; of every 5xx and crash; of
+the screens; and records replays with every text and image masked.
+**Nothing a person wrote is ever sent**, and **without `POSTHOG_KEY`
+nothing is sent at all**. A new write route gets its row in
+`server/src/analytics/events.ts`. In the app only `packages/analytics`
+calls the plugin; tests use `NoAnalytics`. See
+[product/spec/analytics.md](./product/spec/analytics.md).
 
 ## Commands
 

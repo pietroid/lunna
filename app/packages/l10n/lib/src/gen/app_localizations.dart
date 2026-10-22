@@ -1058,38 +1058,68 @@ abstract class AppLocalizations {
   /// No description provided for @landingHeadline.
   ///
   /// In pt, this message translates to:
-  /// **'Seu dia, no lugar.'**
+  /// **'Diga o que precisa. O dia se arruma.'**
   String get landingHeadline;
 
   /// No description provided for @landingPitch.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{A Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e a Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.} other{O Focus é um sistema pessoal de organização. Anote o que precisa ser feito e o Focus dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.}}'**
+  /// **'{brand, select, lunna{A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.} other{O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.}}'**
   String landingPitch(String brand);
 
   /// No description provided for @landingDemoHint.
   ///
   /// In pt, this message translates to:
-  /// **'O celular ao lado é o app de verdade. Toque no + para anotar algo, ou num bloco para abri-lo.'**
+  /// **'O celular ao lado é o app de verdade, com um dia de exemplo. Toque, arraste e peça.'**
   String get landingDemoHint;
 
-  /// No description provided for @landingHowTitle.
+  /// No description provided for @landingChapterAskTitle.
   ///
   /// In pt, this message translates to:
-  /// **'Como funciona'**
-  String get landingHowTitle;
+  /// **'Peça'**
+  String get landingChapterAskTitle;
 
-  /// No description provided for @landingPartTimelineTitle.
+  /// No description provided for @landingChapterAskText.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.} other{Escreva ou fale o que precisa. O Focus lê o seu dia, monta um plano e espera o seu sim.}}'**
+  String landingChapterAskText(String brand);
+
+  /// No description provided for @landingChapterTimeTitle.
   ///
   /// In pt, this message translates to:
   /// **'Tempo'**
-  String get landingPartTimelineTitle;
+  String get landingChapterTimeTitle;
 
-  /// No description provided for @landingPartTimelineText.
+  /// No description provided for @landingChapterTimeText.
   ///
   /// In pt, this message translates to:
-  /// **'O dia como uma fila: o que está rodando agora, o que vem ainda hoje e o que fica para amanhã.'**
-  String get landingPartTimelineText;
+  /// **'O dia como uma fila: cada coisa com a sua hora, e quando algo atrasa o resto anda junto.'**
+  String get landingChapterTimeText;
+
+  /// No description provided for @landingChapterDeliveriesTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entregas'**
+  String get landingChapterDeliveriesTitle;
+
+  /// No description provided for @landingChapterDeliveriesText.
+  ///
+  /// In pt, this message translates to:
+  /// **'O que você deve a alguém, com prazo e valor. A meta do mês, e as horas que as entregas pedem contra as que a agenda tem livres.'**
+  String get landingChapterDeliveriesText;
+
+  /// Above the example asks on the landing page; tapping one asks the agent in the demo phone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Experimente pedir'**
+  String get landingTry;
+
+  /// No description provided for @landingMoreTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Também no app'**
+  String get landingMoreTitle;
 
   /// No description provided for @landingPartRoutinesTitle.
   ///
@@ -1115,17 +1145,29 @@ abstract class AppLocalizations {
   /// **'Um aviso quando é hora de começar, outro perto do fim, e um bom dia e um boa noite.'**
   String get landingPartRemindersText;
 
+  /// No description provided for @landingPartVoiceTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Voz'**
+  String get landingPartVoiceTitle;
+
+  /// No description provided for @landingPartVoiceText.
+  ///
+  /// In pt, this message translates to:
+  /// **'Segure o microfone para pedir, ou dite direto nas notas de uma tarefa.'**
+  String get landingPartVoiceText;
+
   /// No description provided for @landingDayTitle.
   ///
   /// In pt, this message translates to:
   /// **'No dia a dia'**
   String get landingDayTitle;
 
-  /// No description provided for @landingUseWrite.
+  /// No description provided for @landingUseAsk.
   ///
   /// In pt, this message translates to:
-  /// **'Anote o que precisa ser feito.'**
-  String get landingUseWrite;
+  /// **'Peça, e veja o plano antes de aplicar.'**
+  String get landingUseAsk;
 
   /// No description provided for @landingUseHour.
   ///
@@ -1139,11 +1181,17 @@ abstract class AppLocalizations {
   /// **'Pause, estenda ou adie, e o resto do dia anda junto.'**
   String get landingUsePause;
 
-  /// No description provided for @landingUseRoutine.
+  /// No description provided for @landingUseDeliver.
   ///
   /// In pt, this message translates to:
-  /// **'Deixe a rotina se repetir sozinha.'**
-  String get landingUseRoutine;
+  /// **'Feche uma entrega e veja a meta andar.'**
+  String get landingUseDeliver;
+
+  /// One muted line at the foot of the landing page: what PostHog records, and that replays mask every text and image.
+  ///
+  /// In pt, this message translates to:
+  /// **'Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.'**
+  String get landingPrivacy;
 
   /// No description provided for @landingFooter.
   ///
@@ -1180,6 +1228,108 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Marcar dentista'**
   String get demoDentist;
+
+  /// No description provided for @demoAskStudy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Encaixa 2h de estudo amanhã de manhã e tira as fotos da viagem do Depois'**
+  String get demoAskStudy;
+
+  /// No description provided for @demoAskDelivery.
+  ///
+  /// In pt, this message translates to:
+  /// **'Cria a entrega do mapa da Carla para sexta'**
+  String get demoAskDelivery;
+
+  /// No description provided for @demoReplyStudy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Depois do dentista, às 9:30, a manhã está livre. Fica assim:'**
+  String get demoReplyStudy;
+
+  /// No description provided for @demoReplyDelivery.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral leva 3 h, em blocos de 1 h. Fica assim:'**
+  String get demoReplyDelivery;
+
+  /// No description provided for @demoStepLooked.
+  ///
+  /// In pt, this message translates to:
+  /// **'Olhei amanhã'**
+  String get demoStepLooked;
+
+  /// No description provided for @demoStepFree.
+  ///
+  /// In pt, this message translates to:
+  /// **'Achei 09:35–12:00 livre'**
+  String get demoStepFree;
+
+  /// No description provided for @demoStepCatalogue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral no catálogo: 3 h, R\$ 350'**
+  String get demoStepCatalogue;
+
+  /// No description provided for @demoStudy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estudar para a prova'**
+  String get demoStudy;
+
+  /// No description provided for @demoTypeChart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral'**
+  String get demoTypeChart;
+
+  /// No description provided for @demoTypePost.
+  ///
+  /// In pt, this message translates to:
+  /// **'Post'**
+  String get demoTypePost;
+
+  /// No description provided for @demoShelfSessions.
+  ///
+  /// In pt, this message translates to:
+  /// **'Atendimentos'**
+  String get demoShelfSessions;
+
+  /// No description provided for @demoShelfContent.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conteúdo'**
+  String get demoShelfContent;
+
+  /// No description provided for @demoDeliveryCarla.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral · Carla'**
+  String get demoDeliveryCarla;
+
+  /// No description provided for @demoDeliveryRenata.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral · Renata'**
+  String get demoDeliveryRenata;
+
+  /// No description provided for @demoDeliveryPost.
+  ///
+  /// In pt, this message translates to:
+  /// **'Post: Lua cheia em Touro'**
+  String get demoDeliveryPost;
+
+  /// No description provided for @demoDeliveryJulia.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral · Júlia'**
+  String get demoDeliveryJulia;
+
+  /// No description provided for @demoDeliveryPedro.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mapa astral · Pedro'**
+  String get demoDeliveryPedro;
 
   /// No description provided for @agentAsk.
   ///

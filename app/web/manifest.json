@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "__APP_BG__",
     "theme_color": "__APP_BG__",
-    "description": "__APP_NAME__: seu dia, no lugar.",
+    "description": "__APP_NAME__: diga o que precisa, o dia se arruma.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

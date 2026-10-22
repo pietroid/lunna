@@ -1,23 +1,35 @@
 import 'dart:async';
 
 import 'package:agent/agent.dart';
+import 'package:analytics/analytics.dart';
 import 'package:api_client/api_client.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:auth/auth.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lunna/app/app.dart';
 import 'package:lunna/auth_token_provider.dart';
 import 'package:lunna/bootstrap.dart';
 import 'package:lunna/config.dart';
+import 'package:lunna/demo/demo_clock.dart';
 import 'package:lunna/links/api_link_previews.dart';
 import 'package:lunna/notifications/background_refresh.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
-Future<void> main() async {
+// The whole app runs on a clock the landing page's demo can move to a
+// working hour; signed in, nothing moves it.
+Future<void> main() => withClock(DemoClock.around(clock), _main);
+
+Future<void> _main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Off without a key: dev builds, CI and the previews send nothing.
+  final analytics = kPostHogKey.isEmpty
+      ? const NoAnalytics()
+      : await PostHogAnalytics.start(key: kPostHogKey, host: kPostHogHost);
 
   final authRepository = BetterAuthRepository(
     apiBaseUrl: kApiBaseUrl,
@@ -35,6 +47,19 @@ Future<void> main() async {
   final apiClient = ApiClient(
     baseUrl: kApiBaseUrl,
     tokenProvider: AuthTokenProvider(authRepository),
+    // A 5xx is the server's failure, which the person saw; a dropped
+    // network is not.
+    onServerError: (error) => unawaited(
+      analytics.captureException(
+        error,
+        stackTrace: error.stackTrace,
+        properties: {
+          'method': error.requestOptions.method,
+          'path': error.requestOptions.path,
+          'status': error.response?.statusCode ?? 0,
+        },
+      ),
+    ),
   );
   final timelineRepository = TimelineRepository(apiClient: apiClient);
   final agentRepository = AgentRepository(apiClient: apiClient);
@@ -80,6 +105,7 @@ Future<void> main() async {
             create: (_) => AppBloc(
               authRepository: authRepository,
               initialUser: initialUser,
+              analytics: analytics,
             ),
           ),
           // The conversations of the session: each opening of the sheet
@@ -113,9 +139,13 @@ Future<void> main() async {
         // Above the router, so the notes of every page draw their links.
         child: LinkPreviewScope(
           previews: linkPreviews,
-          child: App(initialLocation: initialLocation),
+          child: AnalyticsScope(
+            analytics: analytics,
+            child: App(initialLocation: initialLocation, analytics: analytics),
+          ),
         ),
       ),
     ),
+    analytics: analytics,
   );
 }
