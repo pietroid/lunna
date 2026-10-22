@@ -16,6 +16,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0+1"
+  analytics:
+    dependency: "direct main"
+    description:
+      path: "packages/analytics"
+      relative: true
+    source: path
+    version: "0.1.0+1"
   analyzer:
     dependency: transitive
     description:
@@ -878,6 +885,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.2"
+  posthog_flutter:
+    dependency: transitive
+    description:
+      name: posthog_flutter
+      sha256: "63c2fd84e4b0ca165967562ef0c9f8a258245d99b45dcff26b32854689c6f90a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.56.1"
   process:
     dependency: transitive
     description:

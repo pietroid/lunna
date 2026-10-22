@@ -1,6 +1,6 @@
 # PostHog: users, errors and replays
 
-2026-10-21 · delivery · **draft: plan, waiting for approval** · track: plan
+2026-10-21 · delivery · **built** · track: plan
 
 ## 1. The prompt
 
@@ -9,6 +9,8 @@ From [issue #21](https://github.com/pietroid/lunna/issues/21):
 > **Implement Posthog based on Research**
 >
 > Based on past research made by the repository, implement Posthog
+
+Then, on the issue, after the plan: **"approve"**.
 
 The research is the RFC
 [product/research/2026-10-21-posthog](../../research/2026-10-21-posthog/README.md).
@@ -116,45 +118,158 @@ build time (the RFC read 5.56.1; canvas masking needs ≥ 5.34.0).
   (a `task_done` with the person's id, a masked replay).
 - `.tool/check` once at the end.
 
+## 3. What was built
+
+### The contract
+
+**Nothing a person wrote leaves for PostHog, and without `POSTHOG_KEY`
+nothing leaves at all.** The server sends route names and statuses, the app
+sends the account id, the brand, screen names and errors, and replays mask
+every text, every image and everything custom-painted. The whole spec is
+[product/spec/analytics.md](../../spec/analytics.md).
+
+### The one visible touch
+
+The landing page's foot, under the "No dia a dia" list, above the brand
+line (shot through a throwaway preview, deleted after):
+
+| Lunna | Focus |
+|-------|-------|
+| ![Lunna](img/landing-lunna.png) | ![Focus](img/landing-focus.png) |
+
+### Server (`server/src/analytics/`)
+
+- `analytics.ts`: `Analytics` (`capture`, `captureException`,
+  `shutdown`), `PostHogAnalytics` over `posthog-node` 5.56.4 with
+  `enableExceptionAutocapture`, `NoAnalytics`, and `analyticsFrom(env)`,
+  which is `NoAnalytics` without a key.
+- `events.ts`: the route → event table (38 write routes, from
+  `task_created` to `plan_applied`), keyed by the route Nest matched
+  (`/tasks/:id/done`), never the url, so neither an id nor a query (the
+  Feitas search, `?q=`) reaches PostHog.
+- `analytics.module.ts`: a global `AnalyticsModule` providing `ANALYTICS`
+  from `ConfigService`, flushing on `onApplicationShutdown`.
+- `common/logging.interceptor.ts` takes it in its constructor (`main.ts`
+  passes `app.get(ANALYTICS)`): a write that succeeded with a person is an
+  event `{ route, status, source: 'server' }`; an error with no status or
+  a 5xx is `captureException` with `{ method, route, status }`; a 4xx is
+  neither.
+
+### App (`app/packages/analytics`, new)
+
+- `Analytics` (`identify`, `reset`, `screen`, `captureException`,
+  `navigatorObservers`, `wrap`), `NoAnalytics`, `AnalyticsScope` (answers
+  `NoAnalytics` where there is none, so no test needs one), and
+  `PostHogAnalytics.start`, the only code that calls `posthog_flutter`
+  5.56.1: replay on with `maskAllTexts`, `maskAllImages` and
+  `maskCustomPaint`; Flutter, platform-dispatcher and native errors;
+  `identified_only` profiles; no surveys.
+- `main.dart` starts it only when the `POSTHOG_KEY` define is set, and hands
+  it to `bootstrap` (`AppBlocObserver.onError` reports what a bloc threw;
+  the log now goes in front of PostHog's `FlutterError.onError` instead of
+  replacing it), `AppBloc` (identify with `{brand}` on sign-in and for the
+  restored account, once per account; `reset` on sign-out), `App`
+  (`PosthogObserver` on the `GoRouter`, a `name` on each route,
+  `PostHogWidget` around `MaterialApp.router`) and `AnalyticsScope`, which
+  `ShellPage` reads to report `Tempo`, `Entregas` and `Menu`.
+- `api_client`: `ApiClient(onServerError:)`, called for a 5xx only;
+  `main.dart` reports it with method, path and status.
+- `AUTO_INIT` false in `Info.plist` and `AndroidManifest.xml`.
+- Web: the posthog-js snippet in `web/index.html` (`api_host: '/ingest'`,
+  `ui_host` US, no autocapture, no pageviews, no heatmaps, no surveys,
+  `canvasCapture.maskRegionsFn: () => null` so no frame is recorded before
+  Flutter's masks are mounted). It loads nothing unless the key looks like
+  `phc_…`, so `flutter run -d chrome` stays offline. `tool/brand_web.sh`
+  fills `__POSTHOG_KEY__` from `POSTHOG_KEY` (refusing anything that is
+  not a key, and failing if a placeholder is left); `deploy.yml` passes
+  `vars.POSTHOG_KEY` to both the define and the script.
+- `deploy/nginx.conf`: `/ingest/static/` → `us-assets.i.posthog.com`,
+  `/ingest/` → `us.i.posthog.com`, resolved at request time like `/api`,
+  20 MB bodies for replay chunks.
+- `landingPrivacy` in `app_pt.arb`, drawn in the landing footer.
+- Settings: `server/.env.example`, the four `app/env/*.example.json`,
+  SETUP.md (the Pi's `.env`, the repo variable, and a new §6 PostHog with
+  the project settings to click), `product/spec/analytics.md`, and an
+  Analytics section plus both folders in `AGENTS.md`.
+
+### Proof
+
+| What | Command | Result |
+|------|---------|--------|
+| Interceptor + table | `npx jest src/analytics` | 9 passed: a done is `task_done` with route and status; no title, note or query in what is sent; a GET and an anonymous write send nothing; a 5xx and a status-less error are exceptions with the person; a 400 is not; off without a key |
+| `posthog-node` loads under CommonJS | `node -e "require('posthog-node')…shutdown()"` | `ok` |
+| Analytics package | `flutter test` in `packages/analytics` | 4 passed |
+| 5xx hook | `flutter test` in `packages/api_client` (new `test/`) | 3 passed: a 500 is heard, a 400 and a dropped connection are not |
+| AppBloc | `flutter test test/app` in `app/`, both brands | 3 passed each: the restored account is identified with its brand, a sign-in once, sign-out resets, no name or email sent |
+| Web build | `flutter build web … --dart-define=POSTHOG_KEY=phc_TestKey123` then `POSTHOG_KEY=phc_TestKey123 tool/brand_web.sh lunna` | `build/web is Lunna`; the key appears once in `index.html`, `__POSTHOG` zero times; `POSTHOG_KEY='bad"key'` → `POSTHOG_KEY is not a project key`, exit 1 |
+| Android | `flutter build apk --debug --flavor lunnaDev` | `✓ Built build/app/outputs/flutter-apk/app-lunnadev-debug.apk` (the plugin and the `AUTO_INIT` meta-data compile) |
+| Everything CI checks | `.tool/check` | all ✓: `app-analyze`; tests of `agent`, `analytics`, `api_client`, `app_ui`, `artifacts`, `notifications`, `timeline` under Focus and Lunna; `server-eslint`, `server-tsc`, `server-test` (22 suites, 315 tests, under `TZ=UTC`). No failure, nothing flaky |
+
+**Not run here:**
+
+- `nginx -t` on `deploy/nginx.conf`: this machine has neither nginx nor
+  Docker. The first deploy proves it (the web container would not start
+  on a syntax error).
+- iOS build: no signing here; `Info.plist` gained one key only.
+- Events reaching PostHog: no project key exists yet. Once it is set, look
+  in PostHog for a `task_done` whose person is the Better Auth user id with
+  `brand`, a `$screen` named `Tempo`, a `$exception` from a forced 500, and
+  a replay where every text is a grey block.
+- The AppBloc test lives in `app/test/`, which neither CI nor
+  `.tool/check` runs (both test `packages/*` only); it was run by hand
+  under both brands.
+
+### Where the build differs from the plan
+
+- **The landing line is in the footer**, not under the sign-in button: the
+  button is the compact one in the top bar, with no room under it.
+- **`maskCustomPaint` is on** too: the calendar paints a free stretch's
+  hours itself, and `maskAllTexts` does not reach painted text. Replays
+  lose some Material decorations (tabs, switches) in exchange.
+- **The web snippet waits for Flutter's masks** (`maskRegionsFn`), which
+  the plan didn't name: without it the first frames of a web replay would
+  be unmasked.
+- **`docker-compose.yml` is unchanged**: the backend already reads every
+  key of `/opt/lunna/.env`.
+- **The Dio hook is a callback** (`onServerError`), so `api_client` does
+  not depend on PostHog.
+- `PATCH /tasks/:id` (`task_edited`) also fires on each notes autosave;
+  kept, since it is what the person did.
+
+## 4. How to turn it on
+
+1. Create the PostHog project on the US cloud and copy its key (`phc_…`).
+2. `POSTHOG_KEY=<key>` and `POSTHOG_HOST=https://us.i.posthog.com` in the
+   Pi's `/opt/lunna/.env`; restart the backend.
+3. Repository variable `POSTHOG_KEY` (Settings → Variables), so the next
+   deploy's web builds carry it.
+4. `"POSTHOG_KEY": "<key>"` in `app/env/<brand>.production.json` before
+   building the phones.
+5. In the project: session replay on, canvas capture on, heatmaps and
+   autocapture off, error tracking on (SETUP.md §6).
+
+Without any of them, that part sends nothing and works as before.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. No spend outside Claude: no
+PostHog call was made.
+
 ## Decided unattended
 
 - **Track: plan.** The only visible change is one line of copy; no layout
   to approve.
 - Took the RFC's recommended options on its two open decisions: one
   project, everything masked.
-- Kept the landing-page line the RFC left in scope; drop it here if it is
-  not wanted. Its copy is mine.
+- Kept the landing-page line the RFC left in scope (no answer on the
+  issue); drop `landingPrivacy` and the footer's first line if it is not
+  wanted. Its copy is mine.
 - Left the web source-map upload out (needs a personal API key secret).
+- Put the line in the footer; turned `maskCustomPaint` on (above).
 
 ## Questions
 
-- Has the US PostHog project been created, and can its project key go in
-  a repo variable `POSTHOG_KEY` (and the server's `.env` on the Pi)?
-  The build works without it, but nothing is sent until it is set.
-
-## Build brief
-
-Phase 3 starts here (same kind of session; a plan does not split).
-
-- **Files to write:** `server/src/analytics/` (module + provider + route
-  table + spec), `server/src/common/logging.interceptor.ts`,
-  `server/src/main.ts`, `server/.env.example`, `deploy/docker-compose.yml`,
-  `deploy/nginx.conf`, `app/packages/analytics/` (new package, shape of
-  `timeline`), `app/lib/main.dart`, `app/lib/bootstrap.dart`,
-  `app/lib/app/` (`AppBloc`, router names, `PostHogWidget`),
-  `app/lib/shell/` (tab screens), `app/packages/api_client` (Dio
-  `onError`), `app/ios/Runner/Info.plist`,
-  `app/android/app/src/main/AndroidManifest.xml`, `app/web/index.html`,
-  `app/tool/brand_web.sh`, the four `app/env/*.example.json`,
-  `.github/workflows/deploy.yml`, `app_pt.arb` + gen, the landing page,
-  `SETUP.md`.
-- **Server:** analytics off without `POSTHOG_KEY`; never send bodies,
-  titles or emails; only 5xx are exceptions; only successful writes are
-  events.
-- **App:** no plugin call outside `PostHogAnalytics`; tests use
-  `NoAnalytics` or a fake.
-- **Spec:** `product/spec/analytics.md` (events table, what is never sent)
-  and a short pointer section in `AGENTS.md`, plus the two folders in its
-  Layout block.
-- **Open question:** the project key (above).
-- **Cost:** measured by the queue and written in the PR.
+- Has the US PostHog project been created? Its key goes in the three
+  places of section 4; until then nothing is sent.
+- Should CI also run `app/test/` (the AppBloc test, today the only test
+  there)? A one-line change in `deploy.yml`, left out of this delivery.

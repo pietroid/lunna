@@ -23,5 +23,14 @@ const kGoogleWebProvider = String.fromEnvironment(
 /// The Google OAuth iOS client.
 const kGoogleIosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
 
+/// The PostHog project key, public by design. Empty turns analytics off.
+const kPostHogKey = String.fromEnvironment('POSTHOG_KEY');
+
+/// Where PostHog lives: its US cloud.
+const kPostHogHost = String.fromEnvironment(
+  'POSTHOG_HOST',
+  defaultValue: 'https://us.i.posthog.com',
+);
+
 /// [value], or null when it was not set.
 String? nullIfEmpty(String value) => value.isEmpty ? null : value;

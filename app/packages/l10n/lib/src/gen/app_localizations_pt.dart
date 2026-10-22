@@ -630,6 +630,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingUseRoutine => 'Deixe a rotina se repetir sozinha.';
 
   @override
+  String get landingPrivacy => 'Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.';
+
+  @override
   String landingFooter(String brand) {
     String _temp0 = intl.Intl.selectLogic(
       brand,
