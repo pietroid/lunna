@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The queue: GitHub issues worked by Claude Code on this Mac, one at a time.
+// The queue: GitHub issues worked by Claude Code on this Mac, two at a time.
 //
 //   .tool/queue setup            labels, a push topic, the runner, the LaunchAgent, Pages; sends a test push
 //   .tool/queue run              the loop the LaunchAgent keeps alive (a pass a minute)
@@ -56,10 +56,29 @@ const BUT = /\b(but|mas|except|exceto|change|muda|mude|troca|troque|remove|tira|
 const isApproval = (text) => { const t = text.trim(); return APPROVE.test(t) || (t.split(/\s+/).length <= 8 && GO.test(t) && !BUT.test(t)); };
 const RETRY = /^(retry|again|de novo|tenta de novo)[\s.!]*$/iu;
 const RUN_LIMIT_MS = 4 * 3600e3;
+// Issues worked at once, so a short round waits for no long build. Only one
+// of them merges at a time: both would push to main and run .tool/check --all.
+const JOBS = 2;
+const running = new Map(); // issue → phase
 
 const sh = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 64 << 20, ...opts }).trim();
 const trySh = (...a) => { try { return sh(...a); } catch { return null; } };
+// For what takes minutes: sh would hold up the other job and the ticks.
+// Rejects like execFileSync, with the output on e.stdout and e.stderr.
+const shAsync = (cmd, args, { timeout, ...opts } = {}) => new Promise((done, failed) => {
+  const child = spawn(cmd, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], ...opts });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', (c) => { stdout = (stdout + c).slice(-(1 << 20)); });
+  child.stderr.on('data', (c) => { stderr = (stderr + c).slice(-(1 << 20)); });
+  const timer = timeout && setTimeout(() => child.kill('SIGTERM'), timeout);
+  child.on('error', failed);
+  child.on('close', (code, signal) => {
+    clearTimeout(timer);
+    if (code === 0) return done(stdout.trim());
+    failed(Object.assign(new Error(`${cmd} exited with ${code ?? signal}`), { stdout, stderr }));
+  });
+});
 const gh = (args, input) => sh('gh', args, input === undefined ? {} : { input });
 const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
 const git = (wt, ...args) => sh('git', args, { cwd: wt });
@@ -332,7 +351,7 @@ function syncPr(cfg, st, line) {
 
 // ---------------------------------------------------------------- the worktree
 
-function worktree(cfg, st) {
+async function worktree(cfg, st) {
   if (existsSync(st.worktree)) return;
   sh('git', ['fetch', '-q', 'origin', 'main']);
   const exists = trySh('git', ['rev-parse', '--verify', '-q', `refs/heads/${st.branch}`]);
@@ -342,7 +361,7 @@ function worktree(cfg, st) {
   const src = checkout;
   const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(src, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
   for (const f of envs) if (existsSync(join(src, f))) copyFileSync(join(src, f), join(st.worktree, f));
-  trySh('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 });
+  await shAsync('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 }).catch(() => {});
 }
 
 function commit(st, message) {
@@ -375,8 +394,9 @@ const headline = (st, gate, board) => HEADLINE[gate === 'design' ? (board ? 'des
 async function work(cfg, st) {
   const { phase, reply } = st.next;
   log(`#${st.issue} ${phase}`);
+  st.since = Date.now();
   setStatus(cfg, st, 'working');
-  worktree(cfg, st);
+  await worktree(cfg, st);
   if (phase === 'merge') return merge(cfg, st);
 
   const res = await claude(st, phase, prompt(st, phase, reply));
@@ -448,12 +468,12 @@ async function merge(cfg, st, attempt = 0) {
       git(wt, 'commit', '-q', '--no-edit');
     }
     // Main moved under the branch: CI's checks, here, before it lands.
-    const check = () => { try { sh(join(wt, '.tool/check'), ['--all'], { cwd: wt, timeout: 3600e3 }); return null; } catch (e) { return `${e.stdout ?? ''}${e.stderr ?? ''}`.slice(-4000); } };
-    let failure = check();
+    const check = async () => { try { await shAsync(join(wt, '.tool/check'), ['--all'], { cwd: wt, timeout: 3600e3 }); return null; } catch (e) { return `${e.stdout ?? ''}${e.stderr ?? ''}`.slice(-4000); } };
+    let failure = await check();
     if (failure) {
       if (!(await fix('checks', failure))) return;
       commit(st, `${st.kind}(#${st.issue}): fix checks after merging main`);
-      failure = check();
+      failure = await check();
       if (failure) return stopped(cfg, st, 'merge', null, { run: { log: st.runs.at(-1).log }, why: `.tool/check --all still fails:\n${failure}` });
     }
   }
@@ -558,17 +578,24 @@ async function tick(cfg) {
     save(st);
     log(`#${st.issue} answered: ${st.next.phase}`);
   }
-  // One job per pass: merges first, then whatever was asked first.
-  const ready = states().filter((s) => s.next && open.some((i) => i.number === s.issue))
+  // Fill the free slots: merges first, then whatever was asked first. The
+  // jobs go on in the background; the next passes keep reading the answers.
+  const ready = states().filter((s) => s.next && !running.has(s.issue) && open.some((i) => i.number === s.issue))
     .sort((a, b) => (b.next.phase === 'merge') - (a.next.phase === 'merge') || a.issue - b.issue);
-  const st = ready[0];
-  if (!st) return;
-  const { phase, reply } = st.next;
-  try { await work(cfg, st); } catch (e) {
-    // git, gh or the network, not the model: stop at a gate rather than loop on it.
-    await stopped(cfg, st, phase, reply, { run: { log: join(home, 'daemon.log') }, why: String(e.stderr || e.message).slice(-1500) });
+  for (const st of ready) {
+    if (running.size >= JOBS) break;
+    if (st.next.phase === 'merge' && [...running.values()].includes('merge')) continue;
+    const { phase, reply } = st.next;
+    running.set(st.issue, phase);
+    work(cfg, st)
+      // git, gh or the network, not the model: stop at a gate rather than loop on it.
+      .catch((e) => stopped(cfg, st, phase, reply, { run: { log: join(home, 'daemon.log') }, why: String(e.stderr || e.message).slice(-1500) }))
+      .catch((e) => log(`#${st.issue} failed to stop:`, e.stderr || e.message))
+      .finally(() => running.delete(st.issue));
   }
 }
+
+const idle = async () => { while (running.size) await new Promise((r) => setTimeout(r, 5e3)); };
 
 // ---------------------------------------------------------------- the runner
 
@@ -693,13 +720,16 @@ async function loop(once) {
   const runner = isRunner(cfg);
   if (!once && !runner) { log(`running from ${root}, not ${runnerDir(cfg)}: handing over`); adopt(); }
   for (;;) {
-    try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
-    if (once) return;
+    const edited = statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded;
+    // An edited queue.mjs starts no job: it takes over once the running ones end.
+    if (!edited) try { await tick(cfg); } catch (e) { log('tick failed:', e.stderr || e.message); }
+    if (once) return idle();
     // Main's tip, so a merged queue.mjs takes over at the check below.
     if (runner) try { syncRunner(cfg); } catch (e) { log('runner sync failed:', e.stderr || e.message); }
     pullCheckout();
-    // An edited queue.mjs takes over at the next pass.
-    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded) {
+    // An edited queue.mjs takes over at the next pass with nothing running:
+    // the restart kills every child of the job.
+    if (statSync(fileURLToPath(import.meta.url)).mtimeMs !== loaded && !running.size) {
       // Not by exiting: launchd defers a KeepAlive job that exited cleanly ("inefficient").
       log('queue.mjs changed: restarting');
       // The lock only if it is ours: a handover holds it so the copy launchd
@@ -801,7 +831,8 @@ function ls() {
   const all = states().sort((a, b) => a.issue - b.issue);
   if (!all.length) return console.log('  nothing yet');
   for (const s of all) {
-    const where = s.next ? `next: ${s.next.phase}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
+    const where = s.next && s.status === 'working' && s.since ? `running: ${s.next.phase} (${fmtMin(Date.now() - s.since)})`
+      : s.next ? `next: ${s.next.phase}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
     console.log(`#${s.issue}  ${s.kind.padEnd(8)} ${where.padEnd(26)} ${s.pr ? `PR #${s.pr}  ` : ''}${s.title}`);
     if (s.runs.length) console.log(`      ${usageLine(s.runs)}`);
   }
