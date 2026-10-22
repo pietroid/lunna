@@ -25,7 +25,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Paramanayakam et al., [Less is more](https://arxiv.org/abs/2411.15399) (DATE 2025): fewer tools per task, better calls, up to 70% faster.
 - **Here:** new abilities are gesture kinds inside one `answer` tool, not new tools.
-- **Met in:** agent-ui §4.7; agent-full-surface, idea 4 (RAG-MCP: >90% under ~30 tools, failure past ~100; Anthropic's tool search only past 10 tools or 10K tokens, so ~35 gesture kinds in one enum need distinct verbs instead).
+- **Met in:** agent-ui §4.7; agent-full-surface, idea 4 (RAG-MCP: >90% under ~30 tools, failure past ~100; Anthropic's tool search only past 10 tools or 10K tokens, so ~35 gesture kinds in one enum need distinct verbs instead). Its Q/A: count **definitions** (the menu, which overlaps) apart from **calls** (each one a chance to miss: 0.97³ = 91%); one `answer` call carries a plan of many changes, and each verb carries only its own arguments.
 
 ### Declare once, reached by every caller
 > One action, declared once, reached by every caller.
@@ -114,8 +114,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > Agents fail on the steps that change things, not the ones that read.
 
 - **Read:** [SABER](https://arxiv.org/html/2512.07850v1) (2025): writes are 14–18% of τ-bench steps; each wrong one cuts the odds of success by up to 92–96%, a wrong read by under 10%.
-- **Here:** reads stay generous; every new write gesture gets a dry run, refusals and an eval case.
-- **Met in:** agent-full-surface, idea 1.
+- **Here:** reads stay generous; every new write gesture gets a dry run, refusals and an eval case. Every eval failure recorded so far (`two-matches`, `blocked-by-event`, `from-backlog-today`) was a write; behind Aplicar, a wrong write is a wrong plan the person taps through.
+- **Met in:** agent-full-surface, idea 1 (and its Q/A, with the trap of each new verb under *Writes, verb by verb*).
 
 ### pass^k: grade the final state
 > Grade the final state, k times; right three times in four feels broken.

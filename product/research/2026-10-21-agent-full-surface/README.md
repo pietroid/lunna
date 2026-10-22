@@ -7,9 +7,22 @@ first writes and was never built
 
 ## In one minute
 
-**Declare each control once, as a gesture that calls the same service its
-route calls, and the agent can do it behind the plan card it already has;
-then grow it one domain at a time, deliveries first.**
+**The model keeps the same 4 tools and learns more verbs inside the one
+that proposes (`answer`): "deliver", "done", "new_artifact"… Each verb is
+declared once and calls the same code as the button. Nothing happens until
+Aplicar. Deliveries come first.**
+
+> **Q:** I actually didn't learn too much about what we will do here. I
+> wanted to understand how the model will interact with the tool calls.
+> *(on the issue, 2026-10-22)*
+
+> **A:** A turn stays the same shape it has today: the model reads (0–2
+> calls, usually none), then makes **one** `answer` call holding a plan of
+> up to 12 changes. "Cria a entrega Tese pra sexta com três tarefas e marca
+> a revisão como feita" is one call with five changes, not five calls. What
+> grows is the list of verbs a change can name, not the tools or the calls.
+> [A turn, after the change](#a-turn-after-the-change) walks one request
+> through, call by call, with what the server does at each step.
 
 Today it reaches **6 of the 39 routes** a person drives
 ([code/coverage.mjs](./code/coverage.mjs)): add, place, hour, backlog and
@@ -27,7 +40,8 @@ routine or working day; no rename, tick off, delete, start or pause.
 - **You decide:** whether "now" actions skip Aplicar (recommended: no);
   whether the agent may append to notes (recommended: yes, shown on the
   card); whether plans survive a restart (recommended: yes, before deletes
-  ship).
+  ship); whether each verb carries only its own arguments (recommended:
+  yes).
 
 ## Ideas to keep
 
@@ -37,6 +51,33 @@ routine or working day; no rename, tick off, delete, start or pause.
    cuts the odds of success by up to 92–96%. A wrong read cuts them by
    under 10%. *For us:* reads can be generous. Every write gesture gets
    its own dry run, its own refusals and its own eval case. *New.*
+
+> **Q:** "Agents fail on the steps that change things, not the ones
+> that read": what does that mean specifically for our case?
+
+> **A:** It has already happened here. Every model failure our evals
+> recorded was a write, none a read (the other misses were the cases' own
+> wrong expectations)
+> ([agent-reliability delivery](../../delivery/2026-10-17-agent-reliability/README.md#the-model-comparison-phase-4),
+> [agent-ui delivery](../../delivery/2026-10-17-agent-ui/README.md)):
+> `two-matches` moved one of two "Ligar…" tasks without asking which;
+> `blocked-by-event` laid a new fixed block on top of a meeting;
+> `from-backlog-today` made a new task for one already in the backlog.
+> A wrong read is cheap: `read_cards` on the wrong ref returns the wrong
+> notes, the model sees it and reads again, one round trip lost.
+>
+> For us a "wrong write" is never a row changed behind the person's back
+> (Aplicar stops that), but a **wrong plan the person taps through**,
+> often by voice and without reading the card. Today the worst one moves
+> a task to the wrong hour. The new verbs reach further: `done` on the
+> wrong card also pulls its snapped run earlier, `remove_artifact` takes
+> the delivery's tasks with it, `edit_routine` deletes every day ahead.
+> So each new verb ships with four things, and the reads with none:
+> a refusal for the wrong card (two cards match: a doubt, not a pick),
+> every side effect drawn on the card ("e as 6 tarefas dela"), an undo
+> that brings back every row it touched (§1), and an eval case built
+> around its trap. [Writes, verb by verb](#writes-verb-by-verb) lists
+> the trap for each.
 2. **"Bind the approval to the exact call."**
    [GateArena](https://neurips.cc/virtual/2026/168290) (Jiang, Quinzan,
    Bhatt, 2026): a confirmation token tied to the call's exact
@@ -57,11 +98,102 @@ routine or working day; no rename, tick off, delete, start or pause.
    overlap, failure dominating past ~100. Anthropic's
    [tool search](https://www.anthropic.com/engineering/advanced-tool-use)
    pays off past 10 tools or 10K tokens of definitions. *For us:* 4 tools
-   and ~3.4K tokens of prompt and tools, so no tool search. But ~35
-   gesture kinds in one enum can overlap the same way, so each kind
-   needs a distinct verb. *Deeper than* [Fewer tools](../concepts.md#fewer-tools).
+   and ~2.9K tokens of prompt and tools today, ~4K with every verb this
+   RFC adds ([code/schema-size.mjs](./code/schema-size.mjs)), so no tool
+   search. But 31 gesture kinds in one enum can overlap the same way, so
+   each kind needs a distinct verb and only its own arguments. *Deeper
+   than* [Fewer tools](../concepts.md#fewer-tools).
+
+> **Q:** You said past 10 tools the models degrade. How does that scale,
+> given that we have multiple tool calls?
+
+> **A:** Two corrections first. The 10 is not where models degrade: it
+> is where Anthropic's tool search (loading definitions on demand)
+> starts saving tokens. Degradation in RAG-MCP starts around 30 tools.
+> And both numbers count **definitions**, the menu the model picks
+> from, not **calls**, how often it picks. Those scale differently:
+>
+> | | Today | After the RFC | What it costs |
+> |---|---|---|---|
+> | Tool definitions | 4 | 4 | each one is a way to pick wrong |
+> | Verbs in `answer`'s enum | 5 | 31 | each one is a way to pick wrong, inside one tool |
+> | Arguments a change may carry | 9 | ~25 | a verb uses 2–4; the rest is noise to ignore |
+> | Tokens of prompt + tools | ~2.9K | ~4K | sent on every call |
+> | Calls per turn (measured) | 1.18–1.29 | about the same | ~2–3 s each, and a chance to miss each |
+>
+> Calls compound: a turn of three calls each right 97% of the time is
+> right 91% of the time (0.97³; our arithmetic, not a paper's). That is
+> why a plan is **one** call with many changes, and why the server
+> sends refusals back as text the model can fix in the next call
+> (at most 4, `agent.service.ts:191`). The real risk of growth is the
+> middle rows: `remove` vs `remove_artifact`, `done` vs `deliver`, and
+> a flat schema where every verb sees all ~25 arguments. So: verbs named
+> by domain, a schema where each verb carries only its own arguments
+> (decision 6), and `eval:agent` per domain. If pass^k still drops, the
+> next step is to send only the verbs of the page the person is on
+> (`about`), not tool search.
 
 ## The change
+
+### A turn, after the change
+
+On the Tese's page the person says: *"marca a revisão como feita, cria
+uma tarefa de 1h pra bibliografia e entrega a Tese."* Here is every step,
+and who does it.
+
+**1. The server writes the board** (no model yet). Today's lines, plus
+the delivery's facts that §3 adds:
+
+```
+Artifacts:
+  p1 · Tese · due 24/10 · 4 open tasks, 2 with an hour · 12h of 20h · R$ 1.500
+The person is on p1. Its tasks:
+  t4 · Revisão · task in the queue · qua 14:00–15:30 · artifact Tese
+  t5 · Escrever cap. 3 · task with its own hour · qua 15:35–17:05 · artifact Tese
+  t7 · Revisão final · backlog task · 1h · artifact Tese
+```
+
+**2. The model reads, if it needs to.** Here it does not: the page put
+the tasks on the board. Asked about another delivery, it would call
+`read_cards ["p2"]` first: one more round trip, nothing changed.
+
+**3. The model calls `answer` once:**
+
+```json
+{ "blocks": [{ "type": "plan",
+  "data": { "what": "revisão feita, bibliografia 1h, entregar a Tese" },
+  "changes": [
+    { "do": "done",    "ref": "t4" },
+    { "do": "place",   "new": { "title": "Bibliografia", "minutes": 60, "artifact": "p1" } },
+    { "do": "deliver", "ref": "p1" } ] }] }
+```
+
+Three verbs, one call. Only `done` and `deliver` are new, and `artifact`
+on `new` (§4).
+
+**4. The server checks each change, in code** (`resolve`, §1). "A
+revisão" matches t4 and t7. The model picked t4, but the server compares
+`data.what` with the board, sees two titles alike (new: the doubt the
+agent-reliability delivery left open) and refuses with a fix: *"t4 and t7 both match 'revisão':
+ask the person."* That text goes back as the tool's result, and the
+model's second call is a `choices` block: **Revisão** · **Revisão final**.
+This is the `two-matches` failure, caught by code instead of by the
+model's care. Then `deliver` with open tasks left: the server adds the
+consequence to the card, not a refusal.
+
+**5. The dry run.** Each change runs on a copy of the day, through the
+same `EventLayoutService.doneTask` and `ArtifactsService.edit` the ✓
+buttons call. The copy says what moved: t4 leaves the list, and t5,
+snapped right after it, comes up from 15:35 to 14:00 (`snappedAfter`).
+
+**6. The plan card.** Three lines the person reads: *Revisão: feita* ·
+*Bibliografia: 1h, no fim da fila* · *Tese: entregue, R$ 1.500 conta na
+meta*, and under it *Escrever cap. 3 passa para 14:00*. Aplicar makes exactly
+those gestures; Desfazer puts back every row they touched.
+
+That is the whole interaction. The model never writes a row, never
+computes an hour, and makes one or two calls a turn, as it does today.
+What this RFC adds is steps 3–6 for 26 more verbs.
 
 | # | Change | Fixes | Size |
 |---|---|---|---|
@@ -224,6 +356,15 @@ new writes are where the misses will be.
 5. **Order.** (a) Deliveries before the lifecycle *(recommended, the
    issue's ask)*. (b) The lifecycle first: smaller, and the app already
    draws it.
+6. **The shape of a change.** (a) One variant per verb (`anyOf`), each
+   with only its own arguments *(recommended)*: `done` can only carry
+   `ref`, so a wrong argument cannot be written, and the model reads 2–4
+   arguments, not ~25. Cost: a schema built from the registry, and a
+   check in phase 1 that Haiku 5.5 through OpenRouter takes `anyOf` in a
+   tool's parameters (not verified here). (b) One flat item with every
+   argument optional, as today, the server refusing the ones that do not
+   belong: simpler, and the overlap RAG-MCP measures, inside one tool.
+   Phase 1 runs both on the eval and keeps (a) unless it scores lower.
 
 ## Decided unattended
 
@@ -237,6 +378,13 @@ new writes are where the misses will be.
 - Round 2 (2026-10-22): the issue said "I made some comments there", but
   PR #22 had no line comments, reviews or PR comments, and the file had
   no notes. So the RFC is unchanged; it waits for the comments to be sent.
+- Round 3 (2026-10-22): the comments came on the issue, not on lines, so
+  they are written under the blocks they ask about (In one minute, ideas
+  1 and 4). The thesis is reworded in plain terms, a worked turn opens
+  *The change*, *Writes, verb by verb* is added under *Deeper*, decision 6
+  (the schema's shape) is new, and the prompt size is measured again
+  (~2.9K tokens, not ~3.4K: [code/schema-size.mjs](./code/schema-size.mjs)).
+  Phase 4 was not asked for and not run.
 
 ## Deeper
 
@@ -282,6 +430,25 @@ registry exists.
 | 7 | A new delivery can't be followed by its tasks | `create` returns void | `artifacts.service.ts:141` |
 | 8 | Writes untested on a real model | 1 of 29 eval cases touches a delivery | `evals/cases.ts` |
 
+### Writes, verb by verb
+
+What a wrong plan does with each new verb, and what stops it before
+Aplicar. The eval case for each verb is built around its trap.
+
+| Verb | The wrong write | What stops it |
+|---|---|---|
+| `done` | ticks off the wrong one of two alike, and its snapped run moves up | doubt on two matches; the run drawn on the card |
+| `remove` | deletes a routine's day for good | it becomes `cancelled`, the line says "folga hoje" |
+| `start` | starts while something runs, ending it | the `start_now` guard as a doubt, never picked by the model |
+| `edit` | a length on a begun task | refused in `resolve`: begun tasks are not resized |
+| `new { artifact }` | a task for the wrong delivery | the page's delivery by default (`about`); the card names it |
+| `new_artifact` | a delivery twice ("cria a Tese" when it exists) | the duplicate refusal tasks already have |
+| `deliver` | delivers with tasks open, money counted | the open tasks drawn on the card |
+| `remove_artifact` | its backlog tasks go with it | decision 4: a doubt past 3 rows; snapshot undo |
+| `new_kind`, `new_goal` | a price or goal amount the person did not say | a number not said is an assumption on the card, as lengths are |
+| `edit_routine`, `remove_routine` | every day ahead deleted and rewritten | snapshot undo (§1) before they ship |
+| `work_day` | a day that ends before it starts, or hides running work | refused in `UsersService.setWorkDay` |
+
 ### The literature
 
 - **SABER** (arXiv 2512.07850): deviations on writes, not reads, predict
@@ -309,7 +476,7 @@ registry exists.
 | Phase | Ships | Fixes | Size |
 |---|---|---|---|
 | 0 | `coverage.mjs` (done); eval cases for each domain, failing | measuring | S |
-| 1 | registry over today's 5 gestures, snapshot undo, `revive`, rules out of controllers; no behaviour change, evals green | 3, 4, 5 | M |
+| 1 | registry over today's 5 gestures, snapshot undo, `revive`, rules out of controllers; the two schema shapes on the eval (decision 6); no behaviour change, evals green | 3, 4, 5 | M |
 | 2 | deliveries, catalogue and goals: reads and writes, forward refs | 1, 2, 7 | M |
 | 3 | task and block lifecycle; the guard as a doubt | 6 | M |
 | 4 | routines, working day, `open`; plans persisted | the map | M |
@@ -328,5 +495,7 @@ Each phase ends with `eval:agent` and `node code/coverage.mjs`.
   tools, failure past ~100.
 - [Anthropic, advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use):
   tool search thresholds; input examples 72%→90%.
+- [agent-reliability delivery](../../delivery/2026-10-17-agent-reliability/README.md#the-model-comparison-phase-4):
+  every eval failure recorded was a write; 1.18–1.29 calls a turn.
 - [agent-ui RFC §5.6](../2026-10-17-agent-ui/README.md): the first plan
   for writes and snapshot undo, reused here.

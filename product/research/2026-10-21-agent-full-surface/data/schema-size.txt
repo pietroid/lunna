@@ -1,0 +1,7 @@
+gesture kinds today: 5, arguments: 9
+system prompt                                        ~1387 tokens
+4 tools                                              ~1551 tokens
+  of which answer                                    ~1150 tokens
+  one change item (copies: 2)                        ~285 tokens
+answer with 31 kinds, 25 arguments (flat)            ~2248 tokens
+whole prefix, grown                                  ~4036 tokens
