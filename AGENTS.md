@@ -75,7 +75,8 @@ app/
   brands/               per-brand icons, splash and web assets (+ README)
   env/                  <brand>.<env>.json defines (examples committed)
   tool/brand_web.sh     stamps a brand on a web build
-  lib/                  shell, home (Tempo), routines page, landing, demo,
+  lib/                  shell, home (Tempo), routines page, landing + demo
+                        (the signed-out page, the app on fakes),
                         links (the real LinkPreviews)
   packages/
     agent/              the agent: ask bar, sheet, the answer's surface
@@ -487,6 +488,16 @@ person reads carries a ref (`speakable`). Agent changes are measured with `npm r
 routes, the conversations and voice are in
 [product/spec/agent.md](./product/spec/agent.md): read it before touching
 `server/src/agent/` or `app/packages/agent/`.
+
+### The landing page
+
+Signed out, the app is `LandingPage` (`app/lib/landing/`): the agent, Tempo
+and Entregas as three chapters beside a phone running the real app on
+fakes (`app/lib/demo/`), or on a narrow screen each chapter's piece of it.
+**The demo never reaches a server**, and while it is up **the app's clock
+reads 10:00** (`DemoClock`, wrapped around the app in `main.dart`), so
+code there reads `clock.now()`, never `DateTime.now()`. See
+[product/spec/landing.md](./product/spec/landing.md).
 
 ## Analytics
 

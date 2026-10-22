@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/demo/data/demo_agent.dart';
@@ -81,7 +82,7 @@ class DemoController extends ChangeNotifier {
 /// a card opened or a sheet raised from here stays inside the box instead of
 /// covering the page around it. Nothing it does reaches a server.
 /// {@endtemplate}
-class DemoApp extends StatelessWidget {
+class DemoApp extends StatefulWidget {
   /// {@macro demo_app}
   const DemoApp({this.resting = false, this.controller, super.key});
 
@@ -93,20 +94,32 @@ class DemoApp extends StatelessWidget {
   final DemoController? controller;
 
   @override
+  State<DemoApp> createState() => _DemoAppState();
+}
+
+class _DemoAppState extends State<DemoApp> {
+  // Made on the first build, which is the first moment there is l10n.
+  late final DemoTimelineRepository _timeline = DemoTimelineRepository(
+    context.l10n,
+    resting: widget.resting,
+  );
+  late final DemoArtifactsRepository _artifacts = DemoArtifactsRepository(
+    context.l10n,
+  );
+  late final DemoAgentRepository _agent = DemoAgentRepository(
+    context.l10n,
+    timeline: _timeline,
+    artifacts: _artifacts,
+  );
+
+  @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
+    final controller = widget.controller;
 
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<TimelineRepository>(
-          create: (context) => DemoTimelineRepository(l10n, resting: resting),
-        ),
-        RepositoryProvider<AgentRepository>(
-          create: (context) => DemoAgentRepository(
-            l10n,
-            timeline: context.read<TimelineRepository>(),
-          ),
-        ),
+        RepositoryProvider<TimelineRepository>.value(value: _timeline),
+        RepositoryProvider<AgentRepository>.value(value: _agent),
         RepositoryProvider<TimelineAim>(create: (_) => TimelineAim()),
       ],
       child: MultiBlocProvider(
@@ -127,16 +140,13 @@ class DemoApp extends StatelessWidget {
             create: (_) => VoiceCubit(recognizer: const DemoVoiceRecognizer()),
           ),
           BlocProvider<ArtifactsCubit>(
-            create: (_) {
-              final repository = DemoArtifactsRepository(l10n);
-              return ArtifactsCubit(
-                repository: repository,
-                initial: ArtifactsState(
-                  status: ArtifactsStatus.ready,
-                  data: repository.data,
-                ),
-              );
-            },
+            create: (_) => ArtifactsCubit(
+              repository: _artifacts,
+              initial: ArtifactsState(
+                status: ArtifactsStatus.ready,
+                data: _artifacts.data,
+              ),
+            ),
           ),
         ],
         child: ScaffoldMessenger(
@@ -186,6 +196,7 @@ class _DemoShellState extends State<_DemoShell> {
     if (controller == null || !mounted) return;
     final chapter = controller.chapter;
     final index = chapter == DemoChapter.deliveries ? 1 : 0;
+    if (index == 1) unawaited(context.read<ArtifactsCubit>().load());
     if (index != _index) setState(() => _index = index);
 
     if (chapter != DemoChapter.ask) {
@@ -204,8 +215,8 @@ class _DemoShellState extends State<_DemoShell> {
     final question =
         controller.question ?? DemoAgentRepository.asks(context.l10n).first;
     final agent = context.read<AgentCubit>();
-    final sheet = showAgentSheet(context, day: DateTime.now());
-    unawaited(agent.send(question, day: DateTime.now()));
+    final sheet = showAgentSheet(context, day: clock.now());
+    unawaited(agent.send(question, day: clock.now()));
     await sheet;
     // Closed by hand: the phone is back on Tempo, and so is the page.
     if (mounted && controller.turn == turn) {
@@ -217,6 +228,8 @@ class _DemoShellState extends State<_DemoShell> {
     // Only Tempo and Entregas are in the demo; the Menu is drawn and stays
     // where it is.
     if (index > 1) return;
+    // Read again, as the app does, so a delivery a plan made is there.
+    if (index == 1) unawaited(context.read<ArtifactsCubit>().load());
     setState(() => _index = index);
     widget.controller?._follow(
       index == 1 ? DemoChapter.deliveries : DemoChapter.time,
@@ -252,7 +265,7 @@ class _DemoShellState extends State<_DemoShell> {
         children: const [_DemoTempo(), ArtifactsPage()],
       ),
       floatingActionButton: _index == 0
-          ? AskDock(day: DateTime.now, fab: fab)
+          ? AskDock(day: clock.now, fab: fab)
           : fab,
       floatingActionButtonLocation: _index == 0
           ? FloatingActionButtonLocation.centerFloat

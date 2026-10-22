@@ -1,7 +1,11 @@
 import 'package:agent/agent.dart';
 import 'package:api_client/api_client.dart';
+import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/demo/data/demo_artifacts.dart';
+import 'package:lunna/demo/data/demo_repositories.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template demo_agent_repository}
@@ -10,18 +14,29 @@ import 'package:timeline/timeline.dart';
 /// Each of the landing page's example asks has its answer written down here,
 /// and anything else typed gets the first one's: the demo shows what an
 /// answer looks like, not what the model would make of every sentence. A
-/// plan applied lands on the [timeline] the phone is drawing.
+/// plan applied lands on the [timeline] and the [artifacts] the phone is
+/// drawing, and undoing it puts back the day it found.
 /// {@endtemplate}
 class DemoAgentRepository implements AgentRepository {
   /// {@macro demo_agent_repository}
-  DemoAgentRepository(this._l10n, {required this.timeline});
+  DemoAgentRepository(
+    this._l10n, {
+    required this.timeline,
+    required this.artifacts,
+  });
 
   final AppLocalizations _l10n;
 
   /// The day the demo draws, where an applied plan writes.
-  final TimelineRepository timeline;
+  final DemoTimelineRepository timeline;
+
+  /// The deliveries the demo draws, where a plan's new delivery goes.
+  final DemoArtifactsRepository artifacts;
 
   final _plans = <String, AgentPlan>{};
+
+  /// What each applied plan found, to put back on undo.
+  final _before = <String, (DemoDay, ArtifactsData)>{};
 
   /// What the landing page offers to ask, in order. The first is the one the
   /// phone opens on.
@@ -57,7 +72,10 @@ class DemoAgentRepository implements AgentRepository {
     String planId, {
     int days = TimelineRepository.defaultDays,
   }) async {
-    for (final change in _plans[planId]?.changes ?? const <PlanChange>[]) {
+    final plan = _plans[planId];
+    if (plan == null) throw const AgentFailure();
+    _before[planId] = (timeline.snapshot(), artifacts.data);
+    for (final change in plan.changes) {
       switch (change.kind) {
         case PlanChangeKind.addTask:
           await timeline.createTask(
@@ -67,7 +85,13 @@ class DemoAgentRepository implements AgentRepository {
             days: days,
           );
         case PlanChangeKind.moveTask when change.id != null:
-          await timeline.moveTask(change.id!, 99, days: days);
+          await timeline.moveTask(change.id!, 0, after: change.at, days: days);
+        case PlanChangeKind.addArtifact:
+          await artifacts.create(
+            title: change.title,
+            typeId: 'mapa',
+            deadline: change.deadline,
+          );
         // The scripted plans make nothing else.
         case _:
           break;
@@ -80,7 +104,13 @@ class DemoAgentRepository implements AgentRepository {
   Future<Timeline> undo(
     String planId, {
     int days = TimelineRepository.defaultDays,
-  }) => timeline.fetch(days: days);
+  }) async {
+    final (day, deliveries) =
+        _before.remove(planId) ?? (throw const AgentFailure());
+    timeline.restore(day);
+    artifacts.data = deliveries;
+    return timeline.fetch(days: days);
+  }
 
   @override
   Future<List<PastConversation>> conversations({
@@ -129,7 +159,7 @@ AgentReply _study(AppLocalizations l10n) {
 
 /// A new delivery, owed on Friday.
 AgentReply _delivery(AppLocalizations l10n) {
-  final now = DateTime.now();
+  final now = clock.now();
   final friday = DateTime(
     now.year,
     now.month,
@@ -155,7 +185,7 @@ AgentReply _delivery(AppLocalizations l10n) {
 }
 
 DateTime _tomorrow() {
-  final now = DateTime.now();
+  final now = clock.now();
   return DateTime(now.year, now.month, now.day + 1);
 }
 

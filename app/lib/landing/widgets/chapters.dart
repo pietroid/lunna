@@ -1,6 +1,7 @@
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/demo/data/demo_agent.dart';
 import 'package:lunna/demo/data/demo_artifacts.dart';
@@ -326,7 +327,7 @@ class _DeliveriesPiece extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = demoArtifacts(context.l10n);
-    final now = DateTime.now();
+    final now = clock.now();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

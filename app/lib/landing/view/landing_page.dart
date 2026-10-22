@@ -20,6 +20,8 @@ import 'package:lunna/landing/widgets/phone_frame.dart';
 /// the corner. The page is there to be read, and the person it lets in
 /// already knows where to tap.
 ///
+/// While it is up, the app's clock reads ten in the morning ([DemoClock]).
+///
 /// On a narrow screen there is no phone. The screen already is one, and a
 /// phone drawn inside it would be a thumbnail: each chapter shows its piece
 /// of the app instead, drawn by the app's own widgets.
@@ -51,7 +53,15 @@ class _LandingPageState extends State<LandingPage> {
   late final _demo = DemoController(chapter: widget.chapter);
 
   @override
+  void initState() {
+    super.initState();
+    // The demo is a working day, whatever the hour of the visit.
+    DemoClock.pin();
+  }
+
+  @override
   void dispose() {
+    DemoClock.unpin();
     _demo.dispose();
     super.dispose();
   }

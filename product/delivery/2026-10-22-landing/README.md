@@ -1,8 +1,8 @@
 # Landing page: the agent first, and Entregas shown
 
-Status: **design** (issue #24), drawn unattended on the mockup track.
-Approve it, or comment on it, on the issue. The build starts from the
-Build brief at the end.
+Status: **built** (issue #24), designed and built unattended on the
+mockup track. The design was approved on the issue; the build is sections
+3 to 5.
 
 ## 1. The prompt
 
@@ -102,51 +102,119 @@ Drawn from known patterns; Mobbin was not browsed in this run.
 
 ### Open questions of the design
 
-- The demo reads the real clock: a visit at night shows "Boa noite" and
-  a day that is over (the prints were shot at 00:31). Should the build pin
-  the demo to a working hour (say 10:00 in the visitor's zone)? Recommended:
-  yes.
+- The demo read the real clock: a visit at night showed "Boa noite" and
+  a day that was over. Should the build pin the demo to a working hour
+  (say 10:00 in the visitor's zone)? Recommended: yes. **Not answered on
+  the issue, so the build took the recommendation** (see section 3).
 
-## Build brief
+## 3. What was built
 
-### Files Phase 1 wrote or changed (uncommitted, kept for the build)
+### The prints
 
-- `app/lib/landing_preview.dart`: preview entry point, `?s=1..6` (1 wide
-  on Peça, 2 wide on Entregas, 3 wide scrolled under the hero, 4 narrow top,
-  5 narrow at the plan, 6 narrow at Entregas). Delete after Phase 4.
-- `app/lib/landing/view/landing_page.dart`: wide hero (pitch, `ChapterList`,
-  phone with the mark's glow), narrow `ChapterPieces`, the two sections and
-  the footer.
-- `app/lib/landing/widgets/chapters.dart`: `DemoChapterCopy`,
-  `ChapterList`, the ask pills, `ChapterPieces` with the ask and
-  deliveries pieces.
-- `app/lib/demo/view/demo_app.dart`: `DemoChapter`, `DemoController`, the
-  shell with Tempo + Entregas, the agent's bloc and sheet, `AskDock`.
-- `app/lib/demo/data/demo_agent.dart`: `DemoAgentRepository` (scripted
-  replies and plans, `apply` writes on the demo timeline),
-  `DemoVoiceRecognizer`, `demoReply`.
-- `app/lib/demo/data/demo_artifacts.dart`: `DemoArtifactsRepository`,
-  `demoArtifacts` (goal, catalogue, queue).
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`): new `landing*` and
-  `demo*` strings; `landingHowTitle`, `landingPartTimeline*`,
-  `landingUseWrite`, `landingUseRoutine` gone.
+The real build, signed out, at 1440×900 (wide) and on a 390×844 phone
+(narrow), both brands. The wide shots were taken at 00:30 or so of the
+machine's clock; the phone reads 10:00 because the demo is pinned.
 
-### What the build must do
+**Lunna, wide:** opens on Peça with the agent answering · Entregas chosen ·
+under the hero.
 
-- **No server change.** The page is signed out and the demo is local.
-- App: finish the demo's fakes (undo of an applied plan, the `+` sheets on
-  Entregas writing to the demo repository, `DemoVoiceRecognizer` saying it
-  is a demo), pin the demo clock if the open question is answered yes, and
-  make sure nothing the demo does calls `ApiClient`.
-- Tests: a widget test of `LandingPage` wide and narrow (the chapters
-  switch the phone, a tab in the phone moves the chapter, an ask pill
-  opens the sheet with its reply), and of `DemoAgentRepository.apply`;
-  under both brands.
-- The web build (`app/tool/brand_web.sh`): check the page title and meta
-  description still say what the page now says; update them if they speak
-  only of the timeline.
-- Phase 4: prints of both brands, wide and narrow.
+![Lunna wide, Peça](img/build-lunna-wide-1.png)
+![Lunna wide, Entregas](img/build-lunna-wide-2.png)
+![Lunna wide, under the hero](img/build-lunna-wide-3.png)
 
-### Cost and time
+**Focus, wide:**
 
-The queue measures this run and writes the figures in the PR.
+![Focus wide, Peça](img/build-focus-wide-1.png)
+![Focus wide, Entregas](img/build-focus-wide-2.png)
+![Focus wide, under the hero](img/build-focus-wide-3.png)
+
+**Narrow** (top, Peça's plan, Entregas), Lunna then Focus:
+
+![Lunna narrow](img/build-lunna-narrow.png)
+![Focus narrow](img/build-focus-narrow.png)
+
+### The contract
+
+**The demo is the app on fakes, never reaches a server, and is lived at
+ten in the morning.** While `LandingPage` is up, the app's clock
+(`package:clock`, which every widget and bloc already reads) reads 10:00
+today in the visitor's zone and runs on from there. Signed in, nothing
+shifts it. Written down in [product/spec/landing.md](../../spec/landing.md),
+with a pointer section in `AGENTS.md`.
+
+### Server
+
+No change. The page is signed out and the demo is local.
+
+### App
+
+| Piece | What changed |
+|-------|--------------|
+| `lib/demo/demo_clock.dart` (new) | `DemoClock`: `around(clock)` wraps the app's clock, `pin()`/`unpin()` shift it to 10:00 today and back. Pins nest |
+| `lib/main.dart` | The app runs inside `withClock(DemoClock.around(clock), …)`. `clock` is now a direct dependency of the app (it was already in the lock file through the packages) |
+| `lib/landing/view/landing_page.dart` | Pins the clock in `initState`, lets go in `dispose` |
+| `lib/demo/data/demo_repositories.dart` | Tasks keep an **anchor**: written down at an hour, moved with `after`, snoozed. The layout places the running task, then the anchored ones at their hours (or the first room after), then the queue in the room left, as the server's two passes do. `snapshot()`/`restore()` for undo |
+| `lib/demo/data/demo_artifacts.dart` | `DemoArtifactsRepository` keeps what it is told: create (at the top or the end, from a kind), rename, deadline, notes, deliver, move, remove. The catalogue and goals are drawn and not changed |
+| `lib/demo/data/demo_agent.dart` | `apply` writes the study plan at the hours its card shows (09:35 tomorrow, the photos at 14:00), writes the delivery plan's new delivery in Entregas, and keeps the day it found; `undo` puts it back exactly. An unknown plan is refused (`AgentFailure`) |
+| `lib/demo/view/demo_app.dart` | `DemoApp` holds the three repositories so the agent writes on the same day and Entregas the phone draws; Entregas is read again when its tab or chapter comes forward, as the app does |
+| `lib/demo/**`, `lib/landing/widgets/chapters.dart` | `clock.now()` everywhere instead of `DateTime.now()` |
+| `web/index.html`, `web/manifest.json` | Description: "`<name>`: diga o que precisa, o dia se arruma." (was "seu dia, no lugar.") |
+
+The l10n strings, the page and the chapters are the design's, unchanged.
+
+### Tests
+
+13 new, all passing under both brands (`--dart-define=BRAND=lunna` and the
+default Focus), and the new ones under `TZ=UTC`, `America/Sao_Paulo` and
+`Asia/Tokyo`. The app's whole suite is 16 tests.
+
+- `test/landing/landing_page_test.dart` (7): wide, the phone opens on the
+  agent answering the first ask; at half past midnight the demo still says
+  "Bom dia" and the clock reads 10:00; choosing Entregas shows Entregas in
+  the phone; a tab tapped in the phone moves the chapter; an ask pill asks
+  the phone. Narrow, no phone and the plan, goal and two rows instead;
+  Aplicar only marks the plan applied.
+- `test/demo/demo_agent_test.dart` (6): the study plan lands at its card's
+  hours; undo gives back the same day; the delivery plan writes a delivery
+  and undo removes it; undoing an unknown plan is refused; the artifacts
+  repository keeps create, move, deliver and remove; `DemoClock` pins,
+  nests and lets go.
+
+`.tool/check` passed (`✓ app-analyze`). It runs the tests of
+`app/packages/*` only, and this build touched none of them, so it ran no
+tests: the root app's tests above were run by hand. No flaky test seen.
+
+### Where the build differs from the design
+
+- **The voice:** the brief asked `DemoVoiceRecognizer` to say it is a
+  demo. It answers "unavailable", and the agent's bar then simply doesn't
+  offer the microphone; saying more would mean a demo-only string inside
+  the agent package. Typing works, so it was left as is.
+- **The demo is always at 10:00**, not only at night: the same day for
+  every visitor, and prints that don't depend on when they are shot.
+- Otherwise as the board: same widgets, same copy.
+
+### Decided unattended (build)
+
+- **Pin the clock, at 10:00, always**: the open question's recommended
+  answer, taken because it was not answered on the issue.
+- **Through the zone clock, not a `now` passed down.** The timeline, the
+  agent and Entregas read `clock.now()` in some thirty places; wrapping the
+  app's zone is the one seam that reaches all of them without touching
+  the packages. The cost: a global shift that must be let go, which
+  `LandingPage.dispose` does and the tests check.
+- **Wide prints by a scratchpad copy of `shoot.mjs`** at 1440×900, as in
+  the design session. A `--wide` option for `.tool/preview` stays for an
+  `/improve` run.
+
+## 4. How to turn it on
+
+Nothing to set. The landing page is what the web app (and a phone that is
+not signed in) shows; `flutter run -d chrome --web-port 5173
+--dart-define-from-file env/lunna.dev.json` signed out shows it. The web
+build's description is stamped by `tool/brand_web.sh` as before.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. No spend outside Claude: the
+demo's agent is scripted and calls no model.
