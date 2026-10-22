@@ -13,9 +13,9 @@ output are what make a session cheap.
 | `check` | CI's checks on what changed, one line per step |
 | `preview` | Build a preview entry point in both brands, screenshot it, lay out the board |
 | `cost` | What a Claude Code session cost, per message, from its transcript |
-| `doc` | List, open and comment on the Markdown under `product/` |
+| `doc` | List, open and comment on the Markdown under `product/`; check an RFC's slides and print them |
 | `queue` | GitHub issues worked by Claude Code on this Mac, gate by gate |
-| `review.html` | The PR's README as a page on GitHub Pages, commented on by selecting text |
+| `review.html` | The PR's README as a page on GitHub Pages, commented on by selecting text; drawn as a deck |
 
 ## `check`: what CI runs, on what changed
 
@@ -68,6 +68,8 @@ with many turns at a high peak.
 .tool/doc ls [words]                 # docs, newest first, with their open questions
 .tool/doc open [file|words]          # open it as a page you can comment on
 .tool/doc notes [file|words] [--open]  # print only the notes (--open: unanswered Qs)
+.tool/doc shape [file|words]         # an RFC as slides: words, visual, ✓/✗; the headlines alone
+.tool/doc shot [file|words] [--out dir] [--slides 1,3]  # each slide as a PNG at phone width
 ```
 
 A doc is named by its path or by words from its path (`.tool/doc open agent
@@ -91,6 +93,22 @@ itself, as a blockquote under that block:
 So the notes live in git with the doc, and an agent reads them with
 `.tool/doc notes <doc> --open` instead of reading the whole document. The
 page redraws whenever the file changes, from any editor.
+
+**An RFC is a deck** (`/research`): each `##` a slide, a sentence headline
+over one visual. Both pages draw it that way, with one stylesheet and
+script (`<style id="deck">`, `<script id="deck">` in `review.html`, which
+`annotate.mjs` copies): Focus's tokens, Onest, true black, Mermaid
+diagrams in the same colours (`:::key` draws a node lime), GitHub alerts
+(`> [!IMPORTANT]` the point, `> [!TIP]` an idea to keep).
+
+- `shape` prints a row per slide (words, visual, ✓ within budget: ≤ 150
+  words, a visual on each `##`, a headline of ≤ 12 words), then the
+  headlines alone, which should read as the story. Q/A notes don't count.
+- `shot` serves the repo locally, loads `review.html?md=<file>` in
+  headless Chrome (`shot.mjs`, the DevTools protocol, no dependencies) at
+  390 px, and saves each slide as a PNG (default: the temp dir), printing
+  ✗ for every diagram that failed to draw. `CHROME=` points at another
+  browser binary.
 
 ## `queue`: issues in, merged PRs out
 

@@ -27,10 +27,11 @@ A design session costs ~$3 and ~17 minutes (six deliveries, see
 for a feature with no screen those prints show nothing.
 
 **From an RFC.** When the request points at an RFC in `product/research/`
-(an `Implement: …` issue does), the RFC is the research: read its summary (*Thesis* or
-*In one minute*), what it recommends (*Recommendations* or *The change*),
-*Decisions for you* with the notes under them, and *Rollout*, and nothing
-it already cites. A `> **Decision**` note is binding;
+(an `Implement: …` issue does), the RFC is the research: read its first
+slide (or *Thesis* / *In one minute* in older ones), its change slides,
+*Decisions* (*Decisions for you*) with the notes under them, and *Impact*
+or *Rollout*, and nothing it already cites (`.tool/doc shape` lists the
+headlines). A `> **Decision**` note is binding;
 any other decision takes the option marked *(recommended)*. Pick the track
 by what the RFC's first rollout phases change, and say in the plan or the
 board which phases this delivery ships (Phase 0, the measuring, first).
