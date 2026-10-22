@@ -1,6 +1,6 @@
 # Multica on the Mac, beside the GitHub queue
 
-2026-10-21 · RFC · revised 2026-10-22 twice after review (issue #18) · deep-research pass not run
+2026-10-21 · RFC · revised 2026-10-22 three times after review (issue #18) · deep-research pass not run
 
 ## In one minute
 
@@ -18,10 +18,12 @@ machine can add an agent by dialing the same address.**
   send the codes by email (Gmail SMTP), so the iPhone can sign in away
   from the Mac.
 - **Do:** keep a [scorecard](#the-scorecard) for both queues for two weeks.
-- **Not needed:** Tailscale, a password, Cloudflare Access, opening a port.
-- **You decide:** the iPhone app or the web app on the home screen
-  (both work; recommended: start with the web app, build the app if you
-  miss notifications).
+- **Do:** build the iPhone app in Xcode from Multica's source, pointed
+  at that address; the web app is the same account in a browser.
+- **Not needed:** Tailscale, a password, Google sign-in, Cloudflare
+  Access, opening a port, another server.
+- **You decide:** only what Multica's agent hands back (recommended: a
+  PR on GitHub).
 
 > **Decision (2026-10-22):** Write succint command to use multica in
 > parallel with github. We will test both and see who wins. No problem of
@@ -45,6 +47,21 @@ machine can add an agent by dialing the same address.**
 > Tailscale (steps 1, 2 and 8 changed), and "other places" became
 > [Running it elsewhere](#running-it-elsewhere): more machines as agents,
 > or the server itself moved.
+
+> **Decision (2026-10-22):** native app built in xcode! / yep, can be the
+> simples, email code / no, run multica in my own mac.
+
+> **A:** Done: decisions 2, 3 and 4 are taken and gone from the list.
+> Step 9 now builds the native app, and the web app is still there for the
+> browser. Sign-in is the email code only, so Google is out. There is no
+> Cloudflare Access, and the server stays on your Mac, so "the server
+> moved" is down to one line. One correction to the earlier draft: **the
+> iPhone app has no push notifications.** It has no notification library,
+> and nothing in the server sends to Apple (`apps/mobile/package.json` at
+> `fd6fc2c`). It refreshes live while it is open, the same as the web app.
+> The open question about the app's websocket is settled: the server lets
+> a native client through, since it sends no `Origin` or its own host
+> (`server/internal/realtime/hub.go:165`).
 
 ## Ideas to keep
 
@@ -203,25 +220,37 @@ that user logs in, and the `multica` user never does.
   > names and wait for my comment. When I say "approve", push the branch
   > and open a PR with `gh pr create`, labelled `multica`. Never merge.
 
-**9. The iPhone**
+**9. The iPhone app (you, Xcode)**
 
-- **Web app:** open `https://<host>` in Safari → Share → Add to Home
-  Screen. Sign in with the code.
-- **Native app** (optional): Multica isn't on the App Store; it's built
-  from source with Xcode, on the Mac, with the phone on USB
-  ([Mobile app](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx)):
+Multica isn't on the App Store. It is built from source on the Mac and
+installed on the phone over USB
+([Mobile app](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx)).
+First, once:
 
-  ```bash
-  you$ cd ~/multica && pnpm install
-  you$ printf 'EXPO_PUBLIC_API_URL=https://multica.pietroteruya.dev\nEXPO_PUBLIC_WEB_URL=https://multica.pietroteruya.dev\n' \
-         > apps/mobile/.env.production.local
-  you$ pnpm ios:mobile:device:prod:release
-  ```
+- Xcode → Settings → Accounts: sign in with your Apple ID.
+- iPhone → Settings → Privacy & Security → **Developer Mode** on.
+- `brew install node pnpm` if they are missing.
 
-  With a free Apple ID it stops opening after 7 days; run the last line
-  again to re-sign. The app derives its websocket from the API address
-  (`wss://<host>/ws`, `apps/mobile/data/realtime/realtime-provider.tsx:54`),
-  so step 3's first row serves it too.
+```bash
+you$ cd ~/multica && pnpm install
+you$ printf 'EXPO_PUBLIC_API_URL=https://multica.pietroteruya.dev\nEXPO_PUBLIC_WEB_URL=https://multica.pietroteruya.dev\n' \
+       > apps/mobile/.env.production.local
+you$ export EXPO_BUNDLE_IDENTIFIER_PROD=dev.pietroteruya.multica
+you$ pnpm ios:mobile:device:prod:release
+```
+
+- If the phone won't open it: Settings → General → VPN & Device
+  Management → trust your certificate.
+- Sign in with the email code.
+- **Every 7 days** (free Apple ID) it stops opening. Plug the phone in
+  and run the last two lines again. Your data lives on the server, so
+  nothing is lost. To update, `git pull` and run them again.
+- The app finds its websocket from the API address (`wss://<host>/ws`,
+  `apps/mobile/data/realtime/realtime-provider.tsx:54`), so step 3's
+  first row serves it too.
+- No push notifications: open the app to see what changed.
+
+The web app is the same account: `https://<host>` in any browser.
 
 **10. Try it**
 
@@ -251,18 +280,10 @@ server stays where it is; the new machine dials it:
    issues to whichever should run them. A machine that is off keeps its
    issues waiting; nothing is lost.
 
-A machine that should talk to a second Multica server too (a work one,
-say) uses a profile: `multica setup self-host --profile work
---server-url … --app-url …`, then `multica daemon start --profile work`
-([CLI and daemon](https://github.com/multica-ai/multica/blob/main/CLI_AND_DAEMON.md#profiles)).
-
-**The server moved** (off the Mac, onto something always on): copy the
-database and `.env` (the same `JWT_SECRET`, or every token dies), start
-the stack there, install a tunnel connector there with the same two
-hostnames, and stop the Mac's. Daemons elsewhere keep working, since they
-only know the name. The Mac's own daemon then points at the public URL,
-like any other. The exact dump/restore commands are not written here; ask
-for them when it happens.
+**The server stays on the Mac** (your decision). Should that ever
+change, the move is the database, `.env` with the same `JWT_SECRET`, and
+a tunnel connector on the new host under the same name. The other
+machines would not notice.
 
 ## The scorecard
 
@@ -281,24 +302,13 @@ and whether any sign-in arrived that wasn't you (the backend log).
    - (a) **A PR on GitHub, labelled `multica`** *(recommended)*: CI runs
      and you merge in the same place, so the comparison is fair.
    - (b) Only the local `agent/…` branch, reviewed with `git diff`.
-2. **Which iPhone client.**
-   - (a) **The web app on the home screen first** *(recommended)*: no
-     Xcode, no re-signing. Cost: whether it fits a phone screen is not
-     checked.
-   - (b) The native app too: built once, re-signed every 7 days on a
-     free Apple ID (yearly with the $99 developer program).
-3. **Google sign-in on the web.**
-   - (a) **Email code only** *(recommended)*: one way in, the same on web
-     and phone.
-   - (b) Add Google: an OAuth client in Lunna's Google Cloud project,
-     redirect `https://<host>/auth/callback`, `GOOGLE_CLIENT_ID` and
-     `GOOGLE_CLIENT_SECRET` in `.env`. The phone app still uses the code.
-4. **A second lock in front (Cloudflare Access).**
-   - (a) **No** *(recommended)*: the iPhone app and the daemons on other
-     machines can't pass Access's login page, so they would need holes
-     in it for `/api` and `/ws`, which is where everything goes anyway.
-   - (b) Yes, on the web only, if you drop the native app and keep the
-     other daemons on `localhost` (i.e. no other machines).
+
+Decided on 2026-10-22: the native iPhone app (built in Xcode), email
+code only, no Cloudflare Access, the server on your Mac.
+
+If the free 7-day signing gets old, the $99/year Apple Developer Program
+makes a build last a year and allows TestFlight. That is not needed to
+start.
 
 ## Decided unattended
 
@@ -322,6 +332,14 @@ and whether any sign-in arrived that wasn't you (the backend log).
   weekdays"). Upgrade on purpose.
 - **The mirror from the first draft is gone** (separate backlogs); it is
   in the branch history.
+- **"run multica in my own mac" is read as: the server and the first
+  agent stay on the Mac, with no Cloudflare Access.** Agents on other
+  machines (your earlier "I will run multica on other places") still
+  work, since they dial the Mac through the tunnel. If you meant the
+  Mac only, skip *Running it elsewhere*: nothing else changes.
+- **The app's bundle id is `dev.pietroteruya.multica`**, a name under
+  your domain. Multica's default id may belong to their Apple team, and
+  then Xcode refuses to sign it.
 - **Phase 4 (deep research) was not run**: the review didn't ask for it,
   and every new claim was read in Multica's source at commit `fd6fc2c`.
 - **Nothing was installed or run on the Mac.**
@@ -349,7 +367,8 @@ GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunn
 | Origins | `CORS_ALLOWED_ORIGINS` also gates the websocket; default is localhost only (403 otherwise) | 21 |
 | Login | Email code (6 digits, 10 min, 5 tries) or Google on web; no password | 22, `auth.go` |
 | Sign-up | `ALLOWED_EMAILS` wins over `ALLOW_SIGNUP=false`; existing users can always sign in | `auth.go:253` |
-| iPhone | Built from source; API address baked in by `.env.production.local`; email code only | 10 |
+| iPhone | Built from source; API address baked in by `.env.production.local`; email code only; no push notifications | 10, `apps/mobile/package.json` |
+| Websocket origin | No `Origin`, or one equal to the host, always passes: native clients are let in | `realtime/hub.go:165` |
 | Daemon | `claude --permission-mode bypassPermissions`, as the user who starts it | 6 |
 | Agents | Each bound to one runtime (one machine) | 23 |
 | Limits | 20 runs per daemon, 6 per agent by default | 8 |
@@ -358,11 +377,8 @@ GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunn
 
 - The tunnel's path rule: that the dashboard keeps the `/ws` row first,
   and live updates arrive on the phone (a comment shows without reload).
-- That the iPhone app's websocket passes the origin check (it is not a
-  browser, so it may send no `Origin`).
 - That a remote daemon works through the Next rewrites with
   `server_url` on the public host (the docs show a separate `api.` host).
-- That the web app fits a phone screen.
 - That a daemon started from `sudo -iu multica` keeps running after that
   shell closes, and what the stack costs in memory on the 16 GB Air.
 
@@ -372,7 +388,7 @@ GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunn
 |-------|-------|------|
 | 0 | Setup list, steps 1 to 10, and the checks above | evening |
 | 1 | Two weeks: new work goes to one queue or the other; scorecard | n/a |
-| 2 | Keep the winner. If GitHub: `docker compose down`, delete the tunnel and the user. If Multica: move the backlog, maybe the server to an always-on machine | XS–S |
+| 2 | Keep the winner. If GitHub: `docker compose down`, delete the tunnel, the user and the app. If Multica: move the backlog | XS |
 
 ## References
 
@@ -382,12 +398,12 @@ GitHub issue ─▶ .tool/queue ─▶ PR        Multica issue ─▶ agent/lunn
 6. Multica docs, *Security model*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/security-model.mdx: `bypassPermissions`; no sandbox; dedicated user, container or VM.
 8. Multica docs, *Daemon and runtimes*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/daemon-runtimes.mdx: 20 runs per daemon, 6 per agent.
 9. Multica docs, *AI coding tools comparison*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/providers.mdx: skills from `.claude/skills/`.
-10. Multica docs, *Mobile app (iOS)*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx: built from source; 7-day free signing; `.env.production.local` for a self-hosted server.
+10. Multica docs, *Mobile app (iOS)*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/mobile-app.mdx: built from source; Developer Mode; 7-day free signing; `EXPO_BUNDLE_IDENTIFIER_PROD` when signing fails; `.env.production.local` for a self-hosted server.
 12. Multica docs, *CLI*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/cli.mdx: `login --token` for a machine with no browser.
 14. Claude Code, *Permission modes*. https://code.claude.com/docs/en/permission-modes: `bypassPermissions` for "isolated containers and VMs only".
 16. M. Thompson, *Single Writer Principle*. https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html: one execution context owns all mutations.
 19. Multica docs, *Project resources*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/project-resources.mdx: worktree per run; "Multica never merges it for you".
-20. Multica, CLI_AND_DAEMON.md. https://github.com/multica-ai/multica/blob/main/CLI_AND_DAEMON.md: autostart is a LaunchAgent; profiles for several servers.
+20. Multica, CLI_AND_DAEMON.md. https://github.com/multica-ai/multica/blob/main/CLI_AND_DAEMON.md: autostart is a LaunchAgent.
 21. Multica, SELF_HOSTING_ADVANCED.md, *Reverse proxy* and *Same origin*. https://github.com/multica-ai/multica/blob/main/SELF_HOSTING_ADVANCED.md#reverse-proxy: `/ws` must reach `:8080` directly; set `CORS_ALLOWED_ORIGINS` to the public origin.
 22. Multica docs, *Auth setup*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/auth-setup.mdx: email codes by Resend or SMTP, Google on top.
 23. Multica docs, *Agents*. https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/agents.mdx: an agent "drives an AI coding tool through its bound runtime".
