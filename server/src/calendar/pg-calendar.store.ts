@@ -129,6 +129,39 @@ export class PgCalendarStore extends CalendarStore {
     }
   }
 
+  async revive(user: CalendarUser, it: CalendarEvent): Promise<void> {
+    await this._db
+      .insert(event)
+      .values({
+        id: it.id,
+        userId: user.id,
+        title: it.title,
+        startTime: new Date(it.startTime),
+        endTime: new Date(it.endTime),
+        managed: it.managed,
+        fixed: it.fixed,
+        started: it.started === true,
+        pausedAt: dateOf(it.pausedAt),
+        remainingSeconds:
+          it.pausedAt === undefined || it.remainingSeconds === undefined
+            ? null
+            : Math.round(it.remainingSeconds),
+        pausedSeconds: Math.round(it.pausedSeconds ?? 0),
+        notBefore: dateOf(it.notBefore),
+        notes: it.notes,
+        taskId: it.taskId ?? null,
+        routineId: it.routineId ?? null,
+      })
+      .onConflictDoNothing();
+    // A day of a routine is taken off by being marked, not deleted.
+    if (it.routineId !== undefined) {
+      await this._db
+        .update(event)
+        .set({ cancelled: false })
+        .where(and(eq(event.id, it.id), eq(event.userId, user.id)));
+    }
+  }
+
   async routines(user: CalendarUser): Promise<CalendarRoutine[]> {
     const rows = await this._db
       .select()

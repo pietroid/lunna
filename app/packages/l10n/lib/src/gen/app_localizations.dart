@@ -1997,6 +1997,54 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{apagar a entrega} =1{apagar a entrega e 1 tarefa} other{apagar a entrega e {count} tarefas}}'**
   String agentChangeRemoveArtifact(int count);
 
+  /// No description provided for @agentChangeOpenLeft.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 tarefa ainda aberta} other{{count} tarefas ainda abertas}}'**
+  String agentChangeOpenLeft(int count);
+
+  /// No description provided for @agentChangeArtifactBefore.
+  ///
+  /// In pt, this message translates to:
+  /// **'na fila, antes de {title}'**
+  String agentChangeArtifactBefore(String title);
+
+  /// No description provided for @agentChangeArtifactAfter.
+  ///
+  /// In pt, this message translates to:
+  /// **'na fila, depois de {title}'**
+  String agentChangeArtifactAfter(String title);
+
+  /// No description provided for @agentChangeNewKind.
+  ///
+  /// In pt, this message translates to:
+  /// **'novo tipo'**
+  String get agentChangeNewKind;
+
+  /// No description provided for @agentChangeNewGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'nova meta'**
+  String get agentChangeNewGoal;
+
+  /// No description provided for @agentChangeRemoveGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'apagar a meta'**
+  String get agentChangeRemoveGoal;
+
+  /// No description provided for @agentGoalPerWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} por semana'**
+  String agentGoalPerWeek(String amount);
+
+  /// No description provided for @agentGoalPerMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} por mês'**
+  String agentGoalPerMonth(String amount);
+
   /// No description provided for @agentFree.
   ///
   /// In pt, this message translates to:

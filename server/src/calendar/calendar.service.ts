@@ -154,6 +154,12 @@ export class CalendarService {
     cached.events = cached.events.filter((it) => it.id !== event.id);
   }
 
+  /** Writes [event] back as it was, id and all, when it is gone. */
+  async revive(user: CalendarUser, event: CalendarEvent): Promise<void> {
+    await this._store.revive(user, event);
+    this._put(user, event);
+  }
+
   /** Every routine, from cache once read. */
   async routines(user: CalendarUser): Promise<CalendarRoutine[]> {
     const cached = this._entry(user);

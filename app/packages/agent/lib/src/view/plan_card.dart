@@ -239,6 +239,84 @@ class _ChangeRow extends StatelessWidget {
               ? null
               : _Along(titles: change.takes, going: true),
         );
+      case PlanChangeKind.deliver:
+        final value = change.value;
+        return AnswerRow(
+          mark: const AnswerMark(icon: AppIcons.check, ink: AppColors.success),
+          title: change.title,
+          detail: TextSpan(
+            text: [
+              l10n.agentChangeArtifactDone,
+              if (value != null) _reais(value),
+              if (change.takes.isNotEmpty)
+                l10n.agentChangeOpenLeft(change.takes.length),
+            ].join(' · '),
+          ),
+          below: change.takes.isEmpty ? null : _Along(titles: change.takes),
+        );
+      case PlanChangeKind.moveArtifact:
+        final place = change.place;
+        return AnswerRow(
+          mark: const AnswerMark(icon: AppIcons.arrowRight),
+          title: change.title,
+          detail: TextSpan(
+            text: switch ((place?.after, place?.before)) {
+              (_, final before?) => l10n.agentChangeArtifactBefore(before),
+              (final after?, null) => l10n.agentChangeArtifactAfter(after),
+              _ => l10n.agentPlaceEnd,
+            },
+          ),
+        );
+      case PlanChangeKind.addKind:
+        final shelf = change.shelf;
+        final value = change.value;
+        return AnswerRow(
+          mark: const AnswerMark(
+            icon: AppIcons.plus,
+            fill: AppColors.accentSoft,
+            ink: AppColors.accent,
+          ),
+          title: change.title,
+          detail: TextSpan(
+            text: [
+              l10n.agentChangeNewKind,
+              if (shelf != null && shelf.isNotEmpty) shelf,
+              if (change.minutes > 0) durationLabel(l10n, change.minutes),
+              if (value != null) _reais(value),
+            ].join(' · '),
+          ),
+        );
+      case PlanChangeKind.addGoal:
+        return AnswerRow(
+          mark: const AnswerMark(
+            icon: AppIcons.plus,
+            fill: AppColors.accentSoft,
+            ink: AppColors.accent,
+          ),
+          title: change.title,
+          detail: TextSpan(
+            text: [
+              l10n.agentChangeNewGoal,
+              if (change.goal != null) _goal(l10n, change.goal!),
+            ].join(' · '),
+          ),
+        );
+      case PlanChangeKind.removeGoal:
+        return AnswerRow(
+          mark: const AnswerMark(
+            icon: AppIcons.trash,
+            fill: AppColors.danger,
+            ink: AppColors.dangerInk,
+          ),
+          title: change.title,
+          struck: true,
+          detail: TextSpan(
+            text: [
+              l10n.agentChangeRemoveGoal,
+              if (change.goal != null) _goal(l10n, change.goal!),
+            ].join(' · '),
+          ),
+        );
       case PlanChangeKind.addTask ||
           PlanChangeKind.moveTask ||
           PlanChangeKind.addEvent ||
@@ -555,6 +633,25 @@ String _hhmm(DateTime at) =>
 String _ddmm(DateTime at) =>
     '${at.day.toString().padLeft(2, '0')}/'
     '${at.month.toString().padLeft(2, '0')}';
+
+/// Whole reais as Entregas writes them: "R$ 4.900".
+String _reais(int reais) {
+  final digits = reais.abs().toString();
+  final grouped = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write('.');
+    grouped.write(digits[i]);
+  }
+  return 'R\$ ${reais < 0 ? '-' : ''}$grouped';
+}
+
+/// "R$ 8.000 por mês", "3 por semana".
+String _goal(AppLocalizations l10n, PlanGoal goal) {
+  final amount = goal.money ? _reais(goal.target) : '${goal.target}';
+  return goal.monthly
+      ? l10n.agentGoalPerMonth(amount)
+      : l10n.agentGoalPerWeek(amount);
+}
 
 String _capitalised(String text) =>
     text.isEmpty ? text : text[0].toUpperCase() + text.substring(1);

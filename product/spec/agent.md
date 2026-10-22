@@ -35,7 +35,29 @@ The model never sees a UUID, never computes a date and never works out an
 hour from a place.
 
 **Every change is a gesture the person could have made by hand, and leaves
-the day as that gesture would** (`gestures.ts`):
+the day as that gesture would.** Each one is an `Action` declared once in
+`agent/actions/` (a file per domain: `queue.ts`, `artifacts.ts`; the
+registry in `index.ts`): its `name` (the `do` of a change), its `args`
+(by name, from the shared `ARGS`), `resolve` (one change of the model's,
+read into a gesture with every ref turned into an id, refusing what cannot
+be), `make` (the **same service method the button calls**:
+`EventLayoutService`, `ArtifactsService`) and `line` (what the plan card
+draws). The `do` enum, the schema of a plan's changes, the reading, the
+dry run, Aplicar and the card's lines are all read from the registry.
+**Adding a control is adding one entry**: name, args, resolve, make, line,
+an eval case with its trap, and the card's kind in `PlanChangeKind` if it
+draws a new line. `server/tool/coverage.mjs` lists the routes a person
+drives and which the agent reaches, and fails a handler whose first call is
+not a service.
+
+The changes' schema comes in two shapes, picked by `AGENT_SCHEMA`:
+`flat` (the default: one object, every argument optional, the server
+refusing the ones a verb does not take) and `variants` (`anyOf`, one
+object per verb with only its own arguments). `flat` passed 37 of 39 eval
+cases every run against `variants`' 34 on `gemini-3.1-flash-lite`, so it
+ships; `variants` stays for the next comparison.
+
+The day's gestures (`actions/queue.ts`):
 
 | Change | Arguments | What the server does |
 |--------|-----------|----------------------|
@@ -48,8 +70,41 @@ the day as that gesture would** (`gestures.ts`):
 `day` is `hoje`, `amanhã`, a weekday, or YYYY-MM-DD, within 14 days; the
 server resolves it and says what it came to ("Amanhã é sáb 17/10") in the
 steps. Nothing begun is moved, nothing goes into the past, a task's hour
-stays inside the working day, and an event only ever takes an hour. Nothing
-is removed.
+stays inside the working day, and an event only ever takes an hour. No card
+of the day is removed. Any `new` may carry `artifact` (a ref, `p1`, or the
+`as` of a `new_artifact` earlier in the same plan).
+
+Entregas' gestures (`actions/artifacts.ts`), as Entregas makes them
+(`ArtifactsService`). The board indexes kinds (`k1`) and goals (`g1`)
+beside the deliveries (`p1`: kind, time owed, value), and lists the last
+five delivered:
+
+| Change | Arguments | What the server does |
+|--------|-----------|----------------------|
+| `new_artifact` | `title`, `kind`, `deadline`, `minutes`, `value`, `at`, `as` | a delivery at the end of the queue (or the top); `as` names it for later changes |
+| `edit_artifact` | `ref`, `title`, `kind`, `deadline` (`none` takes it away), `minutes`, `value` | the delivery's sheet, saved |
+| `deliver` | `ref` | delivered: its value counts now; the card lists the tasks it leaves open |
+| `remove_artifact` | `ref` | deleted, with its backlog tasks |
+| `move_artifact` | `ref`, `after`/`before` | a place in the queue of deliveries |
+| `new_kind` | `name`, `shelf`, `minutes`, `price`, `as` | a kind in the catalogue |
+| `new_goal` | `measure`, `target`, `period`, `kind`, `start` | a goal |
+| `remove_goal` | `ref` | the goal deleted; the deliveries stay |
+
+A kind named loosely resolves to the catalogue's by its words; a value, a
+price or a time is only ever what the person said. **A delete is asked
+once when it takes more than three tasks along**: the reply says how many
+and offers "Apagar as N" and "Só a entrega", each its own plan.
+
+**Undo is a snapshot.** Aplicar reads every row a plan can touch (the
+tasks still to do and every task of a delivery, the events in reach, the
+deliveries, the catalogue, the goals) before and after making it, and keeps
+the difference: each row changed or gone is written back as it was
+(`revive` puts a deleted row back with its own id, `ON CONFLICT DO
+NOTHING`), each row made is taken out. A day of a routine the read wrote is
+left. So Desfazer undoes any action, with no inverse written for each.
+
+**Plans are kept in Postgres** (`agent_plan`, `PlanStore`, two hours), so
+a plan, its quick replies and its undo survive a restart.
 
 **The dry run is the apply.** A plan block makes the gestures on a sandbox
 copy of the day (`sandbox`: memory stores seeded from the rows just read, a
@@ -193,7 +248,9 @@ drew a given block). A case may say several things, the turns of one
 conversation. Every run reads the model's raw words for refs and banned
 words (`leak@1`), and fails when one reached the person after `speakable`.
 It reports pass^k (cases that passed every run), pass@1, leak@1, p50/p95 latency, calls
-per turn and cost, and with `--out` keeps the failing transcripts. It stops a
+per turn and cost, and with `--out` keeps the failing transcripts. Every
+case with a plan is also undone, and fails unless Desfazer leaves the state
+as the setup was. `--schema flat,variants` runs each shape. It stops a
 model once its cost reaches `--budget`. It costs money and is never in CI:
 run it before merging a change to the prompt, the tools or the model. The
 first comparison is in

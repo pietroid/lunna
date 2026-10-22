@@ -22,6 +22,7 @@ import {
   ArtifactRecord,
   NewCatalogType,
   NewGoal,
+  StoredRow,
 } from './artifact.types';
 
 /** The deliveries, their catalogue and their goals, in Postgres. */
@@ -185,6 +186,91 @@ export class PgArtifactStore extends ArtifactStore {
     await this._db
       .delete(goal)
       .where(and(eq(goal.id, id), eq(goal.userId, user.id)));
+  }
+
+  async removeType(user: CalendarUser, id: string): Promise<void> {
+    if (!isUuid(id)) return;
+
+    await this._db
+      .delete(catalogType)
+      .where(and(eq(catalogType.id, id), eq(catalogType.userId, user.id)));
+  }
+
+  async removeCategory(user: CalendarUser, id: string): Promise<void> {
+    if (!isUuid(id)) return;
+
+    await this._db
+      .delete(catalogCategory)
+      .where(
+        and(eq(catalogCategory.id, id), eq(catalogCategory.userId, user.id)),
+      );
+  }
+
+  async revive(user: CalendarUser, it: StoredRow): Promise<void> {
+    const userId = user.id;
+    switch (it.kind) {
+      case 'artifact': {
+        const row = it.row;
+        await this._db
+          .insert(artifact)
+          .values({
+            id: row.id,
+            userId,
+            title: row.title,
+            notes: row.notes,
+            typeId: row.typeId ?? null,
+            minutes: row.minutes ?? null,
+            value: row.value ?? null,
+            blockMinutes: row.blockMinutes ?? null,
+            deadline: row.deadline ?? null,
+            position: row.position,
+            doneAt: row.doneAt === undefined ? null : new Date(row.doneAt),
+            createdAt: new Date(row.createdAt),
+          })
+          .onConflictDoNothing();
+        return;
+      }
+      case 'category':
+        await this._db
+          .insert(catalogCategory)
+          .values({ userId, ...it.row })
+          .onConflictDoNothing();
+        return;
+      case 'type': {
+        const row = it.row;
+        await this._db
+          .insert(catalogType)
+          .values({
+            id: row.id,
+            userId,
+            categoryId: row.categoryId,
+            name: row.name,
+            minutes: row.minutes,
+            price: row.price ?? null,
+            blockMinutes: row.blockMinutes ?? null,
+            position: row.position,
+          })
+          .onConflictDoNothing();
+        return;
+      }
+      case 'goal': {
+        const row = it.row;
+        await this._db
+          .insert(goal)
+          .values({
+            id: row.id,
+            userId,
+            kind: row.kind,
+            typeId: row.typeId ?? null,
+            target: row.target,
+            period: row.period,
+            starts: row.starts,
+            createdAt: new Date(row.createdAt),
+          })
+          .onConflictDoNothing();
+        return;
+      }
+    }
   }
 }
 

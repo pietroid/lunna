@@ -197,6 +197,27 @@ export class PgTaskStore extends TaskStore {
       .delete(task)
       .where(and(eq(task.id, taskId), eq(task.userId, user.id)));
   }
+
+  async revive(user: CalendarUser, it: Task): Promise<void> {
+    await this._db
+      .insert(task)
+      .values({
+        id: it.id,
+        userId: user.id,
+        title: it.title,
+        notes: it.notes,
+        minutes: it.minutes,
+        position: it.position,
+        notBefore: dateOf(it.notBefore),
+        backlog: it.backlog,
+        doneAt: dateOf(it.doneAt),
+        cancelled: it.cancelled === true,
+        artifactId: it.artifactId ?? null,
+        routineId: it.routineId ?? null,
+        occurrence: dateOf(it.occurrence),
+      })
+      .onConflictDoNothing();
+  }
 }
 
 function toTask(row: TaskRow): Task {

@@ -136,13 +136,13 @@ export class ArtifactsService {
    * Writes a delivery down, at the top of the queue or at its end.
    *
    * A delivery of a kind takes the kind's time, value and blocks, unless it
-   * says otherwise.
+   * says otherwise. Answers its id.
    */
   async create(
     user: CalendarUser,
     input: NewArtifact,
     at: QueueEnd,
-  ): Promise<void> {
+  ): Promise<string> {
     let next = input;
     if (input.typeId !== undefined) {
       const type = await this._type(user, input.typeId);
@@ -166,11 +166,12 @@ export class ArtifactsService {
           : Math.max(...positions) + 1;
 
     const { blockMinutes, ...rest } = next;
-    await this._artifacts.insert(user, {
+    const created = await this._artifacts.insert(user, {
       ...rest,
       ...(blockMinutes == null ? {} : { blockMinutes }),
       position,
     });
+    return created.id;
   }
 
   async edit(
@@ -229,15 +230,19 @@ export class ArtifactsService {
    * Removes a delivery.
    *
    * What was waiting in the backlog for it goes with it: nobody had given
-   * it a turn yet. Whatever is on the day, or was done, stays, and simply
-   * belongs to no delivery.
+   * it a turn yet, unless [keepTasks] says to keep them. Whatever is on the
+   * day, or was done, stays, and simply belongs to no delivery.
    */
-  async remove(user: CalendarUser, id: string): Promise<void> {
+  async remove(
+    user: CalendarUser,
+    id: string,
+    { keepTasks = false } = {},
+  ): Promise<void> {
     await this._require(user, id);
 
     for (const task of await this._tasks.ofArtifacts(user)) {
       if (task.artifactId !== id) continue;
-      if (task.backlog && task.doneAt === undefined) {
+      if (task.backlog && task.doneAt === undefined && !keepTasks) {
         await this._tasks.remove(user, task.id);
       } else {
         await this._tasks.update(user, { ...task, artifactId: undefined });
@@ -266,6 +271,7 @@ export class ArtifactsService {
    *
    * The shelf is one she has ([categoryId]), or one named ([category]):
    * the one of that name if she has it, a new one at the end otherwise.
+   * Answers the kind's id.
    */
   async addType(
     user: CalendarUser,
@@ -277,7 +283,7 @@ export class ArtifactsService {
       categoryId?: string;
       category?: string;
     },
-  ): Promise<void> {
+  ): Promise<string> {
     const categories = await this._artifacts.categories(user);
     let categoryId = input.categoryId;
     if (categoryId !== undefined) {
@@ -304,7 +310,7 @@ export class ArtifactsService {
       (it) => it.categoryId === categoryId,
     );
 
-    await this._artifacts.insertType(user, {
+    const type = await this._artifacts.insertType(user, {
       categoryId,
       name: input.name,
       minutes: input.minutes,
@@ -314,11 +320,12 @@ export class ArtifactsService {
         : { blockMinutes: input.blockMinutes }),
       position: Math.max(-1, ...shelf.map((it) => it.position)) + 1,
     });
+    return type.id;
   }
 
   /**
    * Writes a goal down, counting from the stretch [now] is in or from the
-   * next one.
+   * next one. Answers its id.
    */
   async addGoal(
     user: CalendarUser,
@@ -330,14 +337,14 @@ export class ArtifactsService {
       start: GoalStart;
     },
     now = new Date(),
-  ): Promise<void> {
+  ): Promise<string> {
     if (input.kind === 'count') await this._type(user, input.typeId!);
 
     const current = stretchStart(
       isoDayIn(now, this._timeline.zone(user)),
       input.period,
     );
-    await this._artifacts.insertGoal(user, {
+    const goal = await this._artifacts.insertGoal(user, {
       kind: input.kind,
       target: input.target,
       period: input.period,
@@ -345,6 +352,7 @@ export class ArtifactsService {
       starts:
         input.start === 'now' ? current : nextStretch(current, input.period),
     });
+    return goal.id;
   }
 
   async removeGoal(user: CalendarUser, id: string): Promise<void> {
@@ -392,6 +400,41 @@ function viewOf(artifact: Artifact, tasks: Task[], day: Day): ArtifactView {
     doneAt: artifact.doneAt ?? null,
     tasks: tasks.map((task) => taskViewOf(task, day)),
   };
+}
+
+/**
+ * [goals] measured from the deliveries alone, as `answer` measures them:
+ * what the agent's board reads without laying a month out.
+ */
+export function measureGoals(
+  goals: Goal[],
+  artifacts: Artifact[],
+  today: string,
+  zone: Zone,
+): GoalView[] {
+  const views = artifacts.map((it) => ({
+    id: it.id,
+    typeId: it.typeId ?? null,
+    value: it.value ?? null,
+    deadline: it.deadline ?? null,
+    doneAt: it.doneAt ?? null,
+  })) as ArtifactView[];
+  const doneDay = new Map(
+    artifacts
+      .filter((it) => it.doneAt !== undefined)
+      .map((it) => [it.id, isoDayIn(new Date(it.doneAt!), zone)]),
+  );
+  return goals
+    .map((goal) =>
+      measure(
+        goal,
+        today,
+        views.filter((it) => it.doneAt === null),
+        views.filter((it) => it.doneAt !== null),
+        doneDay,
+      ),
+    )
+    .sort((a, b) => a.start.localeCompare(b.start));
 }
 
 /**
