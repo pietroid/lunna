@@ -1,5 +1,5 @@
-/** Anything shaped like a board ref: `t3`, `e1`, `b12`, `d1`, `p2`. */
-const REF = /\b([tebdp]\d{1,3})\b/gi;
+/** Anything shaped like a board ref: `t3`, `e1`, `b12`, `d1`, `p2`, `k1`, `g1`. */
+const REF = /\b([tebdpkg]\d{1,3})\b/gi;
 
 /** The scheduler's word for Depois eu priorizo. */
 const BACKLOG = /\b(o |no |do |ao )?backlog\b/gi;

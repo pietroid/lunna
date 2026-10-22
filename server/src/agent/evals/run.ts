@@ -4,9 +4,11 @@
  *   npm run eval:agent -- --model google/gemini-3.1-flash-lite --k 4 --budget 0.5
  *   npm run eval:agent -- --model a,b,c --k 4 --budget 0.5 --out runs/today
  *   npm run eval:agent -- --model a --case between-is-a-place --k 1
+ *   npm run eval:agent -- --model a --schema flat,variants --k 1
  *
  * Each case starts from its own day in memory, at its own frozen minute, and
- * is graded on the day the agent leaves after Aplicar, not on its words.
+ * is graded on the day the agent leaves after Aplicar, not on its words,
+ * and then on Desfazer: undoing the plan must leave every row as it was.
  * pass^k is the share of cases that passed every one of their k runs: the
  * number to watch, since a request that fails one time in four feels broken.
  *
@@ -26,9 +28,11 @@ import { Trace } from '../../common/trace';
 import { EventLayoutService } from '../../events/event-layout.service';
 import { TimelineService } from '../../events/timeline.service';
 import { MemoryArtifactStore } from '../../artifacts/artifact.store';
+import { ArtifactsService } from '../../artifacts/artifacts.service';
 import { MemoryTaskStore } from '../../tasks/task.store';
 import { DEFAULT_WORK_DAY } from '../../time/work-hours';
 import { instantOf, isoIn } from '../../time/zone';
+import { DEFAULT_SHAPE } from '../actions';
 import { AgentMessage, AgentService, TurnResult } from '../agent.service';
 import { leaksRef } from '../speech';
 import { normalize } from '../board';
@@ -79,6 +83,7 @@ interface Run {
 }
 
 interface ModelReport {
+  /** The model, and the shape of the changes when more than one ran. */
   model: string;
   runs: Run[];
   stopped?: string;
@@ -132,6 +137,7 @@ class RecordingClient extends OpenRouterClient {
 
 async function runCase(
   model: string,
+  schema: string,
   apiKey: string,
   c: Case,
   run: number,
@@ -142,13 +148,15 @@ async function runCase(
     OPENROUTER_API_KEY: apiKey,
     OPENROUTER_MODEL: model,
     LUNNA_TIMEZONE: ZONE,
+    AGENT_SCHEMA: schema,
   });
   const client = new RecordingClient(config);
   const tasks = new MemoryTaskStore();
   const artifacts = new MemoryArtifactStore();
   const calendar = new CalendarService(new MemoryCalendarStore(), config);
   const timeline = new TimelineService(calendar, tasks);
-  const layout = new EventLayoutService(timeline, calendar, tasks);
+  const layout = new EventLayoutService(timeline, calendar, tasks, artifacts);
+  const deliveries = new ArtifactsService(artifacts, tasks, timeline, layout);
   const agent = new AgentService(
     client,
     timeline,
@@ -157,6 +165,8 @@ async function runCase(
     tasks,
     artifacts,
     new MemoryConversationStore(),
+    undefined,
+    config,
   );
   const trace = Trace.start(USER.id, 'eval');
 
@@ -177,13 +187,32 @@ async function runCase(
         now,
       );
     },
-    async artifact(title, deadline) {
-      return (
-        await artifacts.insert(USER, {
+    async artifact(title, deadline, opts = {}) {
+      return deliveries.create(
+        USER,
+        {
           title,
           ...(deadline === undefined ? {} : { deadline }),
-        })
-      ).id;
+          ...(opts.value === undefined ? {} : { value: opts.value }),
+          ...(opts.kind === undefined ? {} : { typeId: opts.kind }),
+        },
+        'end',
+      );
+    },
+    async kind(name, shelf, minutes, price) {
+      return deliveries.addType(USER, {
+        name,
+        category: shelf,
+        minutes,
+        ...(price === undefined ? {} : { price }),
+      });
+    },
+    async goal(kind, target, period, typeId) {
+      await deliveries.addGoal(
+        USER,
+        { kind, target, period, typeId, start: 'now' },
+        now,
+      );
     },
     async event(title, at, minutes = 60) {
       await layout.createEvent(
@@ -293,9 +322,20 @@ async function runCase(
           ? 'a ref or a banned word reached the person'
           : verdict();
     if (outcome === 'apply') {
+      const before = await stateOf(timeline, artifacts, tasks, now);
       await agent.apply(USER, reply.plan!.id, trace, now);
       outcome =
-        c.check === undefined ? true : c.check(await stateOf(timeline, now));
+        c.check === undefined
+          ? true
+          : c.check(await stateOf(timeline, artifacts, tasks, now));
+      // Desfazer must leave everything as it was before Aplicar.
+      if (outcome === true) {
+        await agent.undo(USER, reply.plan!.id, trace);
+        const undone = await stateOf(timeline, artifacts, tasks, now);
+        if (JSON.stringify(undone) !== JSON.stringify(before)) {
+          outcome = 'undo left the state changed';
+        }
+      }
     }
     result.pass = outcome === true;
     if (outcome !== true) result.why = outcome;
@@ -325,8 +365,19 @@ function leaks(text: string): boolean {
   return leaksRef(text) || BANNED.test(text);
 }
 
-async function stateOf(timeline: TimelineService, now: Date): Promise<State> {
+async function stateOf(
+  timeline: TimelineService,
+  artifacts: MemoryArtifactStore,
+  tasks: MemoryTaskStore,
+  now: Date,
+): Promise<State> {
   const view = timeline.view(await timeline.day(USER, 14, now));
+  const [list, types, goals, theirs] = await Promise.all([
+    artifacts.list(USER),
+    artifacts.types(USER),
+    artifacts.goals(USER),
+    tasks.ofArtifacts(USER),
+  ]);
   const cards: Seen[] = [
     ...view.cards.map((card) => ({
       title: card.title,
@@ -347,6 +398,27 @@ async function stateOf(timeline: TimelineService, now: Date): Promise<State> {
 
   return {
     cards,
+    artifacts: [
+      ...list.filter((it) => it.doneAt === undefined),
+      ...list.filter((it) => it.doneAt !== undefined),
+    ].map((it) => ({
+      title: it.title,
+      done: it.doneAt !== undefined,
+      ...(it.deadline === undefined ? {} : { deadline: it.deadline }),
+      ...(it.value === undefined ? {} : { value: it.value }),
+      ...(it.typeId === undefined
+        ? {}
+        : { kind: types.find((type) => type.id === it.typeId)?.name }),
+      tasks: theirs
+        .filter((task) => task.artifactId === it.id)
+        .map((task) => task.title),
+    })),
+    kinds: types.map((it) => it.name),
+    goals: goals.map((it) => ({
+      kind: it.kind,
+      target: it.target,
+      period: it.period,
+    })),
     queue: view.tasks.map((it) => it.title),
     named: (title) => cards.filter((card) => sameStem(card.title, title)),
   };
@@ -371,25 +443,29 @@ function sameStem(a: string, b: string): boolean {
 
 async function runModel(
   model: string,
+  schema: string,
   k: number,
   budget: number,
   only?: string,
 ): Promise<ModelReport> {
   const apiKey = apiKeyOf();
-  const report: ModelReport = { model, runs: [] };
+  const report: ModelReport = { model: `${model} (${schema})`, runs: [] };
   let spent = 0;
 
-  for (const c of CASES.filter((it) => only === undefined || it.id === only)) {
+  const picked = only?.split(',');
+  for (const c of CASES.filter(
+    (it) => picked === undefined || picked.includes(it.id),
+  )) {
     for (let run = 1; run <= k; run++) {
       if (spent >= budget) {
         report.stopped = `budget of $${budget} spent at ${c.id} run ${run}`;
         return report;
       }
-      const result = await runCase(model, apiKey, c, run);
+      const result = await runCase(model, schema, apiKey, c, run);
       spent += result.cost;
       report.runs.push(result);
       process.stderr.write(
-        `${model} ${c.id} #${run} ${result.pass ? '✓' : `✗ ${result.why}`} (${result.ms} ms, $${result.cost.toFixed(4)})\n`,
+        `${report.model} ${c.id} #${run} ${result.pass ? '✓' : `✗ ${result.why}`} (${result.ms} ms, $${result.cost.toFixed(4)})\n`,
       );
     }
   }
@@ -487,6 +563,12 @@ async function main(): Promise<void> {
     .map((it) => it.trim());
   const k = Number(a.k ?? 4);
   const budget = Number(a.budget ?? 0.5);
+  const schemas = (a.schema ?? process.env.AGENT_SCHEMA ?? DEFAULT_SHAPE)
+    .split(',')
+    .map((it) => it.trim());
+  const runs = models.flatMap((model) =>
+    schemas.map((schema) => ({ model, schema })),
+  );
 
   // The layout writes a trace line for every step; the report is enough.
   console.log = () => {};
@@ -495,15 +577,15 @@ async function main(): Promise<void> {
 
   if (a.child !== undefined) {
     process.stdout.write(
-      JSON.stringify(await runModel(models[0], k, budget, a.case)),
+      JSON.stringify(await runModel(models[0], schemas[0], k, budget, a.case)),
     );
     return;
   }
 
   const reports =
-    models.length === 1
-      ? [await runModel(models[0], k, budget, a.case)]
-      : await Promise.all(models.map((model) => child(model, a)));
+    runs.length === 1
+      ? [await runModel(models[0], schemas[0], k, budget, a.case)]
+      : await Promise.all(runs.map((it) => child(it.model, it.schema, a)));
 
   const summary = summarize(reports, k);
   process.stdout.write(`${summary}\n`);
@@ -522,13 +604,19 @@ async function main(): Promise<void> {
 }
 
 /** One model in a process of its own: the frozen clock is per process. */
-function child(model: string, a: Record<string, string>): Promise<ModelReport> {
+function child(
+  model: string,
+  schema: string,
+  a: Record<string, string>,
+): Promise<ModelReport> {
   const argv = [
     ...process.execArgv,
     process.argv[1],
     '--child',
     '--model',
     model,
+    '--schema',
+    schema,
     '--k',
     a.k ?? '4',
     '--budget',

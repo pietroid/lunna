@@ -1232,6 +1232,46 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String agentChangeOpenLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarefas ainda abertas',
+      one: '1 tarefa ainda aberta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String agentChangeArtifactBefore(String title) {
+    return 'na fila, antes de $title';
+  }
+
+  @override
+  String agentChangeArtifactAfter(String title) {
+    return 'na fila, depois de $title';
+  }
+
+  @override
+  String get agentChangeNewKind => 'novo tipo';
+
+  @override
+  String get agentChangeNewGoal => 'nova meta';
+
+  @override
+  String get agentChangeRemoveGoal => 'apagar a meta';
+
+  @override
+  String agentGoalPerWeek(String amount) {
+    return '$amount por semana';
+  }
+
+  @override
+  String agentGoalPerMonth(String amount) {
+    return '$amount por mês';
+  }
+
+  @override
   String agentFree(String span) {
     return '$span livre';
   }

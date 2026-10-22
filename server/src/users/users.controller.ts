@@ -1,18 +1,8 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Inject,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
-import { DB } from '../db/db';
-import type { Database } from '../db/db';
-import { user as userTable } from '../db/schema';
+import { UsersService } from './users.service';
 import {
   EditMeDto,
   requireWorkDay,
@@ -40,30 +30,21 @@ export interface Me {
 @Controller('users')
 @UseGuards(SessionGuard)
 export class UsersController {
-  constructor(@Inject(DB) private readonly _db: Database) {}
+  constructor(private readonly _users: UsersService) {}
 
   @Get('me')
   me(@CurrentUser() user: AuthUser): Me {
     return meOf(user);
   }
 
-  /**
-   * Sets when their working day runs.
-   *
-   * Nothing else is written: the next read of the timeline lays the queue
-   * out inside the new hours, because no task's hour is stored.
-   */
+  /** Sets when their working day runs. */
   @Patch('me')
   async edit(
     @CurrentUser() user: AuthUser,
     @Body() body: EditMeDto,
   ): Promise<Me> {
     const day = requireWorkDay(body.workDay);
-
-    await this._db
-      .update(userTable)
-      .set({ dayStart: day.start, dayEnd: day.end })
-      .where(eq(userTable.id, user.id));
+    await this._users.setWorkDay(user.id, day);
 
     return meOf({ ...user, dayStart: day.start, dayEnd: day.end });
   }

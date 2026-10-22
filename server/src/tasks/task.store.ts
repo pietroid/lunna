@@ -63,6 +63,12 @@ export abstract class TaskStore {
 
   /** Forgets a task entirely. */
   abstract remove(user: CalendarUser, taskId: string): Promise<void>;
+
+  /**
+   * Writes [task] back as it was, id and all: what undoing a removal does.
+   * A task already there is left as it is.
+   */
+  abstract revive(user: CalendarUser, task: Task): Promise<void>;
 }
 
 /** The tasks, in memory. Behaves like the Postgres store. */
@@ -222,6 +228,11 @@ export class MemoryTaskStore extends TaskStore {
       this._tasks.delete(taskId);
     }
 
+    return Promise.resolve();
+  }
+
+  revive(user: CalendarUser, task: Task): Promise<void> {
+    if (!this._tasks.has(task.id)) this.seed(user, task);
     return Promise.resolve();
   }
 }

@@ -61,7 +61,22 @@ enum PlanChangeKind {
   editArtifact,
 
   /// An artifact deleted, and the tasks of its backlog with it.
-  removeArtifact;
+  removeArtifact,
+
+  /// An artifact delivered: its value counts towards the goals.
+  deliver,
+
+  /// An artifact given another place in the queue of deliveries.
+  moveArtifact,
+
+  /// A new kind in the catalogue.
+  addKind,
+
+  /// A new goal.
+  addGoal,
+
+  /// A goal deleted.
+  removeGoal;
 
   static PlanChangeKind fromWire(String? value) => switch (value) {
     'add_task' => addTask,
@@ -76,15 +91,26 @@ enum PlanChangeKind {
     'add_artifact' || 'add_project' => addArtifact,
     'edit_artifact' || 'edit_project' => editArtifact,
     'remove_artifact' || 'remove_project' => removeArtifact,
+    'deliver' => deliver,
+    'move_artifact' => moveArtifact,
+    'add_kind' => addKind,
+    'add_goal' => addGoal,
+    'remove_goal' => removeGoal,
     _ => moveTask,
   };
 
   /// Whether it adds something rather than moving it.
-  bool get adds => this == addTask || this == addEvent || this == addArtifact;
+  bool get adds =>
+      this == addTask ||
+      this == addEvent ||
+      this == addArtifact ||
+      this == addKind ||
+      this == addGoal;
 
   /// Whether it deletes something: drawn first, and the plan's button says
   /// so.
-  bool get deletes => this == remove || this == removeArtifact;
+  bool get deletes =>
+      this == remove || this == removeArtifact || this == removeGoal;
 
   /// Whether it is about a fixed block.
   bool get fixed => this == addEvent || this == moveEvent;
@@ -111,12 +137,18 @@ class PlanChange extends Equatable {
     this.deadline,
     this.wasDeadline,
     this.takes = const [],
+    this.value,
+    this.shelf,
+    this.goal,
   });
 
   factory PlanChange.fromJson(Map<String, dynamic> json) {
     final at = json['at'] as String?;
     final before = json['before'] as String?;
     final place = json['place'] as Map<String, dynamic>?;
+    final deadline = json['deadline'] as String?;
+    final wasDeadline = json['wasDeadline'] as String?;
+    final goal = json['goal'] as Map<String, dynamic>?;
 
     return PlanChange(
       kind: PlanChangeKind.fromWire(json['kind'] as String?),
@@ -127,6 +159,19 @@ class PlanChange extends Equatable {
       before: before == null ? null : DateTime.parse(before).toLocal(),
       routine: json['routine'] as bool? ?? false,
       place: place == null ? null : PlanPlace.fromJson(place),
+      was: json['was'] as String?,
+      note: json['note'] as String?,
+      artifact: json['artifact'] as String?,
+      // A day, read as that day wherever the phone is.
+      deadline: deadline == null ? null : DateTime.parse(deadline),
+      wasDeadline: wasDeadline == null ? null : DateTime.parse(wasDeadline),
+      takes: [
+        for (final it in json['takes'] as List<dynamic>? ?? const [])
+          it as String,
+      ],
+      value: (json['value'] as num?)?.toInt(),
+      shelf: json['shelf'] as String?,
+      goal: goal == null ? null : PlanGoal.fromJson(goal),
     );
   }
 
@@ -170,9 +215,18 @@ class PlanChange extends Equatable {
   /// An artifact's deadline before the change.
   final DateTime? wasDeadline;
 
-  /// What goes with it: the tasks a deleted artifact takes along, or the ones
-  /// a new artifact starts with.
+  /// What goes with it: the tasks a deleted artifact takes along, the ones
+  /// a new artifact starts with, or the ones a delivered one leaves open.
   final List<String> takes;
+
+  /// What it is worth, in whole reais: an artifact's value, a kind's price.
+  final int? value;
+
+  /// The catalogue shelf a new kind goes on.
+  final String? shelf;
+
+  /// What a goal counts, for a goal added or deleted.
+  final PlanGoal? goal;
 
   DateTime? get end => at?.add(Duration(minutes: minutes));
 
@@ -193,7 +247,40 @@ class PlanChange extends Equatable {
     deadline,
     wasDeadline,
     takes,
+    value,
+    shelf,
+    goal,
   ];
+}
+
+/// {@template plan_goal}
+/// What a goal counts: reais delivered, or deliveries of one kind, per week
+/// or per month.
+/// {@endtemplate}
+class PlanGoal extends Equatable {
+  /// {@macro plan_goal}
+  const PlanGoal({
+    required this.money,
+    required this.monthly,
+    required this.target,
+  });
+
+  factory PlanGoal.fromJson(Map<String, dynamic> json) => PlanGoal(
+    money: json['kind'] == 'money',
+    monthly: json['period'] == 'month',
+    target: (json['target'] as num?)?.toInt() ?? 0,
+  );
+
+  /// Reais delivered, rather than a count of one kind.
+  final bool money;
+
+  /// Per month, rather than per week.
+  final bool monthly;
+
+  final int target;
+
+  @override
+  List<Object?> get props => [money, monthly, target];
 }
 
 /// {@template plan_place}

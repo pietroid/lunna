@@ -1,6 +1,6 @@
 # Lunna can do anything the person can: one registry of controls
 
-2026-10-22 · delivery · **draft: plan for approval** · Track: **plan** ·
+2026-10-22 · delivery · **built** · Track: **plan** ·
 RFC: [agent-full-surface](../../research/2026-10-21-agent-full-surface/README.md)
 (approved in #20, merged in #22) · Issue: #26
 
@@ -13,6 +13,14 @@ RFC: [agent-full-surface](../../research/2026-10-21-agent-full-surface/README.md
 > - Read it as the research (see "From an RFC" in the /create skill): what it recommends, in its priority order, and its Rollout are the spec.
 > - A `> **Decision**` note in it is binding; every other decision takes the option marked *(recommended)*.
 > - The plan (or the board, if it changes what the person sees) says which rollout phases this PR ships, Phase 0 first.
+
+Build, after approval on the issue (`/create build agent-registry`):
+
+> The design was approved on the issue. Do Phases 3 and 4 unattended.
+> .tool/check must pass before you finish; a failure your change didn't
+> cause is proved (stash, rerun) and named in the README. In section 5
+> write "Measured by the queue: see the pull request." instead of
+> .tool/cost tables.
 
 ## 2. The plan
 
@@ -120,31 +128,119 @@ There is no layout to approve; Phase 4 of the build shoots the card.
 - `.tool/check` green under both brands; the plan card shot through a
   small `agent_registry_preview.dart` with a delivery plan, both brands.
 
-## Build brief
+## 3. What was built
 
-Starts `/create build agent-registry` (or this session, on approval: a
-plan doesn't split).
+The plan card drawing Entregas' changes, the real `PlanCard` on canned
+plans: (1) a delivery delivered with a task left open, one moved in the
+queue, a new kind and a new goal; (2) a delete that takes four tasks and a
+goal, so the button says Apagar in red; (3) a new delivery with its first
+tasks.
 
-- **Read first:** `product/spec/agent.md`, `product/spec/artifacts.md`,
-  then `server/src/agent/{plan,gestures,agent.prompt}.ts`,
-  `agent.service.ts` from `_rehearse` to the end (~line 1238), and
-  `artifacts/artifacts.service.ts`.
-- **Server:** steps 1–4 above, in that order, each green before the
-  next. The registry must leave `agent.controller.spec.ts` passing
-  unchanged before any Phase 2 verb is added. The `plan` table:
-  `src/db/schema.ts` + `npm run db:generate`, committed migration.
-- **App:** `PlanChangeKind` and `plan_card.dart` lines for `deliver`,
-  `new_kind`, `new_goal`, `remove_goal`, and the cascade line under
-  `remove_artifact` ("e as 6 tarefas dela"); strings in `app_pt.arb`.
-  `AgentLinks` keeps *Abrir entrega* for a new delivery.
-- **Docs:** `product/spec/agent.md` (the registry, how to add a verb,
-  the new verbs), `AGENTS.md` (agent section: "one `Action` per verb in
-  `agent/actions/`"; notes now writable from Phase 3 on is not yet true,
-  leave it), `SETUP.md`/`.env.example` for `AGENT_SCHEMA` if it stays.
-- **Open questions:** see *Decided unattended* below; none blocks the
-  build.
-- **Cost of the design session:** measured by the queue and written in
-  the PR.
+![Lunna](img/build-lunna.png)
+
+![Focus](img/build-focus.png)
+
+**The contract.** Every verb the agent has is one `Action` in
+`server/src/agent/actions/`, and its `make` calls the same service method
+the button calls. The `do` enum, the changes' schema (both shapes), the
+reading of a change, the dry run, Aplicar and the card's line all come
+from the registry. Desfazer restores a snapshot of every row the plan could
+touch, so no verb needs an inverse of its own.
+
+### Server
+
+- `agent/actions/`: `action.ts` (the `Action` interface, the shared `ARGS`),
+  `queue.ts` (`place`, `at_hour`, `first_free`, `to_backlog`, `swap`, moved
+  out of `agent.service.ts` and `gestures.ts`), `artifacts.ts`
+  (`new_artifact`, `edit_artifact`, `deliver`, `remove_artifact`,
+  `move_artifact`, `new_kind`, `new_goal`, `remove_goal`), `index.ts` (the
+  registry, `changesSchema(flat|variants)`).
+- `gestures.ts`: `make` dispatches through the registry; `snapshot`,
+  `undoOf`, `takeBack` are the undo. `TaskStore`, `CalendarStore` and
+  `ArtifactStore` gained `revive(row)` (Pg and memory).
+- `board.ts`: kinds (`k1`), goals (`g1`), each delivery's kind, time owed
+  and value, the last five delivered.
+- A delete that takes more than three tasks is a doubt: "Apagar as N" /
+  "Só a entrega", each its own plan (`agent.service.ts`).
+- Plans in Postgres: `agent_plan` (migration `0011_agent_plan.sql`),
+  `PgPlanStore`, the same two-hour life.
+- Rules out of controllers: the delivery check on a new task now lives in
+  `EventLayoutService.createTask`; the working day is set by
+  `UsersService.setWorkDay`.
+- `AGENT_SCHEMA` (`variants` by default, or `flat`).
+- `server/tool/coverage.mjs`: the agent now reaches **14 of 39** routes a
+  person drives (6 before), and every handler hands its work to a
+  service.
+- No new route.
+
+### App
+
+- `PlanChangeKind` learns `deliver`, `moveArtifact`, `addKind`, `addGoal`,
+  `removeGoal`; `PlanChange` reads `value`, `shelf`, `goal`, `takes`,
+  `deadline` from the wire.
+- `plan_card.dart` draws each one (✓ for delivered, → for moved, + for a
+  kind or goal, the bin for a goal deleted); 9 new strings in `app_pt.arb`.
+
+### Tests
+
+- Server: `actions.spec.ts` (4: the flat schema for the queue's verbs
+  byte-equal to the prompt's before the registry, every verb named once
+  with real arguments, each variant with only its own arguments, a shared
+  argument described per verb), `pg-plan.store.spec.ts`
+  (4, PGlite), and 10 new end-to-end cases in `agent.controller.spec.ts`
+  (frozen clock, memory stores): every Phase 2 verb from turn to plan to
+  Aplicar to Desfazer, which must give back the setup, including a removed
+  delivery's backlog tasks with their ids. The 31 cases that were there
+  pass unchanged.
+- App: `history_test.dart` checks every new line of the card.
+- Evals: 10 new cases in `evals/cases.ts`, each built around the trap
+  the RFC names; every case with a plan is also undone and checked against
+  its setup.
+- `.tool/check`: all 18 steps green (app analyze, every package's tests
+  under Focus and Lunna, server eslint, tsc and tests).
+- `npm run eval:agent -- --schema flat,variants --k 2 --budget 0.5`, on
+  `google/gemini-3.1-flash-lite`, 39 cases (29 from `main`, 10 new):
+
+  | Shape | pass^2 | pass@1 | leak@1 (raw) | p50 | p95 | calls/turn | tokens in/turn | cost |
+  |---|---|---|---|---|---|---|---|---|
+  | flat | 37/39 (95%) | 96% | 3% | 3.2 s | 17.0 s | 1.76 | 7242 | $0.187 |
+  | variants | 34/39 (87%) | 94% | 0% | 2.6 s | 16.3 s | 1.63 | 10176 | $0.198 |
+
+  `variants` scored lower, so by decision 7 **`flat` ships as the
+  default**. Failures: flat `delivery-twice` 2/2 and `goal-amount-unsaid`
+  1/2 (neither a plan nor a question); variants `delivery-twice`,
+  `delivery-task-for-it`, `kind-named-loosely`, `remove-cascade` and
+  `multi-refs` 1/2 each. The new cases were not run on `main`: it has
+  no verb for them, so they fail there by construction.
+
+### Where it differs from the plan
+
+- Coverage reaches 14 routes, not the 17 the plan aimed at.
+  `POST /artifacts/:id/tasks` is not counted: a delivery's task is written
+  through the day's gestures (`new` with `artifact`, `createTask`) instead.
+- The eval was run only on this branch, on both shapes, not on `main`
+  too: the new cases fail on `main` by construction (it has no verb for
+  them), and running `main` needs a second checkout this run must not make.
+- The default shape is `flat`, not the `variants` the plan expected:
+  `variants` scored lower.
+- `delivery-twice` fails on `flat` 2 of 2: the model neither asks nor
+  proposes when a delivery with that name already exists. The server
+  refuses the duplicate (the spec case passes), but the model doesn't then
+  ask. This is left for the next PR.
+- The card has no separate line for "and the 6 tasks with it" beyond what
+  `remove_artifact` already drew (it lists them, struck).
+
+## 4. How to turn it on
+
+Nothing to turn on: the migration runs on boot and the verbs are live with
+the agent (`OPENROUTER_API_KEY`). `AGENT_SCHEMA=variants` switches the changes'
+schema to one object per verb, for the evals; unset, it is `flat`.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.
+
+Outside Claude: the real-model eval on OpenRouter, US$0.385 (flat $0.187, variants $0.198).
 
 ## Decided unattended
 
@@ -157,3 +253,5 @@ plan doesn't split).
   "before deletes ship" and `remove_artifact` is a delete.
 - **`coverage.mjs` copied to `server/tool/`** so it runs on the code it
   measures; the RFC's copy stays as the evidence it was.
+- **The eval budget**: two shapes, k=2, at most US$0.50 each, on the
+  model in `server/.env.local`.
