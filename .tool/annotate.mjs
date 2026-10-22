@@ -106,6 +106,16 @@ const TYPES = {
 };
 const root = dirname(file);
 
+// The deck's look and its script (slides, diagrams, callouts) come from the
+// review page, so a doc reads the same here as on the phone.
+const review = readFileSync(new URL('./review.html', import.meta.url), 'utf8');
+const DECK = [
+  review.match(/<link rel="preconnect"[^>]*>\s*<link [^>]*fonts[^>]*>/)[0],
+  review.match(/<script src="[^"]*marked[^"]*"><\/script>/)[0],
+  review.match(/<style id="deck">[\s\S]*?<\/style>/)[0],
+  review.match(/<script id="deck">[\s\S]*?<\/script>/)[0],
+].join('\n');
+
 function serveFile(url, res) {
   let path;
   try {
@@ -155,70 +165,39 @@ const PAGE = /* html */ `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Annotate</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+${DECK}
 <style>
-  :root {
-    --bg: #fbf8f7; --ink: #241c1c; --ink2: #6b5f5f; --line: #ece4e2;
-    --fill: #f3eceb; --accent: #c9302c;
-    --q: #fdecea; --learn: #eef3fb; --decision: #edf7ee; --note: #f4f1ec; --a: #f6f0fb;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #151414; --ink: #ece8e6; --ink2: #a39b98; --line: #2b2828;
-      --fill: #1f1d1d; --accent: #ff6b5e;
-      --q: #3a2222; --learn: #1f2838; --decision: #1f3024; --note: #2a2721; --a: #2c2236;
-    }
-  }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink);
-         font: 16px/1.6 Onest, system-ui, sans-serif; }
-  header { position: sticky; top: 0; z-index: 2; background: var(--bg);
-           border-bottom: 1px solid var(--line); padding: 10px 16px;
-           display: flex; gap: 12px; align-items: center; font-size: 14px; color: var(--ink2); }
-  header b { color: var(--ink); font-weight: 600; }
+  header { position: sticky; top: 0; z-index: 2; background: rgba(0, 0, 0, .82); backdrop-filter: blur(12px);
+           padding: 12px 18px; display: flex; gap: 12px; align-items: baseline; font-size: 14px; color: var(--ink2); }
+  header b { color: var(--ink); font-weight: 500; }
   #counts { margin-left: auto; display: flex; gap: 10px; }
-  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 120px; }
-  main img { max-width: 100%; height: auto; border-radius: 8px; }
-  .block { position: relative; border-radius: 10px; padding: 2px 10px; margin: 0 -10px; }
-  .block:hover { background: var(--fill); }
-  .block > :first-child { margin-top: 8px; }
-  .block > :last-child { margin-bottom: 8px; }
-  .add { position: absolute; left: -34px; top: 8px; width: 26px; height: 26px; border: 0;
+  .block { position: relative; border-radius: 14px; padding: 1px 10px; margin: 0 -10px; }
+  .block:hover { background: rgba(255, 255, 255, .03); }
+  .block > :first-child { margin-top: 4px; }
+  .block > :last-child { margin-bottom: 4px; }
+  .add { position: absolute; left: -40px; top: 6px; width: 26px; height: 26px; border: 0;
          border-radius: 50%; background: var(--fill); color: var(--ink2); font: 18px/26px Onest, sans-serif;
          cursor: pointer; opacity: 0; }
   .block:hover .add { opacity: 1; }
-  .add:hover { background: var(--accent); color: #fff; }
-  pre { background: var(--fill); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
-  code { font-size: .9em; }
-  table { border-collapse: collapse; font-size: 14px; display: block; overflow-x: auto; }
-  th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left; }
-  blockquote { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--fill); }
-  blockquote p { margin: 0; }
-  .note blockquote { font-size: 15px; }
-  .note-Q blockquote { background: var(--q); }
-  .note-A blockquote { background: var(--a); }
-  .note-Learn blockquote { background: var(--learn); }
-  .note-Decision blockquote { background: var(--decision); }
-  .note-Note blockquote { background: var(--note); }
-  .composer { margin: 6px 0 14px; padding: 12px; border-radius: 10px; background: var(--fill); }
+  .add:hover { background: var(--accent); color: var(--on-accent); }
+  .composer { margin: 6px 0 14px; padding: 12px; border-radius: 14px; background: var(--fill); }
   .composer .quote { font-size: 14px; color: var(--ink2); font-style: italic; margin-bottom: 8px; }
   .kinds { display: flex; gap: 6px; margin-bottom: 8px; }
-  .kinds button, .actions button { border: 0; border-radius: 999px; padding: 4px 12px; cursor: pointer;
-         font: 500 13px Onest, sans-serif; background: var(--bg); color: var(--ink2); }
-  .kinds button.on { background: var(--accent); color: #fff; }
-  textarea { width: 100%; min-height: 70px; border: 0; border-radius: 8px; padding: 8px 10px;
+  .kinds button, .actions button { border: 0; border-radius: 999px; padding: 5px 13px; cursor: pointer;
+         font: 500 13px Onest, sans-serif; background: var(--fill2); color: var(--ink2); }
+  .kinds button.on { background: var(--accent); color: var(--on-accent); }
+  textarea { width: 100%; min-height: 70px; border: 0; border-radius: 12px; padding: 8px 10px;
              background: var(--bg); color: var(--ink); font: 15px/1.5 Onest, sans-serif; resize: vertical; }
   .actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; align-items: center; }
   .actions span { margin-right: auto; font-size: 12px; color: var(--ink2); }
-  .actions .save { background: var(--accent); color: #fff; }
+  .actions .save { background: var(--accent); color: var(--on-accent); }
   @media (max-width: 860px) { .add { left: auto; right: 6px; opacity: .6; } }
 </style>
 </head>
 <body>
 <header><b id="name"></b><span id="counts"></span></header>
-<main id="doc"></main>
+<main id="doc" class="deck"></main>
 <script>
 const KINDS = ['Q', 'Learn', 'Decision', 'Note'];
 let state = null;
@@ -245,8 +224,10 @@ function render() {
     add.onclick = () => compose(i, '');
     el.prepend(add);
     el.dataset.i = i;
-    main.append(el);
+    deckSlide(main, text).append(el);
   });
+  deckNumber(main);
+  deckFinish(main);
   document.getElementById('counts').textContent =
     Object.entries(counts).map(([k, n]) => k + ' ' + n).join(' · ');
   if (composing) drawComposer();
