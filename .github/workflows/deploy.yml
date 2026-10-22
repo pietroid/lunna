@@ -137,6 +137,9 @@ jobs:
         env:
           BRAND: ${{ matrix.brand }}
           GOOGLE_WEB_PROVIDER: ${{ matrix.google_provider }}
+          # PostHog's project key, public by design, so a variable and not a
+          # secret. Unset, the build sends nothing.
+          POSTHOG_KEY: ${{ vars.POSTHOG_KEY }}
         run: |
           set -euo pipefail
           # The web app shares an origin with the API, so it calls /api.
@@ -145,6 +148,7 @@ jobs:
             "BRAND": "${BRAND}",
             "API_BASE_URL": "/api",
             "GOOGLE_WEB_PROVIDER": "${GOOGLE_WEB_PROVIDER}",
+            "POSTHOG_KEY": "${POSTHOG_KEY}",
             "FLAVOR": "${BRAND}Production"
           }
           EOF

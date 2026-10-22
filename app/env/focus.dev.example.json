@@ -4,5 +4,7 @@
   "GOOGLE_WEB_CLIENT_ID": "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
   "GOOGLE_WEB_PROVIDER": "google",
   "GOOGLE_IOS_CLIENT_ID": "YOUR_FOCUS_DEV_IOS_CLIENT_ID.apps.googleusercontent.com",
+  "POSTHOG_KEY": "",
+  "POSTHOG_HOST": "https://us.i.posthog.com",
   "FLAVOR": "focusDev"
 }

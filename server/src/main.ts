@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { toNodeHandler } from 'better-auth/node';
+import { ANALYTICS, Analytics } from './analytics/analytics';
 import { AppModule } from './app.module';
 import { Auth, listOf } from './auth/auth';
 import { AUTH } from './auth/auth.tokens';
@@ -41,8 +42,11 @@ async function bootstrap() {
   app.useBodyParser('json');
   app.setGlobalPrefix('api');
 
-  // Logs response status, timing, user id and errors for every handled request.
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  // Logs response status, timing, user id and errors for every handled
+  // request, and tells PostHog of each write and each failure.
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(app.get<Analytics>(ANALYTICS)),
+  );
   app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 3000);

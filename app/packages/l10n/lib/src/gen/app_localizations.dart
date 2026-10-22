@@ -1145,6 +1145,12 @@ abstract class AppLocalizations {
   /// **'Deixe a rotina se repetir sozinha.'**
   String get landingUseRoutine;
 
+  /// One muted line at the foot of the landing page: what PostHog records, and that replays mask every text and image.
+  ///
+  /// In pt, this message translates to:
+  /// **'Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.'**
+  String get landingPrivacy;
+
   /// No description provided for @landingFooter.
   ///
   /// In pt, this message translates to:

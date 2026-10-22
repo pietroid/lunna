@@ -316,9 +316,7 @@ class _Part extends StatelessWidget {
       children: [
         Text(
           number,
-          style: AppTypography.caption.copyWith(
-            color: AppColors.ink3,
-          ),
+          style: AppTypography.caption.copyWith(color: AppColors.ink3),
         ),
         const SizedBox(height: AppSpacing.s3),
         Text(title, style: AppTypography.title),
@@ -352,21 +350,37 @@ class _Footer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final muted = AppTypography.caption.copyWith(color: AppColors.ink3);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.s8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            AppBrand.markAsset,
-            package: 'app_ui',
-            height: AppSpacing.s4,
-          ),
-          const SizedBox(width: AppSpacing.s2),
-          Expanded(
+          // What PostHog records, said once, before anyone signs in.
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
             child: Text(
-              context.l10n.landingFooter(AppBrand.id),
-              style: AppTypography.caption.copyWith(color: AppColors.ink3),
+              context.l10n.landingPrivacy,
+              style: muted.copyWith(height: 1.6),
             ),
+          ),
+          const SizedBox(height: AppSpacing.s4),
+          Row(
+            children: [
+              Image.asset(
+                AppBrand.markAsset,
+                package: 'app_ui',
+                height: AppSpacing.s4,
+              ),
+              const SizedBox(width: AppSpacing.s2),
+              Expanded(
+                child: Text(
+                  context.l10n.landingFooter(AppBrand.id),
+                  style: muted,
+                ),
+              ),
+            ],
           ),
         ],
       ),

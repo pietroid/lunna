@@ -127,6 +127,8 @@ sudo mkdir -p /opt/lunna && sudo chown "$USER" /opt/lunna
 #   OPENROUTER_MODEL=<model with tool calls>
 #   OPENROUTER_FALLBACK_MODELS=  # optional, comma-separated
 #   OPENROUTER_REASONING=low     # optional
+#   POSTHOG_KEY=<phc_…>          # analytics (section 6); empty turns it off
+#   POSTHOG_HOST=https://us.i.posthog.com
 #   LUNNA_HTTP_PORT=8080
 #   FOCUS_HTTP_PORT=8081
 chmod 600 /opt/lunna/.env
@@ -184,6 +186,7 @@ Repository **variables**:
 |----------|---------|
 | `PI_USER` | `pi` |
 | `CLOUDFLARE_SSH_HOSTNAME` | `deploy.pietroteruya.dev` |
+| `POSTHOG_KEY` | `phc_…`, PostHog's project key (section 6); unset, the web builds send nothing |
 
 ### Deploying by hand
 
@@ -213,6 +216,33 @@ flutter build appbundle --flavor focusProduction --dart-define-from-file env/foc
 
 `env/<brand>.production.json` points `API_BASE_URL` at
 `https://<brand>.pietroteruya.dev/api`; both reach the same backend.
+Set `POSTHOG_KEY` in it too (section 6), or the build sends nothing.
+
+## 6. PostHog
+
+Usage, errors and session replays, for both brands, in **one** PostHog
+project on the **US cloud** (`product/spec/analytics.md`). Everything is
+off until its key is set, so dev, tests, CI and the previews send nothing.
+
+1. Create the project at <https://us.posthog.com> and copy its **project
+   key** (`phc_…`, Settings → Project → General). It is public by design:
+   it ships inside every client.
+2. Put it in three places:
+   - the server: `POSTHOG_KEY` (and `POSTHOG_HOST=https://us.i.posthog.com`)
+     in `/opt/lunna/.env`;
+   - the web builds: the repository **variable** `POSTHOG_KEY` (section 5),
+     which `deploy.yml` writes into `env/web.json` and `tool/brand_web.sh`
+     into the snippet in `index.html`;
+   - the phones: `"POSTHOG_KEY"` in `app/env/<brand>.production.json`.
+3. In the project's settings:
+   - **Session replay** → on, and **Canvas capture** on (Flutter web is one
+     canvas; the app paints its masks into the frames before they leave).
+   - **Heatmaps** → off. **Autocapture** → off (the app has no DOM to
+     click).
+   - **Error tracking** → on.
+
+The web build sends through `/ingest` on its own origin, which
+`deploy/nginx.conf` proxies to PostHog, so ad blockers let it through.
 
 ## Brand assets
 

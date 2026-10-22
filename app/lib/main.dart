@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:agent/agent.dart';
+import 'package:analytics/analytics.dart';
 import 'package:api_client/api_client.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
@@ -19,6 +20,11 @@ import 'package:timeline/timeline.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Off without a key: dev builds, CI and the previews send nothing.
+  final analytics = kPostHogKey.isEmpty
+      ? const NoAnalytics()
+      : await PostHogAnalytics.start(key: kPostHogKey, host: kPostHogHost);
+
   final authRepository = BetterAuthRepository(
     apiBaseUrl: kApiBaseUrl,
     // The web build signs in through the redirect and needs no client id.
@@ -35,6 +41,19 @@ Future<void> main() async {
   final apiClient = ApiClient(
     baseUrl: kApiBaseUrl,
     tokenProvider: AuthTokenProvider(authRepository),
+    // A 5xx is the server's failure, which the person saw; a dropped
+    // network is not.
+    onServerError: (error) => unawaited(
+      analytics.captureException(
+        error,
+        stackTrace: error.stackTrace,
+        properties: {
+          'method': error.requestOptions.method,
+          'path': error.requestOptions.path,
+          'status': error.response?.statusCode ?? 0,
+        },
+      ),
+    ),
   );
   final timelineRepository = TimelineRepository(apiClient: apiClient);
   final agentRepository = AgentRepository(apiClient: apiClient);
@@ -80,6 +99,7 @@ Future<void> main() async {
             create: (_) => AppBloc(
               authRepository: authRepository,
               initialUser: initialUser,
+              analytics: analytics,
             ),
           ),
           // The conversations of the session: each opening of the sheet
@@ -113,9 +133,13 @@ Future<void> main() async {
         // Above the router, so the notes of every page draw their links.
         child: LinkPreviewScope(
           previews: linkPreviews,
-          child: App(initialLocation: initialLocation),
+          child: AnalyticsScope(
+            analytics: analytics,
+            child: App(initialLocation: initialLocation, analytics: analytics),
+          ),
         ),
       ),
     ),
+    analytics: analytics,
   );
 }

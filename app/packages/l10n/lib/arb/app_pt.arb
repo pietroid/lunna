@@ -457,6 +457,10 @@
   "landingUseHour": "Dê a cada coisa a sua hora.",
   "landingUsePause": "Pause, estenda ou adie, e o resto do dia anda junto.",
   "landingUseRoutine": "Deixe a rotina se repetir sozinha.",
+  "landingPrivacy": "Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.",
+  "@landingPrivacy": {
+    "description": "One muted line at the foot of the landing page: what PostHog records, and that replays mask every text and image."
+  },
   "landingFooter": "{brand, select, lunna{Lunna} other{Focus}} · Organização pessoal",
   "@landingFooter": {
     "placeholders": {
