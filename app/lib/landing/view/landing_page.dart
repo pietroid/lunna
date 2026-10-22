@@ -4,27 +4,57 @@ import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/demo/demo.dart';
+import 'package:lunna/landing/widgets/chapters.dart';
 import 'package:lunna/landing/widgets/phone_frame.dart';
 
 /// {@template landing_page}
 /// What someone who is not signed in sees: what Lunna is, with the app itself
 /// running in a phone beside it.
 ///
+/// The page is about three things, the tabs of the app said in words: Peça
+/// (the agent), Tempo and Entregas. On a wide screen they are listed beside
+/// the phone, and the one chosen is what the phone shows; it opens on Peça,
+/// with the agent answering the first example ask.
+///
 /// It is drawn inside an [AuthScreen], and signing in is one quiet word in
 /// the corner. The page is there to be read, and the person it lets in
 /// already knows where to tap.
 ///
 /// On a narrow screen there is no phone. The screen already is one, and a
-/// phone drawn inside it would be a thumbnail.
+/// phone drawn inside it would be a thumbnail: each chapter shows its piece
+/// of the app instead, drawn by the app's own widgets.
 /// {@endtemplate}
-class LandingPage extends StatelessWidget {
+class LandingPage extends StatefulWidget {
   /// {@macro landing_page}
-  const LandingPage({super.key});
+  const LandingPage({
+    this.chapter = DemoChapter.ask,
+    this.scrollController,
+    super.key,
+  });
 
+  /// The chapter the phone opens on.
+  final DemoChapter chapter;
+
+  /// The page's scroll, for whoever needs to start it lower.
+  final ScrollController? scrollController;
+
+  @override
+  State<LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends State<LandingPage> {
   /// Below this width the page is one column and the phone is left out.
   static const _wide = 960.0;
 
   static const _maxWidth = 1160.0;
+
+  late final _demo = DemoController(chapter: widget.chapter);
+
+  @override
+  void dispose() {
+    _demo.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +66,7 @@ class LandingPage extends StatelessWidget {
         final gutter = wide ? AppSpacing.s12 : AppSpacing.s6;
 
         return SingleChildScrollView(
+          controller: widget.scrollController,
           child: SafeArea(
             child: Center(
               child: ConstrainedBox(
@@ -47,33 +78,36 @@ class LandingPage extends StatelessWidget {
                     children: [
                       const _TopBar(),
                       if (wide)
-                        _WideHero(height: constraints.maxHeight)
-                      else
+                        _WideHero(height: constraints.maxHeight, demo: _demo)
+                      else ...[
                         const Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: AppSpacing.s12,
+                          padding: EdgeInsets.only(
+                            top: AppSpacing.s12,
+                            bottom: AppSpacing.s16,
                           ),
                           child: _Pitch(wide: false),
                         ),
+                        const ChapterPieces(),
+                      ],
                       _Section(
-                        title: l10n.landingHowTitle,
+                        title: l10n.landingMoreTitle,
                         child: _Columns(
                           wide: wide,
                           children: [
                             _Part(
-                              number: '01',
-                              title: l10n.landingPartTimelineTitle,
-                              text: l10n.landingPartTimelineText,
-                            ),
-                            _Part(
-                              number: '02',
+                              icon: AppIcons.repeat,
                               title: l10n.landingPartRoutinesTitle,
                               text: l10n.landingPartRoutinesText,
                             ),
                             _Part(
-                              number: '03',
+                              icon: AppIcons.timer,
                               title: l10n.landingPartRemindersTitle,
                               text: l10n.landingPartRemindersText,
+                            ),
+                            _Part(
+                              icon: AppIcons.microphone,
+                              title: l10n.landingPartVoiceTitle,
+                              text: l10n.landingPartVoiceText,
                             ),
                           ],
                         ),
@@ -83,10 +117,10 @@ class LandingPage extends StatelessWidget {
                         child: _Columns(
                           wide: wide,
                           children: [
-                            _Use(l10n.landingUseWrite),
+                            _Use(l10n.landingUseAsk),
                             _Use(l10n.landingUseHour),
                             _Use(l10n.landingUsePause),
-                            _Use(l10n.landingUseRoutine),
+                            _Use(l10n.landingUseDeliver),
                           ],
                         ),
                       ),
@@ -130,12 +164,16 @@ class _TopBar extends StatelessWidget {
   }
 }
 
-/// The pitch on the left, the phone on the right, filling the first screen.
+/// The pitch and the chapters on the left, the phone on the right, filling
+/// the first screen.
 class _WideHero extends StatelessWidget {
-  const _WideHero({required this.height});
+  const _WideHero({required this.height, required this.demo});
 
   /// The height of the window, which the phone is sized against.
   final double height;
+
+  /// Which chapter the phone shows, shared with the list beside it.
+  final DemoController demo;
 
   @override
   Widget build(BuildContext context) {
@@ -150,16 +188,36 @@ class _WideHero extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(child: _Pitch(wide: true)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _Pitch(wide: true),
+                const SizedBox(height: AppSpacing.s8),
+                ChapterList(controller: demo),
+                const SizedBox(height: AppSpacing.s4),
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.s5),
+                  child: Text(
+                    context.l10n.landingDemoHint,
+                    style: AppTypography.caption.copyWith(
+                      color: AppColors.ink3,
+                      height: 1.6,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(width: AppSpacing.s16),
           SizedBox(
             height: phoneHeight,
-            child: const Stack(
+            child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
-                Positioned.fill(child: _Glow()),
-                PhoneFrame(child: DemoApp()),
+                const Positioned.fill(child: _Glow()),
+                PhoneFrame(child: DemoApp(controller: demo)),
               ],
             ),
           ),
@@ -206,7 +264,7 @@ class _Pitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final headline = AppTypography.onest(
-      size: wide ? 68 : 44,
+      size: wide ? 56 : 40,
       weight: FontWeight.w300,
       height: 1.1,
       tracking: -0.035,
@@ -222,23 +280,13 @@ class _Pitch extends StatelessWidget {
           child: Text(
             context.l10n.landingPitch(AppBrand.id),
             style: AppTypography.onest(
-              size: wide ? 19 : 17,
+              size: wide ? 18 : 17,
               weight: FontWeight.w400,
               height: 1.65,
               color: AppColors.ink2,
             ),
           ),
         ),
-        if (wide) ...[
-          const SizedBox(height: AppSpacing.s8),
-          Text(
-            context.l10n.landingDemoHint,
-            style: AppTypography.caption.copyWith(
-              color: AppColors.ink3,
-              height: 1.6,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -303,9 +351,9 @@ class _Columns extends StatelessWidget {
 }
 
 class _Part extends StatelessWidget {
-  const _Part({required this.number, required this.title, required this.text});
+  const _Part({required this.icon, required this.title, required this.text});
 
-  final String number;
+  final AppIconData icon;
   final String title;
   final String text;
 
@@ -314,9 +362,9 @@ class _Part extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          number,
-          style: AppTypography.caption.copyWith(color: AppColors.ink3),
+        AppIcon(
+          iconData: icon,
+          color: AppColors.ink3,
         ),
         const SizedBox(height: AppSpacing.s3),
         Text(title, style: AppTypography.title),

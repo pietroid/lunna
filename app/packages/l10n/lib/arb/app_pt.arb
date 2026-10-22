@@ -434,8 +434,8 @@
   "routinesTitleHint": "Almoço, rotina da manhã…",
   "commonSave": "Salvar",
   "routinesDelete": "Excluir rotina",
-  "landingHeadline": "Seu dia, no lugar.",
-  "landingPitch": "{brand, select, lunna{A Lunna é um sistema pessoal de organização. Anote o que precisa ser feito e a Lunna dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.} other{O Focus é um sistema pessoal de organização. Anote o que precisa ser feito e o Focus dá uma hora para cada coisa, reorganiza o dia quando ele muda e lembra você na hora certa.}}",
+  "landingHeadline": "Diga o que precisa. O dia se arruma.",
+  "landingPitch": "{brand, select, lunna{A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.} other{O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.}}",
   "@landingPitch": {
     "placeholders": {
       "brand": {
@@ -444,19 +444,37 @@
       }
     }
   },
-  "landingDemoHint": "O celular ao lado é o app de verdade. Toque no + para anotar algo, ou num bloco para abri-lo.",
-  "landingHowTitle": "Como funciona",
-  "landingPartTimelineTitle": "Tempo",
-  "landingPartTimelineText": "O dia como uma fila: o que está rodando agora, o que vem ainda hoje e o que fica para amanhã.",
+  "landingDemoHint": "O celular ao lado é o app de verdade, com um dia de exemplo. Toque, arraste e peça.",
+  "landingChapterAskTitle": "Peça",
+  "landingChapterAskText": "{brand, select, lunna{Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.} other{Escreva ou fale o que precisa. O Focus lê o seu dia, monta um plano e espera o seu sim.}}",
+  "@landingChapterAskText": {
+    "placeholders": {
+      "brand": {
+        "type": "String",
+        "description": "AppBrand.id: lunna or focus."
+      }
+    }
+  },
+  "landingChapterTimeTitle": "Tempo",
+  "landingChapterTimeText": "O dia como uma fila: cada coisa com a sua hora, e quando algo atrasa o resto anda junto.",
+  "landingChapterDeliveriesTitle": "Entregas",
+  "landingChapterDeliveriesText": "O que você deve a alguém, com prazo e valor. A meta do mês, e as horas que as entregas pedem contra as que a agenda tem livres.",
+  "landingTry": "Experimente pedir",
+  "@landingTry": {
+    "description": "Above the example asks on the landing page; tapping one asks the agent in the demo phone."
+  },
+  "landingMoreTitle": "Também no app",
   "landingPartRoutinesTitle": "Rotinas",
   "landingPartRoutinesText": "Blocos que voltam todo dia, nos dias úteis ou no fim de semana, sempre no mesmo horário.",
   "landingPartRemindersTitle": "Lembretes",
   "landingPartRemindersText": "Um aviso quando é hora de começar, outro perto do fim, e um bom dia e um boa noite.",
+  "landingPartVoiceTitle": "Voz",
+  "landingPartVoiceText": "Segure o microfone para pedir, ou dite direto nas notas de uma tarefa.",
   "landingDayTitle": "No dia a dia",
-  "landingUseWrite": "Anote o que precisa ser feito.",
+  "landingUseAsk": "Peça, e veja o plano antes de aplicar.",
   "landingUseHour": "Dê a cada coisa a sua hora.",
   "landingUsePause": "Pause, estenda ou adie, e o resto do dia anda junto.",
-  "landingUseRoutine": "Deixe a rotina se repetir sozinha.",
+  "landingUseDeliver": "Feche uma entrega e veja a meta andar.",
   "landingPrivacy": "Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.",
   "@landingPrivacy": {
     "description": "One muted line at the foot of the landing page: what PostHog records, and that replays mask every text and image."
@@ -483,6 +501,23 @@
   "demoBacklog": "Organizar as fotos da viagem",
   "demoStandup": "Standup",
   "demoDentist": "Marcar dentista",
+  "demoAskStudy": "Encaixa 2h de estudo amanhã de manhã e tira as fotos da viagem do Depois",
+  "demoAskDelivery": "Cria a entrega do mapa da Carla para sexta",
+  "demoReplyStudy": "Depois do dentista, às 9:30, a manhã está livre. Fica assim:",
+  "demoReplyDelivery": "Mapa astral leva 3 h, em blocos de 1 h. Fica assim:",
+  "demoStepLooked": "Olhei amanhã",
+  "demoStepFree": "Achei 09:35–12:00 livre",
+  "demoStepCatalogue": "Mapa astral no catálogo: 3 h, R$ 350",
+  "demoStudy": "Estudar para a prova",
+  "demoTypeChart": "Mapa astral",
+  "demoTypePost": "Post",
+  "demoShelfSessions": "Atendimentos",
+  "demoShelfContent": "Conteúdo",
+  "demoDeliveryCarla": "Mapa astral · Carla",
+  "demoDeliveryRenata": "Mapa astral · Renata",
+  "demoDeliveryPost": "Post: Lua cheia em Touro",
+  "demoDeliveryJulia": "Mapa astral · Júlia",
+  "demoDeliveryPedro": "Mapa astral · Pedro",
   "agentAsk": "{brand, select, lunna{Pergunte à Lunna…} other{Pergunte ao Focus…}}",
   "@agentAsk": {
     "placeholders": {
