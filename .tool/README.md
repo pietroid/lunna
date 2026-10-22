@@ -15,6 +15,7 @@ output are what make a session cheap.
 | `cost` | What a Claude Code session cost, per message, from its transcript |
 | `doc` | List, open and comment on the Markdown under `product/` |
 | `queue` | GitHub issues worked by Claude Code on this Mac, gate by gate |
+| `multica` | Multica on this Mac, the second queue: its setup, checks, scorecard and teardown |
 | `review.html` | The PR's README as a page on GitHub Pages, commented on by selecting text |
 
 ## `check`: what CI runs, on what changed
@@ -199,6 +200,39 @@ moves to main after each pass and the new `queue.mjs` restarts it.
   holds it while a run goes; closing the lid still sleeps it).
 - **State** is in `.git/queue/`: one JSON per issue, the stream-json log of
   every run in `logs/`, the agent's own output in `daemon.log`.
+
+## `multica`: the second queue, on this Mac
+
+```bash
+.tool/multica steps                  # the setup list, steps 1 to 10, with the host filled in
+.tool/multica env [--dry-run]        # ~/multica/.env from its .env.example: the RFC's values, the app password typed
+.tool/multica daemon [--dry-run]     # as user multica (through sudo): server and app URLs, one run at a time, start, status
+.tool/multica check                  # ✓/✗ per piece: stack, .env, backend, web, tunnel, /ws, daemon user, accounts, log
+.tool/multica score 26 github        # a row of the scorecard; a Multica issue: score LUN-3 multica [--asked ISO --comments N --rounds N]
+.tool/multica down [--yes]           # Phase 2 teardown, printed until --yes
+```
+
+The [RFC](../product/research/2026-10-21-multica-on-the-mac/README.md)
+runs [Multica](https://github.com/multica-ai/multica) beside `queue` for
+two weeks, each issue in one of them only, and keeps the
+[scorecard](../product/research/2026-10-21-multica-on-the-mac/data/scorecard.md).
+Its server, the tunnel and the daemon live outside the repo (`~/multica`,
+a `cloudflared` LaunchDaemon, the macOS user `multica`); this is the
+commands of the setup that are commands, and the checks the RFC left for
+the install. The agent's instructions are `multica-agent.md`, pasted into
+Multica: its PRs carry the `multica` label (`queue setup` creates it).
+
+- **`env`** never replaces a `JWT_SECRET` that is there, writes the file
+  0600, and reports a key this version's `.env.example` doesn't have.
+- **`check`** tells the backend from the web app on `https://<host>/ws`
+  by the answer: a bare `/ws` that reached the Go backend asks for a
+  workspace, one that fell through to Next is its 404 page. The daemon line
+  says so when a shell of `multica` is still open, since then it doesn't
+  prove the daemon outlives it. Accounts are read from Postgres; any other
+  address in two weeks of the backend log is a ✗.
+- **`score`** counts your GitHub comments, leaving out the queue's and the
+  agent's (`<!-- lunna-queue -->`, `<!-- multica -->`), and measures to
+  the PR being ready for review.
 
 ## `mockup/`: the pieces under `preview`
 

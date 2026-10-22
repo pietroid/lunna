@@ -140,7 +140,6 @@ MULTICA_TRUSTED_PROXIES=127.0.0.1/32
 
 ALLOW_SIGNUP=false
 ALLOWED_EMAILS=<your email>
-WORKSPACE_CREATION_ALLOWED_EMAILS=<your email>
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -149,7 +148,9 @@ SMTP_PASSWORD=<a Gmail app password>
 SMTP_FROM_EMAIL=<your gmail>
 ```
 
-The app password comes from Google Account → Security → App passwords
+`.tool/multica env` writes all of this (corrected on the build, #30:
+v0.6.5 has no `WORKSPACE_CREATION_ALLOWED_EMAILS`; with one allowed
+address nobody else can make a workspace anyway). The app password comes from Google Account → Security → App passwords
 (it needs 2-step verification on). Keep `JWT_SECRET` somewhere safe: it
 signs every session and token, and a moved server needs the same one.
 
