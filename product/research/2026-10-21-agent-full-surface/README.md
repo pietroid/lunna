@@ -234,6 +234,9 @@ new writes are where the misses will be.
 - Phase 4 (deep research) not run, as the queue asked. GateArena and SABER
   were read from their abstract page and HTML. RAG-MCP's thresholds are
   read from its figure, not a table.
+- Round 2 (2026-10-22): the issue said "I made some comments there", but
+  PR #22 had no line comments, reviews or PR comments, and the file had
+  no notes. So the RFC is unchanged; it waits for the comments to be sent.
 
 ## Deeper
 
