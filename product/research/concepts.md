@@ -9,7 +9,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-queue](./2026-10-17-agent-queue/README.md) ·
 [agent-ui](./2026-10-17-agent-ui/README.md) ·
 [posthog](./2026-10-21-posthog/README.md) ·
-[agent-full-surface](./2026-10-21-agent-full-surface/README.md)
+[agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
+[multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md)
 
 ## Tools: what the model is given
 
@@ -78,7 +79,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents).
 - **Here:** read the day, propose, reply: hard-coded, one round-trip fewer.
-- **Met in:** agent-reliability §4.2.
+- **Met in:** agent-reliability §4.2; multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent; the trial measures whether it does).
 
 ### The model arranges, the server states facts
 > The model may lay out the answer; only the server writes the facts in it.
@@ -129,7 +130,49 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents).
 - **Here:** each queue phase is a fresh `claude -p` that reads the topic folder.
-- **Met in:** agent-queue §literature 4.
+- **Met in:** agent-queue §literature 4; multica-on-the-mac, decision 1 (Multica resumes the issue's session instead).
+
+### One writer per queue
+> One queue, one writer: everything else is a screen.
+
+- **Read:** M. Thompson, [Single Writer Principle](https://mechanical-sympathy.blogspot.com/2011/09/single-writer-principle.html).
+- **Here:** `queue.mjs` alone starts runs and opens gates. In the trial, Multica gets its own backlog, so each issue still has one writer; the one thing both share is the Claude subscription's weekly limit.
+- **Met in:** multica-on-the-mac, idea 1 (first draft: Multica as a screen; revised: two queues, separate backlogs; second revision: the daemon shares the Claude subscription with the queue, so one run at a time).
+
+### Mirror by level, not by edge
+> Each pass, compute the whole desired state and fix what differs.
+
+- **Read:** Kubernetes, [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/); the failure case, [multica #1120](https://github.com/multica-ai/multica/issues/1120) (a one-off import drifts).
+- **Here:** proposed as a mirror from `.git/queue/` onto Multica's statuses; dropped when the person chose separate backlogs.
+- **Met in:** multica-on-the-mac, first draft, idea 2.
+
+### Skip permissions only inside a box
+> Skipping permissions is for a container, not your home folder.
+
+- **Read:** Claude Code, [Permission modes](https://code.claude.com/docs/en/permission-modes): `bypassPermissions` for "isolated containers and VMs only".
+- **Here:** the queue runs `auto`; Multica's daemon runs `bypassPermissions`, so it runs as a separate `multica` macOS user, with its own `claude` login and a GitHub token for one repo. Multica's own docs: "the boundary is the daemon user".
+- **Met in:** multica-on-the-mac, idea 4, then idea 2 (deeper: the dedicated user as the lightest boundary; second revision: one on every machine that runs a daemon; fourth: the Mac only).
+
+### Private network before public port
+> Reach it privately before you open a port.
+
+- **Read:** Tailscale, [Serve](https://tailscale.com/kb/1312/serve) (tailnet only; Funnel is the public one).
+- **Here:** the phone reaches Multica on the Mac over the tailnet; nothing listens outside it.
+- **Met in:** multica-on-the-mac, idea 5; overridden in its second revision (served publicly), see [the login is a shell](#the-login-is-a-shell).
+
+### The login is a shell
+> On a public URL, the login is a shell.
+
+- **Read:** Multica, [Security model](https://github.com/multica-ai/multica/blob/main/apps/docs/content/docs/security-model.mdx): runs are unsandboxed, "the boundary is the daemon user".
+- **Here:** whoever signs in to `multica.pietroteruya.dev` can assign an issue to an agent that runs `claude` with permission checks off on the Mac. So the login gets a shell's care: one allowed email, sign-up off, 6-digit codes that live 10 minutes and die after 5 tries, delivered only to your inbox.
+- **Met in:** multica-on-the-mac, idea 4 (second revision).
+
+### Everything dials out
+> The tunnel dials out, so no port opens.
+
+- **Read:** Cloudflare, [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/): an outbound-only connector, no inbound port.
+- **Here:** the `cloudflared` connector on the Mac opens its own connection to Cloudflare and requests come back down it, so nothing listens on the Mac's network. (The second revision also had more machines' daemons dial in; the fourth kept the Mac only.)
+- **Met in:** multica-on-the-mac, idea 5 (second revision; narrowed in the fourth).
 
 ## Observability: seeing what happened
 
