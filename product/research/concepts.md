@@ -211,7 +211,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > A health store hands over what was logged; its predictions stay inside.
 
 - **Read:** Apple, [HKCategoryTypeIdentifier](https://developer.apple.com/documentation/healthkit/hkcategorytypeidentifier) (14 cycle types, no prediction) and the [Cycle Tracking IFU](https://www.apple.com/legal/ifu/cycle-tracking/4-0/ct-ifu-4-0-en_GB.pdf) (Apple's own forecast uses heart rate and wrist temperature, ±3 days).
-- **Here:** Lunna reads `menstrualFlow` and forecasts the phases itself; a read refusal looks like no data, so the empty state names both causes.
+- **Here:** the phone reads `menstrualFlow` and syncs the logged days; the server forecasts the phases from those records, so phone and web agree; a read refusal looks like no data, so the empty state names both causes.
 - **Met in:** cycle-on-the-calendar, idea 1.
 
 ### The luteal phase is the steady half
@@ -225,5 +225,5 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > Draw what the forecast knows; past one cycle it is close to a guess.
 
 - **Read:** Li, Gibson & Jukic, [Apple Women's Health Study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10226714/) (2023): within-person variability 4–6 days; the RFC's [simulation](./2026-10-23-cycle-on-the-calendar/code/forecast.mjs).
-- **Here:** 53% of days tagged right in the first month, 33% in months 3–4, against 28% for a blind guess; draw the next cycle, the period after as a range, nothing past it.
+- **Here:** 53% of days tagged right in the first 30 days, 33% in days 61–120, against 28% for a blind guess; draw 30 days and nothing past them.
 - **Met in:** cycle-on-the-calendar, idea 3.

@@ -8,6 +8,19 @@
 
 (Quoted through a fetch summary; the page refused a verbatim copy.)
 
+Re-read on 2026-10-23 after review. The page's title is "How to import data
+from the Health app to Flo (iOS)": the direction is Health → Flo. It also says
+"Turning on the sync between these two apps will import any information you
+previously logged into Flo."
+
+## Apple Community, "Health app hasn't synced data from flo since November 2023" (discussions.apple.com/thread/255504055)
+
+Original post, 2024-02-29: "the health app just stopped allowing data to be
+written by the flo app." Flo support, quoted in a reply on 2024-03-04: "We
+regret to inform you that the feature to sync your Flo data with Apple Health
+is no longer available in the app." A forum post: secondary, but it matches
+Flo's own help page.
+
 ## Flo, "How do I import info into Flo" (help.flo.health/hc/en-us/articles/360054973911)
 
 > If your previous period tracking app syncs with the Health app, you can
