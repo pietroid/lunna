@@ -121,6 +121,7 @@ product/
                         cost (session tokens), doc (open/annotate Markdown,
                         check an RFC's slides, print them),
                         queue (GitHub issues worked unattended, gate by gate),
+                        multica (the second queue on the Mac: setup, check, score),
                         review.html (a PR's README on Pages, commented on by selection)
 ```
 
@@ -519,6 +520,17 @@ nothing is sent at all**. A new write route gets its row in
 `server/src/analytics/events.ts`. In the app only `packages/analytics`
 calls the plugin; tests use `NoAnalytics`. See
 [product/spec/analytics.md](./product/spec/analytics.md).
+
+## Two queues
+
+Work reaches the repo by two queues, on trial side by side
+([RFC](./product/research/2026-10-21-multica-on-the-mac/README.md)):
+GitHub issues worked by `.tool/queue`, and Multica issues worked by its
+agent `lunna-mac` on the Mac, which opens PRs labelled `multica`. **An
+issue lives in one of them, never both.** A Multica run follows
+[.tool/multica-agent.md](./.tool/multica-agent.md); `.tool/multica` sets
+it up, checks it and scores both
+([scorecard](./product/research/2026-10-21-multica-on-the-mac/data/scorecard.md)).
 
 ## Commands
 

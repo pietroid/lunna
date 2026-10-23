@@ -753,6 +753,9 @@ const LABELS = [
   ['agent:waiting', 'd93f0b', 'Waiting for your reply'],
   ['agent:failed', 'b60205', 'Stopped: reply retry, or how to go on'],
   ['agent:done', 'cccccc', 'Merged by the queue'],
+  // On PRs opened by Multica's agent (.tool/multica-agent.md). The queue lists
+  // only issues, so it never picks one up.
+  ['multica', '5319e7', 'A PR from Multica on the Mac, not from the queue'],
 ];
 
 async function setup() {
