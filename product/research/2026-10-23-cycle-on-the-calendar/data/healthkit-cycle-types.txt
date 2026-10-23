@@ -1,0 +1,14 @@
+cervicalMucusQuality: A category sample type that records the quality of the user’s cervical mucus.
+contraceptive: A category sample type that records the use of contraceptives.
+infrequentMenstrualCycles: A category sample that indicates an infrequent menstrual cycle.
+intermenstrualBleeding: A category sample type that records spotting outside the normal menstruation period.
+irregularMenstrualCycles: A category sample that indicates an irregular menstrual cycle.
+lactation: A category type that records lactation.
+menstrualFlow: A category sample type that records menstrual cycles.
+ovulationTestResult: A category sample type that records the result of an ovulation home test.
+persistentIntermenstrualBleeding: A category sample that indicates persistent intermenstrual bleeding.
+pregnancy: A category type that records pregnancy.
+pregnancyTestResult: A category type that represents the results from a home pregnancy test.
+progesteroneTestResult: A category type that represents the results from a home progesterone test.
+prolongedMenstrualPeriods: A category sample that indicates a prolonged menstrual cycle.
+sexualActivity: A category sample type that records sexual activity.

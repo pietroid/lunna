@@ -1,0 +1,74 @@
+[
+  {
+    "sigma": 2,
+    "way": "health",
+    "daysRight": 0.6915645161290322,
+    "nextStartOffDays": 1.754
+  },
+  {
+    "sigma": 2,
+    "way": "typed",
+    "daysRight": 0.7133387096774193,
+    "nextStartOffDays": 1.59925
+  },
+  {
+    "sigma": 2,
+    "way": "typed ±2",
+    "daysRight": 0.6268225806451613,
+    "nextStartOffDays": 2.25225
+  },
+  {
+    "sigma": 2,
+    "way": "default",
+    "daysRight": 0.5775967741935484,
+    "nextStartOffDays": 2.58775
+  },
+  {
+    "sigma": 4,
+    "way": "health",
+    "daysRight": 0.5318145161290323,
+    "nextStartOffDays": 3.51425
+  },
+  {
+    "sigma": 4,
+    "way": "typed",
+    "daysRight": 0.5634516129032258,
+    "nextStartOffDays": 3.198
+  },
+  {
+    "sigma": 4,
+    "way": "typed ±2",
+    "daysRight": 0.5224435483870967,
+    "nextStartOffDays": 3.6035
+  },
+  {
+    "sigma": 4,
+    "way": "default",
+    "daysRight": 0.4963064516129032,
+    "nextStartOffDays": 3.75875
+  },
+  {
+    "sigma": 6,
+    "way": "health",
+    "daysRight": 0.4275725806451613,
+    "nextStartOffDays": 5.1035
+  },
+  {
+    "sigma": 6,
+    "way": "typed",
+    "daysRight": 0.45825806451612905,
+    "nextStartOffDays": 4.62925
+  },
+  {
+    "sigma": 6,
+    "way": "typed ±2",
+    "daysRight": 0.4385403225806452,
+    "nextStartOffDays": 4.8675
+  },
+  {
+    "sigma": 6,
+    "way": "default",
+    "daysRight": 0.4236854838709677,
+    "nextStartOffDays": 5.01125
+  }
+]
