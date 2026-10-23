@@ -219,4 +219,11 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Chrome, [Timer throttling in Chrome 88](https://developer.chrome.com/blog/timer-throttling-in-chrome-88): hidden tabs' timers run once a minute; prefer push to polling.
 - **Here:** a paused block's end is `now + owed`, so `catchUp` runs before each read instead of on a clock.
-- **Met in:** neon-compute, slide 7.
+- **Met in:** neon-compute, slides 7–8.
+
+### Settle on access, from absolute times
+> Store when something happened; work out the rest from now, when someone asks.
+
+- **Read:** Redis, [EXPIRE: How Redis expires keys](https://redis.io/docs/latest/commands/expire/): "a key is passively expired when a client tries to access it", expiry kept as absolute timestamps so time flows while the server is down.
+- **Here:** a paused block's end is `now + owed` and a queued task's hour is `relayout` on read, so no tick and no "last read" watermark. The tick had hidden a `catchUp` bug that only a long gap shows.
+- **Met in:** neon-compute, slide 9.

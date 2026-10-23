@@ -25,6 +25,21 @@ flowchart TD
 - **Not needed:** a new host, a cache layer, fewer queries per read.
 - **You decide:** Free or Launch after the fix (stay on Launch one month, *recommended*).
 
+> **Q:** Those ticks work that way mainly to update the times of the tasks
+> that haven't started and sit in the queue. So we either update it every
+> time or compare against the last time it was read or edited. How would
+> you approach that?
+>
+> **A:** Neither, because the queue's hours are never written down: every
+> read works them out from the rows and the clock
+> ([slide](#the-queues-hours-are-never-stored-so-nothing-goes-stale)).
+> Measured over a day with a paused task, catching up on read gives the
+> tick's day at 28 of 28 reads and writes 63 rows instead of 1,647. It
+> needs one fix in `catchUp`, which the tick was hiding
+> ([slide](#measured-catch-up-on-read-matches-the-tick-after-one-fix)).
+> The rule: store when something happened, work out the rest from now. A
+> "last read" watermark is never needed.
+
 ## The bill is one small machine, awake every hour
 
 | Line on the console | 19 days | What it means |
@@ -150,15 +165,57 @@ flowchart TD
   X[Nobody reads] --> Z[No query: Neon sleeps]
 ```
 
-- `catchUp` is already safe to run any number of times
-  ([`event-layout.service.ts:910`](../../../server/src/events/event-layout.service.ts#L910)),
-  and `GET /timeline` already runs it before reading.
+- `catchUp` already runs before `GET /timeline`, and in the same minute
+  it is safe to run any number of times. After a long gap it is not
+  ([two slides on](#measured-catch-up-on-read-matches-the-tick-after-one-fix)).
 - Today only `GET /timeline` does. The reminder plan, the agent and the
   writes rely on the tick having run. **Change 1:** one interceptor runs
-  `catchUp` before every route that reads the day, and `PauseTickerService`
-  goes.
+  `catchUp` before every route that reads the day, `catchUp` stops taking
+  a moved paused block for finished, and `PauseTickerService` goes.
 - Nothing is lost: the tick never pushed anything to a phone. A day nobody
   reads is a day nobody sees.
+
+## The queue's hours are never stored, so nothing goes stale
+
+| What changes with the clock | Stored? | Who keeps it true |
+|---|---|---|
+| A queued task's hour | **no** | `relayout`, on each read ([`timeline.service.ts:171`](../../../server/src/events/timeline.service.ts#L171)) |
+| A paused block's end | yes, `endTime` | the tick: `now + owed`, every minute |
+| A begun task whose hour ran out | `done_at` | the tick; reads already hide it |
+| A routine day nobody began | `cancelled` | the tick; reads already hide it |
+
+- So the tick updates no queued hour. The queue moves only because a
+  paused block's stored end, which it flows around, moves.
+- Each of the three writes depends only on `now` and the row (when it
+  was paused, how much it owed), not on how long since the last run. No
+  "last read" to compare against.
+
+## Measured: catch-up on read matches the tick, after one fix
+
+| Same day, 09:00–23:00, "Email" paused at 09:20 | Reads equal to the tick's | Rows written |
+|---|---|---|
+| Tick every minute (today) | 28 of 28 | **1,647** |
+| No tick, `catchUp` on read, as written | **1 of 28** | 64 |
+| No tick, `catchUp` on read, **fixed** | **28 of 28** | **63** |
+| No tick, no `catchUp` | 0 of 28 | 29 |
+
+- The bug: `catchUp` moves the paused end, then checks "is its hour over?"
+  against the list read *before* the move
+  ([`event-layout.service.ts:932`](../../../server/src/events/event-layout.service.ts#L932)).
+  Read at 10:00 after a 09:55 end, paused "Email" is written off as done.
+- The tick hides it; a restart longer than the owed minutes already hits it.
+- **The fix:** judge "over" by the moved end, plus a test that reads a
+  paused day an hour later.
+- [`code/tick-vs-read.ts`](./code/tick-vs-read.ts),
+  [`data/tick-vs-read.json`](./data/tick-vs-read.json).
+
+> [!TIP]
+> **"A key is passively expired when a client tries to access it and the
+> key is timed out."** Redis stores expiry "as absolute Unix timestamps…
+> the time is flowing even when the Redis instance is not active"
+> ([Redis EXPIRE](https://redis.io/docs/latest/commands/expire/)).
+> *For us:* keep `pausedAt` and what is owed, and settle on access; never a
+> delta since the last run.
 
 ## Pause the refresh while the app is hidden
 
@@ -215,6 +272,7 @@ flowchart TD
 | Hidden app | pause the refresh · keep it | **pause** | ~113 CU-h a month per tab left open |
 | Plan after the fix | Launch one month, then Free if under 50 h · Free now · stay on Launch | **Launch one month, then Free** | Free now: a regression suspends the app on day ~19 · Launch: a few dollars |
 | Compute cap | max 0.25 CU · autoscale | **0.25 CU** | a spike bills more, for queries this small |
+| A paused block's end | written on read by `catchUp` (fixed) · worked out in `day()`, never stored | **written on read** | not storing it touches every reader of `endTime`: the cards, the reminders, the agent |
 
 ## Decided unattended
 
@@ -225,6 +283,11 @@ flowchart TD
   the current min/max CU, are things to look at, written as Change 3.
 - Recommended **delete** over "wake when due": no screen shows a day that
   wasn't read, so the server clock buys nothing.
+- The answer to the question on slide 1 got two slides after the change it
+  is about (catch up on read), not after slide 1, to keep the story's order.
+- Fixing `catchUp` is in this RFC's build, not a separate issue: deleting
+  the tick without it loses paused tasks. Not changed in `server/` here.
+- Phase 4 was not asked for in the reply; still not run.
 
 ## Go deeper
 
@@ -232,10 +295,12 @@ flowchart TD
 |---|---|---|
 | Scale to zero is your quietest loop | the minute tick, the open tab | [neon#12909](https://github.com/neondatabase/neon/discussions/12909) |
 | Derive on read, don't poll | `catchUp` before every read | [Chrome 88 timers](https://developer.chrome.com/blog/timer-throttling-in-chrome-88) |
+| Settle on access, from absolute times | a paused end is `pausedAt` + owed, not a minute per tick | [Redis EXPIRE](https://redis.io/docs/latest/commands/expire/) |
 
 - [Neon pricing](https://neon.com/pricing): Free 100 CU-h, suspension past it; Launch $0.106/CU-h, no minimum.
 - [Compute lifecycle](https://neon.com/docs/introduction/compute-lifecycle): "no active queries for 5 minutes"; wake in a few hundred ms.
 - [Scale to zero](https://neon.com/docs/introduction/scale-to-zero): 5 minutes, fixed on Free.
 - [Supabase pricing](https://supabase.com/pricing): Free 500 MB, paused after a week idle.
-- Data: [`data/queries.json`](./data/queries.json) (tick and read counts), [`data/estimate.csv`](./data/estimate.csv).
-- Code: [`code/count-queries.ts`](./code/count-queries.ts) (run from `server/` with `NODE_PATH=$PWD/node_modules npx tsx …`), [`code/estimate.mjs`](./code/estimate.mjs).
+- [Redis EXPIRE](https://redis.io/docs/latest/commands/expire/), "How Redis expires keys": passive expiry on access, plus a sampled sweep for keys nobody reads.
+- Data: [`data/queries.json`](./data/queries.json) (tick and read counts), [`data/estimate.csv`](./data/estimate.csv), [`data/tick-vs-read.json`](./data/tick-vs-read.json) (the day read four ways, every 30 min).
+- Code: [`code/count-queries.ts`](./code/count-queries.ts), [`code/tick-vs-read.ts`](./code/tick-vs-read.ts) (both run from `server/` with `NODE_PATH=$PWD/node_modules npx tsx …`), [`code/estimate.mjs`](./code/estimate.mjs).
