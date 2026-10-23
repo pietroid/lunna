@@ -115,10 +115,11 @@ product/
   spec/                 feature specs moved out of this file (agent, artifacts)
   delivery/             one folder per delivered feature: prompt, design, notes
   improvements/         one folder per /improve run: what changed, evidence, references
-  research/             one folder per topic: the RFC (README.md), data/, code/, reports/, notes/;
+  research/             one folder per topic: the RFC (README.md, a deck), img/, data/, code/, reports/;
                         concepts.md, the ideas every RFC taught
 .tool/                  internal tools: check (CI on what changed), preview (prints),
-                        cost (session tokens), doc (open/annotate Markdown),
+                        cost (session tokens), doc (open/annotate Markdown,
+                        check an RFC's slides, print them),
                         queue (GitHub issues worked unattended, gate by gate),
                         multica (the second queue on the Mac: setup, check, score),
                         review.html (a PR's README on Pages, commented on by selection)

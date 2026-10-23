@@ -1,0 +1,161 @@
+product/research/2026-10-16-agent-reliability/README.md · 16 slides · 3082 words · 5 visuals
+
+  #  words  visual            slide
+  1    284  —                 ✗ 1. Thesis  (>150 words, no visual)
+  2     29  code              ✓ 2. How the agent works today
+  3     43  table             ✓ 3. Diagnosis: each problem traced to the code
+  4    380  —                 ✗ 4. What the literature says, applied here  (>150 words, no visual)
+  5      0  —                 ✗ 5. Recommendations (in priority order)  (no visual)
+  6    207  table             ✗   5.1 Changes the model can't get wrong (problem 3, priority  (>150 words)
+  7    131  —                 ✓   5.2 Ground every reference (problem 2, priority 2)
+  8    413  table             ✗   5.3 Data, facts, doubts: the shape of a turn (problems 2,   (>150 words, long headline)
+  9     91  —                 ✓   5.4 Dates resolved by the server (problem 4)
+ 10    310  —                 ✗   5.5 One or two calls per turn (problem 1)  (>150 words)
+ 11     67  —                 ✓   5.6 Honest errors (problem 5)
+ 12    203  —                 ✗   5.7 Evals before more prompt work (the multiplier)  (>150 words)
+ 13    102  —                 ✓   5.8 Later, not now
+ 14    481  —                 ✗ 6. Decisions for you  (>150 words, no visual)
+ 15     27  table             ✓ 7. Rollout
+ 16    314  —                 ✗ 8. References  (>150 words, no visual)
+
+✗ 9 of 16 slides over budget (≤150 words, one visual, headline ≤12 words)
+
+The story, headings alone:
+  · 1. Thesis
+  · 2. How the agent works today
+  · 3. Diagnosis: each problem traced to the code
+  · 4. What the literature says, applied here
+  · 5. Recommendations (in priority order)
+  · 6. Decisions for you
+  · 7. Rollout
+  · 8. References
+
+product/research/2026-10-17-agent-queue/README.md · 14 slides · 2144 words · 9 visuals
+
+  #  words  visual            slide
+  1    385  —                 ✗ Thesis  (>150 words, no visual)
+  2    101  code              ✓ How it works today
+  3      0  table             ✓ Diagnosis
+  4    511  —                 ✗ What the literature says, applied here  (>150 words, no visual)
+  5    191  table             ✗ Capacity: how much fits in a week  (>150 words)
+  6      0  —                 ✗ Recommendations  (no visual)
+  7     61  code              ✓   1. (first) The queue: Markdown files in the repo
+  8    207  code              ✗   2. (first) The dispatcher: `launchd` + one Node script  (>150 words)
+  9    115  table             ✓   3. (first) Gates: the skills learn an unattended mode
+ 10     88  —                 ✓   4. (second) The phone: ntfy, both ways
+ 11     22  table             ✓   5. (second) Keeping the Mac available
+ 12    206  —                 ✗ Decisions for you  (>150 words, no visual)
+ 13      0  table             ✓ Rollout
+ 14    257  —                 ✓ References
+
+✗ 6 of 14 slides over budget (≤150 words, one visual, headline ≤12 words)
+
+The story, headings alone:
+  · Thesis
+  · How it works today
+  · Diagnosis
+  · What the literature says, applied here
+  · Capacity: how much fits in a week
+  · Recommendations
+  · Decisions for you
+  · Rollout
+  · References
+
+product/research/2026-10-17-agent-ui/README.md · 15 slides · 4998 words · 15 visuals
+
+  #  words  visual            slide
+  1    633  —                 ✗ 1. Thesis  (>150 words, no visual)
+  2    248  code              ✗ 2. How a turn reaches the screen today  (>150 words)
+  3     88  table             ✓ 3. Diagnosis
+  4    869  —                 ✗ 4. What the literature says, applied here  (>150 words, no visual)
+  5      0  —                 ✗ 5. Recommendations  (no visual)
+  6      0  table             ✗   5.1 Stop the leaks (priority 2, but first to ship: small a  (long headline)
+  7    325  table+code        ✗   5.2 Answers are surfaces (priority 1)  (>150 words)
+  8    521  code+table        ✗   5.3 The model composes the answer, the server binds it (pr  (>150 words)
+  9    283  table             ✗   5.4 The agent sees projects from anywhere (priority 3)  (>150 words)
+ 10    284  table             ✗   5.5 Notes on every card: tasks, blocks and projects (prior  (>150 words, long headline)
+ 11    574  table             ✗   5.6 Create, edit and delete tasks and projects (priority 2  (>150 words, long headline)
+ 12    293  table+code        ✗   5.7 A page is the conversation's subject: its context and   (>150 words, long headline)
+ 13    499  —                 ✗ 6. Decisions for you  (>150 words, no visual)
+ 14     40  table             ✓ 7. Rollout
+ 15    341  —                 ✗ 8. References  (>150 words, no visual)
+
+✗ 13 of 15 slides over budget (≤150 words, one visual, headline ≤12 words)
+
+The story, headings alone:
+  · 1. Thesis
+  · 2. How a turn reaches the screen today
+  · 3. Diagnosis
+  · 4. What the literature says, applied here
+  · 5. Recommendations
+  · 6. Decisions for you
+  · 7. Rollout
+  · 8. References
+
+product/research/2026-10-21-agent-full-surface/README.md · 21 slides · 2277 words · 11 visuals
+
+  #  words  visual            slide
+  1    207  —                 ✗ In one minute  (>150 words, no visual)
+  2    302  —                 ✗ Ideas to keep  (>150 words, no visual)
+  3      0  —                 ✗ The change  (no visual)
+  4    338  code+table        ✗   A turn, after the change  (>150 words)
+  5    232  code              ✗   1. The registry  (>150 words)
+  6     63  —                 ✓   2. One path per rule
+  7     52  table             ✓   3. What the agent sees
+  8     63  table             ✓   4. Deliveries
+  9     98  —                 ✓   5. Task and block lifecycle
+ 10     78  —                 ✓   6. Routines, working day, navigation
+ 11     47  —                 ✓   7. Evals
+ 12    286  —                 ✗ Decisions for you  (>150 words, no visual)
+ 13    188  —                 ✓ Decided unattended
+ 14      0  —                 ✗ Deeper  (no visual)
+ 15      0  code              ✓   How it works today
+ 16     21  table             ✓   The domain map
+ 17      0  table             ✓   Diagnosis
+ 18     26  table             ✓   Writes, verb by verb
+ 19    192  —                 ✗   The literature  (>150 words)
+ 20      8  table             ✓   Rollout
+ 21     76  —                 ✓ References
+
+✗ 8 of 21 slides over budget (≤150 words, one visual, headline ≤12 words)
+
+The story, headings alone:
+  · In one minute
+  · Ideas to keep
+  · The change
+  · Decisions for you
+  · Decided unattended
+  · Deeper
+  · References
+
+product/research/2026-10-21-posthog/README.md · 16 slides · 1603 words · 4 visuals
+
+  #  words  visual            slide
+  1    165  —                 ✗ In one minute  (>150 words, no visual)
+  2    214  —                 ✗ Ideas to keep  (>150 words, no visual)
+  3      0  table             ✓ The change
+  4     68  —                 ✓   1. One `Analytics` seam
+  5    138  —                 ✓   2. Server
+  6    150  —                 ✓   3. App
+  7     76  —                 ✓   4. Session replay
+  8     91  —                 ✓   5. Web: snippet and proxy
+  9     84  —                 ✗ Decisions for you  (no visual)
+ 10    139  —                 ✓ Decided unattended
+ 11      0  —                 ✗ Deeper  (no visual)
+ 12     32  code              ✓   How it works today
+ 13     42  table             ✓   Diagnosis
+ 14    289  —                 ✗   The literature  (>150 words)
+ 15     12  table             ✓   Rollout
+ 16    103  —                 ✓ References
+
+✗ 5 of 16 slides over budget (≤150 words, one visual, headline ≤12 words)
+
+The story, headings alone:
+  · In one minute
+  · Ideas to keep
+  · The change
+  · Decisions for you
+  · Decided unattended
+  · Deeper
+  · References
+

@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 // The way into the Markdown under product/: list it, open one in the
-// annotate page, or print only the notes left on it.
+// annotate page, print only the notes left on it, check an RFC's shape
+// as a deck, or photograph its slides.
 //
 //   .tool/doc ls [words]            docs, newest first, with open questions
 //   .tool/doc open [file|words]     serve it with annotate.mjs and open the browser
 //   .tool/doc notes [file|words]    the notes alone, with line and heading
 //         [--open]                  only questions nobody answered yet
+//   .tool/doc shape [file|words]    a row per slide: words, visual, ✓/✗ against the
+//                                   budget; then the headings alone, the storyline
+//   .tool/doc shot [file|words]     each slide as the review page draws it, a PNG at
+//         [--out dir] [--slides 1,3]  phone width (headless Chrome); diagram errors
 //
 // A doc is named by its path, or by words that all appear in its path
 // ("agent reliab"); a folder's README.md wins over the files beside it,
@@ -13,9 +18,10 @@
 import { spawn, execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { createServer as createHttpServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -77,6 +83,107 @@ function notesOf(file) {
     n.answered = notes[j]?.kind === 'A';
   });
   return notes;
+}
+
+// An RFC is a deck: each heading a slide, each slide one point and one
+// visual. Prints a row per slide, flags the ones over budget, then the
+// headings alone, which should read as the whole story.
+const SLIDE_WORDS = 150;
+const HEADLINE_WORDS = 12;
+const EXEMPT = /^(references|go deeper|decided unattended|the request)/i;
+
+function slidesOf(file) {
+  const lines = readFileSync(file, 'utf8').split('\n');
+  const slides = [];
+  let slide = null;
+  let fence = null;
+  let inNote = false;
+  for (const line of lines) {
+    const marker = line.match(/^\s*(```|~~~)\s*(\w*)/);
+    if (fence) {
+      if (marker?.[1] === fence) fence = null;
+      continue;
+    }
+    if (marker) {
+      fence = marker[1];
+      if (slide) slide.visuals.push(marker[2] === 'mermaid' ? 'diagram' : 'code');
+      continue;
+    }
+    const heading = line.match(/^(#{1,3})\s+(.*)/);
+    if (heading) {
+      slide = { level: heading[1].length, title: heading[2].trim(), words: 0, bullets: 0, visuals: [] };
+      slides.push(slide);
+      inNote = false;
+      continue;
+    }
+    if (!slide) continue;
+    if (NOTE.test(line)) inNote = true;
+    else if (!line.startsWith('>')) inNote = false;
+    if (inNote) continue;
+    if (/^\s*\|/.test(line)) {
+      if (slide.visuals.at(-1) !== 'table' || !slide.inTable) slide.visuals.push('table');
+      slide.inTable = true;
+      continue;
+    }
+    slide.inTable = false;
+    if (/!\[[^\]]*\]\([^)]*\)|<img\b/.test(line)) slide.visuals.push('image');
+    if (/^\s*([-*+]|\d+\.)\s/.test(line)) slide.bullets++;
+    slide.words += line.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').split(/\s+/).filter((w) => /\w/.test(w)).length;
+  }
+  return slides;
+}
+
+function shape(args) {
+  const file = pick(args);
+  const slides = slidesOf(file).filter((s) => s.level > 1);
+  const total = slides.reduce((n, s) => n + s.words, 0);
+  const visuals = slides.reduce((n, s) => n + s.visuals.length, 0);
+  let over = 0;
+  console.log(`${shown(file)} · ${slides.length} slides · ${total} words · ${visuals} visuals\n`);
+  console.log('  #  words  visual            slide');
+  slides.forEach((s, i) => {
+    const flags = [];
+    if (!EXEMPT.test(s.title)) {
+      if (s.words > SLIDE_WORDS) flags.push(`>${SLIDE_WORDS} words`);
+      if (!s.visuals.length && s.level === 2) flags.push('no visual');
+      if (s.title.split(/\s+/).length > HEADLINE_WORDS) flags.push('long headline');
+    }
+    if (flags.length) over++;
+    const seen = [...new Set(s.visuals)].join('+') || '—';
+    const title = `${s.level === 3 ? '  ' : ''}${s.title}`.slice(0, 60);
+    console.log(`${String(i + 1).padStart(3)} ${String(s.words).padStart(6)}  ${seen.padEnd(16)}  ${flags.length ? '✗' : '✓'} ${title}${flags.length ? `  (${flags.join(', ')})` : ''}`);
+  });
+  console.log(`\n${over ? `✗ ${over} of ${slides.length}` : '✓ every'} slide${over > 1 ? 's' : ''} ${over ? 'over budget' : 'within budget'} (≤${SLIDE_WORDS} words, one visual, headline ≤${HEADLINE_WORDS} words)`);
+  console.log('\nThe story, headings alone:');
+  for (const s of slides.filter((s) => s.level === 2)) console.log(`  · ${s.title}`);
+}
+
+// The doc as the person reads it: review.html (?md=) at phone width, each
+// slide a PNG. Prints the files and every diagram that failed to draw.
+async function shot(args) {
+  const file = pick(args.filter((a, i) => !['--out', '--slides'].includes(args[i - 1])));
+  const flag = (name) => args[args.indexOf(name) + 1];
+  const only = args.includes('--slides') ? flag('--slides').split(',').map(Number) : null;
+  const out = resolve(args.includes('--out') ? flag('--out') : join(tmpdir(), 'lunna-doc', 'shots', relative(docsDir, dirname(file)).replaceAll('/', '_')));
+  const types = { '.html': 'text/html', '.md': 'text/markdown', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.gif': 'image/gif', '.webp': 'image/webp' };
+  const server = createHttpServer((req, res) => {
+    const path = resolve(root, '.' + decodeURIComponent(req.url.split('?')[0]));
+    const type = types[extname(path).toLowerCase()];
+    if (!type || !path.startsWith(root) || !existsSync(path)) return res.writeHead(404).end();
+    res.writeHead(200, { 'content-type': `${type}; charset=utf-8` }).end(readFileSync(path));
+  });
+  const port = await freePort();
+  await new Promise((r) => server.listen(port, '127.0.0.1', r));
+  try {
+    const { capture } = await import('./shot.mjs');
+    const url = `http://127.0.0.1:${port}/.tool/review.html?md=${encodeURIComponent(relative(root, file))}`;
+    const { files, errors } = await capture(url, { selector: '.slide:not(.cover)', out, hide: 'header, footer, .add' });
+    for (const [i, f] of files.entries()) if (!only || only.includes(i + 1)) console.log(f);
+    for (const e of errors) console.log(`✗ ${e.split('\n')[0]}`);
+    if (!errors.length) console.log(`✓ ${files.length} slides, no errors`);
+  } finally {
+    server.close();
+  }
 }
 
 function ls(args) {
@@ -154,6 +261,6 @@ function fail(message) {
 }
 
 const [command, ...args] = process.argv.slice(2);
-const commands = { ls, open, notes };
-if (!commands[command]) fail('usage: .tool/doc ls [words] | open [file|words] [--no-browser] | notes [file|words] [--open]');
+const commands = { ls, open, notes, shape, shot };
+if (!commands[command]) fail('usage: .tool/doc ls [words] | open [file|words] [--no-browser] | notes [file|words] [--open] | shape [file|words] | shot [file|words] [--out dir] [--slides 1,3]');
 await commands[command](args);

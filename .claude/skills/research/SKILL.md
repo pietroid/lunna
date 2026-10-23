@@ -1,251 +1,181 @@
 ---
 name: research
-description: /research - research a problem in Lunna/Focus and write a short, layered RFC in its own product/research/<date>-<slug>/ folder (one minute on top, the change, then the evidence; a few ideas to keep, tracked across RFCs in product/research/concepts.md), with the data, code and reports behind it - trace the symptoms to the code, read the literature (papers, engineering posts, docs), recommend changes with why and how, name the decisions the engineer must take, answer their notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass and fold the corrections back in. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
+description: /research - research a problem in Lunna/Focus and present it as an RFC that reads like a short talk - one Markdown deck in its own product/research/<date>-<slug>/ folder, each heading a slide that states one point over one diagram, table, picture or piece of code, in story order (the finding, today, examples, the change, trade-offs, impact, decisions, where to go deeper) - with the data, code and reports behind it. Trace the symptoms to the code, read the literature, measure the impact, build the visuals and check them with .tool/doc shape and shot, answer the person's notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
 ---
 
-# Research: symptoms → thesis → verified RFC
+# Research: the digging is long, the RFC is a short talk
 
-The output is one Markdown RFC per topic, written in the repo, never a
-Claude Doc or another hosted page (the user prefers files; GitHub shows
-them, and takes comments on their lines). It is short, layered (a minute,
-then the change, then the evidence) and teaches a few ideas that stick.
-The test for every paragraph: does it tell the engineer something they'd
-act on or keep, with a source or a `file:line` behind it?
+The person reads the RFC on a phone, in a few minutes, and should come out
+with the finding, what to decide, and at least one idea they did not know.
+So **80% of the work is preparing material** (the code traced, the numbers
+measured, the diagram drawn, the case found) and the RFC shows only what
+that work produced, one point per slide.
 
-Worked example of the whole flow:
-`product/research/2026-10-16-agent-reliability/`.
+Worked example of the format: `product/improvements/2026-10-22-rfcs-as-decks/`
+(its README is a deck about decks). Of the whole flow, with notes and a
+deep-research pass: `product/research/2026-10-16-agent-reliability/`.
 
 **Unattended** (`LUNNA_QUEUE=1`, a run of `.tool/queue` for a GitHub
-issue): nobody answers until the run ends. The queue's instructions in the
-prompt replace every "stop and ask" here; the person answers on the issue,
-and the next phase is a fresh session that starts from the files.
+issue): the queue's instructions replace every "ask" here.
 
 ## Where things go
 
-One folder per topic, the way `product/delivery/` has one per feature.
-Everything the RFC rests on lives in it, so the topic can be read, moved
-or deleted as one thing:
-
 ```
 product/research/YYYY-MM-DD-<slug>/
-  README.md                the RFC
-  data/                    what was measured: tables, JSON, CSV, extracts
-                           of logs or transcripts, screenshots (img/)
-  code/                    the scripts that produced data/, runnable again
-                           (`node code/<x>.mjs` from the folder), and any
-                           prototype the RFC argues from
-  reports/<topic>.md       deep-research reports (phase 4)
-  notes/<topic>/*.md       the notes behind each report
+  README.md          the RFC (a deck)
+  img/               every picture it shows: charts, screenshots, rendered figures
+  data/              what was measured (CSV, JSON, log extracts)
+  code/              the scripts that produced data/ and img/, runnable again
+  reports/<topic>.md deep-research reports (phase 4), notes/<topic>/ beside them
 ```
 
-Only create the subfolders the topic uses. Names are kebab-case, no
-spaces. The RFC links everything relatively (`./data/turns.csv`), and a
-number in the RFC that came from a script names the script, so it can be
-measured again after the change it recommends. Scratch work that isn't
-cited stays in the scratchpad.
+Only the folders it uses. A number names the script behind it. English
+throughout; Portuguese UI copy is quoted as is.
 
-Everything is in English (AGENTS.md). Quotes of Portuguese UI copy stay
-in Portuguese.
+## 1. Dig in the code (before any web search)
 
-## Phase 1: Diagnose in the code (before any web search)
+1. Read the code that owns the problem in full (AGENTS.md is the map).
+2. Trace each symptom to a root cause with a `file:line`. Look for two
+   paths that should be one, a rule living only in a prompt, defaults
+   that hide data, errors collapsed into one message.
+3. **Measure** what can be measured: counts, sizes, timings, costs, how
+   often it happens. Write the script in `code/`, its output in `data/`.
+   A finding with a number beats three without.
+4. Note what the tests don't exercise.
 
-The literature only helps once you know what is actually broken.
+## 2. Read the literature (one batch)
 
-1. Read the code that owns the problem in full: the service, its prompt
-   or config, the types, and the code paths it calls. Use `AGENTS.md`
-   for the map, and don't list directories it already describes.
-2. Trace **each symptom the user reported to a root cause** with a
-   `file:line`. Look especially for:
-   - **Two code paths that should be one.** The check and the action run
-     different code, so they disagree. This was the agent's main bug.
-   - A rule that lives only in a prompt when it could live in code.
-   - Defaults that hide data (a read that covers one day by default).
-   - Errors collapsed into one generic message.
-3. Note what tests exist and what they don't exercise (for example, a
-   scripted model means the real one was never tested).
-4. Write the RFC skeleton (Phase 3's headings) with the diagnosis table
-   under *Deeper* **now**, and open it
-   for the user (`.tool/doc open <slug>`, in the background): the page
-   redraws as the file grows, so they can follow and comment.
+Send the searches in parallel, then **open** the 3–8 pages you will cite
+(a snippet is not a source): vendor engineering posts for practice,
+papers for numbers (read the full text where the claim depends on it),
+the docs of the exact stack for what it does today. Each finding gets one
+sentence of "for us that means…", or it doesn't go in. Read
+`product/research/concepts.md` first: an idea already there is one line
+and a link, and this RFC goes a level deeper on it. Load the matching
+project skill (`tool-design`, `context-degradation`, `evaluation`…).
 
-## Phase 2: Literature (one batch)
+## 3. Build the material, then write the deck
 
-Send the searches in parallel, in one message. Then **open** the
-3–8 pages you will cite: a search snippet is not a source. Prefer:
+Make the visuals **before** the prose; the prose is their caption.
 
-- Vendor engineering posts (Anthropic engineering, OpenAI, Google), for
-  practice.
-- Papers on arXiv / ACL / NeurIPS, for findings with numbers. Read the
-  HTML full text where a claim depends on details. An abstract can omit
-  what the paper says (per-model numbers, caveats).
-- The docs of the exact stack in use (OpenRouter, Gemini API, NestJS),
-  for what the system actually does today.
+| To show | Use | How |
+|---|---|---|
+| a flow, a call sequence, states, before → after | Mermaid (```` ```mermaid ````) | ≤ 12 nodes; mark the one that matters `:::key` (drawn lime) |
+| a comparison, a diagnosis, options | a table | ≤ 5 columns, first column the name |
+| numbers over a range | a chart PNG in `img/` | a `code/` script; the `dataviz` skill; dark, Focus's colours |
+| the app, a screen, a page | a screenshot in `img/` | `.tool/preview`, `.tool/doc shot` |
+| how the code does it | an excerpt, ≤ 15 lines | with its `path:line` link above it |
 
-Map every finding onto **this** codebase in one sentence ("for us that
-means..."). A finding with no consequence for the code doesn't go in.
-Then pick the 3–5 that are worth learning for good (the *Ideas to keep*),
-checking `product/research/concepts.md` for those already met.
+GitHub draws Mermaid natively; the review page draws it in Focus's
+colours. **Draw for a 390 px screen:** a diagram wider than the phone
+shrinks until its text can't be read, so prefer `flowchart TD`, at most
+three boxes side by side, and no sequence diagram past three participants.
+Pictures go in `img/`, never only in the scratchpad.
 
-If a project skill matches the topic, load it first and let it shape the
-recommendations. For agent work that means `tool-design`,
-`context-degradation`, `evaluation` and `advanced-evaluation`.
+### The story
 
-## Phase 3: Write the RFC
-
-The reader is an engineer **learning AI engineering**, often on a phone
-(the queue's PR links the RFC as a page, `.tool/review.html`). So the RFC is short, says what to do
-before why, and teaches a few ideas well rather than many in passing.
-It is written in layers: each one is enough to stop at, and the next one
-goes deeper.
+Each `##` is a slide. The order is fixed; examples and changes take as
+many slides as they need.
 
 ```
-# <Title>
-<date> · RFC · <status>
+# <The finding, as a sentence>
+<date> · RFC · <status> · scope
 
-## In one minute                 layer 1: ≤ 200 words, the whole RFC
-**The thesis, one sentence.**
-- **Do:** the 1–3 changes, a line each.
-- **Not needed:** what it does not take, and why, in a line.
-- **You decide:** each decision, a line, the recommended option named.
-
-## Ideas to keep                 layer 1→2: 3–5 ideas, no more
-1. **"A sentence that sticks."** (≤ 15 words, quotable)
-   Source, linked. *For us:* one line. *New* | *Deeper than* [concept](../concepts.md#anchor)
-
-## The change                    layer 2: what to do, why, how
-| # | Change | Fixes | Size |   then one ### per change, short:
-                                 what (names, shapes, the code to reuse), why, how.
-## Decisions for you             3–6, options, one marked (recommended), its cost
-## Decided unattended            (queue runs only)
-
-## Deeper                        layer 3: the evidence, for when it is wanted
-### How it works today           a small call-flow block and the facts
-### Diagnosis                    # | Symptom | Root cause | Where
-### The literature               one source per item, ending in what it means for us
-### Rollout                      Phase | Ships | Fixes | Size; phase 0 is measuring
-## References                    a link and the one line it supports
+## <The point, as a claim>          the whole RFC: > [!IMPORTANT] thesis,
+                                      the one picture (before → after),
+                                      Do / Not needed / You decide, a line each
+## <How it works today, as a claim> the flow as it is, with file:line
+## <Example: a real case>           1–3 slides: one case each, before → after
+## <Why: the mechanism>             the literature, each > [!TIP] idea to keep
+## <The change, as a claim>         one slide per change, or one table
+## <Trade-offs>                     option | gain | cost | when it wins
+## <Impact>                         what it changes, measured or estimated, and its size
+## Decisions                        decision | options | recommended | cost of the other
+## Decided unattended               (queue runs only)
+## Go deeper                        the ideas to keep, then what to read, the data, the code
 ```
 
-- **Budget.** Layer 1 under 200 words, the whole RFC under ~2,500 (the
-  first four ran 2,600–9,400, with 1,350–3,000 words before the first
-  recommendation; `product/improvements/2026-10-21-github-review-and-rfc-shape/`).
-  What does not fit is not cut, it waits: a later round adds it when the
-  person asks for it (below).
-- **Ideas to keep** are the learning. A good one is a claim with a
-  mechanism, short enough to repeat ("Grade the final state, not the
-  transcript"), from a source worth reading in full, with this repo's
-  case beside it. Teach from a concrete example before the general rule:
-  that is what the person's questions keep asking for ("I need more real
-  cases", "I have no idea what you are saying about evals").
-- **The concepts ledger.** `product/research/concepts.md` keeps every idea
-  an RFC taught, with its sentence, its source and the RFCs it was met in.
-  Read it before writing *Ideas to keep*: an idea already there gets one
-  line and a link, and this RFC goes one level deeper on it (a number, a
-  failure case, the paper behind the blog post), so each topic starts
-  where the last one stopped. Add the new ideas to it, and this RFC to
-  the *Met in* of the old ones, in the same pass.
-- A term the person may not know is explained the first time, in half a
-  sentence, or linked to its concept.
+### The slide
 
-If the user sends an idea mid-flight (for example "data / facts /
-doubts"), don't append it as an aside. Assess it honestly, give it its
-own section with an owner table (what it is, who owns it, an example),
-and let it reshape the thesis if it fits.
+- **The headline states the point** in a sentence of ≤ 12 words ("The
+  agent reaches 6 of 39 routes", not "Coverage"). Read alone, the
+  headlines tell the story; `.tool/doc shape` prints them so you can check.
+- **One visual**, then ≤ 5 bullets or two short lines: ≤ 150 words.
+- **Dense subject: more slides, never a longer one.** A `###` inside a
+  slide usually means it is two.
+- `> [!IMPORTANT]` once, on the first slide. `> [!TIP]` for an idea to
+  keep, on the slide whose example shows it (≤ 3 in the RFC): a quotable
+  sentence, its source, *for us* in a line.
+- A term the person may not know is explained in half a sentence.
+- 8–16 slides; the prose under ~1,800 words. *Go deeper* recaps the ideas
+  in a table (idea | the case here | read), adds them to `concepts.md`
+  (and this RFC to *Met in* of the old ones), then lists sources, one line
+  each on what they support, and links `data/`, `code/`, `reports/`.
 
-## Phase 4: Verify (deep research)
+Why this shape: a sentence headline over visual evidence is understood
+and remembered better than a topic over bullets (Garner & Alley 2013),
+and material split into learner-paced segments teaches better than one
+continuous block (Mayer's segmenting principle). See the worked example.
 
-When the user agrees, or if the RFC rests on claims taken only from
-snippets, run the `anthropic-skills:deep-research` skill on the **2–4
-weakest sections**. Typical ones: vendor behavior that changes often
-(pricing, caching, routing), per-model numbers, and recent papers.
+### Check it as the person will see it
 
-- Use the topic folder as its working directory, so the report lands in
-  `reports/<topic>.md` and its notes in `notes/<topic>/`.
-- Ask the report to end with **confirmed / corrected / unverified**
-  against the RFC.
-- Fold corrections back into the RFC: fix the claim in place, add any
-  new reference, and link the report from References. Wrong venues,
-  stale prices and outdated model lineups are the usual corrections.
-- State what remains unverified. Never present an inference as a
-  finding.
+```
+.tool/doc shape <slug>     a row per slide: words, visual, ✓/✗; then the headlines alone
+.tool/doc shot <slug>      each slide as a PNG at phone width; ✗ for a diagram that failed
+```
+
+Fix every ✗ (or say why it stays), Read two or three of the PNGs, and
+open the RFC for the person (`.tool/doc open <slug>`, in the background).
+
+## 4. Verify (deep research)
+
+When the person agrees, or the RFC rests on snippets, run
+`anthropic-skills:deep-research` on the 2–4 weakest claims (vendor
+behaviour, prices, per-model numbers, recent papers), in the topic folder
+so it lands in `reports/`. Ask it to end with confirmed / corrected /
+unverified; fix the claims in place and say what stays unverified.
+
+## The person's notes
+
+They comment on GitHub (a line of the README in *Files changed*, or a
+selection on the review page; the prompt quotes each as ``On `<file>` line
+N (thread T)``) or in `.tool/doc open` on the Mac. A leading `Q:`,
+`Learn:`, `Decision:` or `Note:` is its kind (none: a question is a Q).
+
+- Write it under the slide it is about: `> **Q:**`, `> **Learn:**`,
+  `> **Decision (YYYY-MM-DD):**`, `> **Note:**`. Answer a question with
+  `> **A:**` under it, a real case first, then the rule; on GitHub also
+  in the structured output's `replies` under thread T, in two sentences.
+- An answer that needs a picture or a page gets **a new slide** after the
+  one asked about, and the `> **A:**` links it.
+- A **Decision** is binding: change the RFC and drop what it rules out.
+- **Learn** goes deeper; a new idea goes in `concepts.md`.
+- `.tool/doc notes <slug> [--open]` lists them; leave them in place.
 
 ## Recommending skills or tools
 
-If asked which skills would improve the research, recommend skills to
-**download**, not skills the RFC proposes building. Check first what's
-already installed (the session's skill list), then search the
-marketplaces (anthropics/skills, community plugin marketplaces). Before
-installing any third-party skill:
-
-1. Clone it into the scratchpad and read every `SKILL.md` and reference
-   file.
-2. Grep its scripts for network, shell, file and eval use.
-3. Install project-scoped (`.claude/skills/<name>/`), copy the license
-   into each folder, and leave it uncommitted for the user to review.
-
-## The user's notes
-
-The person comments in one of two places, and both end up in the file:
-
-- **On GitHub**, from the queue: a comment on a line of the README in the
-  PR's *Files changed* (the phone app does this too), or text selected
-  on the review page (`.tool/review.html`), which posts the same line
-  comments, with the selection quoted under the comment. The run's prompt
-  quotes each as ``On `<file>` line N (thread T), about: > the line`` and
-  the comment. A leading `Q:`, `Learn:`, `Decision:` or `Note:` is its
-  kind; with none, a question is a `Q` and anything else a `Note`.
-  Write it into the RFC under the block it is about, as below, answer it
-  there, and put a one- or two-sentence answer in the structured output's
-  `replies` under thread T: the queue posts it under their comment, where
-  they will read it.
-- **On the Mac**, in the page `.tool/doc open` serves, which writes the
-  note into the file itself.
-
-Either way a note is a tagged blockquote under its block: `> **Q:**`,
-`> **Learn:**`, `> **Decision (YYYY-MM-DD):**`, `> **Note:**`.
-
-- Read them with `.tool/doc notes <slug>` (or `--open` for unanswered
-  questions only): line, kind and heading, without the rest of the RFC.
-  Read the RFC itself only around the lines you must change.
-- Answer a question with `> **A:** …` right under it (a blank line
-  between). Answer the way *Ideas to keep* teaches: a real case first,
-  then the rule. A **Learn** asks to go deeper: answer it, and if the
-  answer is an idea worth keeping, add it to the concepts ledger.
-- A **Decision** is binding: change the RFC to match, and drop the
-  alternatives it rules out from *Decisions for you*.
-- "Deeper on X" adds a `### X` under *Deeper* (or a report in Phase 4),
-  not more words in layer 1.
-- Leave the notes in place; they are the record of how the RFC was argued.
+Recommend skills to download, not to build. Check what is installed, then
+the marketplaces. Before installing a third-party one: clone it into the
+scratchpad, read every file, grep its scripts for network, shell, file
+and eval use, install project-scoped with its license, leave it
+uncommitted.
 
 ## Approval: from RFC to build
 
-An approved RFC goes on to its implementation without anyone writing the
-prompt for it. Unanswered *Decisions for you* take the option marked
-*(recommended)*, so mark one in each.
+Unanswered decisions take the option marked *(recommended)*, so mark one
+in each.
 
-- **In the queue**, "approve" on the issue merges the RFC into main and
-  opens `Implement: <RFC title>` as a `create` issue pointing at it
-  (`.tool/queue implement`). The queue picks it up within a minute: `/create`
-  reads the RFC as its research, plans (or mocks, if the first rollout
-  phases change the screen) and opens the PR, which waits at the plan gate.
-  Nothing to do in the session.
-- **In a session**, "approve" (or "build it") is the ask to land it and
-  hand it on, since the build's worktree starts from main:
-  `git switch -c research/<slug>`, `git add` the topic folder only, commit,
-  push, `gh pr create --fill`, `gh pr merge --squash --delete-branch`,
-  `git switch -` back, then `.tool/queue implement <RFC path>` and send its
-  issue URL. Without the queue running (`.tool/queue ls`), say instead:
-  "run `/clear`, then `/create <RFC path>`".
+- **In the queue**, "approve" on the issue merges the RFC and opens
+  `Implement: <RFC title>` as a `create` issue (`.tool/queue implement`).
+- **In a session**, "approve" is the ask to land it: `git switch -c
+  research/<slug>`, add the topic folder only, commit, push, `gh pr create
+  --fill`, `gh pr merge --squash --delete-branch`, `git switch -`, then
+  `.tool/queue implement <RFC path>` and send its issue URL. Without the
+  queue running (`.tool/queue ls`): "run `/clear`, then `/create <RFC path>`".
 
 ## Delivering
 
-End each phase with a short message:
-
-- the RFC path;
-- its *In one minute*, as written;
-- the ideas it added to the concepts ledger, one line each;
-- anything skipped or unverified.
-
-Make sure the RFC is open for the user (`.tool/doc open <slug>`; it reuses
-a page already running), and end with "reply **approve** to merge it and
-queue its build". Don't commit unless asked; approval is the ask.
+End each phase with: the RFC path, its first slide's thesis, the ideas it
+added to the ledger (a line each), anything skipped or unverified, and
+"reply **approve** to merge it and queue its build". Don't commit unless
+asked.

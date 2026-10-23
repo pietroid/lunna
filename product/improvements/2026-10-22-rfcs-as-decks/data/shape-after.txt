@@ -1,0 +1,37 @@
+product/improvements/2026-10-22-rfcs-as-decks/README.md · 15 slides · 1131 words · 13 visuals
+
+  #  words  visual            slide
+  1     76  diagram           ✓ Each heading now makes one point over one picture
+  2     58  image             ✓ Five RFCs: no diagrams, and four sections in ten run long
+  3     86  table             ✓ Read alone, the headings tell no story
+  4     48  diagram           ✓ The story runs in a fixed order, the evidence before the dec
+  5     37  table             ✓ A slide holds one claim, one visual, and at most 150 words
+  6     86  image             ✓ The page now looks like Focus: black, Onest, a little lime
+  7     48  diagram           ✓ Diagrams are text in the Markdown, drawn in Focus's colours
+  8     40  code              ✓ Two commands check a deck before it ships
+  9      0  table             ✓ What changed, file by file
+ 10      0  table             ✓ Trade-offs: what the deck costs
+ 11      0  table             ✓ Verified
+ 12    139  —                 ✓ Decided unattended
+ 13      0  table             ✓ Not done
+ 14    437  —                 ✓ The request, verbatim
+ 15     76  table             ✓ Go deeper
+
+✓ every slide within budget (≤150 words, one visual, headline ≤12 words)
+
+The story, headings alone:
+  · Each heading now makes one point over one picture
+  · Five RFCs: no diagrams, and four sections in ten run long
+  · Read alone, the headings tell no story
+  · The story runs in a fixed order, the evidence before the decisions
+  · A slide holds one claim, one visual, and at most 150 words
+  · The page now looks like Focus: black, Onest, a little lime
+  · Diagrams are text in the Markdown, drawn in Focus's colours
+  · Two commands check a deck before it ships
+  · What changed, file by file
+  · Trade-offs: what the deck costs
+  · Verified
+  · Decided unattended
+  · Not done
+  · The request, verbatim
+  · Go deeper
