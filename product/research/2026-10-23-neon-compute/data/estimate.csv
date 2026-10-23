@@ -1,0 +1,4 @@
+scenario,cu_hours_per_month,launch_usd,free_plan
+Today (measured),158.2,16.77,over
+Tick only when due, a web tab left open,113.1,11.99,over
+Tick only when due, hidden tabs stop polling,25,2.65,fits
