@@ -2651,18 +2651,6 @@ abstract class AppLocalizations {
   /// **'Sem prazo'**
   String get artifactsDueNone;
 
-  /// No description provided for @artifactPaceDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Feito'**
-  String get artifactPaceDone;
-
-  /// No description provided for @artifactPaceTime.
-  ///
-  /// In pt, this message translates to:
-  /// **'Prazo'**
-  String get artifactPaceTime;
-
   /// No description provided for @artifactPaceOn.
   ///
   /// In pt, this message translates to:

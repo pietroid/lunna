@@ -100,6 +100,21 @@ abstract final class AppColors {
       ? Color(0xFFD9603A)
       : Color(0xFFFF9A6B);
 
+  /// The time a delivery has used, in its pace bar: always red, the red of
+  /// a clock running. Lunna's accent; on Focus, whose accent is lime, the
+  /// lifted [danger].
+  static const paceTime = AppBrand.isLunna
+      ? Color(0xFFE2394F)
+      : Color(0xFFE8697C);
+
+  /// The work a delivery has done, drawn over [paceTime] in the same bar:
+  /// always green, so green covering the red reads as ahead and red showing
+  /// past it as behind. On Lunna a fresh emerald, as light as the red so the
+  /// two weigh the same beside the rose neutrals; on Focus [success].
+  static const paceDone = AppBrand.isLunna
+      ? Color(0xFF1FA37A)
+      : Color(0xFF00B481);
+
   /// The fill behind a block a routine puts on every day.
   ///
   /// One of the two fills that is not a state. Lunch and the morning routine

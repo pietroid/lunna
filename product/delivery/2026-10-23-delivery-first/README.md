@@ -1,6 +1,6 @@
 # Delivery first: Lista, Calendário and Entregas around the delivery
 
-2026-10-23 · delivery · **design, awaiting approval** · Track: **mockup** · Issue: #34
+2026-10-23 · delivery · **design, round 2, awaiting approval** · Track: **mockup** · Issue: #34
 
 ## 1. The prompt
 
@@ -36,20 +36,32 @@
 >
 > Remove the "meta" part now. Not the implementation, just a flag to hide it visually.
 
+The first board was reviewed on the issue, and the person replied:
+
+> Ok, that's great but I have some considerations about the amount of information.
+>
+> 1. We should prioritize in list mode just the next task appearing as subtitle, not all of them. If there is no task, the amount of hours on the right will already tell great things.
+> 2. On calendar mode, if it fits, we could totally show them as timeline, which i found it pretty interesting. If there is no open task, it will show the note as it was showing before.
+> 3. the bars on deliveries should be overlapped. I know this can be challenging, but I think colors can help with that. For example, the time color is always red, and the done color is always green. So if green is on top of red, its because we are in a good state. If red is appearing and green is behind, its because it is lagging. Remember, green must be good looking in relation with the rest of palette.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
 
 Five screens drawn by the real app (Lunna, the clock fixed at 10:00 on Friday
-23 October, 22:10 for screen 2), pins in [board.json](board.json). One per screen:
+23 October, 22:10 for screen 2), pins in [board.json](board.json), the shots
+without pins in `img/shot-N.png`. Second round, after the reply above: Lista
+shows only each delivery's next task, the calendar draws a run's tasks as a
+timeline where they fit, and Entregas' two bars are one, green over red. One per screen:
 [1](img/mockup-1.png) · [2](img/mockup-2.png) · [3](img/mockup-3.png) ·
 [4](img/mockup-4.png) · [5](img/mockup-5.png).
 
-**The idea in one line:** the delivery is the card and its tasks are lines
-in it. Lista keeps only the day (Agora, Ainda hoje or Amanhã, then Para depois);
-Calendário draws the same card to scale; Entregas loses the goals, is
-ordered by when each delivery ends, and shows two bars, work done and time
-gone, that should end together.
+**The idea in one line:** the delivery is the card. Lista keeps only the
+day (Agora, Ainda hoje or Amanhã, then Para depois) and under each delivery
+only its next task; Calendário draws the same card to scale, with every task
+a line at its hour where they fit; Entregas loses the goals, is ordered by
+when each delivery ends, and shows one bar per delivery, the work done in
+green over the time gone in red.
 
 ### References
 
@@ -68,28 +80,38 @@ Drawn from known patterns. Mobbin was not browsed in this run.
 | Pin | Decision |
 |-----|----------|
 | 1A | Tasks of one delivery that sit **next to each other** on the day form one card (`DeliveryTile`): the delivery's name in `bodyStrong` with the stack icon (`AppIcons.artifacts`), the run's hours on the right. The `AppTag` under every task goes away. Only adjacent tasks join, so the card never reorders the day. |
-| 1B | Each task is one quiet line: ✓ struck through when done today, an accent dot while it runs, a ring while it waits, and its hour (or its length once done) on the right. |
-| 1C | Agora ends in **one bar made of pieces** (`RunBar`), one piece per task sized by its minutes, 3 px apart: done tasks full, the running one partly filled, the rest empty. Pause, ±15 and ✓ act on the running task. |
+| 1B | In Lista, **only the next task** is under the name, as one quiet line: an accent dot while it runs, a ring while it waits, no hour (the run's hours on the right already say how long it is). The other tasks of the run are not drawn. |
+| 1C | Agora ends in **one bar made of pieces** (`RunBar`), one piece per task of the run sized by its minutes, 3 px apart: done tasks full, the running one partly filled, the rest empty. So Lista's Agora still shows how far the run has got with one line of text. Pause, ±15 and ✓ act on the running task. |
 | 1D | "Fazer em breve" becomes **Ainda hoje** (`sectionToday`, the calendar's own words), and holds only today's hours. |
 | 1E | A task with no delivery keeps its own card (`EventTile`), as today. |
 | 2A | **Agora** is the first stage of Lista too. Outside the working day it is `DayOverTile`, as on the calendar. |
-| 2B | Once the day is over, or nothing in it is left, the stage is **Amanhã**: tomorrow's hours only. |
+| 2B | Once the day is over, or nothing in it is left, the stage is **Amanhã**: tomorrow's hours only, each delivery with its next task. |
 | 2C | Lista **stops at that day**. Anything queued later is one line: "Mais 4 tarefas adiante · Ver no calendário", which switches to Calendário. |
 | 2D | "Depois eu priorizo" becomes **Para depois**. The backlog groups by delivery too; the card's header gives "2 tarefas · 2h30" instead of hours. |
-| 3A | Calendário puts the **same Agora card** on top. |
-| 3B | A delivery's run is **one block** as tall as the run; its lines share the height by their minutes. |
+| 3A | Calendário puts the **same Agora card** on top, drawn as a **timeline** (`timeline: true`): every task of the run a line with its hour, done ones struck through, the running one in ink. |
+| 3B | A delivery's run is **one block** as tall as the run. When it has room for every task (a line's 28 px each), each line sits at its hour inside the block. |
 | 3C | Free stretches, routines and fixed blocks are drawn as they are now. |
 | 4A | A routine's day **with a checklist** (Café da manhã: café, meditar, louça) uses the same card in `routineFill` with the repeat mark. This needs items on a routine, which the model lacks: **second phase** (see open questions). |
-| 4B | Lines are spaced by their lengths inside the block. |
+| 4B | Lines sit **at their hours** in the block, pushed apart to a line's height when two are closer than that (Passar o café 07:00, Meditar 07:25). |
+| 4C | A run of **one task** has no list to draw, so the block shows that task and the start of its **notes**, as a calendar card always did (`notesPreview`, as many lines as fit, up to 3). |
+| 4D | A run **too short** for all its lines (three 15-minute tasks in 55 minutes) falls back to Lista's look: the name and the next task. Shorter than one line, the name alone. |
 | 5A | **Metas hidden** by a flag, `ArtifactsPage(showGoals: false)`, the default: no goal cards and no "Nova meta". The model, the routes and the agent's goal verbs are untouched. The schedule line ("A fila pede 24h · você tem 31h livres") stays. |
 | 5B | Entregas is **headed by due day**: Hoje (today or overdue), Amanhã, Nos próximos 7 dias, Mais adiante, Sem prazo. It's sorted by deadline, and the queue's own order breaks ties. Drag to reorder leaves this page. |
-| 5C | **Feito**: share of the delivery's tasks done (or of its minutes, when it has no tasks), in accent. |
-| 5D | **Prazo**: share of the time from creation to the end of the deadline day. It is the same length as Feito, so the two compare directly. Grey when on pace, `warning` when it runs more than 15 points ahead of the work (`paceSlack`), `dangerInk` once overdue. With no deadline, only Feito is drawn. |
+| 5C | **One bar, two fills** (`PaceBars`, 6 px). Red (`paceTime`) runs to the share of the time from creation to the end of the deadline day; green (`paceDone`), drawn **over** it, to the share of tasks done (or of minutes, with no tasks). Green covering the red is ahead or on pace; red showing past the green is lagging, by as much as shows. Overdue, the red fills the bar. With no deadline, only green. |
+| 5D | Under the bar, **a key** in the same two colours: a green dot and "3 de 5 etapas", a red dot and "termina hoje" / "faltam 6 dias" (`dangerInk` once late). The labels Feito and Prazo go. |
 | 5E | The subtitle ends in **"no ritmo"** or **"atrás do ritmo"** (warning ink), so the pace doesn't rest on colour alone. |
-| 5F | The person's own example: Júlia, 5 of 10 tasks done with about half her time gone. The bars end together: on pace. |
+| 5F | The person's own example: Júlia, 5 of 10 tasks done with a little over half her time gone. A hair of red shows past the green: on pace. |
 
 No new icon: the stack (`AppIcons.artifacts`) marks a delivery, the repeat
 mark a routine.
+
+**Two new colour tokens**, so the bar never branches on the brand:
+`AppColors.paceTime`, always red (Lunna's accent `#E2394F`; on Focus, whose
+accent is lime, the lifted danger `#E8697C`), and `AppColors.paceDone`,
+always green (on Lunna `#1FA37A`, an emerald as light as the red so the two
+weigh the same beside the rose neutrals, lighter than `success` `#0E8F68`,
+which read as dull next to the red; on Focus `success` `#00B481`).
+Entregas on Focus, to check the pair on black: [focus-5](img/focus-5.png).
 
 ### Not drawn: a third mode
 
@@ -106,10 +128,16 @@ Phase 3 starts here; Phase 4 removes this section.
 - `app/lib/delivery_first_preview.dart`: the preview entry point, five scenes
   (`?s=1..5`) on hand-built cards. **Delete it after Phase 4's prints.**
 - `app/packages/timeline/lib/src/widgets/delivery_tile.dart` (new, exported
-  from `widgets.dart`): `DeliveryTile` (Lista and, with `height`, Calendário;
-  `routine:` for a routine's list) and `RunBar`.
+  from `widgets.dart`): `DeliveryTile` and `RunBar`. In Lista (no `height`)
+  it draws the name and the next task only; `timeline: true` draws every
+  task (Calendário's Agora); with `height` it picks, by the room it gets,
+  lines at their hours, the next task alone, or for a run of one task the
+  task and its notes (`_scaled`). `routine:` for a routine's list.
 - `app/packages/artifacts/lib/src/view/pace_bars.dart` (new, exported):
-  `PaceBars`, `workDone`, `isBehind`, `paceSlack`.
+  `PaceBars` (one bar, green over red, and its key), `workDone`,
+  `isBehind`, `paceSlack`.
+- `app/packages/app_ui/lib/src/theme/app_colors.dart`: `paceTime`,
+  `paceDone`.
 - `app/packages/artifacts/lib/src/view/artifact_row.dart`: the subtitle
   (kind · time · pace word) and `PaceBars` replace the steps/deadline text
   and the single bar.
@@ -118,8 +146,9 @@ Phase 3 starts here; Phase 4 removes this section.
   headings (`Due`, `dueOf`, `byDue`, `dueGroups`, `dueLabel`) instead of the
   `SliverReorderableList`.
 - `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): `stageLater`, `stageAhead`,
-  `stageAheadOpen`, `deliveryTasks`, `artifactsDue*`, `artifactPaceDone`,
-  `artifactPaceTime`, `artifactPaceOn`, `artifactPaceBehind`.
+  `stageAheadOpen`, `deliveryTasks`, `artifactsDue*`,
+  `artifactPaceOn`, `artifactPaceBehind` (`artifactPaceDone` and
+  `artifactPaceTime`, Feito and Prazo, were dropped in the second round).
 
 ### What the build must do
 
@@ -131,12 +160,14 @@ Phase 3 starts here; Phase 4 removes this section.
    adiante · Ver no calendário" line ends the dated stage. Each stage keeps
    its +.
 2. Group adjacent tasks with the same `artifactId` into `DeliveryTile`, in
-   Lista and Calendário, Agora included. Done-today tasks of the running
+   Lista (next task only) and Calendário (`height` from the scale; Agora
+   with `timeline: true`), Agora included. Done-today tasks of the running
    delivery come from what the bloc already holds (or a `doneToday` field
    per artifact; see the server item).
 3. Gestures on a grouped card: dragging the **card** carries the whole
    run (one move per task, or a new run move). Dragging a **line** carries
-   that task alone. On the calendar a nudge or resize on a run is the
+   that task alone (in Lista only the next task has a line; the others are
+   reached on the calendar or on the delivery's page). On the calendar a nudge or resize on a run is the
    existing snapped-run behaviour. The tap on a line opens that task's
    `EventPage`; a tap on the header opens the delivery. Keep `index`
    counting tasks, not cards.
@@ -149,7 +180,13 @@ Phase 3 starts here; Phase 4 removes this section.
 
 **App (artifacts):** keep what is written, add tests: `byDue`/`dueOf`
 edges (overdue, today, day 7, day 8, none), `workDone` with and without
-tasks, `isBehind` at the slack edge, `showGoals` hiding the goal section.
+tasks, `isBehind` at the slack edge, `showGoals` hiding the goal section,
+`PaceBars` drawing no red without a deadline and the key's danger ink when
+late.
+
+**App (timeline) tests:** `DeliveryTile` in Lista draws one line; with a
+`height` it draws every line when they fit, the next one when not, and the
+notes for a run of one task.
 The `move` route stays (the agent uses it); only the page's drag goes.
 
 **Server:** nothing is required for 1–5 if the app groups by `artifactId`
@@ -177,6 +214,25 @@ hidden).
 - The goals' **schedule line stays**; only the goal cards are hidden.
 - Behind = Prazo more than **15 points** ahead of Feito (`paceSlack`).
 - Routines with a checklist are drawn but left to a **second phase**.
+- Second round, from the reply:
+  - "If there is no task, the hours tell": read as **no line under the name
+    when there is nothing to list**; Lista's one line has no hour of its
+    own, since the hours on the right are the run's.
+  - "If there is no open task, it shows the note as before": read as **a
+    run of one task** (nothing else open in the run to list) showing that
+    task and its notes. Every card of a delivery on the day is a task, so a
+    card with no open task at all doesn't occur.
+  - **Agora on the calendar is a timeline** too (it is not drawn to scale,
+    so its lines always fit); in Lista it shows the running task only, and
+    keeps the `RunBar` for the rest of the run.
+  - A run whose lines don't fit falls back to the **next task**, not to the
+    notes, which belong to one task.
+  - The overlapped bar is **6 px**, red under green, with a **coloured-dot
+    key** under it in place of the Feito/Prazo labels. The red stays red when
+    on pace (only its visible length changes), and `warning` no longer colours
+    the time; "atrás do ritmo" still says it in words.
+  - **Green for Lunna is a new `#1FA37A`**, not `success` (`#0E8F68`), so it
+    sits as bright as the red; Focus keeps `success`.
 
 ### Open questions
 

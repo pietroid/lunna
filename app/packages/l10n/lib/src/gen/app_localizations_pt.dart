@@ -1672,12 +1672,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get artifactsDueNone => 'Sem prazo';
 
   @override
-  String get artifactPaceDone => 'Feito';
-
-  @override
-  String get artifactPaceTime => 'Prazo';
-
-  @override
   String get artifactPaceOn => 'no ritmo';
 
   @override

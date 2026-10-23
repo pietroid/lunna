@@ -1,49 +1,49 @@
 {
  "screens": [
   {
-   "png": "img/mockup-1.png",
+   "png": "img/shot-1.png",
    "title": "1 · Lista: the delivery leads",
-   "why": "The delivery is the title, its tasks are lines under it; Agora, Ainda hoje, and the list stops at the day.",
+   "why": "The delivery is the title and its next task the one line under it; Agora, Ainda hoje, and the list stops at the day.",
    "pins": [
     {
      "id": "A",
      "x": 12,
-     "y": 233,
+     "y": 230,
      "label": "Delivery as title",
-     "text": "Consecutive tasks of one delivery are one card: its name in bodyStrong with the stack icon, the run's hours on the right. No more AppTag per task."
+     "text": "Consecutive tasks of one delivery are one card: its name in bodyStrong with the stack icon, the whole run's hours on the right. No more AppTag per task."
     },
     {
      "id": "B",
      "x": 12,
-     "y": 290,
-     "label": "Task lines",
-     "text": "Each task a quiet line: ✓ struck when done today, accent dot while running, ring while waiting; its hour (or length when done) on the right."
+     "y": 497,
+     "label": "Only the next task",
+     "text": "Lista shows one line under the name: the next task (accent dot while it runs, ring while it waits), without an hour. The hours on the right say how long the run is."
     },
     {
      "id": "C",
      "x": 12,
-     "y": 380,
+     "y": 320,
      "label": "One bar, in pieces",
-     "text": "Agora ends in one bar made of one piece per task, as long as its minutes, 3 px apart: done full, running as far as it got, the rest empty. Controls act on the running task."
+     "text": "Agora ends in one bar made of one piece per task of the run, as long as its minutes: done full, running as far as it got, the rest empty. Controls act on the running task."
     },
     {
      "id": "D",
      "x": 135,
-     "y": 431,
+     "y": 371,
      "label": "Ainda hoje",
      "text": "Fazer em breve becomes Ainda hoje: only today's hours. Same words as the calendar's headings."
     },
     {
      "id": "E",
      "x": 12,
-     "y": 475,
+     "y": 415,
      "label": "Loose tasks stay",
      "text": "A task with no delivery keeps its own card, as today."
     }
    ]
   },
   {
-   "png": "img/mockup-2.png",
+   "png": "img/shot-2.png",
    "title": "2 · Lista after the day: Amanhã",
    "why": "Once the working day is over, the list shows tomorrow; everything further is one line away.",
    "pins": [
@@ -56,80 +56,94 @@
     },
     {
      "id": "B",
-     "x": 118,
+     "x": 122,
      "y": 345,
      "label": "Amanhã",
-     "text": "With the day over (or nothing left in it), the stage is Amanhã: tomorrow's hours only."
+     "text": "With the day over (or nothing left in it), the stage is Amanhã: tomorrow's hours only, each delivery with its next task."
     },
     {
      "id": "C",
      "x": 12,
-     "y": 672,
+     "y": 685,
      "label": "The list stops",
-     "text": "Tasks queued past that day are not drawn: 'Mais 4 tarefas adiante' and 'Ver no calendário', which switches mode."
+     "text": "Tasks queued past that day are not drawn: 'Mais 5 tarefas adiante' and 'Ver no calendário', which switches mode."
     },
     {
      "id": "D",
      "x": 12,
-     "y": 729,
+     "y": 730,
      "label": "Para depois",
      "text": "Depois eu priorizo is renamed Para depois. Backlog tasks of one delivery group too, headed with '2 tarefas · 2h30'."
     }
    ]
   },
   {
-   "png": "img/mockup-3.png",
+   "png": "img/shot-3.png",
    "title": "3 · Calendário: same card, to scale",
-   "why": "Agora stays on top of everything; below it a delivery's run is one block as tall as its time.",
+   "why": "Agora stays on top; on the calendar a delivery's run is one block as tall as its time, with every task as a line where they fit.",
    "pins": [
     {
      "id": "A",
      "x": 12,
      "y": 230,
-     "label": "Agora on top",
-     "text": "The same Agora card as Lista: one surface, identical in both modes."
+     "label": "Agora as a timeline",
+     "text": "The same Agora card as Lista, but every task of the run is a line with its hour: done struck through, running in ink, the next waiting."
     },
     {
      "id": "B",
      "x": 12,
-     "y": 680,
+     "y": 677,
      "label": "Run as one block",
-     "text": "Escrever, Gravar, Editar: one block 13:00–15:00. Its lines share the height by their minutes, so a long task reads long."
+     "text": "Escrever, Gravar, Editar: one block 13:00–15:00. Each line sits at its hour when the block has room for all of them."
     },
     {
      "id": "C",
      "x": 12,
-     "y": 524,
+     "y": 521,
      "label": "Unchanged",
      "text": "Free stretches, routines and fixed blocks are drawn as today."
     }
    ]
   },
   {
-   "png": "img/mockup-4.png",
-   "title": "4 · A routine with a list",
-   "why": "A routine's day can be a block with a checklist, drawn by the same card.",
+   "png": "img/shot-4.png",
+   "title": "4 · Calendário: what fits",
+   "why": "Lines at their hours when they fit, the next task alone when not, and a lone task with its notes.",
    "pins": [
     {
      "id": "A",
      "x": 12,
      "y": 230,
      "label": "Café da manhã",
-     "text": "A routine with items is the same card in the routine's fill, with the repeat mark. Needs a routine checklist in the model: second phase (see open questions)."
+     "text": "A routine with items is the same card in the routine's fill, with the repeat mark. Needs a routine checklist in the model: second phase."
     },
     {
      "id": "B",
      "x": 12,
-     "y": 453,
-     "label": "Lines by length",
-     "text": "Interpretar (60 min) and Escrever (55) split the block's height."
+     "y": 286,
+     "label": "Lines at their hours",
+     "text": "Each line sits where its hour falls in the block, never closer than a line's height to the next."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 471,
+     "label": "One task: its notes",
+     "text": "A run of one task has no list to draw, so the card shows the task and the start of its notes, as the calendar always did (notesPreview, up to 3 lines)."
+    },
+    {
+     "id": "D",
+     "x": 12,
+     "y": 561,
+     "label": "Too short: the next",
+     "text": "Three 15-minute tasks don't fit as lines in 55 minutes, so the block falls back to Lista's look: the name and the next task."
     }
    ]
   },
   {
-   "png": "img/mockup-5.png",
+   "png": "img/shot-5.png",
    "title": "5 · Entregas by when they end",
-   "why": "No goals; deliveries headed by due day, each with two bars that should end together.",
+   "why": "No goals; deliveries headed by due day, each with one bar: green work over red time.",
    "pins": [
     {
      "id": "A",
@@ -149,29 +163,29 @@
      "id": "C",
      "x": 12,
      "y": 290,
-     "label": "Feito",
-     "text": "Share of tasks done (or minutes, with no tasks), accent."
+     "label": "One bar, two fills",
+     "text": "Red (paceTime) is the share of the time gone; green (paceDone), drawn over it, the share of tasks done. Green covering red is ahead; red showing past the green is lagging, by as much as shows."
     },
     {
      "id": "D",
      "x": 380,
-     "y": 322,
-     "label": "Prazo",
-     "text": "Share of the time from created to the end of the deadline day. Same length as Feito, so they compare. Grey on pace; warning when 15 points ahead of the work; danger once late."
+     "y": 309,
+     "label": "The key",
+     "text": "A dot of each colour: what green counts (3 de 5 etapas) and what red runs to (termina hoje), in danger ink once late."
     },
     {
      "id": "E",
      "x": 12,
-     "y": 262,
+     "y": 267,
      "label": "In words",
-     "text": "'no ritmo' or 'atrás do ritmo' (warning) closes the subtitle, so colour is not the only signal."
+     "text": "'no ritmo' or 'atrás do ritmo' (warning) still closes the subtitle, so colour is not the only signal."
     },
     {
      "id": "F",
      "x": 12,
-     "y": 647,
+     "y": 622,
      "label": "The example",
-     "text": "Júlia: 5 of 10 done, about half of her time gone: bars end together, on pace."
+     "text": "Júlia: 5 of 10 tasks done, a little over half her time gone. Only a hair of red shows: on pace."
     }
    ]
   }

@@ -32,7 +32,9 @@ TimelineEvent _task(
   String? artifact,
   String? routine,
   bool started = false,
+  String notes = '',
 }) => TimelineEvent(
+  notes: notes,
   id: id,
   title: title,
   section: section,
@@ -141,13 +143,30 @@ final TimelineEvent _julia2 = _task(
   _at(8, 50, 1),
   60,
   artifact: _julia,
+  notes:
+      'Nasceu em 12/03/1994, às 06:40, em Campinas. Quer olhar carreira '
+      'e a mudança para Lisboa no ano que vem.',
 );
-final TimelineEvent _julia3 = _task(
-  'j3',
-  'Escrever a leitura',
+final TimelineEvent _site1 = _task(
+  's1',
+  'Trocar as fotos da home',
   _at(9, 55, 1),
-  55,
-  artifact: _julia,
+  15,
+  artifact: 'Revisar o site',
+);
+final TimelineEvent _site2 = _task(
+  's2',
+  'Ajustar os textos',
+  _at(10, 15, 1),
+  15,
+  artifact: 'Revisar o site',
+);
+final TimelineEvent _site3 = _task(
+  's3',
+  'Publicar',
+  _at(10, 35, 1),
+  15,
+  artifact: 'Revisar o site',
 );
 final TimelineEvent _accountant = _task(
   'l4',
@@ -328,9 +347,11 @@ class _Heading extends StatelessWidget {
   }
 }
 
-/// The running delivery, the same in both modes.
-Widget _now() => DeliveryTile(
+/// The running delivery: its next task in Lista, every line on the
+/// calendar.
+Widget _now({bool timeline = false}) => DeliveryTile(
   title: _renata,
+  timeline: timeline,
   done: [_renataDone],
   tasks: [_renataNow, _renataNext],
   onPauseToggled: () {},
@@ -397,10 +418,16 @@ class _ListAfterHours extends StatelessWidget {
         _Heading(l10n.sectionNow, first: true),
         const DayOverTile(workDay: WorkDay.standard, over: true),
         _Heading(l10n.sectionTomorrow),
-        _gap(DeliveryTile(title: _julia, tasks: [_julia2, _julia3])),
+        _gap(DeliveryTile(title: _julia, tasks: [_julia2])),
+        _gap(
+          DeliveryTile(
+            title: 'Revisar o site',
+            tasks: [_site1, _site2, _site3],
+          ),
+        ),
         _gap(EventTile(card: _accountant)),
         _gap(DeliveryTile(title: _post, tasks: [_post2, _post3])),
-        const _Ahead(count: 4),
+        const _Ahead(count: 5),
         _Heading(l10n.stageLater),
         _gap(DeliveryTile(title: _curso, tasks: _backlogCourse)),
         _gap(EventTile(card: _filter)),
@@ -519,7 +546,7 @@ class _Calendar extends StatelessWidget {
     return _Scroll(
       children: [
         _Heading(l10n.sectionNow, first: true),
-        _now(),
+        _now(timeline: true),
         _Heading(l10n.sectionToday),
         _scaled(_reply),
         _Free(from: _at(11, 35), to: _at(12)),
@@ -543,7 +570,8 @@ class _CalendarTomorrow extends StatelessWidget {
         _Heading(l10n.sectionTomorrow, first: true),
         _run('Café da manhã', [_coffee, _meditate, _dishes], routine: true),
         _Free(from: _at(8, 20, 1), to: _at(8, 45, 1)),
-        _run(_julia, [_julia2, _julia3]),
+        _run(_julia, [_julia2]),
+        _run('Revisar o site', [_site1, _site2, _site3]),
         _scaled(_accountant),
         _Free(from: _at(11, 10, 1), to: _at(12, 0, 1)),
       ],

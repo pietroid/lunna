@@ -1295,8 +1295,6 @@
   "artifactsDueWeek": "Nos próximos 7 dias",
   "artifactsDueLater": "Mais adiante",
   "artifactsDueNone": "Sem prazo",
-  "artifactPaceDone": "Feito",
-  "artifactPaceTime": "Prazo",
   "artifactPaceOn": "no ritmo",
   "artifactPaceBehind": "atrás do ritmo"
 }

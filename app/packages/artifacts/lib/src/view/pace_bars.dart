@@ -25,17 +25,20 @@ bool isBehind(Artifact artifact, DateTime now) {
 }
 
 /// {@template pace_bars}
-/// Two bars of the same length, one over the other: the work done and the
-/// time gone, from the day it was written down to the end of its deadline.
+/// One bar holding two: the time gone, from the day the delivery was
+/// written down to the end of its deadline, in red ([AppColors.paceTime]),
+/// and over it the work done, in green ([AppColors.paceDone]).
 ///
 /// Neither is hours. The work is the share of its tasks done and the time
-/// the share of its days gone, so the two are read against each other: a
-/// delivery half done with half its time gone is on pace and the bars end
-/// together; ten tasks, one done and a day left, and the time bar runs far
-/// past the work. The time bar turns the warning colour when it is ahead
-/// by more than [paceSlack], and the danger colour once the day has passed.
+/// the share of its days gone, so the two are read against each other by
+/// which one shows: green covering the red is work ahead of the clock, and
+/// red showing past the green is work lagging behind it, by as much as
+/// shows. A delivery half done with half its time gone is all green.
 ///
-/// With no deadline there is only the work.
+/// Under it, a key in the same two colours: what the green counts (tasks
+/// done) and what the red is running to (when it ends), the latter in the
+/// danger ink once the day has passed. With no deadline there is only the
+/// green.
 /// {@endtemplate}
 class PaceBars extends StatelessWidget {
   /// {@macro pace_bars}
@@ -53,87 +56,92 @@ class PaceBars extends StatelessWidget {
     final a = artifact;
     final time = a.progressAt(now);
     final remaining = remainingLabel(l10n, a, now);
-    final timeColor = isOverdue(a, now)
-        ? AppColors.dangerInk
-        : isBehind(a, now)
-        ? AppColors.warning
-        : AppColors.ink3;
+    final work = workDone(a);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Bar(
-          label: l10n.artifactPaceDone,
-          value: workDone(a),
-          color: AppColors.accent,
-          trailing: a.steps > 0
-              ? l10n.artifactSteps(a.stepsDone, a.steps)
-              : '${(workDone(a) * 100).round()}%',
-          trailingColor: AppColors.ink2,
-        ),
-        if (time != null && remaining != null) ...[
-          const SizedBox(height: AppSpacing.s1),
-          _Bar(
-            label: l10n.artifactPaceTime,
-            value: time,
-            color: timeColor,
-            trailing: remaining,
-            trailingColor: timeColor == AppColors.ink3
-                ? AppColors.ink2
-                : timeColor,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+          child: SizedBox(
+            height: 6,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const ColoredBox(color: AppColors.line),
+                if (time != null) _Fill(value: time, color: AppColors.paceTime),
+                _Fill(value: work, color: AppColors.paceDone),
+              ],
+            ),
           ),
-        ],
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        Row(
+          children: [
+            _Key(
+              color: AppColors.paceDone,
+              text: a.steps > 0
+                  ? l10n.artifactSteps(a.stepsDone, a.steps)
+                  : '${(work * 100).round()}%',
+            ),
+            const Spacer(),
+            if (time != null && remaining != null)
+              _Key(
+                color: AppColors.paceTime,
+                text: remaining,
+                ink: isOverdue(a, now) ? AppColors.dangerInk : null,
+              ),
+          ],
+        ),
       ],
     );
   }
 }
 
-/// One of the two: its name, the bar, and what it counts.
-class _Bar extends StatelessWidget {
-  const _Bar({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.trailing,
-    required this.trailingColor,
-  });
+/// One of the two, from the bar's start to [value] of its length.
+class _Fill extends StatelessWidget {
+  const _Fill({required this.value, required this.color});
 
-  final String label;
   final double value;
   final Color color;
-  final String trailing;
-  final Color trailingColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      alignment: Alignment.centerLeft,
+      widthFactor: value.clamp(0, 1),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+        ),
+      ),
+    );
+  }
+}
+
+/// A dot in a bar's colour and what that bar counts.
+class _Key extends StatelessWidget {
+  const _Key({required this.color, required this.text, this.ink});
+
+  final Color color;
+  final String text;
+  final Color? ink;
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          width: 44,
-          child: Text(label, style: AppTypography.caption),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
-            child: LinearProgressIndicator(
-              value: value.clamp(0, 1),
-              minHeight: 4,
-              backgroundColor: AppColors.line,
-              color: color,
-            ),
-          ),
-        ),
-        // A fixed width, so both bars end in the same place and can be
-        // read against each other.
-        SizedBox(
-          width: 104,
-          child: Text(
-            trailing,
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.caption.copyWith(color: trailingColor),
-          ),
+        const SizedBox(width: AppSpacing.s1 + 2),
+        Text(
+          text,
+          style: AppTypography.caption.copyWith(color: ink ?? AppColors.ink2),
         ),
       ],
     );

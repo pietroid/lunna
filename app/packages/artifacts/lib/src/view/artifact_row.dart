@@ -6,8 +6,8 @@ import 'package:l10n/l10n.dart';
 
 /// {@template artifact_row}
 /// One delivery in the queue: its name and what it is worth, then its kind,
-/// its time and whether it is on pace, and its two bars, the work done and
-/// the time gone ([PaceBars]).
+/// its time and whether it is on pace, and its pace bar, the work done in
+/// green over the time gone in red ([PaceBars]).
 ///
 /// The same borderless fill as an artifact's row was, so the list reads as
 /// the app's other lists do.
