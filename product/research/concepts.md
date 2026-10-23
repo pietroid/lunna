@@ -10,7 +10,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-ui](./2026-10-17-agent-ui/README.md) ·
 [posthog](./2026-10-21-posthog/README.md) ·
 [agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
-[multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md)
+[multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md) ·
+[cycle-on-the-calendar](./2026-10-23-cycle-on-the-calendar/README.md)
 
 ## Tools: what the model is given
 
@@ -195,7 +196,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** PostHog, [Mobile session replay](https://posthog.com/docs/session-replay/mobile) and [Canvas recording](https://posthog.com/docs/session-replay/canvas-recording).
 - **Here:** `maskAllTexts` and `maskAllImages` stay on; titles and notes never leave the phone.
-- **Met in:** posthog, idea 3.
+- **Met in:** posthog, idea 3; cycle-on-the-calendar (a heading's phase tag is text, so a replay never shows it).
 
 ### Heatmaps need a DOM
 > A heatmap needs a page of elements; Flutter paints one canvas.
@@ -203,3 +204,26 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** PostHog, [Heatmaps](https://posthog.com/docs/toolbar/heatmaps): the clickmap counts DOM elements.
 - **Here:** coordinate heatmaps on the web build only; replay taps on the phones.
 - **Met in:** posthog, idea 4.
+
+## Data and forecasts
+
+### The platform shares the records, not its conclusions
+> A health store hands over what was logged; its predictions stay inside.
+
+- **Read:** Apple, [HKCategoryTypeIdentifier](https://developer.apple.com/documentation/healthkit/hkcategorytypeidentifier) (14 cycle types, no prediction) and the [Cycle Tracking IFU](https://www.apple.com/legal/ifu/cycle-tracking/4-0/ct-ifu-4-0-en_GB.pdf) (Apple's own forecast uses heart rate and wrist temperature, ±3 days).
+- **Here:** Lunna reads `menstrualFlow` and forecasts the phases itself; a read refusal looks like no data, so the empty state names both causes.
+- **Met in:** cycle-on-the-calendar, idea 1.
+
+### The luteal phase is the steady half
+> Count ovulation back from the next period, not forward from the last.
+
+- **Read:** Bull et al., [Real-world menstrual cycle characteristics](https://pmc.ncbi.nlm.nih.gov/articles/PMC6710244/) (npj Digital Medicine 2019): luteal 12.4 days (7–17), follicular 16.9 (10–30); 13% of cycles are 28 days.
+- **Here:** ovulation = predicted next start − 13 (Apple's rule); the next start = last start + the median of six cycles.
+- **Met in:** cycle-on-the-calendar, idea 2.
+
+### A forecast's error grows with every cycle it skips
+> Draw what the forecast knows; past one cycle it is close to a guess.
+
+- **Read:** Li, Gibson & Jukic, [Apple Women's Health Study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10226714/) (2023): within-person variability 4–6 days; the RFC's [simulation](./2026-10-23-cycle-on-the-calendar/code/forecast.mjs).
+- **Here:** 53% of days tagged right in the first month, 33% in months 3–4, against 28% for a blind guess; draw the next cycle, the period after as a range, nothing past it.
+- **Met in:** cycle-on-the-calendar, idea 3.
