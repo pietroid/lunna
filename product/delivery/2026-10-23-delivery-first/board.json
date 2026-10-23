@@ -1,0 +1,179 @@
+{
+ "screens": [
+  {
+   "png": "img/mockup-1.png",
+   "title": "1 · Lista: the delivery leads",
+   "why": "The delivery is the title, its tasks are lines under it; Agora, Ainda hoje, and the list stops at the day.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 233,
+     "label": "Delivery as title",
+     "text": "Consecutive tasks of one delivery are one card: its name in bodyStrong with the stack icon, the run's hours on the right. No more AppTag per task."
+    },
+    {
+     "id": "B",
+     "x": 12,
+     "y": 290,
+     "label": "Task lines",
+     "text": "Each task a quiet line: ✓ struck when done today, accent dot while running, ring while waiting; its hour (or length when done) on the right."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 380,
+     "label": "One bar, in pieces",
+     "text": "Agora ends in one bar made of one piece per task, as long as its minutes, 3 px apart: done full, running as far as it got, the rest empty. Controls act on the running task."
+    },
+    {
+     "id": "D",
+     "x": 135,
+     "y": 431,
+     "label": "Ainda hoje",
+     "text": "Fazer em breve becomes Ainda hoje: only today's hours. Same words as the calendar's headings."
+    },
+    {
+     "id": "E",
+     "x": 12,
+     "y": 475,
+     "label": "Loose tasks stay",
+     "text": "A task with no delivery keeps its own card, as today."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-2.png",
+   "title": "2 · Lista after the day: Amanhã",
+   "why": "Once the working day is over, the list shows tomorrow; everything further is one line away.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 259,
+     "label": "Agora, day over",
+     "text": "Agora is always the first stage; outside the working day it is DayOverTile, as on the calendar."
+    },
+    {
+     "id": "B",
+     "x": 118,
+     "y": 345,
+     "label": "Amanhã",
+     "text": "With the day over (or nothing left in it), the stage is Amanhã: tomorrow's hours only."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 672,
+     "label": "The list stops",
+     "text": "Tasks queued past that day are not drawn: 'Mais 4 tarefas adiante' and 'Ver no calendário', which switches mode."
+    },
+    {
+     "id": "D",
+     "x": 12,
+     "y": 729,
+     "label": "Para depois",
+     "text": "Depois eu priorizo is renamed Para depois. Backlog tasks of one delivery group too, headed with '2 tarefas · 2h30'."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-3.png",
+   "title": "3 · Calendário: same card, to scale",
+   "why": "Agora stays on top of everything; below it a delivery's run is one block as tall as its time.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 230,
+     "label": "Agora on top",
+     "text": "The same Agora card as Lista: one surface, identical in both modes."
+    },
+    {
+     "id": "B",
+     "x": 12,
+     "y": 680,
+     "label": "Run as one block",
+     "text": "Escrever, Gravar, Editar: one block 13:00–15:00. Its lines share the height by their minutes, so a long task reads long."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 524,
+     "label": "Unchanged",
+     "text": "Free stretches, routines and fixed blocks are drawn as today."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-4.png",
+   "title": "4 · A routine with a list",
+   "why": "A routine's day can be a block with a checklist, drawn by the same card.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 230,
+     "label": "Café da manhã",
+     "text": "A routine with items is the same card in the routine's fill, with the repeat mark. Needs a routine checklist in the model: second phase (see open questions)."
+    },
+    {
+     "id": "B",
+     "x": 12,
+     "y": 453,
+     "label": "Lines by length",
+     "text": "Interpretar (60 min) and Escrever (55) split the block's height."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-5.png",
+   "title": "5 · Entregas by when they end",
+   "why": "No goals; deliveries headed by due day, each with two bars that should end together.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 12,
+     "y": 172,
+     "label": "Metas hidden",
+     "text": "ArtifactsPage(showGoals: false) by default: the goal cards and Nova meta are not drawn. Routes, model and agent verbs untouched."
+    },
+    {
+     "id": "B",
+     "x": 75,
+     "y": 201,
+     "label": "Due headings",
+     "text": "Hoje (today or late), Amanhã, Nos próximos 7 dias, Mais adiante, Sem prazo. Sorted by deadline; the queue's order breaks ties. The drag to reorder goes away."
+    },
+    {
+     "id": "C",
+     "x": 12,
+     "y": 290,
+     "label": "Feito",
+     "text": "Share of tasks done (or minutes, with no tasks), accent."
+    },
+    {
+     "id": "D",
+     "x": 380,
+     "y": 322,
+     "label": "Prazo",
+     "text": "Share of the time from created to the end of the deadline day. Same length as Feito, so they compare. Grey on pace; warning when 15 points ahead of the work; danger once late."
+    },
+    {
+     "id": "E",
+     "x": 12,
+     "y": 262,
+     "label": "In words",
+     "text": "'no ritmo' or 'atrás do ritmo' (warning) closes the subtitle, so colour is not the only signal."
+    },
+    {
+     "id": "F",
+     "x": 12,
+     "y": 647,
+     "label": "The example",
+     "text": "Júlia: 5 of 10 done, about half of her time gone: bars end together, on pace."
+    }
+   ]
+  }
+ ]
+}

@@ -1627,4 +1627,59 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get goalReadbackFutureWeek => 'Fica guardada e passa a valer na segunda-feira.';
+
+  @override
+  String get stageLater => 'Para depois';
+
+  @override
+  String stageAhead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mais $count tarefas adiante',
+      one: 'Mais 1 tarefa adiante',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stageAheadOpen => 'Ver no calendário';
+
+  @override
+  String deliveryTasks(int count, String time) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarefas',
+      one: '1 tarefa',
+    );
+    return '$_temp0 · $time';
+  }
+
+  @override
+  String get artifactsDueToday => 'Hoje';
+
+  @override
+  String get artifactsDueTomorrow => 'Amanhã';
+
+  @override
+  String get artifactsDueWeek => 'Nos próximos 7 dias';
+
+  @override
+  String get artifactsDueLater => 'Mais adiante';
+
+  @override
+  String get artifactsDueNone => 'Sem prazo';
+
+  @override
+  String get artifactPaceDone => 'Feito';
+
+  @override
+  String get artifactPaceTime => 'Prazo';
+
+  @override
+  String get artifactPaceOn => 'no ritmo';
+
+  @override
+  String get artifactPaceBehind => 'atrás do ritmo';
 }

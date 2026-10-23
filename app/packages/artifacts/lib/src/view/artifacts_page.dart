@@ -17,7 +17,7 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template artifacts_page}
-/// The Entregas tab: the goals on top, the queue of deliveries under them.
+/// The Entregas tab: the deliveries, by the day each is due.
 ///
 /// The three forces on one screen. The goals say what the month asks for;
 /// the line under them says what the agenda can give, the time the queue
@@ -32,8 +32,14 @@ class ArtifactsPage extends StatefulWidget {
   const ArtifactsPage({
     this.shown = 5,
     this.initialShelf = const Shelf(),
+    this.showGoals = false,
     super.key,
   });
+
+  /// Whether the goals are drawn. Off for now: the deliveries and their
+  /// days say enough, and the goals' cards pushed them below the fold.
+  /// Everything behind them (routes, the agent's verbs) still works.
+  final bool showGoals;
 
   /// How many of the queue are drawn before "Ver todas".
   final int shown;
@@ -48,8 +54,6 @@ class ArtifactsPage extends StatefulWidget {
 class _ArtifactsPageState extends State<ArtifactsPage> {
   /// What the queue is kept to.
   late Shelf _shelf = widget.initialShelf;
-
-  bool get _unfiltered => _shelf.category == null && _shelf.type == null;
 
   Future<void> _deleteGoal(Goal goal) async {
     final cubit = context.read<ArtifactsCubit>();
@@ -80,10 +84,9 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
   Widget _build(BuildContext context, ArtifactsData data) {
     final l10n = context.l10n;
     final now = clock.now();
-    final cubit = context.read<ArtifactsCubit>();
     final all = data.queue;
     final queue = all.where(_shelf.keeps).toList();
-    final shown = queue.take(widget.shown).toList();
+    final shown = byDue(queue, now).take(widget.shown).toList();
     final left = all.fold(
       0,
       (sum, a) => sum + (a.minutes - a.doneMinutes).clamp(0, a.minutes),
@@ -128,38 +131,41 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.s4),
-                    _Heading(
-                      title: l10n.goalsSection,
-                      trailing: AppPillButton(
-                        iconData: AppIcons.plus,
-                        label: l10n.goalNew,
-                        onPressed: () => unawaited(showGoalSheet(context)),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s3),
-                    if (data.goals.isEmpty)
-                      _Quiet(text: l10n.goalsEmpty)
-                    else
-                      SizedBox(
-                        height: 140,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          clipBehavior: Clip.none,
-                          itemCount: data.goals.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(width: AppSpacing.s2),
-                          itemBuilder: (context, index) {
-                            final goal = data.goals[index];
-                            return SizedBox(
-                              width: 300,
-                              child: GestureDetector(
-                                onLongPress: () => unawaited(_deleteGoal(goal)),
-                                child: GoalCard(goal: goal, now: now),
-                              ),
-                            );
-                          },
+                    if (widget.showGoals) ...[
+                      _Heading(
+                        title: l10n.goalsSection,
+                        trailing: AppPillButton(
+                          iconData: AppIcons.plus,
+                          label: l10n.goalNew,
+                          onPressed: () => unawaited(showGoalSheet(context)),
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.s3),
+                      if (data.goals.isEmpty)
+                        _Quiet(text: l10n.goalsEmpty)
+                      else
+                        SizedBox(
+                          height: 140,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            clipBehavior: Clip.none,
+                            itemCount: data.goals.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: AppSpacing.s2),
+                            itemBuilder: (context, index) {
+                              final goal = data.goals[index];
+                              return SizedBox(
+                                width: 300,
+                                child: GestureDetector(
+                                  onLongPress: () =>
+                                      unawaited(_deleteGoal(goal)),
+                                  child: GoalCard(goal: goal, now: now),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
                     const SizedBox(height: AppSpacing.s3),
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -218,38 +224,49 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                   ],
                 ),
               ),
-              SliverPadding(
-                padding: side,
-                // Held, a row moves to another place in the queue. Only the
-                // whole queue is dragged: a place among a shelf's says
-                // nothing about where it falls among the rest.
-                sliver: SliverReorderableList(
-                  itemCount: shown.length,
-                  onReorderItem: (from, to) =>
-                      unawaited(cubit.move(shown[from].id, to)),
-                  itemBuilder: (context, index) {
-                    final artifact = shown[index];
-                    final row = Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.s2),
-                      child: ArtifactRow(
-                        artifact: artifact,
-                        now: now,
-                        onTap: () =>
-                            unawaited(openArtifact(context, artifact.id)),
+              // The queue by the day each is due, the soonest on top: what
+              // has to be delivered today leads, whatever was dragged first.
+              for (final (due, rows) in dueGroups(shown, now)) ...[
+                SliverPadding(
+                  padding: side.copyWith(
+                    top: AppSpacing.s4,
+                    bottom: AppSpacing.s2,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: AppSpacing.s1),
+                      child: Text(
+                        dueLabel(l10n, due),
+                        style: AppTypography.labelStrong.copyWith(
+                          color: due == Due.today
+                              ? AppColors.ink
+                              : AppColors.ink2,
+                        ),
                       ),
-                    );
-                    return KeyedSubtree(
-                      key: ValueKey(artifact.id),
-                      child: _unfiltered
-                          ? ReorderableDelayedDragStartListener(
-                              index: index,
-                              child: row,
-                            )
-                          : row,
-                    );
-                  },
+                    ),
+                  ),
                 ),
-              ),
+                SliverPadding(
+                  padding: side,
+                  sliver: SliverList.list(
+                    children: [
+                      for (final artifact in rows)
+                        Padding(
+                          key: ValueKey(artifact.id),
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.s2,
+                          ),
+                          child: ArtifactRow(
+                            artifact: artifact,
+                            now: now,
+                            onTap: () =>
+                                unawaited(openArtifact(context, artifact.id)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               SliverPadding(
                 // Room for the bar and the + floating over the list.
                 padding: side.copyWith(bottom: AppSpacing.s16 * 2),
@@ -317,3 +334,61 @@ class _Quiet extends StatelessWidget {
     );
   }
 }
+
+/// When a delivery is due, as Entregas heads it.
+enum Due {
+  /// Today, or already past.
+  today,
+
+  /// Tomorrow.
+  tomorrow,
+
+  /// Within the next seven days.
+  week,
+
+  /// Later than that.
+  later,
+
+  /// No deadline.
+  none,
+}
+
+/// Which heading [artifact] goes under, seen from [now].
+Due dueOf(Artifact artifact, DateTime now) {
+  final days = artifact.daysLeftAt(now);
+  return switch (days) {
+    null => Due.none,
+    <= 0 => Due.today,
+    1 => Due.tomorrow,
+    <= 7 => Due.week,
+    _ => Due.later,
+  };
+}
+
+/// [queue] by deadline, the soonest first and those with none last; the
+/// queue's own order breaks ties.
+List<Artifact> byDue(List<Artifact> queue, DateTime now) {
+  final order = {for (final (i, a) in queue.indexed) a.id: i};
+  int key(Artifact a) => a.daysLeftAt(now) ?? 1 << 30;
+  return [...queue]..sort((a, b) {
+    final byDay = key(a).compareTo(key(b));
+    return byDay != 0 ? byDay : order[a.id]!.compareTo(order[b.id]!);
+  });
+}
+
+/// [sorted] cut under its headings, in order, leaving out the empty ones.
+List<(Due, List<Artifact>)> dueGroups(List<Artifact> sorted, DateTime now) => [
+  for (final due in Due.values)
+    if (sorted.where((a) => dueOf(a, now) == due).toList() case final rows
+        when rows.isNotEmpty)
+      (due, rows),
+];
+
+/// The heading's words.
+String dueLabel(AppLocalizations l10n, Due due) => switch (due) {
+  Due.today => l10n.artifactsDueToday,
+  Due.tomorrow => l10n.artifactsDueTomorrow,
+  Due.week => l10n.artifactsDueWeek,
+  Due.later => l10n.artifactsDueLater,
+  Due.none => l10n.artifactsDueNone,
+};

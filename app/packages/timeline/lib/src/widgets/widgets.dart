@@ -1,5 +1,6 @@
 export 'confirm_sheet.dart';
 export 'day_over_tile.dart';
+export 'delivery_tile.dart';
 export 'drag_hint.dart';
 export 'event_tile.dart';
 export 'format.dart';

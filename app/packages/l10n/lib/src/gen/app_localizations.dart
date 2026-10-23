@@ -2596,6 +2596,84 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Fica guardada e passa a valer na segunda-feira.'**
   String get goalReadbackFutureWeek;
+
+  /// No description provided for @stageLater.
+  ///
+  /// In pt, this message translates to:
+  /// **'Para depois'**
+  String get stageLater;
+
+  /// No description provided for @stageAhead.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{Mais 1 tarefa adiante} other{Mais {count} tarefas adiante}}'**
+  String stageAhead(int count);
+
+  /// No description provided for @stageAheadOpen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver no calendário'**
+  String get stageAheadOpen;
+
+  /// No description provided for @deliveryTasks.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}'**
+  String deliveryTasks(int count, String time);
+
+  /// No description provided for @artifactsDueToday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Hoje'**
+  String get artifactsDueToday;
+
+  /// No description provided for @artifactsDueTomorrow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Amanhã'**
+  String get artifactsDueTomorrow;
+
+  /// No description provided for @artifactsDueWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nos próximos 7 dias'**
+  String get artifactsDueWeek;
+
+  /// No description provided for @artifactsDueLater.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mais adiante'**
+  String get artifactsDueLater;
+
+  /// No description provided for @artifactsDueNone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sem prazo'**
+  String get artifactsDueNone;
+
+  /// No description provided for @artifactPaceDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feito'**
+  String get artifactPaceDone;
+
+  /// No description provided for @artifactPaceTime.
+  ///
+  /// In pt, this message translates to:
+  /// **'Prazo'**
+  String get artifactPaceTime;
+
+  /// No description provided for @artifactPaceOn.
+  ///
+  /// In pt, this message translates to:
+  /// **'no ritmo'**
+  String get artifactPaceOn;
+
+  /// No description provided for @artifactPaceBehind.
+  ///
+  /// In pt, this message translates to:
+  /// **'atrás do ritmo'**
+  String get artifactPaceBehind;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

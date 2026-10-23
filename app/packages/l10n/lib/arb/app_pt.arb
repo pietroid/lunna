@@ -1268,5 +1268,35 @@
       }
     }
   },
-  "goalReadbackFutureWeek": "Fica guardada e passa a valer na segunda-feira."
+  "goalReadbackFutureWeek": "Fica guardada e passa a valer na segunda-feira.",
+  "stageLater": "Para depois",
+  "stageAhead": "{count, plural, =1{Mais 1 tarefa adiante} other{Mais {count} tarefas adiante}}",
+  "@stageAhead": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stageAheadOpen": "Ver no calendário",
+  "deliveryTasks": "{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}",
+  "@deliveryTasks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactsDueToday": "Hoje",
+  "artifactsDueTomorrow": "Amanhã",
+  "artifactsDueWeek": "Nos próximos 7 dias",
+  "artifactsDueLater": "Mais adiante",
+  "artifactsDueNone": "Sem prazo",
+  "artifactPaceDone": "Feito",
+  "artifactPaceTime": "Prazo",
+  "artifactPaceOn": "no ritmo",
+  "artifactPaceBehind": "atrás do ritmo"
 }
