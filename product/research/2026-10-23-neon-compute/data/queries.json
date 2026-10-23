@@ -1,0 +1,43 @@
+{
+  "note": "statements sent to Postgres; session lookup (Better Auth) not included",
+  "ticker": {
+    "ticks": 1440,
+    "ticksThatQueried": 1440,
+    "statementsPerDay": 5761,
+    "perTickMin": 4,
+    "perTickMax": 5,
+    "longestQuietMinutes": 0,
+    "perHour": [
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      241,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240,
+      240
+    ]
+  },
+  "timelineRead": {
+    "first": 11,
+    "afterIdleDay": 10,
+    "oneMinuteLater": 9,
+    "fiveSecondsLater": 3
+  }
+}
