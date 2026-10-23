@@ -1,27 +1,28 @@
 # The cycle can sit on Calendário's day headings, 30 days ahead
 
-2026-10-23 · RFC · revised after review on issue #32 · phone reads Health, server keeps and forecasts, every brand and the web draw it
+2026-10-23 · RFC · revised after the second review on issue #32 · a typed start, forecast on the server, drawn on every brand and the web
 
-## Read periods from Health, forecast on the server, tag each day
+## Type the period's start in Lunna; the server tags 30 days
 
 > [!IMPORTANT]
-> HealthKit hands an app the days someone logged, never Apple's forecast.
-> So the phone reads the logged periods and sends them to the server,
-> which works out all four phases for the next 30 days; Calendário's day
-> headings show them on the phone and on the web, and mark weekends.
-> **Flo on iPhone reads from Health but does not write periods to it**,
-> so the periods must be logged in Health.
+> For 30 days ahead, the forecast rests on one date: when the current
+> period began. A start typed into Lunna, plus a cycle length typed once,
+> tags those days about as well as six cycles synced from Health (52–56%
+> right against 53%, for a typical person). So Lunna asks for that date and
+> skips HealthKit, App Review's health rules and the phone-only sync.
+> Apple Health can come later and fill the same table.
 
 ```mermaid
 flowchart TD
-  H["Apple Health / Health Connect: logged period days"] --> P["Phone reads them, sends them"]
-  P --> S["Server: cycle_day rows + CycleForecast"]:::key
+  T["Phone or web: 'Começou hoje', or a date"] --> S["Server: cycle_start rows + CycleForecast"]:::key
+  L["Typed once: 'about 29 days'"] --> S
   S --> C["Calendário headings, phone and web: phase + weekend"]
+  H["Later: Apple Health / Health Connect"] -.-> S
 ```
 
-- **Do:** read `menstrualFlow`, store the logged days, forecast on the server, tag 30 days of headings, mark weekends.
-- **Not needed:** Apple's predictions (no app can read them), the agent seeing the cycle.
-- **You decide:** whether the three phases besides the period get colours of their own.
+- **Do:** a "Ciclo" screen in Menu (last start, usual length), a "Começou hoje" tap, the server forecast, 30 days of tagged headings, weekends marked.
+- **Not needed now:** HealthKit, Health Connect, a native package, Apple's predictions, the agent seeing the cycle.
+- **You decide:** typed first with Health later *(recommended)*, or Health only, as revised before; and whether the three phases besides the period get colours.
 
 ## Today a day heading is one line of text
 
@@ -47,73 +48,76 @@ String _label(_Heading heading, DateTime now) {
 - No health code anywhere: no plugin, no entitlements, no `Info.plist` key.
   Weekends look like every other day.
 
-## Flo on iPhone reads from Health but does not write periods
+## Flo keeps periods to itself; Clue and Natural Cycles share them
 
 | App | Writes periods to Apple Health? | Source |
 |---|---|---|
-| Apple Health's Cycle Tracking | yes, it *is* the store | Apple IFU 4.0 |
-| Clue | yes, periods and flow, only those logged after you allow it | Clue help (snippet) |
-| Flo, iPhone | **no** since early 2024: it imports from Health, "logged Menstruation data in Flo will not be sent to the Health app" | Flo help, updated 2025-02-20; Flo support, 2024 |
-| Flo, Android | yes, to Health Connect (a vendor says so) | Sahha integration page |
+| Apple Health's Cycle Tracking | yes, it *is* the store; free, also on the Watch | Apple IFU 4.0 |
+| Clue | yes, periods and flow, only those logged after you allow it | Clue help |
+| Natural Cycles | yes, iOS only: period, flow, spotting, mucus, LH tests, export or import | Natural Cycles help |
+| Flo, iPhone | **no** since early 2024: "logged Menstruation data in Flo will not be sent to the Health app" | Flo help, 2025; Flo support, 2024 |
 
 > **Q:** https://help.flo.health/hc/en-us/articles/34890229122068-How-to-import-data-from-the-Health-app-to-Flo-iOS this link says otherwise
 >
 > **A:** That page is the one quoted here, and its title is the other
-> direction: *import from the Health app to Flo*. Turning sync on lets Flo
-> read what is in Health, and the same page says "Data points with access
-> permission will not be transferred from Flo to the Health app. For
-> example, logged Menstruation data in Flo will not be sent to the Health
-> app." Flo used to write; in March 2024 its support told users on Apple's
-> forum that "the feature to sync your Flo data with Apple Health is no
-> longer available" ([thread](https://discussions.apple.com/thread/255504055)).
-> The rule: log periods in Health and Flo still shows them, since it reads
-> from there; log them only in Flo and no other app sees them.
+> direction: *import from the Health app to Flo*. Flo reads what is in
+> Health, and the same page says "logged Menstruation data in Flo will not
+> be sent to the Health app." In March 2024 Flo's support said "the feature
+> to sync your Flo data with Apple Health is no longer available"
+> ([thread](https://discussions.apple.com/thread/255504055)).
 
-- HealthKit won't say why a read comes back empty: an app "cannot determine whether or not
-  a user has granted permission to read data"; a refusal "simply appears
-  as if there is no data" (Apple docs). So the empty state names both causes.
-- Cheapest check: Health → Browse → Cycle Tracking → Data Sources.
-- The quotes are in [data/sources.md](./data/sources.md).
+> **Q:** Ok, is there any other alternative to Flo? Or maybe we can provide
+> a manual input as it is just for the next cycle only
+>
+> **A:** Yes to both. Clue and Natural Cycles write periods to Health, and
+> so does logging in Health itself (Flo then still shows them, since it
+> reads from there). But you are right that 30 days need little: one date
+> and a length. Typed into Lunna they tag the month about as well as a
+> Health sync does ([next slide](#a-typed-start-forecasts-30-days-as-well-as-health)),
+> so the RFC now recommends typing first and Health later.
 
-## HealthKit gives the logged days, never Apple's forecast
+- Moving apps only to feed Lunna costs the person more than one tap a month.
 
-| HealthKit type | What it holds | We use it |
-|---|---|---|
-| `menstrualFlow` | each bleeding day; `HKMetadataKeyMenstrualCycleStart` marks day 1 | **yes** |
-| `ovulationTestResult` | home LH tests | later, to pin ovulation |
-| `basalBodyTemperature`, wrist temperature | the rise after ovulation | no |
-| `pregnancy`, `contraceptive`, `lactation` | cycle factors that stop predictions | yes, to stay quiet |
-| prediction / fertile window | **no such type** | — |
+## A typed start forecasts 30 days as well as Health
 
-- 14 cycle types in Apple's list, none a prediction
-  ([code/healthkit-types.sh](./code/healthkit-types.sh) → [data](./data/healthkit-cycle-types.txt)).
-- The Flutter `health` plugin (13.3.2) reads `MENSTRUATION_FLOW` on iOS
-  and Android, with `flow` and `isStartOfCycle`.
+| σ | Health | typed | typed ±2 | 28 |
+|---|---|---|---|---|
+| 2 days | 69% | 71% | 63% | 58% |
+| 4, typical | **53%** | **56%** | **52%** | 50% |
+| 6 days | 43% | 46% | 44% | 42% |
+
+- Days tagged right over the next 30, by cycle spread σ. *Health*: the
+  median of six synced cycles; *typed*: the person's usual length; *±2*:
+  misremembered; *28*: nothing typed. Same simulation as below ([code/manual.mjs](./code/manual.mjs) → [data](./data/manual-vs-health.json)).
+  Every column knows when the current period began; only the length changes.
+- The next start is off by 3.5 days from Health, 3.2 from a well-known
+  length, 3.6 from a misremembered one. The length barely matters within
+  one cycle; the start is what carries the month.
+- Health adds only the start without a tap; a forgotten tap is a forgotten log.
 
 > [!TIP]
-> **"The platform shares the records, not its conclusions."** Apple
-> forecasts from flow plus heart rate and wrist temperature, within ±3
-> days in its own trial ([Cycle Tracking IFU](https://www.apple.com/legal/ifu/cycle-tracking/4-0/ct-ifu-4-0-en_GB.pdf)),
-> but exposes only the samples. *For us:* we sync the records and forecast
-> from them ourselves, more crudely than the Health app does.
+> **"In one cycle, the anchor is worth more than the history."** In 30
+> days, six cycles beat a length typed from memory by 1 point, and
+> lose to a well-known one by 3. *For us:* ask for the start, take the
+> length as said, and learn it from the starts once there are three.
 
-## One logged period becomes a month of tagged days
+## One typed start becomes a month of tagged days
 
 ![Calendário's headings, sketched: today and tomorrow tagged "Menstruação · dia 2/3", Saturday greyed with "fim de semana" and "Folicular", 6 Nov "Fértil · previsto" outlined, 20 Nov "Menstruação · prevista" outlined with "entre 17 e 23 de novembro"](img/sketch.png)
 
 - A sketch in Lunna's tokens ([code/sketch.mjs](./code/sketch.mjs)), not
-  the app. Today, 23 Oct, is day 2; the median cycle is 29 days.
+  the app. Today, 23 Oct, is day 2; the cycle is 29 days.
 - Next period 20 Nov, ovulation 13 days before (7 Nov), fertile 2–7 Nov,
   all inside the 30 days drawn (to 21 Nov).
-- **Logged** days are filled; **forecast** ones are outlined, and a
-  forecast period carries its ±3-day range.
+- Days counted from a **typed** start are filled; **forecast** ones are
+  outlined, and a forecast period carries its ±3-day range.
 - Every day has a phase tag; only the period is red.
 
 ## Count ovulation back from the next period, not forward
 
 | Phase | Days, from Bull 2019 | How the forecast finds it |
 |---|---|---|
-| Menstrual | the logged flow; 5 when forecast | logged samples, else 5 days from the start |
+| Menstrual | 5 days, or the length typed | from each start |
 | Follicular | mean 16.9, 95% from 10 to 30 | what is left before the fertile window |
 | Fertile | ovulation and the 5 days before it | ovulation − 5 … ovulation |
 | Luteal | mean 12.4, 95% from 7 to 17 | from ovulation to the next start |
@@ -122,7 +126,8 @@ String _label(_Heading heading, DateTime now) {
   the half before it carries most of the spread. Only 13% of cycles
   were 28 days.
 - So ovulation = next start − 13, Apple's own rule, and the next start =
-  last start + the median of the last six cycles.
+  last start + the typed length, or the median of the last six cycles
+  once three starts are known.
 
 > [!TIP]
 > **"The luteal phase is the steady half."** Mean 12.4 days (7–17) against
@@ -162,24 +167,21 @@ String _label(_Heading heading, DateTime now) {
   strong enough for general rules.
 - So the tag is information, not advice: no hour moves because of a phase,
   and no copy says what to do on a given day.
-- What would help is the person's own pattern, which notes or a later
-  agent could learn. That is out of scope.
 
-## The phone reads Health; the server keeps and forecasts
+## The person types a start anywhere; the server forecasts
 
 ```mermaid
 flowchart TD
-  K["HealthKit / Health Connect"] --> R["Phone: read 12 months of flow, on open and resume"]
-  R -->|"PUT /api/cycle, only when changed"| T["cycle_day: user, day, flow, start"]
-  T --> F["CycleForecast (server): day → phase, logged or forecast"]:::key
-  F -->|"GET /api/cycle?days=30"| A["App on phone and web: tags on Calendário's headings"]
+  M["Menu → Ciclo: last start, about N days"] -->|"PATCH /api/cycle"| T["cycle_start rows + cycle_length"]
+  D["'Começou hoje', on phone or web"] -->|"POST /api/cycle/starts"| T
+  T --> F["CycleForecast (server): day → phase, typed or forecast"]:::key
+  F -->|"GET /api/cycle?days=30"| A["Calendário's headings, phone and web"]
 ```
 
-- The phone sends the **logged days only**, the whole 12 months each time
-  (a few dozen rows); the server replaces that person's rows. One forecast,
-  in TypeScript, so phone and web never disagree.
-- Web has no Health, so it draws whatever the phone last sent. A person
-  who never syncs, or stops, sees no tags, or old ones.
+- A start is a date in the person's zone, typed on the phone **or the
+  browser**: the web no longer waits for a phone to sync.
+- "Começou hoje" sits on the Ciclo screen, and on today's tag while a
+  forecast period is in its ±3-day range ("Já começou?").
 - The rows belong to the user, not the brand, so Focus and Lunna show the same cycle.
 
 > **Q:** So, precisely for this reason, webs need to know. If we sync from
@@ -188,68 +190,67 @@ flowchart TD
 > to be done. Of course this data is only available if the user ever syncs
 > and keep it in sync on the phone.
 >
-> **A:** Agreed, and this slide is now that design. A period logged Monday
-> on the iPhone reaches the server the next time Lunna opens there, and the
-> browser draws it on its next read. The phone sends the logged days, not
-> 30 days of tags, so the server can forecast the moving window every day
-> without the phone; "Ciclo" in Menu says when the phone last sent.
+> **A:** Agreed, and typing makes it simpler still: the starts live on the
+> server from the first tap, whichever screen it was on, and the server
+> forecasts the moving window every day. A Health import, later, would
+> post its starts to the same table.
 
-## Syncing adds a route, a table and three rules
+## Typing adds a table, four routes and no native code
 
 | Piece | What it is |
 |---|---|
-| `cycle_day` | `user_id`, `day` (`YYYY-MM-DD`, the person's zone), `flow`, `start`; unique on (`user_id`, `day`) |
-| `PUT /api/cycle { days, syncedAt }` | replaces the person's rows; the phone sends it only when its hash of the days changed |
-| `GET /api/cycle?days=30` | `{ days: [{ day, phase, forecast, range? }], syncedAt }` |
-| `DELETE /api/cycle` | switching "Ciclo" off erases the rows |
+| `cycle_start` | `user_id`, `day` (`YYYY-MM-DD`, the person's zone), `source` (`typed`, later `health`); unique on (`user_id`, `day`) |
+| `user.cycle_length`, `user.period_length` | typed once; null means 28 and 5 |
+| `PATCH /api/cycle { on, length, periodLength }` · `POST /api/cycle/starts { day }` · `DELETE /api/cycle/starts/:day` | switch, lengths, a start and its undo |
+| `GET /api/cycle?days=30` | `{ days: [{ day, phase, forecast, range? }] }`; `DELETE /api/cycle` erases it all |
 
-- **Analytics:** `PUT /api/cycle` gets a row in `events.ts` (`cycle_synced`)
-  carrying nothing but its name, as every write does. Replays mask every text.
+- **Analytics:** the writes get rows in `events.ts` (`cycle_start_logged`,
+  `cycle_set`), carrying nothing but their names. Replays mask every text.
 - **The agent never reads it**: no tool, nothing on the board.
-- **Review:** guideline 5.1.3 allows a server with disclosure (no iCloud,
-  no ads, no data mining), so the privacy policy and the "Ciclo" screen say
-  the days are stored to show them on the web, and erased when switched off.
+- **Review:** no HealthKit, so guideline 5.1.3 and the HealthKit entitlement
+  don't apply; the privacy policy still says the dates are stored to draw
+  them, and erased when switched off.
 
 ## A heading gains a phase tag and a weekend mark, in tokens
 
 | Piece | How it is drawn | Where it lives |
 |---|---|---|
-| period day, logged | filled tag, `cycleFill` / `cycleInk` | new `AppColors` tokens: Lunna's red, Focus's own |
+| period day, from a typed start | filled tag, `cycleFill` / `cycleInk` | new `AppColors` tokens: Lunna's red, Focus's own |
 | forecast day | outlined tag, a period also gets "entre 17 e 23 de novembro" | `AppTag` gains an outline style |
 | the other three phases | neutral tag: "Folicular", "Fértil", "Lútea" | `app_pt.arb` |
-| weekend | title in `ink2`, "fim de semana" after it | any brand, every platform, no Health needed |
+| weekend | title in `ink2`, "fim de semana" after it | any brand, every platform |
 
 - All four phases on every one of the 30 days; one colour, the period's,
   so the calendar stays sober. [`AppDay`](../../../app/packages/app_ui/lib/src/theme/app_day.dart) stays the app's one decorative colour.
 - The weekend mark needs nothing but the date, so it ships first.
 
-## Server privacy against web and one forecast
+## A tap a month against a Health sync
 
 | Option | Gain | Cost | When it wins |
 |---|---|---|---|
-| On the phone only | no health data on the server | no web, no second phone, two forecasts to keep equal | if nobody uses the web |
-| **Synced to Postgres** | web and every phone show it; one forecast | a health table, consent, a privacy policy line, 5.1.3 review | **now: you use the web** |
-| Typed into Lunna | works for Flo-only data | a period tracker inside a planner | if Health stays empty |
-| Apple's forecast | best accuracy | not readable by any app | never |
+| **Typed in Lunna** | any tracker, web too, no native code, no HealthKit review | one tap a month; a forgotten tap leaves the forecast on the last start | **now** |
+| Synced from Health | no tap, flow days exact | Flo users must log in Health; plugin, four flavors, App Review, minSdk 26; web waits for the phone | a person who already logs in Health or Clue |
+| Both: typed, Health later | the tap now, the sync as an import into `cycle_start` | the Health package later | **the path recommended** |
+| Apple's forecast | best accuracy | not readable by any app: HealthKit has no prediction type | never |
 
-- The rows are a few dozen dates per person; erasing them is one `DELETE`.
-- Health data in our Postgres is what a breach would now expose. Neon
-  encrypts at rest; nothing more is planned.
+- Either way health dates sit in our Postgres, a few dozen per person;
+  Neon encrypts at rest, erasing them is one `DELETE`.
 
-## Medium to build: a table, a route, a package, a tag
+## Small to build: a table, four routes, a screen, a tag
 
 | Piece | Size | Risk |
 |---|---|---|
 | weekend mark | S | none |
 | `CycleForecast` (server) + tests on fixed dates | S | phases wrong at the edges: cover in tests |
-| `cycle_day`, the three routes, the analytics row | S | none new |
-| `cycle` package: plugin, permissions, four flavors, sync | M | App Review for HealthKit, Android minSdk 26 |
-| heading tags, tokens, strings, "Ciclo" screen, empty state | S | crowded headings on 390 px: the sketch fits |
+| `cycle_start`, the two user columns, the routes, the analytics rows | S | none new |
+| "Ciclo" screen, "Começou hoje", "Já começou?" | S | a forgotten tap: the tag asks in the range |
+| heading tags, tokens, strings | S | crowded headings on 390 px: the sketch fits |
 
+- The Health sync, the only M piece before, leaves the first build.
 - For the person: each of the next 30 days says where it falls in the
-  cycle, on the phone and in the browser; weekends are marked.
-- Measured quality: about 53% of days tagged right over those 30 days for
-  a typical spread, 69% for a regular one. Logged days are always right.
+  cycle, on the phone and in the browser, whatever app they track in.
+- Measured quality: about 52–56% of days tagged right over those 30 days
+  for a typical spread, the same as a Health sync.
 
 ## Decisions
 
@@ -258,9 +259,9 @@ flowchart TD
 | where the cycle lives | phone only · Postgres | **Postgres** (decided) | phone only: no web |
 | how far ahead | 30 days · next cycle + range · 120 days | **30 days** (decided) | past 30 days, tags wrong 3 times in 5 |
 | which phases | period only · all four | **all four** (decided) | period only hides the fertile window |
-| colour of the other phases | neutral · a token each | **neutral** *(recommended)* | three more colours on a sober calendar |
 | weekends | mark them · not | **mark** (decided), shipped first | none |
-| Flo-only data | log in Health · typed entry | **Health**; typed entry later if needed | a tracker inside a planner |
+| where the start comes from | typed · Health · typed now, Health later | **typed now, Health later** *(recommended)* | Health only: Flo users switch apps, an M build and App Review |
+| colour of the other phases | neutral · a token each | **neutral** *(recommended)* | three more colours on a sober calendar |
 
 > **Decision (2026-10-23):** where the cycle lives: server too.
 >
@@ -272,38 +273,38 @@ flowchart TD
 
 ## Decided unattended
 
-- **The forecast is ours, simple and explained:** median of six cycles,
-  13-day luteal, ±3-day range. No heart rate, no temperature.
-- **The phone sends logged days, the server forecasts.** Sending tags
-  would freeze the web's window on the day of the last sync.
-- **The agent doesn't see the cycle**, though it is on the server; that is
-  its own decision, later.
-- **Both brands, Calendário only.** Lista keeps its run with no day headings.
-- **Off until switched on in Menu**; switching it off erases the server's rows.
-- **"All phases" read as all four tagged, the period alone coloured.**
-  Colouring the rest is the open question.
-- **Phase 4 not run:** not asked for. Flo's iOS behaviour, the claim
-  questioned, was checked again by hand (its help page and Flo support
-  on Apple's forum); Clue's and Flo on Health Connect still rest on a
-  snippet and a vendor page.
+- **The note read as a proposal, not a Decision:** typing became the
+  recommendation and the Health sync a later import into the same table;
+  "Health only" stays an option above.
+- **The forecast is ours, simple and explained:** last start + typed length
+  (28 if none), the median of six gaps once three starts are known, 13-day
+  luteal, ±3-day range.
+- **A start is a date, not flow days:** the period is the typed length, 5 by default.
+- **"Já começou?"** on today's tag inside a forecast period's range is the
+  only nudge: no notification.
+- **The agent doesn't see the cycle**; **both brands, Calendário only**;
+  **off until switched on in Menu**, and switching off erases the rows.
+- **Phase 4 not run:** not asked for. Clue's and Natural Cycles' behaviour
+  rest on their help pages read through search (both refused a fetch).
 
 ## Go deeper
 
 | Idea | The case here | Read |
 |---|---|---|
-| The platform shares the records, not its conclusions | HealthKit has no prediction type; we sync the records and forecast | [HKCategoryTypeIdentifier](https://developer.apple.com/documentation/healthkit/hkcategorytypeidentifier) |
+| The platform shares the records, not its conclusions | HealthKit has no prediction type; whoever syncs must forecast | [HKCategoryTypeIdentifier](https://developer.apple.com/documentation/healthkit/hkcategorytypeidentifier) |
+| In one cycle, the anchor is worth more than the history | typed start and length: 52–56% right, Health 53% | [code/manual.mjs](./code/manual.mjs) |
 | The luteal phase is the steady half | ovulation = next start − 13 | [Bull et al. 2019](https://pmc.ncbi.nlm.nih.gov/articles/PMC6710244/) |
 | A forecast's error grows with every cycle it skips | 53% of days right in the 30 days drawn, 33% in days 61–120 | [code/forecast.mjs](./code/forecast.mjs) |
 
 Added to [concepts.md](../concepts.md) under *Data and forecasts*.
 
 - [Apple, Cycle Tracking IFU 4.0](https://www.apple.com/legal/ifu/cycle-tracking/4-0/ct-ifu-4-0-en_GB.pdf): inputs, ±3 days, two periods before predictions, third-party data accepted.
-- [Apple, authorizationStatus(for:)](https://developer.apple.com/documentation/healthkit/hkhealthstore/authorizationstatus(for:)): read refusals look like no data.
 - [Flo, import from Health (iOS)](https://help.flo.health/hc/en-us/articles/34890229122068): Flo reads from Health; menstruation not sent to Health.
 - [Apple Community, Flo stopped writing to Health](https://discussions.apple.com/thread/255504055): Flo support, March 2024, "no longer available".
-- [Clue, Apple Health](https://support.helloclue.com/hc/en-us/articles/20199556038813): periods and flow written, new ones only.
+- [Clue, Apple Health](https://support.helloclue.com/hc/en-us/articles/20199556038813): periods and flow written, new ones only, no import.
+- [Natural Cycles, sync with Apple Health](https://help.naturalcycles.com/hc/en-us/articles/4405598610577-How-to-sync-with-Apple-Health): period, flow, spotting, mucus, LH tests; export or import; iOS only.
 - [Li, Gibson & Jukic 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10226714/): mean 28.7 days, within-person variability 4–6 days.
 - [McNulty et al. 2020](https://rgu-repository.worktribe.com/output/940959): phase effects on performance trivial, evidence low.
-- [App Store Review Guidelines 5.1.3](https://developer.apple.com/app-store/review/guidelines/#health-and-health-research): no iCloud, no ads, disclose.
-- [health plugin](https://pub.dev/packages/health): `MENSTRUATION_FLOW` on both platforms.
-- Data: [sources.md](./data/sources.md) (the quotes), [forecast-accuracy.csv](./data/forecast-accuracy.csv), [healthkit-cycle-types.txt](./data/healthkit-cycle-types.txt).
+- [App Store Review Guidelines 5.1.3](https://developer.apple.com/app-store/review/guidelines/#health-and-health-research): what a HealthKit app takes on, for the later sync.
+- [health plugin](https://pub.dev/packages/health): `MENSTRUATION_FLOW` on both platforms, for the later sync.
+- Data: [sources.md](./data/sources.md) (the quotes), [manual-vs-health.json](./data/manual-vs-health.json), [forecast-accuracy.csv](./data/forecast-accuracy.csv), [healthkit-cycle-types.txt](./data/healthkit-cycle-types.txt).

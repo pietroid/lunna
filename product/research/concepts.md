@@ -211,19 +211,26 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > A health store hands over what was logged; its predictions stay inside.
 
 - **Read:** Apple, [HKCategoryTypeIdentifier](https://developer.apple.com/documentation/healthkit/hkcategorytypeidentifier) (14 cycle types, no prediction) and the [Cycle Tracking IFU](https://www.apple.com/legal/ifu/cycle-tracking/4-0/ct-ifu-4-0-en_GB.pdf) (Apple's own forecast uses heart rate and wrist temperature, ±3 days).
-- **Here:** the phone reads `menstrualFlow` and syncs the logged days; the server forecasts the phases from those records, so phone and web agree; a read refusal looks like no data, so the empty state names both causes.
+- **Here:** no app can read Apple's forecast, so the server forecasts from the starts it holds (typed now, a Health import later), and phone and web agree; a HealthKit read refusal looks like no data.
 - **Met in:** cycle-on-the-calendar, idea 1.
+
+### In one cycle, the anchor is worth more than the history
+> For a forecast one cycle long, the latest start carries it; the length is second order.
+
+- **Read:** the RFC's [simulation](./2026-10-23-cycle-on-the-calendar/code/manual.mjs): over 30 days, a typed start and length tag 52–56% of days right, six cycles from Health 53%, a default 28 days 50%.
+- **Here:** Lunna asks for the period's start ("Começou hoje") and a length typed once, instead of a Health sync; it learns the length from the starts once there are three.
+- **Met in:** cycle-on-the-calendar, idea 2.
 
 ### The luteal phase is the steady half
 > Count ovulation back from the next period, not forward from the last.
 
 - **Read:** Bull et al., [Real-world menstrual cycle characteristics](https://pmc.ncbi.nlm.nih.gov/articles/PMC6710244/) (npj Digital Medicine 2019): luteal 12.4 days (7–17), follicular 16.9 (10–30); 13% of cycles are 28 days.
-- **Here:** ovulation = predicted next start − 13 (Apple's rule); the next start = last start + the median of six cycles.
-- **Met in:** cycle-on-the-calendar, idea 2.
+- **Here:** ovulation = predicted next start − 13 (Apple's rule); the next start = last start + the typed length, or the median of six cycles once three starts are known.
+- **Met in:** cycle-on-the-calendar, idea 3.
 
 ### A forecast's error grows with every cycle it skips
 > Draw what the forecast knows; past one cycle it is close to a guess.
 
 - **Read:** Li, Gibson & Jukic, [Apple Women's Health Study](https://pmc.ncbi.nlm.nih.gov/articles/PMC10226714/) (2023): within-person variability 4–6 days; the RFC's [simulation](./2026-10-23-cycle-on-the-calendar/code/forecast.mjs).
 - **Here:** 53% of days tagged right in the first 30 days, 33% in days 61–120, against 28% for a blind guess; draw 30 days and nothing past them.
-- **Met in:** cycle-on-the-calendar, idea 3.
+- **Met in:** cycle-on-the-calendar, idea 4.

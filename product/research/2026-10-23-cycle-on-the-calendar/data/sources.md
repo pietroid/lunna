@@ -81,3 +81,18 @@ a personalised approach instead.
 
 `MENSTRUATION_FLOW` is in both the iOS and the Android (Health Connect)
 lists; its value carries `flow` and `isStartOfCycle`.
+
+## Alternatives to Flo, read on 2026-10-23 after the second review
+
+Both help centres answered 403 to a fetch; these are search summaries of
+their own pages, not verbatim quotes.
+
+- Clue, "Can I export my data from Clue to Apple Health or Apple Health to
+  Clue?" (support.helloclue.com/hc/en-us/articles/20199556038813): Clue
+  writes period and flow data to Apple Health; only entries logged after
+  permission is given are transferred; importing from Health into Clue is
+  not possible.
+- Natural Cycles, "How to sync with Apple Health"
+  (help.naturalcycles.com/hc/en-us/articles/4405598610577): syncs period and
+  period flow, spotting, cervical mucus, ovulation tests and sex, export
+  and/or import, each time the app opens; iOS only, not Android.
