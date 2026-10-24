@@ -55,9 +55,28 @@ of deliveries both are spent on.
   all time, at most three, the catalogue's order breaking ties; a kind never
   used is not among them. The filter line is *Todas*, those kinds, then
   every shelf (with a folder); one pick at a time, not remembered.
-- The queue is dragged (held) only when unfiltered; `POST /artifacts/:id/move
-  { index }` counts the open deliveries as the queue will be. A delivered one
-  cannot be moved.
+- **Entregas is two groups** (`progressGroups`), headed as the timeline
+  heads its days: **Em andamento**, every open delivery with a task done or
+  minutes worked (`isStarted`), fixed, the one most behind first (`lagOf`:
+  the share of time gone less the share of work done, so the most red
+  showing past the green leads; no deadline counts as no time gone; the
+  queue's order breaks ties); then **Não iniciadas**, the rest, in the
+  queue's order. Only Não iniciadas drags (when no shelf filter is on): a
+  drop lands just before the row it was let go above, or after the last
+  one (`queueIndexOf`), posted as `POST /artifacts/:id/move { index }`
+  counted in the whole open queue, the same route the agent uses. A
+  delivered one cannot be moved. There is no "Fila" heading.
+- **One bar, two fills** (`PaceBars`): red (`AppColors.paceTime`) to the
+  share of the time from creation to the end of the deadline day, and over
+  it green (`AppColors.paceDone`) to the share of tasks done, or of minutes
+  with no tasks (`workDone`). Green covering the red is on pace; red showing
+  past it is lagging. Under it a key in the two colours ("3 de 5 etapas",
+  "faltam 6 dias", in the danger ink once late), and the subtitle ends in
+  "no ritmo" or "atrás do ritmo" (`isBehind`: the time more than
+  `paceSlack`, 15 points, ahead of the work). No deadline, no red.
+- **The goals are hidden** (`ArtifactsPage(showGoals: false)`, the
+  default): no goal cards and no "Nova meta". The model, the routes and the
+  agent's goal verbs are untouched, and the schedule line stays.
 
 ## Routes
 

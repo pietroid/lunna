@@ -1,11 +1,13 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
+import 'package:artifacts/src/view/pace_bars.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template artifact_row}
 /// One delivery in the queue: its name and what it is worth, then its kind,
-/// its time and its day, and a bar once some of it has been worked.
+/// its time and whether it is on pace, and its pace bar, the work done in
+/// green over the time gone in red ([PaceBars]).
 ///
 /// The same borderless fill as an artifact's row was, so the list reads as
 /// the app's other lists do.
@@ -34,32 +36,19 @@ class ArtifactRow extends StatelessWidget {
     final a = artifact;
     final done = a.isDone;
     final value = a.value;
-    final deadline = a.deadline;
     final doneAt = a.doneAt;
 
-    final time = a.doneMinutes > 0 && !done
-        ? l10n.artifactTimeDone(
-            formatMinutes(l10n, a.doneMinutes),
-            formatMinutes(l10n, a.minutes),
-          )
-        : formatMinutes(l10n, a.minutes);
     final block = a.blockMinutes;
     final parts = [
       a.type?.name ?? l10n.artifactLoose,
-      if (a.steps > 0 && !done)
-        l10n.artifactSteps(a.stepsDone, a.steps)
-      else if (block != null && !done && a.doneMinutes == 0)
-        '$time ${l10n.artifactBlocks(formatMinutes(l10n, block))}'
+      if (block != null && !done && a.doneMinutes == 0)
+        '${formatMinutes(l10n, a.minutes)} '
+            '${l10n.artifactBlocks(formatMinutes(l10n, block))}'
       else
-        time,
-      if (doneAt != null)
-        l10n.artifactsDoneOn(dayName(l10n, doneAt, now))
-      else if (deadline != null)
-        l10n.artifactDue(dayName(l10n, deadline, now)),
+        formatMinutes(l10n, a.minutes),
+      if (doneAt != null) l10n.artifactsDoneOn(dayName(l10n, doneAt, now)),
     ];
-    final worked = a.steps > 0
-        ? a.stepsDone / a.steps
-        : a.doneMinutes / (a.minutes == 0 ? 1 : a.minutes);
+    final behind = isBehind(a, now);
 
     return Material(
       color: AppColors.fill,
@@ -96,25 +85,32 @@ class ArtifactRow extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.s1),
-              Text(
-                parts.join(' · '),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: parts.join(' · ')),
+                    if (!done && a.deadline != null) ...[
+                      const TextSpan(text: ' · '),
+                      TextSpan(
+                        text: behind
+                            ? l10n.artifactPaceBehind
+                            : l10n.artifactPaceOn,
+                        style: TextStyle(
+                          color: behind ? AppColors.warning : null,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.label.copyWith(
                   color: done ? AppColors.ink3 : AppColors.ink2,
                 ),
               ),
-              if (worked > 0 && !done) ...[
+              if (!done) ...[
                 const SizedBox(height: AppSpacing.s3),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
-                  child: LinearProgressIndicator(
-                    value: worked.clamp(0, 1),
-                    minHeight: 3,
-                    backgroundColor: AppColors.line,
-                    color: AppColors.accent,
-                  ),
-                ),
+                PaceBars(artifact: a, now: now),
               ],
             ],
           ),

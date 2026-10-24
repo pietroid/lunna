@@ -710,7 +710,7 @@ abstract class AppLocalizations {
   /// No description provided for @stageBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'Depois eu priorizo'**
+  /// **'Para depois'**
   String get stageBacklog;
 
   /// No description provided for @stageSoonEmpty.
@@ -740,7 +740,7 @@ abstract class AppLocalizations {
   /// No description provided for @promptToBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'Vai para Depois eu priorizo'**
+  /// **'Deixar para depois'**
   String get promptToBacklog;
 
   /// No description provided for @promptToQueue.
@@ -770,7 +770,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventInBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'Em Depois eu priorizo, ainda sem hora'**
+  /// **'Em Para depois, ainda sem hora'**
   String get eventInBacklog;
 
   /// No description provided for @eventDoneOn.
@@ -1424,7 +1424,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentChangeFromBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'saiu do Depois eu priorizo'**
+  /// **'saiu de Para depois'**
   String get agentChangeFromBacklog;
 
   /// No description provided for @agentUndo.
@@ -1826,7 +1826,7 @@ abstract class AppLocalizations {
   /// No description provided for @artifactDeleteBody.
   ///
   /// In pt, this message translates to:
-  /// **'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.'**
+  /// **'As tarefas em Para depois vão junto. As que já têm hora, e as feitas, ficam no Tempo.'**
   String get artifactDeleteBody;
 
   /// No description provided for @dayOverTitle.
@@ -2182,18 +2182,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'A fila pede {need} · você tem {free} livres até {date}'**
   String goalSchedule(String need, String free, String date);
-
-  /// No description provided for @artifactsQueue.
-  ///
-  /// In pt, this message translates to:
-  /// **'Fila'**
-  String get artifactsQueue;
-
-  /// No description provided for @artifactsQueueSummary.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =1{1 entrega} other{{count} entregas}} · {time}'**
-  String artifactsQueueSummary(int count, String time);
 
   /// No description provided for @artifactsAll.
   ///
@@ -2596,6 +2584,78 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Fica guardada e passa a valer na segunda-feira.'**
   String get goalReadbackFutureWeek;
+
+  /// No description provided for @stageAhead.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{Mais 1 tarefa adiante} other{Mais {count} tarefas adiante}}'**
+  String stageAhead(int count);
+
+  /// No description provided for @stageAheadOpen.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver no calendário'**
+  String get stageAheadOpen;
+
+  /// No description provided for @stageDayEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.'**
+  String get stageDayEmpty;
+
+  /// No description provided for @deliveryTasks.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}'**
+  String deliveryTasks(int count, String time);
+
+  /// No description provided for @artifactsInProgress.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em andamento'**
+  String get artifactsInProgress;
+
+  /// No description provided for @artifactsNotStarted.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não iniciadas'**
+  String get artifactsNotStarted;
+
+  /// No description provided for @artifactPaceOn.
+  ///
+  /// In pt, this message translates to:
+  /// **'no ritmo'**
+  String get artifactPaceOn;
+
+  /// No description provided for @artifactPaceBehind.
+  ///
+  /// In pt, this message translates to:
+  /// **'atrás do ritmo'**
+  String get artifactPaceBehind;
+
+  /// No description provided for @routineChecklistHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Uma lista? Um item por linha'**
+  String get routineChecklistHint;
+
+  /// No description provided for @eventChecklistLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Lista'**
+  String get eventChecklistLabel;
+
+  /// No description provided for @checklistCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{done} de {total}'**
+  String checklistCount(int done, int total);
+
+  /// No description provided for @checklistAllDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tudo feito'**
+  String get checklistAllDone;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -7,5 +7,6 @@ export 'artifacts_page.dart';
 export 'failure_listener.dart';
 export 'goal_card.dart';
 export 'goal_sheet.dart';
+export 'pace_bars.dart';
 export 'shelf_filter.dart';
 export 'type_sheet.dart';

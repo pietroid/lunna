@@ -44,6 +44,7 @@ class Routine extends Equatable {
     required this.durationMinutes,
     required this.days,
     this.fixed = false,
+    this.checklist = const [],
   });
 
   /// Creates a [Routine] from the API's JSON.
@@ -58,6 +59,10 @@ class Routine extends Equatable {
       durationMinutes: json['durationMinutes'] as int? ?? 30,
       days: RoutineDays.fromWire(json['days'] as String?),
       fixed: json['fixed'] as bool? ?? false,
+      checklist: [
+        for (final item in json['checklist'] as List<dynamic>? ?? <dynamic>[])
+          item as String,
+      ],
     );
   }
 
@@ -82,6 +87,10 @@ class Routine extends Equatable {
   /// Whether its hour is the point of it, so nothing ever moves its days.
   final bool fixed;
 
+  /// What each day of it is made of (breakfast: the coffee, the dishes), in
+  /// order. Empty for a routine that is one thing.
+  final List<String> checklist;
+
   /// Minutes past midnight it starts.
   int get startMinute => hour * 60 + minute;
 
@@ -98,5 +107,6 @@ class Routine extends Equatable {
     durationMinutes,
     days,
     fixed,
+    checklist,
   ];
 }

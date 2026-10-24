@@ -91,7 +91,7 @@ export interface NewThing {
  *   pause, as a drop right under it is.
  * - `at_hour`: an hour of its own (an anchor for a task, the hour itself for
  *   a fixed block), as a drop in free room.
- * - `to_backlog`: into Depois eu priorizo, at its end.
+ * - `to_backlog`: into Para depois, at its end.
  * - `swap`: two tasks trade places, as a long drag onto another card.
  * - the deliveries', the catalogue's and the goals', as Entregas makes them.
  */

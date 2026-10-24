@@ -7,7 +7,7 @@ import 'package:timeline/timeline.dart' show durationLabel, hhmm;
 
 /// {@template cards_peek}
 /// Some cards, read only, under the heading the agent gave them: each one's
-/// name, then where it is (its hours, or Depois eu priorizo), its length and
+/// name, then where it is (its hours, or Para depois), its length and
 /// its artifact, as Lista says them. A card asked about for its notes shows
 /// them under it.
 /// {@endtemplate}

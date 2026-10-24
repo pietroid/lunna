@@ -22,14 +22,12 @@ describe('speakable', () => {
     });
   });
 
-  it('says Depois eu priorizo for the backlog', () => {
+  it('says Para depois for the backlog', () => {
     expect(speakable('Ficou no backlog.', board)).toEqual({
-      text: 'Ficou no Depois eu priorizo.',
+      text: 'Ficou no Para depois.',
       leaks: 1,
     });
-    expect(speakable('Backlog vazio.', board).text).toBe(
-      'Depois eu priorizo vazio.',
-    );
+    expect(speakable('Backlog vazio.', board).text).toBe('Para depois vazio.');
   });
 
   it('finds the refs left over', () => {

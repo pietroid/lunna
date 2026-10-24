@@ -5,6 +5,7 @@ import {
   CalendarEvent,
   CalendarRoutine,
   CalendarUser,
+  checklistOf,
   RoutineDays,
 } from './calendar.types';
 
@@ -31,12 +32,18 @@ export interface RoutinePatch {
   endTime?: string;
   days?: RoutineDays;
   fixed?: boolean;
+  /** What each day of it is made of. */
+  checklist?: string[];
 }
 
-/** What a routine is booked with. Flexible unless it says otherwise. */
-export type NewRoutine = Required<Omit<RoutinePatch, 'fixed'>> & {
+/**
+ * What a routine is booked with. Flexible, and one thing with no list,
+ * unless it says otherwise.
+ */
+export type NewRoutine = Required<Omit<RoutinePatch, 'fixed' | 'checklist'>> & {
   title: string;
   fixed?: boolean;
+  checklist?: string[];
 };
 
 /**
@@ -165,6 +172,7 @@ export class MemoryCalendarStore extends CalendarStore {
         if (exists) continue;
 
         const id = randomUUID();
+        const checklist = checklistOf(routine.checklist);
         this._events.set(id, {
           id,
           userId: user.id,
@@ -178,6 +186,7 @@ export class MemoryCalendarStore extends CalendarStore {
           routine: routine.days,
           occurrenceKey: key,
           cancelled: false,
+          ...(checklist === undefined ? {} : { checklist }),
         });
       }
     }
@@ -277,6 +286,7 @@ export class MemoryCalendarStore extends CalendarStore {
     const stored: StoredRoutine = {
       ...routine,
       fixed: routine.fixed ?? false,
+      checklist: routine.checklist ?? [],
       id: randomUUID(),
       userId: user.id,
     };

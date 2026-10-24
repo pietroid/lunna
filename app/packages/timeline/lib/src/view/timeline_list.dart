@@ -83,8 +83,12 @@ typedef _Pin = ({String label, double dy});
 const Object _backlog = #backlog;
 
 /// The section of every task with an hour, in the list: one stage, not cut
-/// into days.
+/// into days. On Tempo it is the one day the list keeps, Ainda hoje or
+/// Amanhã.
 const Object _soon = #soon;
+
+/// The section of what is running, in the list: Agora, as on the calendar.
+const Object _agora = #agora;
 
 /// The section of a row that is not under any heading: the failure line.
 const Object _loose = #loose;
@@ -283,6 +287,27 @@ class _TimelineListState extends State<TimelineList> {
 
   /// The free stretches drawn in the last build.
   List<_Room> _shownRooms = const [];
+
+  /// The break drawn under Lista's Agora when nothing runs.
+  final GlobalKey _breakKey = GlobalKey();
+
+  /// One key per run of a delivery's tasks drawn on the calendar, by the
+  /// first task's id: the row itself, while its lines carry the cards'.
+  final _runKeys = <String, GlobalKey>{};
+
+  /// In Lista, the last task of each run drawn as one card, by the first
+  /// task's id: the card is the run, so a drop under it lands after all of
+  /// it.
+  Map<String, String> _runEnd = const {};
+
+  /// The tasks drawn as lines of a run on the calendar, whose seams are
+  /// not pulled: the run's bottom edge is not theirs.
+  Set<String> _inRuns = const {};
+
+  /// The day Lista's dated stage keeps, and how many tasks it draws counting
+  /// Agora's: a + at its end writes there.
+  DateTime? _soonDay;
+  int _soonEnd = 0;
 
   /// Every row drawn in the last build, in order.
   List<_Drawn> _drawn = const [];
@@ -552,6 +577,7 @@ class _TimelineListState extends State<TimelineList> {
     if (_isList) return null;
 
     for (final entry in _cardKeys.entries) {
+      if (_inRuns.contains(entry.key)) continue;
       final rect = _rectOf(entry.value);
       if (rect == null || global.dx < rect.left || global.dx > rect.right) {
         continue;
@@ -694,9 +720,15 @@ class _TimelineListState extends State<TimelineList> {
       final rect = _rectOf(card == null ? _dividerKey : _cardKey(card.id));
       if (rect == null) continue;
 
+      // A card that is a run of tasks ends where its last task does.
+      final last = card == null ? null : _runEnd[card.id];
+      final end = last == null
+          ? index + 1
+          : rest.indexWhere((it) => it?.id == last) + 1;
+
       anchors
         ..add(_edge(index, rect.top))
-        ..add(_edge(index + 1, rect.bottom));
+        ..add(_edge(end > index ? end : index + 1, rect.bottom));
     }
     if (anchors.isEmpty) anchors.addAll([?_centerOf(id)]);
     if (_isList) return anchors;
@@ -1490,8 +1522,7 @@ class _TimelineListState extends State<TimelineList> {
     _Drawn? first;
     double? next;
     var nowInSight = false;
-    // The list has no Agora of its own: now is the top of Fazer em breve.
-    final nowSection = _isList ? _soon : null;
+    final nowSection = _isList ? _agora : null;
     for (final row in _drawn) {
       final rect = _rectOf(row.key);
       if (rect == null) continue;
@@ -1571,7 +1602,7 @@ class _TimelineListState extends State<TimelineList> {
     // The end of the stage at the top.
     if (first?.section == _backlog) return const Placement.backlog();
 
-    return Placement.queue(_tasks.length);
+    return Placement.queue(_soonEnd);
   }
 
   /// [at] moved on to the next five minutes on the clock, if it is not on
@@ -1628,12 +1659,20 @@ class _TimelineListState extends State<TimelineList> {
 
     var first = true;
     _Heading section = _unset;
+    _runEnd = const {};
+    final inRuns = <String>{};
+    _inRuns = inRuns;
 
-    for (final entry in _entries(cards, rooms)) {
+    final entries = _entries(cards, rooms);
+    for (var i = 0; i < entries.length; i++) {
+      final entry = entries[i];
       final card = entry.card;
       final room = entry.room;
       final entrySection = card == null ? room!.heading : _headingOf(card);
       final before = card == null ? room!.slot.index : _indexOf(card.id);
+      // The tasks of one delivery that follow each other are one block.
+      final run = card == null ? const <TimelineEvent>[] : _runAt(entries, i);
+      if (run.length > 1) i += run.length - 1;
 
       // A row only moves while there is a card in the air or a seam held;
       // the rest of the time the offset is zero, so a dropped card cannot
@@ -1682,6 +1721,29 @@ class _TimelineListState extends State<TimelineList> {
           ),
         );
         first = false;
+      }
+
+      if (run.length > 1) {
+        final key = _runKeys.putIfAbsent(card!.id, GlobalKey.new);
+        inRuns.addAll(run.map((it) => it.id));
+        drawn.add((
+          key: key,
+          section: entrySection,
+          heading: false,
+          room: null,
+          card: card,
+        ));
+        rows.add(
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.s1),
+            child: _Slid(
+              key: key,
+              dy: dy,
+              child: _calendarRun(run, dragging, now: entrySection == null),
+            ),
+          ),
+        );
+        continue;
       }
 
       final key = card == null ? _freeKey(_rowOf(room!)) : _cardKey(card.id);
@@ -1774,11 +1836,18 @@ class _TimelineListState extends State<TimelineList> {
     return rows;
   }
 
-  /// The list's two stages, both always drawn: every task with an hour in
-  /// one run, in the order of their hours and not cut into days, ending in
-  /// a +, then the backlog and its +.
+  /// The list's stages, all always drawn.
   ///
-  /// Every row is as tall as it needs; there is no room in either stage.
+  /// On Tempo: Agora, what is running or the break; then the one day the
+  /// list keeps (Ainda hoje, or Amanhã once today has nothing left), ending
+  /// in a line that counts what is queued later and a +; then the backlog
+  /// and its +. The tasks of one delivery that follow each other are one
+  /// card, the delivery's, with only its next task under the name.
+  ///
+  /// For a delivery's own tasks ([TimelineList.only]) every task with an
+  /// hour is one stage, Fazer em breve, and each task its own card.
+  ///
+  /// Every row is as tall as it needs; there is no room in any stage.
   /// The backlog's heading is a row like any card to a drag, keyed so it can
   /// be measured, and slides out of the way like one.
   List<Widget> _listRows(
@@ -1788,8 +1857,60 @@ class _TimelineListState extends State<TimelineList> {
     List<_Drawn> drawn,
   ) {
     _shownRooms = const [];
+    final runEnd = <String, String>{};
+    _runEnd = runEnd;
+    _inRuns = const {};
     final l10n = context.l10n;
+    final whole = widget.only == null;
     double shift(int before) => dragging == null ? 0.0 : _shift(before);
+
+    final tasks = _tasks;
+    final rows = <Widget>[];
+
+    // Each run drawn as one card, keyed by its first task.
+    void addRuns(List<TimelineEvent> cards, Object section) {
+      final runs = whole
+          ? deliveryRuns(cards)
+          : [
+              for (final card in cards) [card],
+            ];
+      for (final run in runs) {
+        final lead = run.first;
+        if (run.length > 1) runEnd[lead.id] = run.last.id;
+        drawn.add((
+          key: _cardKey(lead.id),
+          section: section,
+          heading: false,
+          room: null,
+          card: lead,
+        ));
+        final dy = shift(_indexOf(lead.id));
+        rows.add(
+          whole && lead.artifactId != null
+              ? _runTile(run, dragging, dy)
+              : _listTile(lead, dragging, dy),
+        );
+      }
+    }
+
+    var shown = tasks;
+    var agora = const <TimelineEvent>[];
+    if (whole) {
+      agora = _agoraRun(tasks);
+      _addAgora(state, agora, dragging, now, drawn, rows);
+
+      final day = _listDay(tasks.skip(agora.length), now);
+      _soonDay = day;
+      shown = [
+        for (final card in tasks.skip(agora.length))
+          if (!card.day.isAfter(day)) card,
+      ];
+    } else {
+      _soonDay = null;
+    }
+    final soonEnd = agora.length + shown.length;
+    _soonEnd = whole ? soonEnd : tasks.length;
+    final ahead = tasks.length - soonEnd;
 
     final soonKey = _headingKey(_soon);
     drawn.add((
@@ -1799,31 +1920,42 @@ class _TimelineListState extends State<TimelineList> {
       room: null,
       card: null,
     ));
-    final rows = <Widget>[
-      _HeadingRow(key: soonKey, label: l10n.stageSoon, first: true),
-      if (_tasks.isEmpty)
+    rows.add(
+      _HeadingRow(
+        key: soonKey,
+        label: _labelOf(_soon, now),
+        first: !whole,
+      ),
+    );
+    if (shown.isEmpty) {
+      rows.add(
         _Slid(
-          dy: shift(0),
-          child: _StageEmpty(text: l10n.stageSoonEmpty),
+          dy: shift(agora.length),
+          child: _StageEmpty(
+            text: whole ? l10n.stageDayEmpty : l10n.stageSoonEmpty,
+          ),
         ),
-    ];
-
-    final tasks = _tasks;
-    for (final card in tasks) {
-      drawn.add((
-        key: _cardKey(card.id),
-        section: _soon,
-        heading: false,
-        room: null,
-        card: card,
-      ));
-      rows.add(_listTile(card, dragging, shift(_indexOf(card.id))));
+      );
+    }
+    addRuns(shown, _soon);
+    if (ahead > 0) {
+      rows.add(
+        _Slid(
+          dy: shift(soonEnd),
+          child: _AheadRow(
+            count: ahead,
+            onTap: () => context.read<TimelineModeCubit?>()?.choose(
+              TimelineMode.calendar,
+            ),
+          ),
+        ),
+      );
     }
     rows.add(
       _addRow(
         _soon,
-        Placement.queue(tasks.length),
-        shift(tasks.length),
+        Placement.queue(_soonEnd),
+        shift(soonEnd),
         drawn,
       ),
     );
@@ -1849,16 +1981,7 @@ class _TimelineListState extends State<TimelineList> {
       ),
     );
 
-    for (final card in _waiting) {
-      drawn.add((
-        key: _cardKey(card.id),
-        section: _backlog,
-        heading: false,
-        room: null,
-        card: card,
-      ));
-      rows.add(_listTile(card, dragging, shift(_indexOf(card.id))));
-    }
+    addRuns(_waiting, _backlog);
     rows.add(
       _addRow(
         _backlog,
@@ -1895,6 +2018,141 @@ class _TimelineListState extends State<TimelineList> {
     }
 
     return rows;
+  }
+
+  /// What Lista's Agora draws: the running task, and the tasks of its
+  /// delivery that follow it that day, since they are one run being worked
+  /// through. Empty when nothing runs.
+  static List<TimelineEvent> _agoraRun(List<TimelineEvent> tasks) {
+    final running = tasks.firstOrNull;
+    if (running == null || running.section != TimelineSection.agora) {
+      return const [];
+    }
+
+    final run = [running];
+    for (final next in tasks.skip(1)) {
+      if (!sameDelivery(run.last, next) || next.day != running.day) break;
+      run.add(next);
+    }
+    return run;
+  }
+
+  /// The day Lista keeps: today while the working day is open, unless
+  /// nothing is left in it and something is queued later; otherwise
+  /// tomorrow.
+  DateTime _listDay(Iterable<TimelineEvent> tasks, DateTime now) {
+    final today = DateTime(now.year, now.month, now.day);
+    final over = now.hour * 60 + now.minute >= _state.workDay.end;
+    final left = tasks.any((card) => !card.day.isAfter(today));
+
+    if (!over && (left || tasks.isEmpty)) return today;
+    return DateTime(now.year, now.month, now.day + 1);
+  }
+
+  /// Lista's Agora: its heading, and the running run, or the break, or,
+  /// outside the working day, the hours it keeps.
+  void _addAgora(
+    TimelineState state,
+    List<TimelineEvent> run,
+    String? dragging,
+    DateTime now,
+    List<_Drawn> drawn,
+    List<Widget> rows,
+  ) {
+    final key = _headingKey(_agora);
+    drawn.add((
+      key: key,
+      section: _agora,
+      heading: true,
+      room: null,
+      card: null,
+    ));
+    rows.add(
+      _HeadingRow(key: key, label: context.l10n.sectionNow, first: true),
+    );
+
+    if (run.isNotEmpty) {
+      final lead = run.first;
+      drawn.add((
+        key: _cardKey(lead.id),
+        section: _agora,
+        heading: false,
+        room: null,
+        card: lead,
+      ));
+      final dy = dragging == null ? 0.0 : _shift(0);
+      rows.add(
+        lead.artifactId != null
+            ? _runTile(run, dragging, dy)
+            : _listTile(lead, dragging, dy),
+      );
+      return;
+    }
+
+    drawn.add((
+      key: _breakKey,
+      section: _agora,
+      heading: false,
+      room: null,
+      card: null,
+    ));
+    final minute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final next = state.cards
+        .where((card) => card.startTime.isAfter(now))
+        .map((card) => card.startTime)
+        .firstOrNull;
+    rows.add(
+      Padding(
+        key: _breakKey,
+        padding: const EdgeInsets.only(top: AppSpacing.s1),
+        child: _closedAt(now)
+            ? DayOverTile(
+                workDay: state.workDay,
+                over: now.hour * 60 + now.minute >= state.workDay.end,
+                onAdjust: widget.onAdjustDay,
+              )
+            : FreeTile(
+                slot: FreeSlot(
+                  start: minute,
+                  end: next ?? minute.add(const Duration(hours: 1)),
+                  earliest: minute,
+                  index: 0,
+                ),
+                now: true,
+                onTap: widget.onWriteDown == null
+                    ? null
+                    : () => widget.onWriteDown!(Placement.at(minute)),
+              ),
+      ),
+    );
+  }
+
+  /// A run of one delivery's tasks in Lista, as one card keyed by its first
+  /// task: the card is that task to a tap and to a drag.
+  Widget _runTile(List<TimelineEvent> run, String? dragging, double dy) {
+    final lead = run.first;
+    final bloc = context.read<TimelineBloc>();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s1),
+      child: _Slid(
+        key: _cardKey(lead.id),
+        dy: dy,
+        child: DeliveryTile(
+          title: lead.artifactTitle ?? lead.title,
+          tasks: run,
+          hidden: dragging,
+          pressed: lead.id == _pressed,
+          actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+          onPauseToggled: () => bloc.add(EventPauseToggled(lead.id)),
+          onAdjusted: (minutes) =>
+              unawaited(adjustTime(context, lead, minutes)),
+          onDone: () => bloc.add(EventFinished(lead.id)),
+          onStarted: () => bloc.add(EventStarted(lead.id)),
+          onSnoozed: () => bloc.add(EventSnoozed(lead.id)),
+        ),
+      ),
+    );
   }
 
   /// The + that ends [section] of the list, writing something down at
@@ -1962,7 +2220,11 @@ class _TimelineListState extends State<TimelineList> {
   /// What a pinned heading over [section] says.
   String _labelOf(Object? section, DateTime now) {
     if (section == _backlog) return context.l10n.stageBacklog;
-    if (section == _soon) return context.l10n.stageSoon;
+    if (section == _agora) return context.l10n.sectionNow;
+    if (section == _soon) {
+      final day = _soonDay;
+      return day == null ? context.l10n.stageSoon : _label(day, now);
+    }
 
     return _label(section as _Heading, now);
   }
@@ -1977,9 +2239,6 @@ class _TimelineListState extends State<TimelineList> {
     return EventTile(
       card: card,
       landing: landing,
-      // Lista has the height to say which artifact a task is of; the
-      // calendar draws cards to the scale of their time.
-      showArtifact: _isList,
       // The calendar says what the notes start with, in the room it has.
       preview: !_isList,
       pressed: card.id == _pressed || card.id == _swap,
@@ -2056,6 +2315,75 @@ class _TimelineListState extends State<TimelineList> {
     }
 
     return entries;
+  }
+
+  /// The run of one delivery's tasks the calendar draws as one block from
+  /// [entries] at [start]: the tasks of that delivery that follow it with no
+  /// room drawn between them, under its heading. Agora's run goes on into
+  /// the rest of today, since its tasks are being worked through.
+  List<TimelineEvent> _runAt(List<_Entry> entries, int start) {
+    final first = entries[start].card!;
+    if (first.artifactId == null || !first.isTask) return [first];
+
+    final heading = _headingOf(first);
+    final run = [first];
+    for (final entry in entries.skip(start + 1)) {
+      final next = entry.card;
+      if (next == null || !sameDelivery(run.last, next)) break;
+      final under = _headingOf(next);
+      if (under != heading && !(heading == null && next.day == first.day)) {
+        break;
+      }
+      run.add(next);
+    }
+    return run;
+  }
+
+  /// A run of one delivery's tasks on the calendar: one block as tall as
+  /// all of them, each task a line keyed by its card, so a line is touched,
+  /// carried and dropped around as the task it is. Agora's ([now]) is drawn
+  /// as it needs, every task a line, with the running one's controls.
+  Widget _calendarRun(
+    List<TimelineEvent> run,
+    String? dragging, {
+    required bool now,
+  }) {
+    final lead = run.first;
+    final bloc = context.read<TimelineBloc>();
+    final keys = {for (final card in run) card.id: _cardKey(card.id)};
+    final title = lead.artifactTitle ?? lead.title;
+
+    if (now) {
+      return DeliveryTile(
+        title: title,
+        tasks: run,
+        timeline: true,
+        lineKeys: keys,
+        hidden: dragging,
+        actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+        onPauseToggled: () => bloc.add(EventPauseToggled(lead.id)),
+        onAdjusted: (minutes) => unawaited(adjustTime(context, lead, minutes)),
+        onDone: () => bloc.add(EventFinished(lead.id)),
+        onStarted: () => bloc.add(EventStarted(lead.id)),
+        onSnoozed: () => bloc.add(EventSnoozed(lead.id)),
+      );
+    }
+
+    // As tall as the blocks would be one under another, gaps and all, so
+    // nothing below moves for being joined.
+    final height =
+        run.fold<double>(
+          0,
+          (sum, card) => sum + TimelineScale.blockHeight(card),
+        ) +
+        (run.length - 1) * AppSpacing.s1;
+    return DeliveryTile(
+      title: title,
+      tasks: run,
+      height: height,
+      lineKeys: keys,
+      hidden: dragging,
+    );
   }
 
   /// The day a free stretch falls under, by where it starts.
@@ -2201,7 +2529,8 @@ class _TimelineListState extends State<TimelineList> {
       left: AppSpacing.s6,
       right: AppSpacing.s6,
       top: top,
-      height: rect.height,
+      // A line of a run is carried as a card, which needs a card's height.
+      height: math.max(rect.height, TimelineScale.halfHour),
       child: IgnorePointer(
         child: _Lifted(
           card: card,
@@ -2505,6 +2834,42 @@ class _DoneTile extends StatelessWidget {
 }
 
 /// What an empty stage says, which is also where a drop into it goes.
+/// The line that ends Lista's day: how many tasks are queued after it, and
+/// the way to them, the calendar.
+class _AheadRow extends StatelessWidget {
+  const _AheadRow({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: l10n.stageAhead(count)),
+              const TextSpan(text: ' · '),
+              TextSpan(
+                text: l10n.stageAheadOpen,
+                style: AppTypography.labelStrong.copyWith(
+                  color: AppColors.ink2,
+                ),
+              ),
+            ],
+          ),
+          style: AppTypography.label.copyWith(color: AppColors.ink3),
+        ),
+      ),
+    );
+  }
+}
+
 class _StageEmpty extends StatelessWidget {
   const _StageEmpty({required this.text});
 

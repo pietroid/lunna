@@ -377,7 +377,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stageSoon => 'Fazer em breve';
 
   @override
-  String get stageBacklog => 'Depois eu priorizo';
+  String get stageBacklog => 'Para depois';
 
   @override
   String get stageSoonEmpty => 'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.';
@@ -401,7 +401,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stageDoneEmpty => 'Nada feito ainda. Arraste uma tarefa para a direita quando terminar.';
 
   @override
-  String get promptToBacklog => 'Vai para Depois eu priorizo';
+  String get promptToBacklog => 'Deixar para depois';
 
   @override
   String get promptToQueue => 'Entra na fila, onde houver espaço';
@@ -416,7 +416,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get timelineBackToNow => 'Voltar para agora';
 
   @override
-  String get eventInBacklog => 'Em Depois eu priorizo, ainda sem hora';
+  String get eventInBacklog => 'Em Para depois, ainda sem hora';
 
   @override
   String eventDoneOn(String day, String time) {
@@ -821,7 +821,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentChangeRoutine => 'rotina, só nesse dia';
 
   @override
-  String get agentChangeFromBacklog => 'saiu do Depois eu priorizo';
+  String get agentChangeFromBacklog => 'saiu de Para depois';
 
   @override
   String get agentUndo => 'Desfazer';
@@ -1116,7 +1116,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get artifactDeleteBody => 'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.';
+  String get artifactDeleteBody => 'As tarefas em Para depois vão junto. As que já têm hora, e as feitas, ficam no Tempo.';
 
   @override
   String dayOverTitle(String end) {
@@ -1384,20 +1384,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get artifactsQueue => 'Fila';
-
-  @override
-  String artifactsQueueSummary(int count, String time) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count entregas',
-      one: '1 entrega',
-    );
-    return '$_temp0 · $time';
-  }
-
-  @override
   String get artifactsAll => 'Todas';
 
   @override
@@ -1627,4 +1613,58 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get goalReadbackFutureWeek => 'Fica guardada e passa a valer na segunda-feira.';
+
+  @override
+  String stageAhead(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mais $count tarefas adiante',
+      one: 'Mais 1 tarefa adiante',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stageAheadOpen => 'Ver no calendário';
+
+  @override
+  String get stageDayEmpty => 'Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.';
+
+  @override
+  String deliveryTasks(int count, String time) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarefas',
+      one: '1 tarefa',
+    );
+    return '$_temp0 · $time';
+  }
+
+  @override
+  String get artifactsInProgress => 'Em andamento';
+
+  @override
+  String get artifactsNotStarted => 'Não iniciadas';
+
+  @override
+  String get artifactPaceOn => 'no ritmo';
+
+  @override
+  String get artifactPaceBehind => 'atrás do ritmo';
+
+  @override
+  String get routineChecklistHint => 'Uma lista? Um item por linha';
+
+  @override
+  String get eventChecklistLabel => 'Lista';
+
+  @override
+  String checklistCount(int done, int total) {
+    return '$done de $total';
+  }
+
+  @override
+  String get checklistAllDone => 'Tudo feito';
 }

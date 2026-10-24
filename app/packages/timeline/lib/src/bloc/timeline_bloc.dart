@@ -35,6 +35,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     on<EventResized>(_onResized);
     on<EventSwapped>(_onSwapped);
     on<EventEdited>(_onEdited);
+    on<ChecklistToggled>(_onChecklistToggled);
     on<GuardAnswered>(_onGuardAnswered);
     on<GuardDismissed>(_onGuardDismissed);
   }
@@ -414,6 +415,41 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         workMinutes: event.workMinutes,
         startTime: event.startTime,
         days: _days,
+      ),
+    );
+  }
+
+  /// Ticks an item off a routine's day, drawn before the server answers.
+  Future<void> _onChecklistToggled(
+    ChecklistToggled event,
+    Emitter<TimelineState> emit,
+  ) async {
+    final card = state.byId(event.id);
+    if (card == null || event.index >= card.checklist.length) return;
+
+    final checklist = [
+      for (final (i, item) in card.checklist.indexed)
+        i == event.index
+            ? ChecklistItem(title: item.title, done: !item.done)
+            : item,
+    ];
+    List<TimelineEvent> ticked(List<TimelineEvent> list) => [
+      for (final it in list)
+        it.id == card.id ? it.copyWith(checklist: checklist) : it,
+    ];
+
+    await _write(
+      emit,
+      () => _repository.edit(
+        card.kind,
+        card.id,
+        checklist: checklist,
+        days: _days,
+      ),
+      drawn: state.copyWith(
+        cards: ticked(state.cards),
+        tasks: ticked(state.tasks),
+        backlog: ticked(state.backlog),
       ),
     );
   }

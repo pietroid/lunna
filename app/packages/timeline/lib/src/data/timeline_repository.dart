@@ -236,8 +236,8 @@ class TimelineRepository {
     ),
   );
 
-  /// Renames a card, rewrites its notes, re-estimates it, or, for an event,
-  /// gives it a new [startTime].
+  /// Renames a card, rewrites its notes, re-estimates it, ticks its day's
+  /// [checklist], or, for an event, gives it a new [startTime].
   Future<Timeline> edit(
     CardKind kind,
     String id, {
@@ -245,6 +245,7 @@ class TimelineRepository {
     String? notes,
     int? workMinutes,
     DateTime? startTime,
+    List<ChecklistItem>? checklist,
     int days = defaultDays,
   }) => _day(
     () => apiClient.patch<Map<String, dynamic>>(
@@ -252,6 +253,8 @@ class TimelineRepository {
       data: {
         'title': ?title,
         'notes': ?notes,
+        if (checklist != null)
+          'checklist': [for (final item in checklist) item.toJson()],
         'workMinutes': ?workMinutes,
         if (startTime != null) 'startTime': startTime.toUtc().toIso8601String(),
       },

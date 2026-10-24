@@ -150,7 +150,7 @@ void main() {
   testAt('draws the goals, the agenda against the queue, and five of it', (
     tester,
   ) async {
-    await pump(tester, full);
+    await pump(tester, full, home: const ArtifactsPage(showGoals: true));
 
     expect(
       find.text(l10n.goalInMonth(l10n.goalRevenue, 'outubro')),
@@ -198,7 +198,7 @@ void main() {
   testAt('starts empty, saying what a goal and the queue are for', (
     tester,
   ) async {
-    await pump(tester, empty);
+    await pump(tester, empty, home: const ArtifactsPage(showGoals: true));
 
     expect(find.text(l10n.goalsEmpty), findsOneWidget);
     expect(find.text(l10n.artifactsEmpty), findsOneWidget);

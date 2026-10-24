@@ -308,7 +308,7 @@ export const CASES: Case[] = [
   },
   {
     id: 'to-backlog',
-    why: 'back to Depois eu priorizo',
+    why: 'back to Para depois',
     setup: (w) => w.task('Organizar fotos', 60),
     said: 'deixa organizar fotos pra depois',
     expect: 'plan',

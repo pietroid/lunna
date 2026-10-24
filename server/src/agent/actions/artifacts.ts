@@ -199,7 +199,7 @@ export const ARTIFACTS: Action[] = [
   {
     name: 'remove_artifact',
     domain: 'artifact',
-    does: 'A delivery deleted, and the tasks waiting for it in Depois eu priorizo with it.',
+    does: 'A delivery deleted, and the tasks waiting for it in Para depois with it.',
     args: { ref: DELIVERY },
     required: ['ref'],
     resolve(r, item) {

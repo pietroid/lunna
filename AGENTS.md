@@ -199,6 +199,17 @@ Changing a routine deletes its days that have not begun yet, both kinds;
 the next read writes them again at the new hour and name. Removing a
 routine deletes the days ahead and keeps the ones that happened.
 
+A routine may have a **checklist** (`routine.checklist`, titles in order:
+breakfast is the coffee, meditating, the dishes). Each day is written down
+with its own copy (`task.checklist` or `event.checklist`, `[{ title, done
+}]`, null for no list), so ticking an item off today leaves tomorrow alone;
+a new list reaches the days not begun, like a new hour. The card carries it
+as `checklist`, and `PATCH /api/tasks|events/:id { checklist }` ticks it
+(the whole list, at most 30 items). Ticking the last item off finishes
+nothing. The card draws the list where the notes would go: the next item
+and "1 de 3" in Lista and Agora, every item on the calendar when the card
+has a line (20 px) for each; items are ticked on the event page.
+
 ### Notes
 
 Every task and every block has free-text `notes`. The event page edits them
@@ -237,7 +248,7 @@ Two kinds of card:
   it is begun; that row is its real hour, and pause, extend and finish work
   on it. Ticking a task off sets `done_at`. A begun task whose hour runs out
   is written down as done by `catchUp`. A task with `backlog` set waits in
-  the **backlog** ("Depois eu priorizo") instead: it keeps its order and its
+  the **backlog** ("Para depois") instead: it keeps its order and its
   length, has no hour, and the layout never sees it. `POST /tasks` writes
   into the backlog unless it says `backlog: false`, and then at the end of
   the queue, at a place (`index`, counted as a move counts) or at an hour
@@ -253,8 +264,9 @@ the running one first and then the rest by their hours (`inOrder`), however
 far ahead the queue reaches. `backlog` is
 the backlog in its order, with no hours (`section: 'backlog'`). `cards` is
 everything the calendar draws from now to the end of day N. A task of a
-delivery carries `artifact: { id, title }` in all three, and Lista and the
-event page name it (`AppTag`). Every write
+delivery carries `artifact: { id, title }` in all three: Lista and the
+calendar join its tasks into the delivery's card, and the event page names
+it (`AppTag`). Every write
 under `/api/tasks` and `/api/events` takes the same `?days=` and answers
 with the same shape.
 
@@ -263,22 +275,43 @@ with the same shape.
 The app draws the day two ways, switched at the top of Tempo and
 remembered on the device (`TimelineModeCubit`):
 
-- **Lista**: the tasks alone, each as tall as it needs, in two stages that
-  are always drawn: **Fazer em breve** (every task with an hour, in one run
-  with no day headings, except the days of routines: those are drawn on the
-  calendar only, and come into the list once their hour has come or they
-  are running; `inList`, which is also what a drop's `index` counts) and **Depois eu priorizo** (the backlog), each
-  headed like a day of the calendar. A drag moves a
-  task within either or across the line; the move carries `backlog: true`
-  when it lands below it. A running task dropped in the backlog stops. Each
-  stage ends in a **+** that writes something down at its end.
+- **Lista**: the tasks alone, each as tall as it needs, in three stages
+  that are always drawn, each headed like a day of the calendar: **Agora**
+  (the running task, the break, or `DayOverTile` outside the working day),
+  **one day** of tasks with an hour, **Ainda hoje** while the working day is
+  open and has tasks left (or nothing is queued at all), otherwise
+  **Amanhã** (`_listDay`), and **Para depois** (the backlog). Tasks queued
+  after that day are not drawn: one line counts them, "Mais N tarefas
+  adiante · Ver no calendário", which switches to Calendário. The days of
+  routines are drawn on the calendar only, and come into the list once
+  their hour has come or they are running (`inList`, which is also what a
+  drop's `index` counts). A drag moves a task within either or across the
+  line; the move carries `backlog: true` when it lands below it. A running
+  task dropped in the backlog stops. The day and the backlog each end in a
+  **+** that writes something down at its end.
+
+  **The delivery is the card.** Tasks of one delivery that follow each
+  other (`deliveryRuns`) are one `DeliveryTile`: the delivery's name, the
+  run's hours, and under it only the **next** task. To a tap and a drag the
+  card is that next task, and a drop under it lands after the whole run.
+  Agora's run keeps the running task's controls and ends in `RunBar`, a
+  piece per task of the run. A task with no delivery keeps its `EventTile`.
+  A delivery's own Tarefas (`only:`) keeps one stage, *Fazer em breve*, a
+  card per task.
 - **Calendário**: everything, to scale, day after day. Scrolling near the
   end asks for another week (`TimelineExtended`), up to 120 days. **Agora**
   is always drawn, the break with its line whenever nothing runs, and a
   task let go on it is begun. A card tall enough for a second line (72 px
   drawn) shows its delivery and the start of its notes under the title
   (`notesPreview`, up to 3 lines); a shorter one shows no notes at all and
-  marks a delivery's task with the stack. A card is never taller for it. Every free stretch carries a small **+**
+  marks a delivery's task with the stack. A card is never taller for it.
+  Tasks of one delivery that follow each other with no room drawn between
+  them are **one block** as tall as theirs together, each task a line at
+  its hour when there is a line's room for each (else the next task alone),
+  and each line is its task to a tap, a drag, a nudge or a swap; a run's
+  seam is not pulled. Agora's run draws every line, with the running one's
+  controls. A delivery's lone task is the card it always was. Every free
+  stretch carries a small **+**
   and its hours, both stuck to the top of the part of it in sight (placed
   while painting, so they never lag the scroll); the hours run from the
   first one in sight, which is where the + writes.
@@ -468,9 +501,14 @@ Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
 code), something owed by a day, with an optional kind from the person's
 **catalogue** (shelves and kinds, empty until they fill it), a total time,
 a value and how the day may cut it. The open ones are a queue of their
-own, under the **goals** (money delivered, or a count of one kind, per week
-or month) and a line setting the time the month's deliveries owe against
-the agenda's free hours. A delivery's tasks are ordinary tasks on the day
+own, drawn in two groups (`progressGroups`): **Em andamento** (some task
+done or minutes worked), fixed, the one whose time has run furthest past
+its work first (`lagOf`), and **Não iniciadas**, in the queue's order,
+which a drag sets. Each has **one bar**: the time gone in red (`paceTime`)
+under the work done in green (`paceDone`). The **goals** (money delivered,
+or a count of one kind, per week or month) are hidden by a flag
+(`ArtifactsPage(showGoals:)`, off) and a line sets the time the month's
+deliveries owe against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
 (`task.artifact_id`), and its Tarefas is Tempo's Lista kept to them
 (`TimelineList(only:, done:)`). **Money counts when a delivery is
 delivered** (`done_at`). The routes and the rules are in

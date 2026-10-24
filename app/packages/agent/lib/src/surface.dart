@@ -167,7 +167,7 @@ class PeekCard extends Equatable {
 
   final int minutes;
 
-  /// Its hour. Null in Depois eu priorizo.
+  /// Its hour. Null in Para depois.
   final DateTime? at;
 
   /// Whether it is a fixed block.

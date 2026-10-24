@@ -14,7 +14,7 @@ export interface PeekCard {
   id: string;
   title: string;
   minutes: number;
-  /** ISO 8601, its hour. Absent in Depois eu priorizo. */
+  /** ISO 8601, its hour. Absent in Para depois. */
   at?: string;
   fixed: boolean;
   done: boolean;
@@ -318,7 +318,7 @@ export function summary(board: Board, blocks: Block[]): string {
   if (caption !== undefined) return caption.text;
 
   const when = (iso?: string) =>
-    iso === undefined ? 'Depois eu priorizo' : board.when(new Date(iso));
+    iso === undefined ? 'Para depois' : board.when(new Date(iso));
   const lines = blocks.map((block): string | undefined => {
     switch (block.kind) {
       case 'plan':

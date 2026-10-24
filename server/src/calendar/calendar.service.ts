@@ -10,7 +10,12 @@ import {
   NewRoutine,
   RoutinePatch,
 } from './calendar.store';
-import { CalendarEvent, CalendarRoutine, CalendarUser } from './calendar.types';
+import {
+  CalendarEvent,
+  CalendarRoutine,
+  CalendarUser,
+  checklistOf,
+} from './calendar.types';
 
 /**
  * How long a read of the day is reused before going back for another.
@@ -201,6 +206,7 @@ export class CalendarService {
           title: routine.title,
           minutes: minutesOf(day),
           occurrence: day.start.toISOString(),
+          ...listOf(routine.checklist),
         })),
     );
   }
@@ -288,4 +294,10 @@ export class CalendarService {
 
     return cached;
   }
+}
+
+/** A routine's list as a day's, to spread into it: nothing when empty. */
+function listOf(titles: readonly string[]) {
+  const checklist = checklistOf(titles);
+  return checklist === undefined ? {} : { checklist };
 }

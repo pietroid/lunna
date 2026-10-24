@@ -19,7 +19,7 @@ enum TimelineSection {
   /// Later, under its day.
   dia('dia'),
 
-  /// Depois eu priorizo: a task with an order and a length, and no hour.
+  /// Para depois: a task with an order and a length, and no hour.
   backlog('backlog');
 
   const TimelineSection(this.wire);
@@ -94,6 +94,7 @@ class TimelineEvent extends Equatable {
     this.routine,
     this.artifactId,
     this.artifactTitle,
+    this.checklist = const [],
   }) : workMinutes = workMinutes ?? durationMinutes,
        day = day ?? DateTime(startTime.year, startTime.month, startTime.day);
 
@@ -122,6 +123,10 @@ class TimelineEvent extends Equatable {
       artifactId: (json['artifact'] as Map<String, dynamic>?)?['id'] as String?,
       artifactTitle:
           (json['artifact'] as Map<String, dynamic>?)?['title'] as String?,
+      checklist: [
+        for (final item in json['checklist'] as List<dynamic>? ?? <dynamic>[])
+          ChecklistItem.fromJson(item as Map<String, dynamic>),
+      ],
     );
   }
 
@@ -205,6 +210,15 @@ class TimelineEvent extends Equatable {
   /// That artifact's name, drawn on the card.
   final String? artifactTitle;
 
+  /// The day's own list, when it is a day of a routine that has one
+  /// (breakfast: the coffee, the dishes), each item ticked off or not.
+  final List<ChecklistItem> checklist;
+
+  /// The first item not yet ticked off, or null when all are (or there is
+  /// no list).
+  ChecklistItem? get nextItem =>
+      checklist.where((item) => !item.done).firstOrNull;
+
   /// Whether it is something to do, rather than an hour on the calendar.
   bool get isTask => kind == CardKind.task;
 
@@ -275,6 +289,7 @@ class TimelineEvent extends Equatable {
     DateTime? pausedAt,
     bool clearPause = false,
     bool? awaitingStart,
+    List<ChecklistItem>? checklist,
   }) {
     return TimelineEvent(
       id: id,
@@ -298,6 +313,7 @@ class TimelineEvent extends Equatable {
       routine: routine,
       artifactId: artifactId,
       artifactTitle: artifactTitle,
+      checklist: checklist ?? this.checklist,
     );
   }
 
@@ -324,7 +340,37 @@ class TimelineEvent extends Equatable {
     routine,
     artifactId,
     artifactTitle,
+    checklist,
   ];
+}
+
+/// {@template checklist_item}
+/// One item of a routine's day: breakfast's coffee, ticked off or not.
+///
+/// The routine keeps the titles; each day gets its own copy, so ticking one
+/// off today leaves tomorrow's alone.
+/// {@endtemplate}
+class ChecklistItem extends Equatable {
+  /// {@macro checklist_item}
+  const ChecklistItem({required this.title, this.done = false});
+
+  /// Creates a [ChecklistItem] from the API's JSON.
+  factory ChecklistItem.fromJson(Map<String, dynamic> json) => ChecklistItem(
+    title: json['title'] as String? ?? '',
+    done: json['done'] as bool? ?? false,
+  );
+
+  /// What it is.
+  final String title;
+
+  /// Whether it was ticked off that day.
+  final bool done;
+
+  /// The API's JSON.
+  Map<String, dynamic> toJson() => {'title': title, 'done': done};
+
+  @override
+  List<Object?> get props => [title, done];
 }
 
 DateTime _date(Object? value) {

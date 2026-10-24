@@ -298,7 +298,7 @@
   "timelineModeList": "Lista",
   "timelineModeCalendar": "Calendário",
   "stageSoon": "Fazer em breve",
-  "stageBacklog": "Depois eu priorizo",
+  "stageBacklog": "Para depois",
   "stageSoonEmpty": "Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.",
   "stageBacklogEmpty": "Nada esperando. Arraste para cá o que ainda não tem lugar na fila.",
   "stageDone": "{count, plural, =0{Feitas} =1{1 feita} other{{count} feitas}}",
@@ -310,12 +310,12 @@
     }
   },
   "stageDoneEmpty": "Nada feito ainda. Arraste uma tarefa para a direita quando terminar.",
-  "promptToBacklog": "Vai para Depois eu priorizo",
+  "promptToBacklog": "Deixar para depois",
   "promptToQueue": "Entra na fila, onde houver espaço",
   "promptPickTime": "Escolher horário",
   "timelineAdd": "Adicionar",
   "timelineBackToNow": "Voltar para agora",
-  "eventInBacklog": "Em Depois eu priorizo, ainda sem hora",
+  "eventInBacklog": "Em Para depois, ainda sem hora",
   "eventDoneOn": "Feita {day}, às {time}",
   "@eventDoneOn": {
     "placeholders": {
@@ -556,7 +556,7 @@
   "agentChangeAddEvent": "novo bloco fixo",
   "agentChangeMoved": "movida",
   "agentChangeRoutine": "rotina, só nesse dia",
-  "agentChangeFromBacklog": "saiu do Depois eu priorizo",
+  "agentChangeFromBacklog": "saiu de Para depois",
   "agentUndo": "Desfazer",
   "agentEarlier": "Conversas anteriores",
   "agentEarlierFailed": "Não consegui trazer as conversas anteriores. Toque para tentar de novo.",
@@ -790,7 +790,7 @@
       }
     }
   },
-  "artifactDeleteBody": "As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.",
+  "artifactDeleteBody": "As tarefas em Para depois vão junto. As que já têm hora, e as feitas, ficam no Tempo.",
   "dayOverTitle": "Seu dia terminou às {end}",
   "@dayOverTitle": {
     "placeholders": {
@@ -1067,18 +1067,6 @@
       }
     }
   },
-  "artifactsQueue": "Fila",
-  "artifactsQueueSummary": "{count, plural, =1{1 entrega} other{{count} entregas}} · {time}",
-  "@artifactsQueueSummary": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "time": {
-        "type": "String"
-      }
-    }
-  },
   "artifactsAll": "Todas",
   "artifactsSeeAll": "Ver todas as {count}",
   "@artifactsSeeAll": {
@@ -1268,5 +1256,40 @@
       }
     }
   },
-  "goalReadbackFutureWeek": "Fica guardada e passa a valer na segunda-feira."
+  "goalReadbackFutureWeek": "Fica guardada e passa a valer na segunda-feira.",
+  "stageAhead": "{count, plural, =1{Mais 1 tarefa adiante} other{Mais {count} tarefas adiante}}",
+  "@stageAhead": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "stageAheadOpen": "Ver no calendário",
+  "stageDayEmpty": "Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.",
+  "deliveryTasks": "{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}",
+  "@deliveryTasks": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactsInProgress": "Em andamento",
+  "artifactsNotStarted": "Não iniciadas",
+  "artifactPaceOn": "no ritmo",
+  "artifactPaceBehind": "atrás do ritmo",
+  "routineChecklistHint": "Uma lista? Um item por linha",
+  "eventChecklistLabel": "Lista",
+  "checklistCount": "{done} de {total}",
+  "@checklistCount": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "checklistAllDone": "Tudo feito"
 }

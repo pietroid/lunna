@@ -10,6 +10,7 @@ import 'package:artifacts/src/view/artifact_row.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
 import 'package:artifacts/src/view/goal_card.dart';
 import 'package:artifacts/src/view/goal_sheet.dart';
+import 'package:artifacts/src/view/pace_bars.dart';
 import 'package:artifacts/src/view/shelf_filter.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,23 +18,31 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template artifacts_page}
-/// The Entregas tab: the goals on top, the queue of deliveries under them.
+/// The Entregas tab: the deliveries under way, then the ones not begun.
 ///
 /// The three forces on one screen. The goals say what the month asks for;
 /// the line under them says what the agenda can give, the time the queue
-/// owes this month against the free time left in it; the queue, in order of
-/// priority, is what both are spent on. Held, a row is dragged to another
-/// place. One line of the kinds she uses most and the catalogue's shelves
-/// filters the queue, and the list ends in a way to every delivery and a
-/// search.
+/// owes this month against the free time left in it; the deliveries are
+/// what both are spent on. Those under way (Em andamento) are fixed, the
+/// one whose time has run furthest past its work on top; those not begun
+/// (Não iniciadas) are the queue, in order of priority, and held, a row is
+/// dragged to another place in it. One line of the kinds she uses most
+/// and the catalogue's shelves filters the queue, and the list ends in a
+/// way to every delivery and a search.
 /// {@endtemplate}
 class ArtifactsPage extends StatefulWidget {
   /// {@macro artifacts_page}
   const ArtifactsPage({
     this.shown = 5,
     this.initialShelf = const Shelf(),
+    this.showGoals = false,
     super.key,
   });
+
+  /// Whether the goals are drawn. Off for now: the deliveries and their
+  /// days say enough, and the goals' cards pushed them below the fold.
+  /// Everything behind them (routes, the agent's verbs) still works.
+  final bool showGoals;
 
   /// How many of the queue are drawn before "Ver todas".
   final int shown;
@@ -80,14 +89,13 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
   Widget _build(BuildContext context, ArtifactsData data) {
     final l10n = context.l10n;
     final now = clock.now();
-    final cubit = context.read<ArtifactsCubit>();
     final all = data.queue;
     final queue = all.where(_shelf.keeps).toList();
-    final shown = queue.take(widget.shown).toList();
-    final left = all.fold(
-      0,
-      (sum, a) => sum + (a.minutes - a.doneMinutes).clamp(0, a.minutes),
-    );
+    final cubit = context.read<ArtifactsCubit>();
+    final groups = progressGroups(queue, now);
+    // The first few, what is under way first, as the page draws them.
+    final started = groups.started.take(widget.shown).toList();
+    final waiting = groups.waiting.take(widget.shown - started.length).toList();
     final schedule = data.schedule;
     const side = EdgeInsets.symmetric(horizontal: AppSpacing.s5);
 
@@ -128,38 +136,41 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.s4),
-                    _Heading(
-                      title: l10n.goalsSection,
-                      trailing: AppPillButton(
-                        iconData: AppIcons.plus,
-                        label: l10n.goalNew,
-                        onPressed: () => unawaited(showGoalSheet(context)),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s3),
-                    if (data.goals.isEmpty)
-                      _Quiet(text: l10n.goalsEmpty)
-                    else
-                      SizedBox(
-                        height: 140,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          clipBehavior: Clip.none,
-                          itemCount: data.goals.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(width: AppSpacing.s2),
-                          itemBuilder: (context, index) {
-                            final goal = data.goals[index];
-                            return SizedBox(
-                              width: 300,
-                              child: GestureDetector(
-                                onLongPress: () => unawaited(_deleteGoal(goal)),
-                                child: GoalCard(goal: goal, now: now),
-                              ),
-                            );
-                          },
+                    if (widget.showGoals) ...[
+                      _Heading(
+                        title: l10n.goalsSection,
+                        trailing: AppPillButton(
+                          iconData: AppIcons.plus,
+                          label: l10n.goalNew,
+                          onPressed: () => unawaited(showGoalSheet(context)),
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.s3),
+                      if (data.goals.isEmpty)
+                        _Quiet(text: l10n.goalsEmpty)
+                      else
+                        SizedBox(
+                          height: 140,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            clipBehavior: Clip.none,
+                            itemCount: data.goals.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(width: AppSpacing.s2),
+                            itemBuilder: (context, index) {
+                              final goal = data.goals[index];
+                              return SizedBox(
+                                width: 300,
+                                child: GestureDetector(
+                                  onLongPress: () =>
+                                      unawaited(_deleteGoal(goal)),
+                                  child: GoalCard(goal: goal, now: now),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
                     const SizedBox(height: AppSpacing.s3),
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -186,19 +197,7 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.s8),
-                    _Heading(
-                      title: l10n.artifactsQueue,
-                      trailing: Text(
-                        l10n.artifactsQueueSummary(
-                          all.length,
-                          formatMinutes(l10n, left),
-                        ),
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.ink3,
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: AppSpacing.s4),
                     const SizedBox(height: AppSpacing.s3),
                     if (data.catalog.isNotEmpty) ...[
                       ShelfFilter(
@@ -218,38 +217,64 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                   ],
                 ),
               ),
-              SliverPadding(
-                padding: side,
-                // Held, a row moves to another place in the queue. Only the
-                // whole queue is dragged: a place among a shelf's says
-                // nothing about where it falls among the rest.
-                sliver: SliverReorderableList(
-                  itemCount: shown.length,
-                  onReorderItem: (from, to) =>
-                      unawaited(cubit.move(shown[from].id, to)),
-                  itemBuilder: (context, index) {
-                    final artifact = shown[index];
-                    final row = Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.s2),
-                      child: ArtifactRow(
-                        artifact: artifact,
-                        now: now,
-                        onTap: () =>
-                            unawaited(openArtifact(context, artifact.id)),
-                      ),
-                    );
-                    return KeyedSubtree(
-                      key: ValueKey(artifact.id),
-                      child: _unfiltered
-                          ? ReorderableDelayedDragStartListener(
-                              index: index,
-                              child: row,
-                            )
-                          : row,
-                    );
-                  },
+              // What is under way, the one most behind its time on top,
+              // where nothing moves it: its place is how late it is. Then
+              // what has not been begun, the queue a drag puts in order.
+              if (started.isNotEmpty) ...[
+                _sectionHeading(l10n.artifactsInProgress),
+                SliverPadding(
+                  padding: side,
+                  sliver: SliverList.list(
+                    children: [
+                      for (final artifact in started)
+                        Padding(
+                          key: ValueKey(artifact.id),
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.s2,
+                          ),
+                          child: _row(context, artifact, now),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
+              if (waiting.isNotEmpty) ...[
+                _sectionHeading(l10n.artifactsNotStarted),
+                SliverPadding(
+                  padding: side,
+                  // Held, a row moves to another place in the queue, among
+                  // the others not begun. Only the whole queue is dragged: a
+                  // place among a shelf's says nothing about the rest.
+                  sliver: SliverReorderableList(
+                    itemCount: waiting.length,
+                    onReorderItem: (from, to) {
+                      final id = waiting[from].id;
+                      unawaited(
+                        cubit.move(
+                          id,
+                          queueIndexOf(all, waiting, id, to),
+                        ),
+                      );
+                    },
+                    itemBuilder: (context, index) {
+                      final artifact = waiting[index];
+                      final row = Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+                        child: _row(context, artifact, now),
+                      );
+                      return KeyedSubtree(
+                        key: ValueKey(artifact.id),
+                        child: _unfiltered
+                            ? ReorderableDelayedDragStartListener(
+                                index: index,
+                                child: row,
+                              )
+                            : row,
+                      );
+                    },
+                  ),
+                ),
+              ],
               SliverPadding(
                 // Room for the bar and the + floating over the list.
                 padding: side.copyWith(bottom: AppSpacing.s16 * 2),
@@ -274,6 +299,26 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
     );
   }
 }
+
+/// One delivery's row, opening its page.
+Widget _row(BuildContext context, Artifact artifact, DateTime now) =>
+    ArtifactRow(
+      artifact: artifact,
+      now: now,
+      onTap: () => unawaited(openArtifact(context, artifact.id)),
+    );
+
+/// A heading of the deliveries, set as the timeline sets its days and
+/// stages.
+Widget _sectionHeading(String title) => SliverPadding(
+  padding: const EdgeInsets.fromLTRB(
+    AppSpacing.s5,
+    AppSpacing.s4,
+    AppSpacing.s5,
+    AppSpacing.s2,
+  ),
+  sliver: SliverToBoxAdapter(child: Text(title, style: AppTypography.title)),
+);
 
 /// A section's title, with what acts on it at the end of the line.
 class _Heading extends StatelessWidget {

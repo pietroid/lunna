@@ -284,7 +284,7 @@ export const task = pgTable(
      */
     notBefore: timestamp('not_before', { withTimezone: true }),
     /**
-     * Whether it waits in the backlog ("Depois eu priorizo") rather than in
+     * Whether it waits in the backlog ("Para depois") rather than in
      * the queue. A task in the backlog has an order and a length but no
      * hour: the layout never sees it until it is dragged into the queue.
      */
@@ -309,6 +309,12 @@ export const task = pgTable(
      * same occurrence back.
      */
     cancelled: boolean('cancelled').notNull().default(false),
+    /**
+     * The day's own list, for a day of a routine that has one: each item
+     * of the routine's, and whether it was ticked off that day. Null for
+     * everything else.
+     */
+    checklist: jsonb('checklist').$type<{ title: string; done: boolean }[]>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -354,6 +360,12 @@ export const routine = pgTable(
      * happening runs into them, and they wait for the user to begin them.
      */
     fixed: boolean('fixed').notNull().default(false),
+    /**
+     * What each day of it is made of (breakfast: the coffee, the dishes, the
+     * plants), in order. Copied into each day as it is written down, where
+     * it is ticked off item by item. Empty for a routine that is one thing.
+     */
+    checklist: jsonb('checklist').$type<string[]>().notNull().default([]),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -416,6 +428,8 @@ export const event = pgTable(
      * same occurrence back.
      */
     cancelled: boolean('cancelled').notNull().default(false),
+    /** The day's own list, as on [task], for a day of a fixed routine. */
+    checklist: jsonb('checklist').$type<{ title: string; done: boolean }[]>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

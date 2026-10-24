@@ -39,7 +39,7 @@ enum PlanChangeKind {
   /// A fixed block given another hour.
   moveEvent,
 
-  /// A task put in Depois eu priorizo, or written down there: no hour.
+  /// A task put in Para depois, or written down there: no hour.
   toBacklog,
 
   /// A task or a block renamed, or given another length.

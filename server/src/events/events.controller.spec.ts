@@ -9,6 +9,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { SessionGuard } from '../auth/session.guard';
 import { CalendarService } from '../calendar/calendar.service';
+import { RoutinesController } from '../routines/routines.controller';
+import { RoutinesService } from '../routines/routines.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
 import {
   MemoryArtifactStore,
@@ -183,6 +185,7 @@ describe('the day', () => {
         TimelineController,
         EventsController,
         TasksController,
+        RoutinesController,
         NotificationsController,
       ],
       providers: [
@@ -190,6 +193,7 @@ describe('the day', () => {
         EventLayoutService,
         NotificationsService,
         CalendarService,
+        RoutinesService,
         { provide: CalendarStore, useClass: MemoryCalendarStore },
         { provide: TaskStore, useClass: MemoryTaskStore },
         { provide: ArtifactStore, useClass: MemoryArtifactStore },
@@ -1817,6 +1821,150 @@ describe('the day', () => {
       // Tomorrow is its own row, still at the routine's hour.
       expect(second.day).toBe('2026-03-11');
       expect(hhmm(second.startTime)).toBe(hhmm(lunch.toISOString()));
+    });
+
+    describe('with a list', () => {
+      const items = ['Passar o café', 'Meditar', 'Lavar a louça'];
+
+      function breakfastAt(at: Date, fixed = false) {
+        return store.insertRoutine(owner, {
+          title: 'Café da manhã',
+          startTime: at.toISOString(),
+          endTime: new Date(at.getTime() + 45 * 60_000).toISOString(),
+          days: 'daily',
+          fixed,
+          checklist: items,
+        });
+      }
+
+      it('copies it into each flexible day, nothing ticked off', async () => {
+        await breakfastAt(inHours(2));
+
+        const days = (await read(2)).cards.filter(
+          (it) => it.title === 'Café da manhã',
+        );
+
+        expect(days).toHaveLength(2);
+        for (const day of days) {
+          expect(day.checklist).toEqual(
+            items.map((title) => ({ title, done: false })),
+          );
+        }
+      });
+
+      it('ticks an item off one day and leaves the next alone', async () => {
+        await breakfastAt(inHours(2));
+        const today = await card('Café da manhã');
+
+        const after = cards(
+          await request(app.getHttpServer())
+            .patch(`/tasks/${today.id}?days=2`)
+            .send({
+              checklist: items.map((title, i) => ({ title, done: i === 0 })),
+            })
+            .expect(200),
+        ).filter((it) => it.title === 'Café da manhã');
+
+        expect(after[0].checklist?.map((it) => it.done)).toEqual([
+          true,
+          false,
+          false,
+        ]);
+        expect(after[1].checklist?.every((it) => !it.done)).toBe(true);
+        // Ticking an item off is not finishing the day: it keeps its hour.
+        expect(after[0].startTime).toBe(today.startTime);
+      });
+
+      it('does the same for a fixed day, as an event', async () => {
+        await breakfastAt(inHours(2), true);
+        const today = await card('Café da manhã');
+        expect(today.kind).toBe('event');
+        expect(today.checklist).toHaveLength(3);
+
+        const after = cards(
+          await request(app.getHttpServer())
+            .patch(`/events/${today.id}`)
+            .send({
+              checklist: items.map((title) => ({ title, done: true })),
+            })
+            .expect(200),
+        ).find((it) => it.id === today.id)!;
+
+        expect(after.checklist?.every((it) => it.done)).toBe(true);
+      });
+
+      it('writes the days not begun again when the list changes', async () => {
+        const routine = await breakfastAt(inHours(2));
+        await read(2);
+
+        await request(app.getHttpServer())
+          .patch(`/routines/${routine.id}`)
+          .send({ checklist: ['Passar o café', ' Regar as plantas '] })
+          .expect(200);
+
+        const days = (await read(2)).cards.filter(
+          (it) => it.title === 'Café da manhã',
+        );
+        expect(days).toHaveLength(2);
+        for (const day of days) {
+          expect(day.checklist?.map((it) => it.title)).toEqual([
+            'Passar o café',
+            'Regar as plantas',
+          ]);
+        }
+      });
+
+      it('is written down with a routine, and refused when it is not a list', async () => {
+        const answer = await request(app.getHttpServer())
+          .post('/routines')
+          .send({
+            title: 'Fim do dia',
+            time: '18:00',
+            durationMinutes: 20,
+            days: 'daily',
+            checklist: ['Fechar o caixa', 'Anotar amanhã'],
+          })
+          .expect(201);
+        expect(
+          (answer.body as { title: string; checklist: string[] }[]).find(
+            (it) => it.title === 'Fim do dia',
+          )?.checklist,
+        ).toEqual(['Fechar o caixa', 'Anotar amanhã']);
+
+        for (const checklist of ['café', [''], [3]]) {
+          await request(app.getHttpServer())
+            .post('/routines')
+            .send({
+              title: 'Outra',
+              time: '18:00',
+              durationMinutes: 20,
+              days: 'daily',
+              checklist,
+            })
+            .expect(400);
+        }
+      });
+
+      it('refuses a list that is not one', async () => {
+        await breakfastAt(inHours(2));
+        const today = await card('Café da manhã');
+
+        for (const checklist of [
+          'café',
+          [{ title: '', done: false }],
+          [{ title: 'Café', done: 'sim' }],
+        ]) {
+          await request(app.getHttpServer())
+            .patch(`/tasks/${today.id}`)
+            .send({ checklist })
+            .expect(400);
+        }
+      });
+
+      it('carries no list on a routine that has none', async () => {
+        await lunchAt(inHours(2));
+        expect((await card('Almoço')).checklist).toBeUndefined();
+      });
     });
 
     it('does not bring back a day of a routine that was taken off', async () => {

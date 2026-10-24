@@ -85,6 +85,13 @@
       "when": 1792681782622,
       "tag": "0011_agent_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792842762197,
+      "tag": "0012_routine_checklist",
+      "breakpoints": true
     }
   ]
 }

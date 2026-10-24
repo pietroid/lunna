@@ -151,6 +151,39 @@ describe('PgCalendarStore', () => {
     expect(day.every((it) => it.fixed && it.routine === 'daily')).toBe(true);
   });
 
+  it('copies a routine’s list into each day, and a new list ahead', async () => {
+    const routine = await store.insertRoutine(OWNER, {
+      fixed: true,
+      title: 'Café da manhã',
+      startTime: '2026-03-10T15:00:00Z',
+      endTime: '2026-03-10T15:45:00Z',
+      days: 'daily',
+      checklist: ['Passar o café', 'Meditar'],
+    });
+    expect(routine.checklist).toEqual(['Passar o café', 'Meditar']);
+
+    const from = hours(NOW, -2);
+    const to = hours(NOW, 36);
+    const [today] = await store.window(OWNER, from, to, ZONE);
+    expect(today.checklist).toEqual([
+      { title: 'Passar o café', done: false },
+      { title: 'Meditar', done: false },
+    ]);
+
+    const ticked = await store.update(OWNER, {
+      ...today,
+      checklist: [
+        { title: 'Passar o café', done: true },
+        { title: 'Meditar', done: false },
+      ],
+    });
+    expect(ticked.checklist?.[0].done).toBe(true);
+
+    await store.updateRoutine(OWNER, routine.id, { checklist: ['Ler'] }, NOW);
+    const [again] = await store.window(OWNER, from, to, ZONE);
+    expect(again.checklist).toEqual([{ title: 'Ler', done: false }]);
+  });
+
   it('skips the days a routine does not fall on', async () => {
     // Friday 13/03/2026 at noon, weekdays only.
     await store.insertRoutine(OWNER, {

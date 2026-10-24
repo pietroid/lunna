@@ -2,6 +2,7 @@ import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/src/models/models.dart';
+import 'package:timeline/src/widgets/checklist.dart';
 import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/now_surface.dart';
 
@@ -31,6 +32,12 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// title, as many lines as fit up to three; a shorter one shows no notes at
 /// all, and marks an artifact's task with the folders.
 ///
+/// A routine's day with a list of its own (breakfast: the coffee, the
+/// dishes) draws the list in place of the notes: the next item to do, with
+/// how many are done, and on the calendar, when the card is tall enough for
+/// a line per item, every item one under another. Agora draws the next one
+/// alone. Items are ticked off on the block's own page.
+///
 /// It carries no gestures of its own. Tapping and dragging on the timeline
 /// are read by one listener over the whole list, which tells each card how it
 /// is being touched through [pressed], [hidden], and [lifted].
@@ -43,7 +50,6 @@ class EventTile extends StatelessWidget {
     this.hidden = false,
     this.lifted = false,
     this.landing,
-    this.showArtifact = false,
     this.preview = false,
     this.actionsKey,
     this.onPauseToggled,
@@ -73,15 +79,15 @@ class EventTile extends StatelessWidget {
   /// finger reads in place of its own.
   final ({DateTime start, DateTime end})? landing;
 
-  /// Whether the artifact the task is of goes under its title.
-  final bool showArtifact;
-
   /// Whether the card says what its notes start with and its artifact's
   /// name, within the height it is given (the calendar's).
   final bool preview;
 
   /// How tall a card on the calendar must be for a second line.
   static const _twoLines = 72.0;
+
+  /// How far down a card its list starts: the padding and the title.
+  static const _listTop = 50.0;
 
   /// Put on the row of buttons, so the list's own gesture can leave a tap on
   /// one of them alone.
@@ -115,7 +121,10 @@ class EventTile extends StatelessWidget {
               final lines = height.isFinite && height >= _twoLines
                   ? ((height - 64) / 18).floor().clamp(1, 3)
                   : 0;
-              return _body(context, lines: lines);
+              final items = height.isFinite && !_isNow
+                  ? ((height - _listTop) / ChecklistLine.height).floor()
+                  : 1;
+              return _body(context, lines: lines, items: items);
             },
           )
         : _body(context, lines: 0);
@@ -151,9 +160,11 @@ class EventTile extends StatelessWidget {
   }
 
   /// The card's words: the title and its hours, then, given [lines] of room
-  /// under them, the artifact and the start of the notes.
-  Widget _body(BuildContext context, {required int lines}) {
-    final notes = preview ? notesPreview(card.notes) : '';
+  /// under them, the artifact and the start of the notes, or, for a day
+  /// with a list, as many of its [items] as there is room for.
+  Widget _body(BuildContext context, {required int lines, int items = 1}) {
+    final list = card.checklist;
+    final notes = preview && list.isEmpty ? notesPreview(card.notes) : '';
     final artifact = preview ? card.artifactTitle : null;
     final under = lines > 0 && (notes.isNotEmpty || artifact != null);
     final mark =
@@ -230,15 +241,14 @@ class EventTile extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-          if (showArtifact && card.artifactTitle != null) ...[
-            const SizedBox(height: AppSpacing.s2),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppTag(
-                text: card.artifactTitle!,
-                fill: _isNow ? AppColors.fill : AppColors.fillStrong,
-              ),
-            ),
+          // The list goes where the notes would: every item when the
+          // calendar has a line for each, else the next one alone.
+          if (list.isNotEmpty && items > 0) ...[
+            const SizedBox(height: AppSpacing.s1),
+            if (preview && !_isNow && list.length > 1 && items >= list.length)
+              for (final item in list) ChecklistLine(item: item, quiet: _quiet)
+            else
+              ChecklistLine.next(context, card, quiet: _quiet),
           ],
           if (_isNow) ...[
             const SizedBox(height: AppSpacing.s2),

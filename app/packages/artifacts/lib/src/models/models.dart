@@ -87,7 +87,7 @@ class CatalogCategory extends Equatable {
 
 /// Where a delivery's task is, as far as the day is concerned.
 enum TaskPlace {
-  /// In the backlog, "Depois eu priorizo": no hour, in its order.
+  /// In the backlog, "Para depois": no hour, in its order.
   backlog,
 
   /// In the queue, taking the next free hour it fits.

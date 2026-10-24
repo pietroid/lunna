@@ -41,7 +41,10 @@ export class RoutinesService {
   /** Writes a routine down, and answers with every routine. */
   async create(
     user: CalendarUser,
-    request: Required<Omit<RoutineRequest, 'fixed'>> & { fixed?: boolean },
+    request: Required<Omit<RoutineRequest, 'fixed' | 'checklist'>> & {
+      fixed?: boolean;
+      checklist?: string[];
+    },
     trace: Trace,
     now = new Date(),
   ): Promise<Routine[]> {
@@ -53,6 +56,7 @@ export class RoutinesService {
       ...spanOf(request.time, request.durationMinutes, request.days, zone, now),
       days: request.days,
       fixed: request.fixed ?? false,
+      checklist: request.checklist ?? [],
     });
 
     return this.list(user);
@@ -93,6 +97,9 @@ export class RoutinesService {
       routineId,
       {
         title: next.title,
+        // A new list reaches the days not begun yet, which are written
+        // again below; the days already begun keep the list they had.
+        checklist: next.checklist,
         ...(retimed
           ? {
               ...spanOf(next.time, next.durationMinutes, next.days, zone, now),
@@ -153,6 +160,7 @@ function routineOf(routine: CalendarRoutine, zone: Zone): Routine {
     durationMinutes: minutesOf({ start, end: new Date(routine.endTime) }),
     days: routine.days,
     fixed: routine.fixed,
+    checklist: routine.checklist ?? [],
   };
 }
 

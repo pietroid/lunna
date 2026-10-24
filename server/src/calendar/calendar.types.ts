@@ -89,6 +89,28 @@ export interface CalendarEvent {
   routineId?: string;
   /** Which days it repeats on, when it is a day of a routine. */
   routine?: RoutineDays;
+  /** The day's own list, for a day of a routine that has one. */
+  checklist?: ChecklistItem[];
+}
+
+/**
+ * One item of a routine's day: breakfast's coffee, ticked off or not.
+ *
+ * A routine keeps the titles; each day it is written down on gets its own
+ * copy, so ticking one off today leaves tomorrow's alone.
+ */
+export interface ChecklistItem {
+  title: string;
+  done: boolean;
+}
+
+/** [titles] as a day's list, nothing ticked off; undefined when empty. */
+export function checklistOf(
+  titles: readonly string[],
+): ChecklistItem[] | undefined {
+  return titles.length === 0
+    ? undefined
+    : titles.map((title) => ({ title, done: false }));
 }
 
 /** Which days a routine repeats on. */
@@ -120,4 +142,6 @@ export interface CalendarRoutine {
    * a flexible one's are tasks anchored at its hour.
    */
   fixed: boolean;
+  /** What each day of it is made of, in order; empty when it is one thing. */
+  checklist: string[];
 }

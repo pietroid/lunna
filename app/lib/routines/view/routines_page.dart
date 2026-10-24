@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -83,6 +84,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
         durationMinutes: draft.durationMinutes,
         days: _tab,
         fixed: draft.fixed,
+        checklist: draft.checklist,
       ),
     );
   }
@@ -94,6 +96,7 @@ class _RoutinesPageState extends State<RoutinesPage> {
       startMinute: routine.startMinute,
       durationMinutes: routine.durationMinutes,
       fixed: routine.fixed,
+      checklist: routine.checklist,
       editing: true,
     );
     if (draft == null) return;
@@ -114,6 +117,9 @@ class _RoutinesPageState extends State<RoutinesPage> {
             ? null
             : draft.durationMinutes,
         fixed: draft.fixed == routine.fixed ? null : draft.fixed,
+        checklist: listEquals(draft.checklist, routine.checklist)
+            ? null
+            : draft.checklist,
       ),
     );
   }
@@ -502,6 +508,7 @@ class _RoutineDraft {
     required this.startMinute,
     required this.durationMinutes,
     required this.fixed,
+    required this.checklist,
   }) : delete = false;
 
   const _RoutineDraft.deleted()
@@ -509,23 +516,29 @@ class _RoutineDraft {
       startMinute = 0,
       durationMinutes = 0,
       fixed = false,
+      checklist = const [],
       delete = true;
 
   final String title;
   final int startMinute;
   final int durationMinutes;
   final bool fixed;
+
+  /// What each day of it is made of, one item a line of the field.
+  final List<String> checklist;
   final bool delete;
 }
 
-/// A routine, written down or opened: its name, whether its hour is the
-/// point of it, its hour and its length.
+/// A routine, written down or opened: its name, its list (an item a line,
+/// none for a routine that is one thing), whether its hour is the point of
+/// it, its hour and its length.
 class _RoutineSheet extends StatefulWidget {
   const _RoutineSheet({
     required this.startMinute,
     required this.durationMinutes,
     this.title,
     this.fixed = false,
+    this.checklist = const [],
     this.editing = false,
   });
 
@@ -536,6 +549,9 @@ class _RoutineSheet extends StatefulWidget {
   /// Whether its days never move. Flexible, like everything, by default.
   final bool fixed;
 
+  /// What each day of it is made of.
+  final List<String> checklist;
+
   /// Whether it already exists, which is what offers the delete.
   final bool editing;
 
@@ -545,6 +561,7 @@ class _RoutineSheet extends StatefulWidget {
     required int durationMinutes,
     String? title,
     bool fixed = false,
+    List<String> checklist = const [],
     bool editing = false,
   }) {
     return showModalBottomSheet<_RoutineDraft>(
@@ -557,6 +574,7 @@ class _RoutineSheet extends StatefulWidget {
         startMinute: startMinute,
         durationMinutes: durationMinutes,
         fixed: fixed,
+        checklist: checklist,
         editing: editing,
       ),
     );
@@ -568,6 +586,9 @@ class _RoutineSheet extends StatefulWidget {
 
 class _RoutineSheetState extends State<_RoutineSheet> {
   late final _controller = TextEditingController(text: widget.title);
+  late final _items = TextEditingController(
+    text: widget.checklist.join('\n'),
+  );
   late int _start = widget.startMinute;
   late int _duration = widget.durationMinutes;
   late bool _fixed = widget.fixed;
@@ -575,6 +596,7 @@ class _RoutineSheetState extends State<_RoutineSheet> {
   @override
   void dispose() {
     _controller.dispose();
+    _items.dispose();
     super.dispose();
   }
 
@@ -611,6 +633,10 @@ class _RoutineSheetState extends State<_RoutineSheet> {
         startMinute: _start,
         durationMinutes: _duration,
         fixed: _fixed,
+        checklist: [
+          for (final line in _items.text.split('\n'))
+            if (line.trim().isNotEmpty) line.trim(),
+        ],
       ),
     );
   }
@@ -651,6 +677,30 @@ class _RoutineSheetState extends State<_RoutineSheet> {
                   decoration: InputDecoration(
                     hintText: context.l10n.routinesTitleHint,
                     hintStyle: AppTypography.body.copyWith(
+                      color: AppColors.ink3,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s2),
+                // Breakfast is the coffee, the dishes and the plants: each
+                // day of it gets the list, ticked off on its own.
+                TextField(
+                  key: const ValueKey('routine-checklist'),
+                  controller: _items,
+                  minLines: 1,
+                  maxLines: 6,
+                  keyboardType: TextInputType.multiline,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: AppTypography.label.copyWith(color: AppColors.ink2),
+                  cursorColor: AppColors.ink,
+                  decoration: InputDecoration(
+                    hintText: context.l10n.routineChecklistHint,
+                    hintStyle: AppTypography.label.copyWith(
                       color: AppColors.ink3,
                     ),
                     border: InputBorder.none,

@@ -1,7 +1,7 @@
 /** Anything shaped like a board ref: `t3`, `e1`, `b12`, `d1`, `p2`, `k1`, `g1`. */
 const REF = /\b([tebdpkg]\d{1,3})\b/gi;
 
-/** The scheduler's word for Depois eu priorizo. */
+/** The scheduler's word for Para depois. */
 const BACKLOG = /\b(o |no |do |ao )?backlog\b/gi;
 
 /** What can name a ref: the board, or anything that knows its titles. */
@@ -33,9 +33,7 @@ export function speakable(
     .replace(BACKLOG, (_word: string, article: string | undefined) => {
       leaks++;
       const of = article?.trim().toLowerCase();
-      return of === undefined
-        ? 'Depois eu priorizo'
-        : `${of} Depois eu priorizo`;
+      return of === undefined ? 'Para depois' : `${of} Para depois`;
     })
     .replace(/\s+/g, ' ')
     .trim();

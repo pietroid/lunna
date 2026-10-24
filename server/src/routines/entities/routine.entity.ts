@@ -21,6 +21,11 @@ export interface Routine {
    * user to begin them.
    */
   fixed: boolean;
+  /**
+   * What each day of it is made of (breakfast: the coffee, the dishes),
+   * in order. Empty for a routine that is one thing.
+   */
+  checklist: string[];
 }
 
 /** What the menu sends to write a routine down or change one. */
@@ -30,4 +35,5 @@ export interface RoutineRequest {
   durationMinutes?: number;
   days?: RoutineDays;
   fixed?: boolean;
+  checklist?: string[];
 }
