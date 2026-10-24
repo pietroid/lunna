@@ -1384,20 +1384,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get artifactsQueue => 'Fila';
-
-  @override
-  String artifactsQueueSummary(int count, String time) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count entregas',
-      one: '1 entrega',
-    );
-    return '$_temp0 · $time';
-  }
-
-  @override
   String get artifactsAll => 'Todas';
 
   @override

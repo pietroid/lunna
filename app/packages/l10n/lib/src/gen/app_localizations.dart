@@ -2183,18 +2183,6 @@ abstract class AppLocalizations {
   /// **'A fila pede {need} · você tem {free} livres até {date}'**
   String goalSchedule(String need, String free, String date);
 
-  /// No description provided for @artifactsQueue.
-  ///
-  /// In pt, this message translates to:
-  /// **'Fila'**
-  String get artifactsQueue;
-
-  /// No description provided for @artifactsQueueSummary.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =1{1 entrega} other{{count} entregas}} · {time}'**
-  String artifactsQueueSummary(int count, String time);
-
   /// No description provided for @artifactsAll.
   ///
   /// In pt, this message translates to:

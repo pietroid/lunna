@@ -1,6 +1,6 @@
 # Delivery first: Lista, Calendário and Entregas around the delivery
 
-2026-10-23 · delivery · **design, round 2, awaiting approval** · Track: **mockup** · Issue: #34
+2026-10-23 · delivery · **design, round 3, awaiting approval** · Track: **mockup** · Issue: #34
 
 ## 1. The prompt
 
@@ -44,6 +44,10 @@ The first board was reviewed on the issue, and the person replied:
 > 2. On calendar mode, if it fits, we could totally show them as timeline, which i found it pretty interesting. If there is no open task, it will show the note as it was showing before.
 > 3. the bars on deliveries should be overlapped. I know this can be challenging, but I think colors can help with that. For example, the time color is always red, and the done color is always green. So if green is on top of red, its because we are in a good state. If red is appearing and green is behind, its because it is lagging. Remember, green must be good looking in relation with the rest of palette.
 
+The second board was reviewed on the issue, and the person replied:
+
+> Just one tiny adjustment, the Fila label should not exist anymore, and the hoje amanha, etc have the same hierarchy as they have on the timeline
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -52,7 +56,9 @@ Five screens drawn by the real app (Lunna, the clock fixed at 10:00 on Friday
 23 October, 22:10 for screen 2), pins in [board.json](board.json), the shots
 without pins in `img/shot-N.png`. Second round, after the reply above: Lista
 shows only each delivery's next task, the calendar draws a run's tasks as a
-timeline where they fit, and Entregas' two bars are one, green over red. One per screen:
+timeline where they fit, and Entregas' two bars are one, green over red.
+Third round: Entregas loses its "Fila" heading, and its due days (Hoje,
+Amanhã…) are headed as the timeline heads its days. One per screen:
 [1](img/mockup-1.png) · [2](img/mockup-2.png) · [3](img/mockup-3.png) ·
 [4](img/mockup-4.png) · [5](img/mockup-5.png).
 
@@ -96,7 +102,7 @@ Drawn from known patterns. Mobbin was not browsed in this run.
 | 4C | A run of **one task** has no list to draw, so the block shows that task and the start of its **notes**, as a calendar card always did (`notesPreview`, as many lines as fit, up to 3). |
 | 4D | A run **too short** for all its lines (three 15-minute tasks in 55 minutes) falls back to Lista's look: the name and the next task. Shorter than one line, the name alone. |
 | 5A | **Metas hidden** by a flag, `ArtifactsPage(showGoals: false)`, the default: no goal cards and no "Nova meta". The model, the routes and the agent's goal verbs are untouched. The schedule line ("A fila pede 24h · você tem 31h livres") stays. |
-| 5B | Entregas is **headed by due day**: Hoje (today or overdue), Amanhã, Nos próximos 7 dias, Mais adiante, Sem prazo. It's sorted by deadline, and the queue's own order breaks ties. Drag to reorder leaves this page. |
+| 5B | Entregas is **headed by due day**: Hoje (today or overdue), Amanhã, Nos próximos 7 dias, Mais adiante, Sem prazo, set as the timeline sets its days and stages (`AppTypography.title`, ink, flush with the cards). The **"Fila" heading and its summary ("5 entregas · 26h") are gone**: the due days are the page's only headings. It's sorted by deadline, and the queue's own order breaks ties. Drag to reorder leaves this page. |
 | 5C | **One bar, two fills** (`PaceBars`, 6 px). Red (`paceTime`) runs to the share of the time from creation to the end of the deadline day; green (`paceDone`), drawn **over** it, to the share of tasks done (or of minutes, with no tasks). Green covering the red is ahead or on pace; red showing past the green is lagging, by as much as shows. Overdue, the red fills the bar. With no deadline, only green. |
 | 5D | Under the bar, **a key** in the same two colours: a green dot and "3 de 5 etapas", a red dot and "termina hoje" / "faltam 6 dias" (`dangerInk` once late). The labels Feito and Prazo go. |
 | 5E | The subtitle ends in **"no ritmo"** or **"atrás do ritmo"** (warning ink), so the pace doesn't rest on colour alone. |
@@ -144,11 +150,14 @@ Phase 3 starts here; Phase 4 removes this section.
 - `app/packages/artifacts/lib/src/view/artifacts_page.dart`: `showGoals`
   (default false) wraps the goals block; the queue is drawn under due
   headings (`Due`, `dueOf`, `byDue`, `dueGroups`, `dueLabel`) instead of the
-  `SliverReorderableList`.
+  `SliverReorderableList`, each in `AppTypography.title` like the timeline's
+  `_HeadingRow`; the "Fila" heading and its summary are removed.
 - `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): `stageLater`, `stageAhead`,
   `stageAheadOpen`, `deliveryTasks`, `artifactsDue*`,
   `artifactPaceOn`, `artifactPaceBehind` (`artifactPaceDone` and
-  `artifactPaceTime`, Feito and Prazo, were dropped in the second round).
+  `artifactPaceTime`, Feito and Prazo, were dropped in the second round;
+  `artifactsQueue` and `artifactsQueueSummary`, Fila and its count, in the
+  third).
 
 ### What the build must do
 
@@ -180,7 +189,8 @@ Phase 3 starts here; Phase 4 removes this section.
 
 **App (artifacts):** keep what is written, add tests: `byDue`/`dueOf`
 edges (overdue, today, day 7, day 8, none), `workDone` with and without
-tasks, `isBehind` at the slack edge, `showGoals` hiding the goal section,
+tasks, `isBehind` at the slack edge, `showGoals` hiding the goal section, no
+"Fila" heading and the due headings in title style,
 `PaceBars` drawing no red without a deadline and the key's danger ink when
 late.
 
@@ -233,6 +243,16 @@ hidden).
     the time; "atrás do ritmo" still says it in words.
   - **Green for Lunna is a new `#1FA37A`**, not `success` (`#0E8F68`), so it
     sits as bright as the red; Focus keeps `success`.
+
+- Third round, from the reply:
+  - "The Fila label should not exist anymore": the **heading and its
+    summary** ("5 entregas · 26h") both go, since the summary only qualified
+    it. The schedule line above ("A fila pede 24h…") stays: it is a goal
+    line, not a label, and the reply didn't name it.
+  - "Same hierarchy as on the timeline": the due headings take the
+    timeline's heading style exactly (`AppTypography.title`, ink for every
+    day, no longer quieter after Hoje), flush with the cards as the
+    timeline's are.
 
 ### Open questions
 

@@ -87,10 +87,6 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
     final all = data.queue;
     final queue = all.where(_shelf.keeps).toList();
     final shown = byDue(queue, now).take(widget.shown).toList();
-    final left = all.fold(
-      0,
-      (sum, a) => sum + (a.minutes - a.doneMinutes).clamp(0, a.minutes),
-    );
     final schedule = data.schedule;
     const side = EdgeInsets.symmetric(horizontal: AppSpacing.s5);
 
@@ -192,19 +188,7 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.s8),
-                    _Heading(
-                      title: l10n.artifactsQueue,
-                      trailing: Text(
-                        l10n.artifactsQueueSummary(
-                          all.length,
-                          formatMinutes(l10n, left),
-                        ),
-                        style: AppTypography.label.copyWith(
-                          color: AppColors.ink3,
-                        ),
-                      ),
-                    ),
+                    const SizedBox(height: AppSpacing.s4),
                     const SizedBox(height: AppSpacing.s3),
                     if (data.catalog.isNotEmpty) ...[
                       ShelfFilter(
@@ -227,22 +211,17 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
               // The queue by the day each is due, the soonest on top: what
               // has to be delivered today leads, whatever was dragged first.
               for (final (due, rows) in dueGroups(shown, now)) ...[
+                // Set as the timeline sets its days and stages, the
+                // page's only headings.
                 SliverPadding(
                   padding: side.copyWith(
                     top: AppSpacing.s4,
                     bottom: AppSpacing.s2,
                   ),
                   sliver: SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: AppSpacing.s1),
-                      child: Text(
-                        dueLabel(l10n, due),
-                        style: AppTypography.labelStrong.copyWith(
-                          color: due == Due.today
-                              ? AppColors.ink
-                              : AppColors.ink2,
-                        ),
-                      ),
+                    child: Text(
+                      dueLabel(l10n, due),
+                      style: AppTypography.title,
                     ),
                   ),
                 ),

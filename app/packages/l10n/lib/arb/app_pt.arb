@@ -1067,18 +1067,6 @@
       }
     }
   },
-  "artifactsQueue": "Fila",
-  "artifactsQueueSummary": "{count, plural, =1{1 entrega} other{{count} entregas}} · {time}",
-  "@artifactsQueueSummary": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      },
-      "time": {
-        "type": "String"
-      }
-    }
-  },
   "artifactsAll": "Todas",
   "artifactsSeeAll": "Ver todas as {count}",
   "@artifactsSeeAll": {
