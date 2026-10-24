@@ -1,6 +1,6 @@
 # The agent everywhere: one bar, in the same place, on every screen
 
-2026-10-24 · agent · **draft (design)** · Track: **mockup** · Issue: #42
+2026-10-24 · agent · **delivered** · Track: **mockup** · Issue: #42
 
 ## 1. The prompt
 
@@ -9,6 +9,8 @@
 > I realized the assistant box does not exist in the menu nor the deliveries tab. Also when transitioning between tabs or screens the assistant textbox animates in a weird behavior.
 >
 > This stems from a fundamental issue: the assistant should be present in every context of the app. Fix this and check if it doesnt break anything.
+
+On the issue, after the design: **approve**.
 
 ## 2. The design
 
@@ -77,76 +79,112 @@ Music's mini player**, which stays put above the tab bar while pages push
 under it; **ChatGPT's composer**, always at the foot; **Arc's command bar**,
 the same entry from every context.
 
-## Build brief
+## 3. What was built
 
-### Files written in the design session (uncommitted, kept for the build)
+### Prints of the real build
 
-- `app/lib/agent-everywhere_preview.dart`: the preview entry point
-  (`?s=1` Entregas, `2` Menu, `3` Rotina, `4` Feitas, `5` a delivery's
-  notes). Delete it after Phase 4's prints.
-- `app/packages/agent/lib/src/view/ask_bar.dart`: `AskDock.location`,
-  `AskDock.animator`, `AskDock.hero`, and `DockHero` (the hero, its still
-  shuttle).
-- `app/packages/agent/lib/src/view/notes_dock.dart`: the notes dock is its
-  page's `DockHero` (microphone), its inner `AskDock` is not.
-- `app/lib/shell/view/shell_page.dart`: one `AskDock` on the three tabs; no
-  longer cancels the recording on leaving Tempo.
-- `app/lib/demo/view/demo_app.dart`: the landing's phone does the same.
-- `app/packages/artifacts/lib/src/view/artifact_page.dart`:
-  `AskDock.location` / `AskDock.animator`.
-- `app/packages/artifacts/lib/src/view/all_artifacts_page.dart`: the dock,
-  + Nova entrega, clearance.
-- `app/lib/routines/view/routines_page.dart`: the dock, + Nova rotina
-  (`_nextHour`).
-- `app/packages/timeline/lib/src/view/done_archive.dart`: `dock:` handed
-  in (the timeline package knows no agent), clearance;
-  `app/lib/app/view/app.dart` hands it an `AskDock` whose + writes into
-  Para depois.
-- `app_pt.arb`: `routinesNew` ("Nova rotina"), l10n regenerated.
+Lunna, then Focus: Entregas, Menu, Rotina, Feitas, a delivery's notes
+(the real widgets on the demo fakes).
 
-- `app/packages/artifacts/test/artifacts_page_test.dart`: its harness
-  provides a `VoiceCubit` (Todas as entregas now draws the dock, which
-  reads the app's microphone; the app provides it globally).
+![Lunna](img/build-lunna.png)
 
-`flutter analyze` is clean on all of it. Tests pass: the app's own 20
-(including the landing demo), agent 68, timeline 156, artifacts 37 (Focus
-and Lunna).
+![Focus](img/build-focus.png)
 
-### What the build must still do (app only; nothing on the server)
+### The contract
 
-1. **Line the notes' dock up with the FAB slot.** On the delivery page the
-   Notas dock is in the body and Tarefas' in the FAB slot; check both sit at
-   the same height with and without a bottom safe area (or lift the notes
-   dock into the slot, keeping it above the keyboard). Same on `EventPage`.
-2. **Clearance** on Entregas (the last card runs under the bar in print 1),
-   Menu and Rotina's grid: `kNotesDockClearance` at the scroll's end.
-3. **The hero across real routes**: go_router pages (`/rotina`, `/feitas`,
-   `/evento/:id`) and `MaterialPageRoute`s (a delivery, Todas as
-   entregas, a finished task). Check a push, a pop, the iOS swipe back, and
-   that two docks never share a route (`IndexedStack` keeps one FAB slot).
-   Check the dock doesn't fly into a sheet (sheets are `PopupRoute`s, which
-   heroes ignore).
-4. **Voice**: a recording started on one tab and sent from another sends
-   with that tab's `day`; dictation on a notes page still stops when the
-   agent's microphone starts. Update the shell's doc comment and
-   `AskDock`'s about the cancel that is gone.
-5. **Tests**: a widget test that each tab and each page has one `AskDock`
-   (or `NotesDock`) at `AskDock.location`; that the shell keeps the same
-   `AskDock` element across tab changes; `DockHero`'s shuttle draws the
-   arriving icon and takes no taps.
-6. Both brands: prints in Focus too (the design board is Lunna only).
-7. `AGENTS.md` ("The app shell") and `product/spec/agent.md`: the bar is on
-   every screen, same place, the + per screen as in the table above.
+**Every screen floats the agent's bar at `AskDock.location` with
+`AskDock.animator`, inside a `DockHero`, with the screen's own round button
+beside it.** The three tabs share one `AskDock`, so a tab change keeps the
+same widget, at the same place, with any recording on it. A push or a pop
+between two pages with docks draws a still picture of the bar where it
+was. Only a sheet covers it. Nothing changed on the server: the bar on a
+list page sends no subject (`about`), as Tempo's never did.
+
+### App pieces
+
+| File | What |
+|------|------|
+| `packages/agent/lib/src/view/ask_bar.dart` | `AskDock.location`, `AskDock.animator`, `AskDock(hero:)`; `DockHero` (one tag, `transitionOnUserGestures`, its shuttle a still picture of the bar and the arriving page's button inside `IgnorePointer`) |
+| `packages/agent/lib/src/view/notes_dock.dart` | the notes' dock is its page's `DockHero` (microphone); the `AskDock` inside it is not |
+| `lib/shell/view/shell_page.dart` | one `AskDock` for Tempo, Entregas and Menu; the recording is no longer cancelled when you leave Tempo |
+| `lib/demo/view/demo_app.dart` | the landing page's phone does the same |
+| `lib/routines/view/routines_page.dart` | the dock, + Nova rotina at the next whole hour of the working day, `kNotesDockClearance` under the grid |
+| `packages/timeline/lib/src/view/done_archive.dart`, `lib/app/view/app.dart` | Feitas takes a `dock:` (the timeline package doesn't know the agent); the app hands it an `AskDock` whose + puts a task into Para depois |
+| `packages/artifacts/lib/src/view/all_artifacts_page.dart` | the dock, + Nova entrega, clearance |
+| `packages/artifacts/lib/src/view/artifact_page.dart` | Tarefas' dock at `AskDock.location`, no scale-in |
+| `app_pt.arb` | `routinesNew` ("Nova rotina") |
+
+### Checked against the brief
+
+- **Where the docks sit.** Notas draws its dock in the body (inside the
+  page's `SafeArea`, 16 px up). Tarefas draws its dock in the Scaffold's
+  floating slot (16 px plus the bottom safe area, or 16 px above the
+  keyboard). These come to the same pixel with and without a home
+  indicator and with the keyboard up, so the dock didn't need to move. A
+  test now pins it.
+- **Clearance.** Entregas (128 px) and Menu (112 px) already had more
+  room than the dock needs (96 px). Rotina's grid had 48 px and now has
+  `kNotesDockClearance`.
+- **Real routes.** Every route the dock appears on is a page on the root
+  navigator, which has `MaterialApp`'s `HeroController`: `/rotina`,
+  `/feitas` and `/evento/:id` (go_router), plus the `MaterialPageRoute`s
+  for a delivery, Todas as entregas and a finished task. Each page has
+  exactly one `DockHero`: the shell's `IndexedStack` has one floating
+  slot, and the delivery page draws either Notas' or Tarefas' dock, never
+  both. Sheets are `PopupRoute`s, and heroes only fly between
+  `PageRoute`s. A finished task's page still has its dock (`isInteractive`
+  is `managed`, which is always true).
+- **Voice.** `day:` on the shell's dock always reads Tempo's aim, so a
+  recording sent from Entregas or Menu carries the day Tempo shows.
+  Dictation still stops when the agent's microphone starts (that
+  `BlocListener` didn't change).
+
+### Tests
+
+New:
+
+- `agent/test/dock_hero_test.dart`: during a push, the dock is a picture
+  of the bar beside the arriving page's microphone, at the exact rect the
+  dock had. Nothing in it takes taps. On landing the new dock sits at the
+  same rect, and on a pop the page underneath draws its +.
+- `artifacts/test/artifact_page_test.dart` ("Notas and Tarefas draw the bar
+  in the same place"): with a 34 px bottom safe area, the bar's rect on
+  Notas equals its rect on Tarefas, with one `DockHero` on each.
+- `test/landing/landing_page_test.dart` ("a tab tapped in the phone moves
+  the chapter"): Entregas draws the bar, and going back to Tempo keeps the
+  **same** `AskDock` state at the same place, measured against the bottom
+  bar because the landing page moves the whole phone between chapters.
+
+`.tool/check` passes: app analyze, plus agent and artifacts tests under
+Focus and Lunna. Its first run failed only on `flutter analyze` infos in
+the preview entry point (`file_names`, `directives_ordering`), which is
+deleted before commit; the rerun without it is clean. The check doesn't
+run the app's own tests or timeline's, so they were run by hand under
+both brands. Counts: app 20, agent 69, artifacts 38, timeline 156, all
+passing, with no flaky tests.
+
+### Where the build differs from the mockup
+
+It doesn't, on screen. The one thing the brief expected to change, lifting
+the notes' dock into the floating slot, turned out unnecessary (see above).
+
+## 4. How to turn it on
+
+Nothing to turn on: no env var, no server change, no migration. It ships
+with the next app build of either brand.
 
 ### Decided unattended
 
 - Track: **mockup** (the issue is about what is seen and how it moves).
-- The +'s place on Entregas and Menu moves beside the bar (it used to sit
-  alone at the column's end).
-- Feitas' + writes into Para depois; Rotina's + is Nova rotina at the next
+- The + on Entregas and Menu moves beside the bar (it used to sit alone at
+  the end of the column).
+- Feitas' + writes into Para depois. Rotina's + is Nova rotina at the next
   whole hour.
-- A recording survives a tab change.
+- A recording keeps going when you change tabs.
 - No new agent subject (no server change) for the list pages.
+- The notes' dock stays in the page body: it already lines up with the
+  floating slot, and moving it would mean lifting the notes' controller
+  out of `_Notes`.
 
 ### Open questions
 
@@ -155,8 +193,9 @@ and Lunna).
   out; the agent already reads them.
 - Feitas: is a + that writes into Para depois wanted, or should Feitas
   have the bar alone (full width, no round button)? The bar alone breaks
-  "same shape everywhere"; the + was kept.
+  "same shape everywhere", so the + was kept.
 
-### Cost of the design session
+## 5. Cost and time
 
-Measured by the queue, which writes the figures in the PR.
+Measured by the queue: see the pull request. The build made no OpenRouter
+or other paid calls.

@@ -332,7 +332,8 @@ class _DayGrid extends StatelessWidget {
         AppSpacing.s6,
         AppSpacing.s2,
         AppSpacing.s6,
-        AppSpacing.s12,
+        // Room to scroll the end of the day clear of the agent's bar.
+        kNotesDockClearance,
       ),
       child: SizedBox(
         height: height,
