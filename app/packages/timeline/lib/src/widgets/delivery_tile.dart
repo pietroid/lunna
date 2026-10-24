@@ -44,9 +44,15 @@ class DeliveryTile extends StatelessWidget {
     this.height,
     this.timeline = false,
     this.routine = false,
+    this.lineKeys = const {},
+    this.hidden,
+    this.pressed = false,
+    this.actionsKey,
     this.onPauseToggled,
     this.onAdjusted,
     this.onDone,
+    this.onStarted,
+    this.onSnoozed,
     super.key,
   });
 
@@ -72,6 +78,21 @@ class DeliveryTile extends StatelessWidget {
   /// Whether this is a routine's day with a list, in the routine's fill.
   final bool routine;
 
+  /// A key for each task's line, by its id, so the list can measure and
+  /// touch the lines of a run one by one. A task whose line is not drawn
+  /// has no place on the screen.
+  final Map<String, Key> lineKeys;
+
+  /// The task being carried, whose line, or the whole card when it is the
+  /// next one and no line has a key, only holds its place open.
+  final String? hidden;
+
+  /// Whether the card is being touched.
+  final bool pressed;
+
+  /// The key of the row of buttons, so a tap on a button is left to it.
+  final Key? actionsKey;
+
   /// Pauses or resumes the running task.
   final VoidCallback? onPauseToggled;
 
@@ -80,6 +101,12 @@ class DeliveryTile extends StatelessWidget {
 
   /// Ticks the running task off.
   final VoidCallback? onDone;
+
+  /// Begins the task waiting in Agora.
+  final VoidCallback? onStarted;
+
+  /// Gives the task waiting in Agora fifteen minutes more.
+  final VoidCallback? onSnoozed;
 
   bool get _isNow => tasks.first.section == TimelineSection.agora;
 
@@ -129,8 +156,11 @@ class DeliveryTile extends StatelessWidget {
               trailing: onAdjusted == null
                   ? null
                   : EventControls(
+                      key: actionsKey,
                       card: _next,
                       onPauseToggled: onPauseToggled,
+                      onStarted: onStarted,
+                      onSnoozed: onSnoozed,
                       onAdjusted: onAdjusted!,
                       onDone: onDone,
                     ),
@@ -146,21 +176,36 @@ class DeliveryTile extends StatelessWidget {
       type: _isNow ? MaterialType.transparency : MaterialType.canvas,
       color: _isNow
           ? null
+          : pressed
+          ? AppColors.fillStrong
           : routine
           ? AppColors.routineFill
           : AppColors.fill,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
       ),
-      child: _isNow ? NowSurface(paused: _next.isPaused, child: body) : body,
+      child: _isNow
+          ? NowSurface(
+              paused: _next.isPaused || _next.awaitingStart,
+              pressed: pressed,
+              child: body,
+            )
+          : body,
     );
 
     final h = height;
-    return h == null ? card : SizedBox(height: h, child: card);
+    // Carried by the card itself: the whole of it holds its place open.
+    final gone = hidden != null && hidden == _next.id && lineKeys.isEmpty;
+    return Opacity(
+      opacity: gone ? 0 : 1,
+      child: h == null ? card : SizedBox(height: h, child: card),
+    );
   }
 
   Widget _line(TimelineEvent task, {bool hour = true}) => _Line(
+    key: lineKeys[task.id],
     card: task,
+    hidden: lineKeys.isNotEmpty && task.id == hidden,
     done: done.contains(task),
     running: _isNow && task == _next,
     routine: routine,
@@ -275,9 +320,12 @@ class _Line extends StatelessWidget {
     required this.running,
     required this.routine,
     this.hour = true,
+    this.hidden = false,
+    super.key,
   });
 
   /// The height of one line.
+
   static const double height = 28;
 
   final TimelineEvent card;
@@ -288,6 +336,9 @@ class _Line extends StatelessWidget {
   /// Whether its hour is drawn at the end: not when it is the only line,
   /// under the run's own hours.
   final bool hour;
+
+  /// Whether it is being carried, and only holds its place open.
+  final bool hidden;
 
   @override
   Widget build(BuildContext context) {
@@ -300,49 +351,52 @@ class _Line extends StatelessWidget {
 
     return SizedBox(
       height: height,
-      child: Row(
-        children: [
-          SizedBox(
-            width: AppSpacing.s4,
-            child: Center(
-              child: done
-                  ? AppIcon(iconData: AppIcons.check, size: 14, color: quiet)
-                  : Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: running ? AppColors.accent : null,
-                        border: running
-                            ? null
-                            : Border.all(color: quiet, width: 1.5),
+      child: Opacity(
+        opacity: hidden ? 0 : 1,
+        child: Row(
+          children: [
+            SizedBox(
+              width: AppSpacing.s4,
+              child: Center(
+                child: done
+                    ? AppIcon(iconData: AppIcons.check, size: 14, color: quiet)
+                    : Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: running ? AppColors.accent : null,
+                          border: running
+                              ? null
+                              : Border.all(color: quiet, width: 1.5),
+                        ),
                       ),
-                    ),
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s2),
-          Expanded(
-            child: Text(
-              card.title,
-              style: AppTypography.label.copyWith(
-                color: ink,
-                decoration: done ? TextDecoration.lineThrough : null,
-                decorationColor: quiet,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-          if (hour) ...[
-            const SizedBox(width: AppSpacing.s3),
-            Text(
-              done || card.isBacklog
-                  ? durationLabel(context.l10n, card.workMinutes)
-                  : hhmm(card.startTime),
-              style: AppTypography.caption.copyWith(color: quiet),
+            const SizedBox(width: AppSpacing.s2),
+            Expanded(
+              child: Text(
+                card.title,
+                style: AppTypography.label.copyWith(
+                  color: ink,
+                  decoration: done ? TextDecoration.lineThrough : null,
+                  decorationColor: quiet,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            if (hour) ...[
+              const SizedBox(width: AppSpacing.s3),
+              Text(
+                done || card.isBacklog
+                    ? durationLabel(context.l10n, card.workMinutes)
+                    : hhmm(card.startTime),
+                style: AppTypography.caption.copyWith(color: quiet),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -357,7 +411,7 @@ class _NowLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = card.progressAt(clock.now());
+    final progress = card.awaitingStart ? 0.0 : card.progressAt(clock.now());
     final left = (card.workMinutes * (1 - progress)).ceil();
     final l10n = context.l10n;
 
@@ -365,7 +419,7 @@ class _NowLine extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            card.isPaused
+            card.isPaused || card.awaitingStart
                 ? l10n.nowPausedLeft(durationLabel(l10n, left))
                 : l10n.nowLeft(durationLabel(l10n, left)),
             style: AppTypography.label.copyWith(color: AppColors.ink2),
@@ -396,11 +450,11 @@ class RunBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = clock.now();
     final running = tasks.first;
-    final paused = running.isPaused;
+    final paused = running.isPaused || running.awaitingStart;
 
     double filled(TimelineEvent task) {
       if (done.contains(task)) return 1;
-      if (task != running) return 0;
+      if (task != running || running.awaitingStart) return 0;
       return running.progressAt(now);
     }
 

@@ -710,7 +710,7 @@ abstract class AppLocalizations {
   /// No description provided for @stageBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'Depois eu priorizo'**
+  /// **'Para depois'**
   String get stageBacklog;
 
   /// No description provided for @stageSoonEmpty.
@@ -740,7 +740,7 @@ abstract class AppLocalizations {
   /// No description provided for @promptToBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'Vai para Depois eu priorizo'**
+  /// **'Deixar para depois'**
   String get promptToBacklog;
 
   /// No description provided for @promptToQueue.
@@ -770,7 +770,7 @@ abstract class AppLocalizations {
   /// No description provided for @eventInBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'Em Depois eu priorizo, ainda sem hora'**
+  /// **'Em Para depois, ainda sem hora'**
   String get eventInBacklog;
 
   /// No description provided for @eventDoneOn.
@@ -1424,7 +1424,7 @@ abstract class AppLocalizations {
   /// No description provided for @agentChangeFromBacklog.
   ///
   /// In pt, this message translates to:
-  /// **'saiu do Depois eu priorizo'**
+  /// **'saiu de Para depois'**
   String get agentChangeFromBacklog;
 
   /// No description provided for @agentUndo.
@@ -1826,7 +1826,7 @@ abstract class AppLocalizations {
   /// No description provided for @artifactDeleteBody.
   ///
   /// In pt, this message translates to:
-  /// **'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.'**
+  /// **'As tarefas em Para depois vão junto. As que já têm hora, e as feitas, ficam no Tempo.'**
   String get artifactDeleteBody;
 
   /// No description provided for @dayOverTitle.
@@ -2585,12 +2585,6 @@ abstract class AppLocalizations {
   /// **'Fica guardada e passa a valer na segunda-feira.'**
   String get goalReadbackFutureWeek;
 
-  /// No description provided for @stageLater.
-  ///
-  /// In pt, this message translates to:
-  /// **'Para depois'**
-  String get stageLater;
-
   /// No description provided for @stageAhead.
   ///
   /// In pt, this message translates to:
@@ -2602,6 +2596,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Ver no calendário'**
   String get stageAheadOpen;
+
+  /// No description provided for @stageDayEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.'**
+  String get stageDayEmpty;
 
   /// No description provided for @deliveryTasks.
   ///

@@ -697,8 +697,7 @@ void main() {
       expect(height('long'), height('short'));
     });
 
-    testAt('keeps every task with an hour under one heading, not cut into '
-        'days', (
+    testAt('keeps one day, under Agora, and counts what is later', (
       tester,
     ) async {
       final inTwoDays = DateTime(now.year, now.month, now.day + 2, 9);
@@ -713,12 +712,17 @@ void main() {
       await pump(tester, [running, far], mode: TimelineMode.list);
 
       final l10n = lookupAppLocalizations(const Locale('pt'));
-      final date = l10n.sectionDay(inTwoDays);
-      expect(find.text(l10n.stageSoon), findsOneWidget);
-      expect(find.text('Agora'), findsNothing);
+      // Nothing else today: the day kept is tomorrow, and the task two
+      // days out is only counted.
+      expect(find.text(l10n.sectionNow), findsOneWidget);
+      expect(find.text(l10n.sectionTomorrow), findsOneWidget);
+      expect(find.text('Longe'), findsNothing);
       expect(
-        find.text(date[0].toUpperCase() + date.substring(1)),
-        findsNothing,
+        find.text(
+          '${l10n.stageAhead(1)} · ${l10n.stageAheadOpen}',
+          findRichText: true,
+        ),
+        findsOneWidget,
       );
     });
 
@@ -760,8 +764,8 @@ void main() {
       final l10n = lookupAppLocalizations(const Locale('pt'));
       await pump(tester, [meeting], mode: TimelineMode.list);
 
-      expect(find.text(l10n.stageSoon), findsOneWidget);
-      expect(find.text(l10n.stageSoonEmpty), findsOneWidget);
+      expect(find.text(l10n.sectionToday), findsOneWidget);
+      expect(find.text(l10n.stageDayEmpty), findsOneWidget);
       expect(find.text(l10n.stageBacklog), findsOneWidget);
       expect(find.text(l10n.stageBacklogEmpty), findsOneWidget);
     });
@@ -869,7 +873,7 @@ void main() {
       final l10n = lookupAppLocalizations(const Locale('pt'));
       final bloc = await pumpStages(tester, [], [shelved('x', 'Armário')]);
 
-      final empty = tester.getCenter(find.text(l10n.stageSoonEmpty));
+      final empty = tester.getCenter(find.text(l10n.stageDayEmpty));
       await drag(tester, 'Armário', empty.dy);
 
       verify(() => bloc.add(const EventMoved(id: 'x', index: 0))).called(1);
@@ -1536,7 +1540,8 @@ void main() {
         mode: TimelineMode.list,
       );
 
-      // Fazer em breve ends in one, after every day of it.
+      // The day kept ends in one, after its last task: tomorrow's is
+      // only counted.
       final adds = find.text('Adicionar');
       expect(adds, findsNWidgets(2));
       await tester.tap(adds.first);
@@ -1548,7 +1553,7 @@ void main() {
       await tester.tap(adds.last);
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(written, [const Placement.queue(3), const Placement.backlog()]);
+      expect(written, [const Placement.queue(2), const Placement.backlog()]);
     });
 
     testAt('in the list, the button at the foot writes at the end of the '
@@ -1563,7 +1568,7 @@ void main() {
         mode: TimelineMode.list,
       );
 
-      // Fazer em breve is at the top: after the last task in it.
+      // The day kept is at the top: after the last task in it.
       expect(aim.value, const Placement.queue(2));
     });
   });

@@ -94,7 +94,7 @@ export class TimelineCard {
 }
 
 /**
- * A task waiting in the backlog: "Depois eu priorizo".
+ * A task waiting in the backlog: "Para depois".
  *
  * It has an order and a length and no hour, so it carries none of a card's
  * hours. It reaches the calendar only once it is dragged into the queue.

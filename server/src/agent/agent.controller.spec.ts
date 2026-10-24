@@ -267,7 +267,7 @@ describe('the agent', () => {
     expect(reply.reply).toContain('Fica assim');
     expect(reply.steps).toEqual([
       'Amanhã é qua 11/03',
-      'Achei Responder e-mails · tarefa · Depois eu priorizo',
+      'Achei Responder e-mails · tarefa · Para depois',
     ]);
     expect(reply.plan?.changes.map((it) => it.kind)).toEqual([
       'add_task',
@@ -1136,7 +1136,7 @@ describe('the agent', () => {
 
       const reply = (await ask('Cadê o artigo?')).body as AgentReply;
 
-      expect(reply.reply).toBe('A Ler artigo está no Depois eu priorizo.');
+      expect(reply.reply).toBe('A Ler artigo está no Para depois.');
     });
 
     it('keeps a ref on the same card from turn to turn', async () => {
@@ -1356,7 +1356,7 @@ describe('the agent', () => {
 
       expect(reply.plan).toBeUndefined();
       expect(reply.reply).toBe(
-        'A entrega Mudança leva junto 4 tarefas do Depois eu priorizo. Apago todas, ou só a entrega?',
+        'A entrega Mudança leva junto 4 tarefas do Para depois. Apago todas, ou só a entrega?',
       );
       expect(reply.options.map((it) => it.label)).toEqual([
         'Apagar as 4',

@@ -1,6 +1,6 @@
 # Delivery first: Lista, Calendário and Entregas around the delivery
 
-2026-10-23 · delivery · **design, round 3, awaiting approval** · Track: **mockup** · Issue: #34
+2026-10-23 · delivery · **built** · Track: **mockup** · Issue: #34
 
 ## 1. The prompt
 
@@ -47,6 +47,10 @@ The first board was reviewed on the issue, and the person replied:
 The second board was reviewed on the issue, and the person replied:
 
 > Just one tiny adjustment, the Fila label should not exist anymore, and the hoje amanha, etc have the same hierarchy as they have on the timeline
+
+The third board was approved on the issue:
+
+> approve
 
 ## 2. The design
 
@@ -125,90 +129,127 @@ The issue weighed a third mode (Lista · Calendário · Entregas, or a weekly
 view of how each delivery advances) and settled on "vamos deixar assim". No
 third mode.
 
-## Build brief
+## 3. What was built
 
-Phase 3 starts here; Phase 4 removes this section.
+The real build, drawn by the real `TimelineList` and `ArtifactsPage` on a
+canned day (10:00, and 22:10 for screens 2 and 4): Lista at 10:00, Lista
+after the day, Calendário at 10:00, Calendário after the day, Entregas.
 
-### Files written in the design session (uncommitted, kept for the build)
+![Lunna](img/build-lunna.png)
 
-- `app/lib/delivery_first_preview.dart`: the preview entry point, five scenes
-  (`?s=1..5`) on hand-built cards. **Delete it after Phase 4's prints.**
-- `app/packages/timeline/lib/src/widgets/delivery_tile.dart` (new, exported
-  from `widgets.dart`): `DeliveryTile` and `RunBar`. In Lista (no `height`)
-  it draws the name and the next task only; `timeline: true` draws every
-  task (Calendário's Agora); with `height` it picks, by the room it gets,
-  lines at their hours, the next task alone, or for a run of one task the
-  task and its notes (`_scaled`). `routine:` for a routine's list.
-- `app/packages/artifacts/lib/src/view/pace_bars.dart` (new, exported):
-  `PaceBars` (one bar, green over red, and its key), `workDone`,
-  `isBehind`, `paceSlack`.
-- `app/packages/app_ui/lib/src/theme/app_colors.dart`: `paceTime`,
-  `paceDone`.
-- `app/packages/artifacts/lib/src/view/artifact_row.dart`: the subtitle
-  (kind · time · pace word) and `PaceBars` replace the steps/deadline text
-  and the single bar.
-- `app/packages/artifacts/lib/src/view/artifacts_page.dart`: `showGoals`
-  (default false) wraps the goals block; the queue is drawn under due
-  headings (`Due`, `dueOf`, `byDue`, `dueGroups`, `dueLabel`) instead of the
-  `SliverReorderableList`, each in `AppTypography.title` like the timeline's
-  `_HeadingRow`; the "Fila" heading and its summary are removed.
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): `stageLater`, `stageAhead`,
-  `stageAheadOpen`, `deliveryTasks`, `artifactsDue*`,
-  `artifactPaceOn`, `artifactPaceBehind` (`artifactPaceDone` and
-  `artifactPaceTime`, Feito and Prazo, were dropped in the second round;
-  `artifactsQueue` and `artifactsQueueSummary`, Fila and its count, in the
-  third).
+![Focus](img/build-focus.png)
 
-### What the build must do
+### The contract
 
-**App (timeline):**
-1. `TimelineList`, Lista mode: three stages, **Agora** (the running task or
-   its run, `DayOverTile` outside the day, the break otherwise), **Ainda hoje**
-   or **Amanhã** (the first working day with hours left; `inList` cut at
-   that day's end), **Para depois** (the backlog). A quiet "Mais N tarefas
-   adiante · Ver no calendário" line ends the dated stage. Each stage keeps
-   its +.
-2. Group adjacent tasks with the same `artifactId` into `DeliveryTile`, in
-   Lista (next task only) and Calendário (`height` from the scale; Agora
-   with `timeline: true`), Agora included. Done-today tasks of the running
-   delivery come from what the bloc already holds (or a `doneToday` field
-   per artifact; see the server item).
-3. Gestures on a grouped card: dragging the **card** carries the whole
-   run (one move per task, or a new run move). Dragging a **line** carries
-   that task alone (in Lista only the next task has a line; the others are
-   reached on the calendar or on the delivery's page). On the calendar a nudge or resize on a run is the
-   existing snapped-run behaviour. The tap on a line opens that task's
-   `EventPage`; a tap on the header opens the delivery. Keep `index`
-   counting tasks, not cards.
-4. Rename "Fazer em breve" → Ainda hoje/Amanhã and "Depois eu priorizo" →
-   Para depois everywhere they're read (`stageSoon`, `stageBacklog`,
-   `promptToBacklog`, `eventInBacklog`, `agentChangeFromBacklog`,
-   `artifactDeleteBody`, and the agent's speech on the server, which names
-   the stage).
-5. `EventTile.showArtifact` and its `AppTag` go once grouping lands.
+**The delivery is the card.** Tasks of one delivery that follow each other
+are one card (`deliveryRuns`), and only tasks next to each other join, so
+the card never reorders the day. Nothing on the server changed: the app
+groups by the `artifact.id` that `GET /api/timeline` already sends.
 
-**App (artifacts):** keep what is written, add tests: `byDue`/`dueOf`
-edges (overdue, today, day 7, day 8, none), `workDone` with and without
-tasks, `isBehind` at the slack edge, `showGoals` hiding the goal section, no
-"Fila" heading and the due headings in title style,
-`PaceBars` drawing no red without a deadline and the key's danger ink when
-late.
+- **Lista** has three stages: **Agora** (the running run, the break, or
+  `DayOverTile`), **one day** (Ainda hoje while the working day is open and
+  has tasks left, or nothing is queued at all; otherwise Amanhã), ending in
+  "Mais N tarefas adiante · Ver no calendário" (which switches mode) and a
+  +, then **Para depois**. A delivery's card shows only its next task. To a
+  tap and a drag the card is that task, and a drop under it lands after the
+  whole run (`_runEnd` in `_measure`).
+- **Calendário** draws a run with no room drawn inside it as one block, as
+  tall as its blocks one under another, so nothing below moves. Each task
+  is a line at its hour when every line fits (else the next task alone), and
+  **each line is its task** to a tap, a drag, a nudge and a swap. Agora's run
+  draws every line with the running task's controls. A delivery's lone task
+  stays the `EventTile` it was (title, delivery, notes).
+- **Entregas**: goals hidden (`showGoals: false`), sorted by deadline under
+  due-day headings in the timeline's style, one bar with green over red.
 
-**App (timeline) tests:** `DeliveryTile` in Lista draws one line; with a
-`height` it draws every line when they fit, the next one when not, and the
-notes for a run of one task.
-The `move` route stays (the agent uses it); only the page's drag goes.
+### Files
 
-**Server:** nothing is required for 1–5 if the app groups by `artifactId`
-from `GET /api/timeline`. Optional: `ArtifactTask` already has `place`; give
-the timeline card `artifact.done`/`artifact.total` if the Agora bar should
-show the delivery's tasks from other days (the mockup shows today's only).
+- `app/packages/timeline/lib/src/models/delivery_run.dart` (new):
+  `deliveryRuns`, `sameDelivery`.
+- `app/packages/timeline/lib/src/widgets/delivery_tile.dart`: per-line keys,
+  the carried line or card left hidden, the pressed fill, the controls'
+  key, and Começar / Esperar 15 min for a task waiting in Agora.
+- `app/packages/timeline/lib/src/view/timeline_list.dart`: Lista's stages
+  (`_listRows`, `_agoraRun`, `_listDay`, `_addAgora`, `_runTile`,
+  `_AheadRow`) and the calendar's runs (`_runAt`, `_calendarRun`); a lifted
+  line is carried at a card's height.
+- `app/packages/timeline/lib/src/widgets/event_tile.dart`: `showArtifact`
+  and its `AppTag` removed.
+- `app/packages/artifacts/`: as the design left it (`pace_bars.dart`, the due
+  headings, `showGoals`).
+- `app/packages/l10n`: `stageBacklog` is now "Para depois" (the design's
+  duplicate `stageLater` is gone), new `stageDayEmpty`, and
+  `promptToBacklog` ("Deixar para depois"), `eventInBacklog`,
+  `agentChangeFromBacklog`, `artifactDeleteBody` reworded.
+- `server/src/agent/` (speech, prompt, board, answer, service, actions,
+  evals, specs) and the schema comments: "Depois eu priorizo" → "Para
+  depois", so the agent names the stage as the app does.
+- `AGENTS.md` ("Tasks and events", "The timeline", "Entregas") and
+  `product/spec/artifacts.md` (deadline order, the bar, goals hidden).
 
-**Specs/docs:** AGENTS.md's "The timeline" (Lista's stages, the grouping),
-`product/spec/artifacts.md` (order by deadline, the two bars, goals
-hidden).
+### Tests
 
-### Decided unattended
+- `app/packages/timeline/test/delivery_run_test.dart` (new, 12): the
+  grouping rule, Lista's card (one line, no tag, tap opens the next task, a
+  drop under it lands after the run, Agora's run with its `RunBar`), the
+  calendar's block (a line per task, the height of its blocks, a tap on a
+  line opens that task, room between keeps two cards), and `DeliveryTile`
+  (one line in Lista, every line where they fit, the next one where not, a
+  lone task's notes).
+- `app/packages/timeline/test/timeline_list_test.dart`: four tests changed
+  to the new stages (one day kept under Agora with the rest counted, the
+  empty day's text, the + writing after the day kept).
+- `app/packages/artifacts/test/pace_test.dart` (new, 12): `dueOf` at overdue,
+  today, tomorrow, day 7, day 8 and none; `byDue` ties; `workDone` with and
+  without tasks; `isBehind` on both sides of the slack and with no deadline;
+  `PaceBars` with no red without a deadline, green over red, and the danger
+  ink once late; the page hiding goals and heading by due day in
+  `AppTypography.title`.
+- `.tool/check` passes, all 18 steps: `flutter analyze`, every touched package's
+  tests under Focus and Lunna (timeline, artifacts, agent, app_ui, analytics,
+  api_client, notifications), and the server's eslint, tsc and tests. No
+  flaky test was seen.
+- One test of this change depended on the machine's date, and the rerun on
+  24 October caught it: the page's two widget tests counted their due days
+  from the real `clock.now()`, so on the 24th a deadline on the 25th was
+  Amanhã, not "Nos próximos 7 dias". They now pump the page under
+  `withClock(Clock.fixed(now))` at the test's Wednesday, and `.tool/check`
+  passes again, all 18 steps.
+
+### Where the build differs from the design
+
+- **Dragging a card carries its next task, not the whole run.** In Lista
+  the card is its next task; on the calendar each line is its task.
+  Carrying a whole run would be one move per task, which the queue can
+  reshuffle between them. A follow-up could add a run move on the server.
+- **No done tasks in a run.** The day the app holds has no ticked-off
+  tasks, so Agora's lines and `RunBar` cover the open run only (the mockup
+  struck through "Levantar o mapa"). The delivery's whole progress is
+  Entregas' bar. Giving the card `artifact.done`/`total` is the optional
+  server item the brief named.
+- **A run's seam is not pulled** on the calendar (its bottom edge isn't the
+  last task's alone); a lone task's still is.
+- **Lista's Agora is not a drop target** of its own; dropping above the
+  running task still starts what's dropped, as before.
+- **Ainda hoje is kept when nothing is queued at all**, not Amanhã, so the
+  first task written down lands under the day it lands on.
+- **A delivery's own Tarefas** (`TimelineList(only:)`) keeps one stage,
+  *Fazer em breve*, a card per task: it lists all of one delivery's tasks,
+  so neither the day cut nor the grouping applies.
+- **Routine checklists** (pin 4A) are not built: second phase, as the
+  design said.
+
+## 4. How to turn it on
+
+Nothing to set: no env var, no migration, no server route. The goals come
+back with `ArtifactsPage(showGoals: true)`.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. No spend outside Claude: no
+model was called by the build.
+
+## Decided unattended
 
 - **Mockup track**: the request changes three screens.
 - Lista's dated stage is **Ainda hoje** (or **Amanhã** after hours), not "Fazer
@@ -254,7 +295,18 @@ hidden).
     day, no longer quieter after Hoje), flush with the cards as the
     timeline's are.
 
-### Open questions
+- Build, after an approval that left the open questions below unanswered:
+  each took the option the design assumed (checklists later, one running
+  delivery in Agora, no drag on Entregas, the schedule line kept).
+  - The backlog is renamed by **changing `stageBacklog`'s value** rather
+    than adding a key, and the agent's speech follows ("no Para depois").
+  - A delivery's lone task on the calendar stays an `EventTile`, which
+    already shows the delivery and the notes (pin 4C), and keeps its nudge
+    and seam.
+  - The card's drag carries its next task; the run move is left out (see
+    "Where the build differs").
+
+## Open questions
 
 1. **Routine checklists** (Café da manhã with items): build them now
    (items on `routine`, written into each day) or later? The mockup assumes
@@ -264,7 +316,3 @@ hidden).
    started today but not running, or is one running delivery enough?
 3. Entregas' **drag to reorder** goes away with the deadline order. Is that
    right, or should a drag within a heading still set priority?
-
-### Cost (design session)
-
-The queue measures this run and writes the figures in the PR.

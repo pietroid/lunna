@@ -526,7 +526,7 @@ class _Action extends StatelessWidget {
 }
 
 /// The artifact's tasks, drawn by the very list Tempo draws in Lista, kept
-/// to this artifact's: Fazer em breve with their hours, Depois eu priorizo,
+/// to this artifact's: Fazer em breve with their hours, Para depois,
 /// and what was done.
 ///
 /// So everything a card does there it does here: held, it moves up, down

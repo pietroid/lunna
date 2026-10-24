@@ -261,7 +261,7 @@ export function inOrder(day: Day): Task[] {
 }
 
 /**
- * The tasks Lista draws under Fazer em breve, in [inOrder]'s order.
+ * The tasks Lista draws with an hour, in [inOrder]'s order.
  *
  * Every task, but not the days of a routine: those are the same thing over
  * and over, one for each day the queue reaches, and the calendar already

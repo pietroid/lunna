@@ -19,7 +19,7 @@ enum TimelineSection {
   /// Later, under its day.
   dia('dia'),
 
-  /// Depois eu priorizo: a task with an order and a length, and no hour.
+  /// Para depois: a task with an order and a length, and no hour.
   backlog('backlog');
 
   const TimelineSection(this.wire);

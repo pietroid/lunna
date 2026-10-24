@@ -64,7 +64,7 @@ The day's gestures (`actions/queue.ts`):
 | `place` | `ref` or `new`, `after`/`before` refs | a drop between those cards: a place in the list (`createTask`/`moveTask` with `index`, no anchor); right under a card that keeps an hour, that card's end plus the pause, as a drop there |
 | `at_hour` | `ref` or `new`, `day`, `time` | a drop in free room: an anchor for a task, the hour itself for an event (`editEvent`) or a new fixed block (`new.fixed`, `createEvent`) |
 | `first_free` | `ref` or `new`, `day` | the first free stretch of that day long enough, then `at_hour` |
-| `to_backlog` | `ref` or `new` | into Depois eu priorizo, at its end |
+| `to_backlog` | `ref` or `new` | into Para depois, at its end |
 | `swap` | `ref`, `with` | `swapTasks` |
 
 `day` is `hoje`, `amanhã`, a weekday, or YYYY-MM-DD, within 14 days; the
@@ -215,7 +215,7 @@ answer with its question and its two choices. Plain text from the model
 
 **Nothing the person reads has a ref.** `speakable(text, board)`
 (`speech.ts`) replaces every ref the board knows with its title and
-"backlog" with "Depois eu priorizo", on the caption, headings, labels and
+"backlog" with "Para depois", on the caption, headings, labels and
 words to say, and the turn logs `agent.leak` with the count. The prompt asks
 for the same; `speakable` is the guarantee.
 

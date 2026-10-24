@@ -245,7 +245,7 @@ export const QUEUE: Action[] = [
   {
     name: 'to_backlog',
     domain: 'queue',
-    does: 'Into Depois eu priorizo, at its end.',
+    does: 'Into Para depois, at its end.',
     args: { ref: true, new: true, duplicate: true },
     resolve(r, item) {
       const { card, thing, duplicate, target } = subject(r, item);

@@ -377,7 +377,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stageSoon => 'Fazer em breve';
 
   @override
-  String get stageBacklog => 'Depois eu priorizo';
+  String get stageBacklog => 'Para depois';
 
   @override
   String get stageSoonEmpty => 'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.';
@@ -401,7 +401,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stageDoneEmpty => 'Nada feito ainda. Arraste uma tarefa para a direita quando terminar.';
 
   @override
-  String get promptToBacklog => 'Vai para Depois eu priorizo';
+  String get promptToBacklog => 'Deixar para depois';
 
   @override
   String get promptToQueue => 'Entra na fila, onde houver espaço';
@@ -416,7 +416,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get timelineBackToNow => 'Voltar para agora';
 
   @override
-  String get eventInBacklog => 'Em Depois eu priorizo, ainda sem hora';
+  String get eventInBacklog => 'Em Para depois, ainda sem hora';
 
   @override
   String eventDoneOn(String day, String time) {
@@ -821,7 +821,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentChangeRoutine => 'rotina, só nesse dia';
 
   @override
-  String get agentChangeFromBacklog => 'saiu do Depois eu priorizo';
+  String get agentChangeFromBacklog => 'saiu de Para depois';
 
   @override
   String get agentUndo => 'Desfazer';
@@ -1116,7 +1116,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get artifactDeleteBody => 'As tarefas em Depois eu priorizo vão junto. As que já estão em Fazer em breve, e as feitas, ficam no Tempo.';
+  String get artifactDeleteBody => 'As tarefas em Para depois vão junto. As que já têm hora, e as feitas, ficam no Tempo.';
 
   @override
   String dayOverTitle(String end) {
@@ -1615,9 +1615,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get goalReadbackFutureWeek => 'Fica guardada e passa a valer na segunda-feira.';
 
   @override
-  String get stageLater => 'Para depois';
-
-  @override
   String stageAhead(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1630,6 +1627,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get stageAheadOpen => 'Ver no calendário';
+
+  @override
+  String get stageDayEmpty => 'Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.';
 
   @override
   String deliveryTasks(int count, String time) {

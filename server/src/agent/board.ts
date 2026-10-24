@@ -443,7 +443,7 @@ export class Board {
   describe(card: BoardCard): string {
     const what = card.kind === 'event' ? 'bloco fixo' : 'tarefa';
     const where =
-      card.start === undefined ? 'Depois eu priorizo' : this.when(card.start);
+      card.start === undefined ? 'Para depois' : this.when(card.start);
     return `${card.title} · ${what} · ${where}`;
   }
 
@@ -537,7 +537,7 @@ export class Board {
     lines.push(
       'Other days are not shown: read_timeline reads them.',
       '',
-      'Backlog ("Depois eu priorizo", no hour):',
+      'Backlog ("Para depois", no hour):',
       ...(this.cards.some((card) => card.backlog)
         ? this.cards
             .filter((card) => card.backlog)

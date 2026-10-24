@@ -284,7 +284,7 @@ export const task = pgTable(
      */
     notBefore: timestamp('not_before', { withTimezone: true }),
     /**
-     * Whether it waits in the backlog ("Depois eu priorizo") rather than in
+     * Whether it waits in the backlog ("Para depois") rather than in
      * the queue. A task in the backlog has an order and a length but no
      * hour: the layout never sees it until it is dragged into the queue.
      */

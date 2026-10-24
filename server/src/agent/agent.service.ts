@@ -798,7 +798,7 @@ export class AgentService {
 
       return {
         text:
-          `"${task.title}" está esperando no Depois eu priorizo. ` +
+          `"${task.title}" está esperando no Para depois. ` +
           `Hoje às ${formatTimeIn(slot.start, zone)} tem espaço para ela. ` +
           'Quer encaixar?',
         plan: planView(offered),
@@ -1221,7 +1221,7 @@ export class AgentService {
 
       const where =
         card.start === undefined
-          ? 'no Depois eu priorizo'
+          ? 'no Para depois'
           : `${board.dayLabel(card.day!)} às ${formatTimeIn(card.start, board.zone)}`;
       const to = move.changes[index]?.at;
       const going =
@@ -1238,7 +1238,7 @@ export class AgentService {
           {
             label:
               card.start === undefined
-                ? 'Usar o do Depois eu priorizo'
+                ? 'Usar o do Para depois'
                 : `Mover o de ${board.dayLabel(card.day!)}`,
             plan: planView(move),
           },
@@ -1416,7 +1416,7 @@ export class AgentService {
 
     return {
       kind: 'doubt',
-      reply: `A entrega ${draft.view!.title} leva junto ${going} tarefas do Depois eu priorizo. Apago todas, ou só a entrega?`,
+      reply: `A entrega ${draft.view!.title} leva junto ${going} tarefas do Para depois. Apago todas, ou só a entrega?`,
       options: [
         { label: `Apagar as ${going}`, plan: planView(all) },
         { label: 'Só a entrega', plan: planView(only) },

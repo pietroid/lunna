@@ -43,7 +43,6 @@ class EventTile extends StatelessWidget {
     this.hidden = false,
     this.lifted = false,
     this.landing,
-    this.showArtifact = false,
     this.preview = false,
     this.actionsKey,
     this.onPauseToggled,
@@ -72,9 +71,6 @@ class EventTile extends StatelessWidget {
   /// The hours it would have if it were let go now, which the copy under the
   /// finger reads in place of its own.
   final ({DateTime start, DateTime end})? landing;
-
-  /// Whether the artifact the task is of goes under its title.
-  final bool showArtifact;
 
   /// Whether the card says what its notes start with and its artifact's
   /// name, within the height it is given (the calendar's).
@@ -228,16 +224,6 @@ class EventTile extends StatelessWidget {
               style: AppTypography.label.copyWith(color: _quiet),
               maxLines: lines,
               overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          if (showArtifact && card.artifactTitle != null) ...[
-            const SizedBox(height: AppSpacing.s2),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: AppTag(
-                text: card.artifactTitle!,
-                fill: _isNow ? AppColors.fill : AppColors.fillStrong,
-              ),
             ),
           ],
           if (_isNow) ...[

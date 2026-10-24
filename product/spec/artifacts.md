@@ -55,9 +55,24 @@ of deliveries both are spent on.
   all time, at most three, the catalogue's order breaking ties; a kind never
   used is not among them. The filter line is *Todas*, those kinds, then
   every shelf (with a folder); one pick at a time, not remembered.
-- The queue is dragged (held) only when unfiltered; `POST /artifacts/:id/move
-  { index }` counts the open deliveries as the queue will be. A delivered one
-  cannot be moved.
+- **Entregas is ordered by deadline** (`byDue`): the soonest first, those
+  with none last, the queue's own order breaking ties, under due-day
+  headings set as the timeline sets its days (`dueOf`: Hoje, today or
+  overdue; Amanhã; Nos próximos 7 dias; Mais adiante; Sem prazo). There is
+  no "Fila" heading. The page no longer drags; `POST /artifacts/:id/move
+  { index }` stays for the agent, counting the open deliveries as the queue
+  will be. A delivered one cannot be moved.
+- **One bar, two fills** (`PaceBars`): red (`AppColors.paceTime`) to the
+  share of the time from creation to the end of the deadline day, and over
+  it green (`AppColors.paceDone`) to the share of tasks done, or of minutes
+  with no tasks (`workDone`). Green covering the red is on pace; red showing
+  past it is lagging. Under it a key in the two colours ("3 de 5 etapas",
+  "faltam 6 dias", in the danger ink once late), and the subtitle ends in
+  "no ritmo" or "atrás do ritmo" (`isBehind`: the time more than
+  `paceSlack`, 15 points, ahead of the work). No deadline, no red.
+- **The goals are hidden** (`ArtifactsPage(showGoals: false)`, the
+  default): no goal cards and no "Nova meta". The model, the routes and the
+  agent's goal verbs are untouched, and the schedule line stays.
 
 ## Routes
 
