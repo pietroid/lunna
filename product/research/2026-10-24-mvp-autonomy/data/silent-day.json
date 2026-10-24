@@ -1,0 +1,69 @@
+{
+  "sync 08:30": [
+    {
+      "at": "09:00",
+      "kind": "confirmStart",
+      "title": "Mapa astral da Júlia",
+      "body": "Está na hora. Começamos?"
+    },
+    {
+      "at": "12:00",
+      "kind": "starting",
+      "title": "Almoço",
+      "body": "Começa agora, até 13:00"
+    },
+    {
+      "at": "12:50",
+      "kind": "almostFinishing",
+      "title": "Almoço",
+      "body": "Finaliza em 10 minutos"
+    },
+    {
+      "at": "21:00",
+      "kind": "evening",
+      "title": "Boa noite",
+      "body": "Hora de desacelerar. O dia já foi."
+    }
+  ],
+  "sync 14:30": [
+    {
+      "at": "21:00",
+      "kind": "evening",
+      "title": "Boa noite",
+      "body": "Hora de desacelerar. O dia já foi."
+    }
+  ],
+  "fired": [
+    {
+      "at": "09:00",
+      "kind": "confirmStart",
+      "title": "Mapa astral da Júlia",
+      "asks": true
+    },
+    {
+      "at": "12:00",
+      "kind": "starting",
+      "title": "Almoço",
+      "asks": false
+    },
+    {
+      "at": "12:50",
+      "kind": "almostFinishing",
+      "title": "Almoço",
+      "asks": false
+    },
+    {
+      "at": "21:00",
+      "kind": "evening",
+      "title": "Boa noite",
+      "asks": false
+    }
+  ],
+  "summary": {
+    "tasksPlanned": 5,
+    "remindersFired": 4,
+    "aboutATask": 1,
+    "answerableWithoutOpening": 0,
+    "tasksStillWaitingAt22": 5
+  }
+}

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="520" viewBox="0 0 780 520" font-family="Arial">
+  <rect width="780" height="520" fill="#000000"/>
+  <text x="40" y="40" fill="#F5F5F5" font-size="22" font-weight="600">Most behind is not most at risk</text>
+  <text x="40" y="70" fill="#A1A1A1" font-size="18">grey: lag Entregas sorts by · lime: work owed ÷ free hours to the deadline</text>
+  
+  <text x="40" y="116" fill="#F5F5F5" font-size="21">Mapa astral da Júlia · 28/10</text>
+  <rect x="40" y="126" width="393.3333333333333" height="34" rx="6" fill="#4A4A4A"/>
+  <text x="443.3333333333333" y="151" fill="#A1A1A1" font-size="19">lag 67%</text>
+  <rect x="40" y="166" width="147.5" height="34" rx="6" fill="#EEFFBB"/>
+  <text x="197.5" y="191" fill="#EEFFBB" font-size="19" font-weight="600">25% of free hours</text>
+  <text x="40" y="244" fill="#F5F5F5" font-size="21">Site da Ana · 06/11</text>
+  <rect x="40" y="254" width="213.05555555555554" height="34" rx="6" fill="#4A4A4A"/>
+  <text x="263.05555555555554" y="279" fill="#A1A1A1" font-size="19">lag 36%</text>
+  <rect x="40" y="294" width="339.25" height="34" rx="6" fill="#EEFFBB"/>
+  <text x="389.25" y="319" fill="#EEFFBB" font-size="19" font-weight="600">57% of free hours</text>
+  <text x="40" y="372" fill="#F5F5F5" font-size="21">Tese · 30/11</text>
+  <rect x="40" y="382" width="4" height="34" rx="6" fill="#4A4A4A"/>
+  <text x="54" y="407" fill="#A1A1A1" font-size="19">lag -18%</text>
+  <rect x="40" y="422" width="175.8653846153846" height="34" rx="6" fill="#EEFFBB"/>
+  <text x="225.8653846153846" y="447" fill="#EEFFBB" font-size="19" font-weight="600">30% of free hours</text>
+</svg>

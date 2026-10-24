@@ -11,7 +11,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [posthog](./2026-10-21-posthog/README.md) ·
 [agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
 [multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md) ·
-[neon-compute](./2026-10-23-neon-compute/README.md)
+[neon-compute](./2026-10-23-neon-compute/README.md) ·
+[mvp-autonomy](./2026-10-24-mvp-autonomy/README.md)
 
 ## Tools: what the model is given
 
@@ -80,7 +81,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents).
 - **Here:** read the day, propose, reply: hard-coded, one round-trip fewer.
-- **Met in:** agent-reliability §4.2; multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent; the trial measures whether it does).
+- **Met in:** agent-reliability §4.2; mvp-autonomy (deeper: code also picks *when* the agent speaks first and the fact it speaks about; the model only words it); multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent; the trial measures whether it does).
 
 ### The model arranges, the server states facts
 > The model may lay out the answer; only the server writes the facts in it.
@@ -109,6 +110,29 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** Alqithami & Alzahrani, [Agent RedressBench](https://ojs.aaai.org/index.php/AIES/article/view/43130) (AIES 2026).
 - **Here:** Desfazer that really brings a deleted task back, before offering delete.
 - **Met in:** agent-ui §4.9.
+
+## Proactivity: when the agent speaks first
+
+### "Provide nothing" is an option
+> At every decision point, doing nothing is one of the options, and usually the right one.
+
+- **Read:** Nahum-Shani et al., [Just-in-time adaptive interventions in mobile health](https://pmc.ncbi.nlm.nih.gov/articles/PMC5364076) (Ann. Behav. Med. 2018): decision points, tailoring variables, intervention options, receptivity.
+- **Here:** the moments Lunna may speak (an hour comes, a task ends, the app opens), the facts it reads there (pressure, real vs planned minutes), and follow-ups that stop after three.
+- **Met in:** mvp-autonomy, the *Why* slide and change 4.
+
+### Proactive agents fail by speaking
+> A proactive agent's usual failure is not staying silent.
+
+- **Read:** Lu et al., [Proactive Agent](https://arxiv.org/html/2410.12361v3) (ICLR 2025): false alarms 52% (GPT-4o) to 65% (GPT-4o-mini) on ProactiveBench.
+- **Here:** a suggestion that "mostly doesn't make sense" is the backlog's order offered as advice; code chooses the moment and the fact.
+- **Met in:** mvp-autonomy, the *Why* slide.
+
+### Estimate from the reference class
+> Predict how long something takes from what similar things took, not from the plan.
+
+- **Read:** Buehler, Griffin & Ross, [Exploring the planning fallacy](https://bear.warrington.ufl.edu/brenner/mar7588/Papers/buehler-et-al-1994.pdf) (1994): theses took 55.5 days against a best guess of 33.9.
+- **Here:** a delivery's length from its kind's measured minutes; which needs real ends, not `catchUp` writing every task as done on time.
+- **Met in:** mvp-autonomy, change 5.
 
 ## Measuring and running
 
