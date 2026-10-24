@@ -374,31 +374,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get timelineModeCalendar => 'Calendário';
 
   @override
-  String get stageSoon => 'Fazer em breve';
-
-  @override
   String get stageBacklog => 'Para depois';
 
   @override
-  String get stageSoonEmpty => 'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.';
-
-  @override
   String get stageBacklogEmpty => 'Nada esperando. Arraste para cá o que ainda não tem lugar na fila.';
-
-  @override
-  String stageDone(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count feitas',
-      one: '1 feita',
-      zero: 'Feitas',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get stageDoneEmpty => 'Nada feito ainda. Arraste uma tarefa para a direita quando terminar.';
 
   @override
   String get promptToBacklog => 'Deixar para depois';
@@ -1057,11 +1036,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String artifactTaskCount(int done, int total) {
-    return '$done de $total';
-  }
-
-  @override
   String artifactDoneOn(String date) {
     return 'entregue $date';
   }
@@ -1104,24 +1078,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get artifactDoneEmpty => 'Nada feito ainda. O que você terminar desta entrega fica aqui.';
 
   @override
-  String artifactTasksTab(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Tarefas · $count',
-      zero: 'Tarefas',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get artifactNotesTab => 'Notas';
 
   @override
   String get artifactDeadlineLabel => 'Prazo';
-
-  @override
-  String get artifactProgressLabel => 'Feitas';
 
   @override
   String get artifactNotesHint => 'Escreva o que quiser sobre a entrega…';

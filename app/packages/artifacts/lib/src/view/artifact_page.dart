@@ -184,7 +184,11 @@ class _ArtifactPageState extends State<ArtifactPage> {
                               AppSpacing.s6,
                               AppSpacing.s2,
                             ),
-                            child: Align(
+                            // Three tabs with their counts: on a narrow
+                            // phone, or with large text, they shrink to fit
+                            // rather than run off the edge.
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: AppSegmented(
                                 selected: _tab,

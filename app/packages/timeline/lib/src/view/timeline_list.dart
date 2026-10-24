@@ -303,10 +303,6 @@ class _TimelineListState extends State<TimelineList> {
   /// Agora's: a + at its end writes there.
   DateTime? _soonDay;
 
-  /// What the first heading of a delivery's list says: Agora, or the day
-  /// of its first task, as Tempo's headings say them.
-  String? _onlyLabel;
-
   /// Whether a delivery's list draws every day it reaches, once its line
   /// was tapped, rather than Tempo's one.
   bool _allDays = false;
@@ -1847,10 +1843,10 @@ class _TimelineListState extends State<TimelineList> {
   /// and its +. The tasks of one delivery that follow each other are one
   /// card, the delivery's, with only its next task under the name.
   ///
-  /// For a delivery's own tasks ([TimelineList.only]) every task with an
-  /// hour is drawn, each its own card, under the headings Tempo gives the
-  /// day it falls on (Agora, Ainda hoje, Amanhã, the date), then Para
-  /// depois. What it finished is on its page's own tab, not here.
+  /// For a delivery's own tasks ([TimelineList.only]) the same stages, each
+  /// task its own card: Agora only when one of them runs, then the one day,
+  /// whose line draws the days after here, each under its date, once
+  /// tapped; then Para depois. What it finished is on its page's own tab.
   ///
   /// Every row is as tall as it needs; there is no room in any stage.
   /// The backlog's heading is a row like any card to a drag, keyed so it can
@@ -1900,6 +1896,9 @@ class _TimelineListState extends State<TimelineList> {
 
     var shown = tasks;
     var agora = const <TimelineEvent>[];
+    var ahead = 0;
+    var soonEnd = 0;
+    var addSection = _soon;
     if (whole) {
       agora = _agoraRun(tasks);
       _addAgora(state, agora, dragging, now, drawn, rows);
@@ -1910,73 +1909,104 @@ class _TimelineListState extends State<TimelineList> {
         for (final card in tasks.skip(agora.length))
           if (!card.day.isAfter(day)) card,
       ];
-    } else {
-      // A delivery's list keeps Tempo's one day too, with its running task
-      // (if any) at the top under Agora; the rest is a line away.
-      _soonDay = null;
-      final day = _listDay(
-        tasks.where((card) => card.section != TimelineSection.agora),
-        now,
-      );
-      if (!_allDays) {
-        shown = [
-          for (final card in tasks)
-            if (card.section == TimelineSection.agora ||
-                !card.day.isAfter(day))
-              card,
-        ];
-      }
-      final first = shown.firstOrNull;
-      _onlyLabel = first == null
-          ? _label(day, now)
-          : _label(_headingOf(first), now);
-    }
-    final soonEnd = agora.length + shown.length;
-    _soonEnd = whole ? soonEnd : tasks.length;
-    // The + under a delivery's day still writes at the end of its queue.
-    final ahead = tasks.length - soonEnd;
+      soonEnd = agora.length + shown.length;
+      _soonEnd = soonEnd;
+      ahead = tasks.length - soonEnd;
 
-    final soonKey = _headingKey(_soon);
-    drawn.add((
-      key: soonKey,
-      section: _soon,
-      heading: true,
-      room: null,
-      card: null,
-    ));
-    rows.add(
-      _HeadingRow(key: soonKey, label: _labelOf(_soon, now), first: !whole),
-    );
-    if (shown.isEmpty) {
+      final soonKey = _headingKey(_soon);
+      drawn.add((
+        key: soonKey,
+        section: _soon,
+        heading: true,
+        room: null,
+        card: null,
+      ));
       rows.add(
-        _Slid(
-          dy: shift(agora.length),
-          child: _StageEmpty(
-            text: whole ? l10n.stageDayEmpty : l10n.stageSoonEmpty,
-          ),
-        ),
+        _HeadingRow(key: soonKey, label: _labelOf(_soon, now), first: false),
       );
-    }
-    if (whole) {
+      if (shown.isEmpty) {
+        rows.add(
+          _Slid(
+            dy: shift(agora.length),
+            child: _StageEmpty(text: l10n.stageDayEmpty),
+          ),
+        );
+      }
       addRuns(shown, _soon);
     } else {
-      // Agora and the day each under the heading Tempo would give them, the
-      // first under the stage's own; and, once asked for, every day after.
-      _Heading? heading = _unset;
-      for (final card in shown) {
-        final its = _headingOf(card);
-        if (heading != _unset && its != heading) {
-          rows.add(
-            _Slid(
-              dy: shift(_indexOf(card.id)),
-              child: _HeadingRow(label: _label(its, now), first: false),
-            ),
-          );
-        }
-        heading = its;
-        addRuns([card], _soon);
+      // A delivery's list keeps Tempo's stages: its running task under
+      // Agora, when one runs, then the one day, each under its own heading;
+      // the days after are a line away, and drawn here once it is tapped.
+      _soonDay = null;
+      agora = [
+        for (final card in tasks)
+          if (card.section == TimelineSection.agora) card,
+      ];
+      final rest = tasks.skip(agora.length).toList();
+      final day = _listDay(rest, now);
+      shown = [
+        for (final card in rest)
+          if (_allDays || !card.day.isAfter(day)) card,
+      ];
+      soonEnd = agora.length + shown.length;
+      ahead = tasks.length - soonEnd;
+
+      // The + under the day writes right after the last task drawn, counted
+      // in the whole queue; with none drawn, right before the next one.
+      final last = shown.lastOrNull ?? agora.lastOrNull;
+      final next = rest.firstOrNull;
+      int whereIs(TimelineEvent card) =>
+          _state.tasks.indexWhere((it) => it.id == card.id);
+      _soonEnd = last != null
+          ? whereIs(last) + 1
+          : next != null
+          ? whereIs(next)
+          : _state.tasks.length;
+
+      void heading(Object section, String label, {double? dy}) {
+        final key = _headingKey(section);
+        drawn.add((
+          key: key,
+          section: section,
+          heading: true,
+          room: null,
+          card: null,
+        ));
+        rows.add(
+          dy == null
+              ? _HeadingRow(key: key, label: label, first: drawn.length == 1)
+              : _Slid(
+                  key: key,
+                  dy: dy,
+                  child: _HeadingRow(label: label, first: false),
+                ),
+        );
       }
+
+      if (agora.isNotEmpty) {
+        heading(_agora, l10n.sectionNow);
+        addRuns(agora, _agora);
+      }
+      heading(day, _label(day, now));
+      if (!shown.any((card) => !card.day.isAfter(day))) {
+        rows.add(
+          _Slid(
+            dy: shift(agora.length),
+            child: _StageEmpty(text: l10n.stageDayEmpty),
+          ),
+        );
+      }
+      var under = day;
+      for (final card in shown) {
+        if (card.day.isAfter(under)) {
+          under = card.day;
+          heading(under, _label(under, now), dy: shift(_indexOf(card.id)));
+        }
+        addRuns([card], under);
+      }
+      addSection = under;
     }
+
     if (ahead > 0) {
       rows.add(
         _Slid(
@@ -1999,7 +2029,9 @@ class _TimelineListState extends State<TimelineList> {
         ),
       );
     }
-    rows.add(_addRow(_soon, Placement.queue(_soonEnd), shift(soonEnd), drawn));
+    rows.add(
+      _addRow(addSection, Placement.queue(_soonEnd), shift(soonEnd), drawn),
+    );
 
     drawn.add((
       key: _dividerKey,
@@ -2036,9 +2068,7 @@ class _TimelineListState extends State<TimelineList> {
   void _open(TimelineEvent card) {
     final artifact = card.artifactId;
     final onDelivery = widget.onDeliveryTap;
-    if (widget.only == null &&
-        artifact != null &&
-        onDelivery != null) {
+    if (widget.only == null && artifact != null && onDelivery != null) {
       onDelivery(artifact);
       return;
     }
@@ -2247,9 +2277,7 @@ class _TimelineListState extends State<TimelineList> {
     if (section == _backlog) return context.l10n.stageBacklog;
     if (section == _agora) return context.l10n.sectionNow;
     if (section == _soon) {
-      if (widget.only != null && _onlyLabel != null) return _onlyLabel!;
-      final day = _soonDay;
-      return day == null ? context.l10n.stageSoon : _label(day, now);
+      return _label(_soonDay ?? now, now);
     }
 
     return _label(section as _Heading, now);

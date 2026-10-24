@@ -701,41 +701,17 @@ abstract class AppLocalizations {
   /// **'Calendário'**
   String get timelineModeCalendar;
 
-  /// No description provided for @stageSoon.
-  ///
-  /// In pt, this message translates to:
-  /// **'Fazer em breve'**
-  String get stageSoon;
-
   /// No description provided for @stageBacklog.
   ///
   /// In pt, this message translates to:
   /// **'Para depois'**
   String get stageBacklog;
 
-  /// No description provided for @stageSoonEmpty.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.'**
-  String get stageSoonEmpty;
-
   /// No description provided for @stageBacklogEmpty.
   ///
   /// In pt, this message translates to:
   /// **'Nada esperando. Arraste para cá o que ainda não tem lugar na fila.'**
   String get stageBacklogEmpty;
-
-  /// No description provided for @stageDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =0{Feitas} =1{1 feita} other{{count} feitas}}'**
-  String stageDone(int count);
-
-  /// No description provided for @stageDoneEmpty.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nada feito ainda. Arraste uma tarefa para a direita quando terminar.'**
-  String get stageDoneEmpty;
 
   /// No description provided for @promptToBacklog.
   ///
@@ -1745,12 +1721,6 @@ abstract class AppLocalizations {
   /// **'{days, plural, =1{atrasada 1 dia} other{atrasada {days} dias}}'**
   String artifactOverdue(int days);
 
-  /// No description provided for @artifactTaskCount.
-  ///
-  /// In pt, this message translates to:
-  /// **'{done} de {total}'**
-  String artifactTaskCount(int done, int total);
-
   /// No description provided for @artifactDoneOn.
   ///
   /// In pt, this message translates to:
@@ -1799,12 +1769,6 @@ abstract class AppLocalizations {
   /// **'Nada feito ainda. O que você terminar desta entrega fica aqui.'**
   String get artifactDoneEmpty;
 
-  /// No description provided for @artifactTasksTab.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =0{Tarefas} other{Tarefas · {count}}}'**
-  String artifactTasksTab(int count);
-
   /// No description provided for @artifactNotesTab.
   ///
   /// In pt, this message translates to:
@@ -1816,12 +1780,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Prazo'**
   String get artifactDeadlineLabel;
-
-  /// No description provided for @artifactProgressLabel.
-  ///
-  /// In pt, this message translates to:
-  /// **'Feitas'**
-  String get artifactProgressLabel;
 
   /// No description provided for @artifactNotesHint.
   ///

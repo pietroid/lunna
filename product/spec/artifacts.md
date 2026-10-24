@@ -29,9 +29,25 @@ of deliveries both are spent on.
   project's were: written down at the end of the backlog, moved, begun and
   finished by the day's own routes, through `EventLayoutService`. Removing a
   delivery removes what waits in the backlog for it and lets the rest belong
-  to none. Its page is the old project page: Notas, and Tarefas as Tempo's
-  Lista kept to it (`TimelineList(only:, done:)`), plus a line with its kind,
-  time and value and a ✓ that marks it delivered or open again.
+  to none. Its page is the old project page, under the bar Entregas draws
+  (`PaceBars`) and a line with its kind, time and value and a ✓ that marks
+  it delivered or open again; then three tabs, opening on the one last
+  chosen there (from Tempo, on Pendentes):
+  - **Notas**.
+  - **Pendentes · n**: Tempo's Lista kept to it (`TimelineList(only:)`),
+    in Tempo's stages: Agora when one of its tasks runs, the one day
+    (Ainda hoje or Amanhã, `_listDay`), a line counting the later tasks
+    ("Ver os próximos dias", which draws them there, each day under its
+    date) and Para depois, which is where its backlog lives: Tempo's Para
+    depois holds only tasks with no delivery. No card names the delivery.
+  - **Feitas · n**: what was done, newest first under Hoje / Ontem / the
+    date (`doneDayLabel`), each a `DoneArchiveTile`; a tap opens the
+    finished task.
+- **On Tempo a delivery's card is the delivery**: a tap on it, in Lista
+  (Agora included) or on any line of its block or its lone task on the
+  calendar, opens its page on Pendentes (`TimelineList(onDeliveryTap:)`).
+  A drag, a nudge, a swap and the seam still take that line's task, and
+  the running card's buttons act on the running task.
 - **Goal** (`goal`): `kind` money (the `value` of deliveries delivered in the
   stretch) or count (deliveries of one `type_id`), a `target`, a `period`
   (week Monday–Sunday, or month), and `starts`, the first day of its first

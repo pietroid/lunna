@@ -1,7 +1,10 @@
 # Declutter: Tempo keeps the day, the delivery keeps its tasks
 
-Draft from the design session (mockup track, unattended). Sections 1 and 2
-are done; the **Build brief** is what `/create build declutter` starts from.
+Issue [#40](https://github.com/pietroid/lunna/issues/40), mockup track,
+designed and built unattended by the queue. Tempo's Para depois holds only
+loose tasks, a delivery's card on Tempo opens the delivery, and the
+delivery's page keeps what is left to do in Tempo's own stages and what
+was done in a tab of its own.
 
 ## 1. The prompt
 
@@ -76,96 +79,106 @@ Drawn from known patterns, not browsed (no Mobbin session here):
 | 3A | The done stage leaves Pendentes for the **Feitas** tab, last. `TimelineList` loses its `done:` parameter. |
 | 3B | Feitas is newest first, under **Hoje / Ontem / the date**, the headings of Menu → Feitas (`doneDayLabel`, now shared). |
 | 3C | Each done task is drawn with `DoneArchiveTile`: the check, the title, the hour it was done and the start of its notes, with no delivery tag. A tap opens the finished task's page. |
-
 | 4A | In Calendário, a tap on any line of a delivery's block opens the delivery on Pendentes. A drag, a nudge, a swap and the seam still take that line's task; the buttons act on the running one. |
 | 4B | A delivery's lone task on the calendar opens the delivery too: the rule is "a card with a delivery", not "a run". |
 | 4C | A task with no delivery opens its own page. |
 
 No new icon: `AppIcons.time` is the clock already used for Tempo.
 
-## Build brief
+## 3. What was built
 
-### Files the design session wrote (uncommitted, kept for the build)
+The real build, drawn by the preview entry point on the final code (the
+real cubits and `TimelineList`, a canned day behind a `TimelineRepository`,
+`DemoArtifactsRepository` for the deliveries), Friday 10:00. Left to right:
+Tempo's Lista, the delivery's Pendentes, its Feitas, Tempo's Calendário.
 
-- `app/lib/declutter_preview.dart`: the preview entry point (`?s=1` Tempo,
-  `2` Pendentes, `3` Feitas, `4` Tempo's Calendário). It runs on a `_FakeTimeline` (a
-  `TimelineRepository` subclass whose `fetch` returns a canned day) and on
-  `DemoArtifactsRepository` with its own deliveries. Delete it after Phase 4.
-- `app/packages/timeline/lib/src/view/timeline_list.dart`:
-  - new `onDeliveryTap: ValueChanged<String>?`, called through `_open` on a
-    tap on Tempo (`only == null`), in Lista and on the calendar, when the
-    card has an `artifactId`;
-  - `_waiting` leaves out tasks that belong to a delivery when
-    `only == null`, and `_placeOf` now always goes through `_wholeOf`
-    (that is the identity when nothing is hidden);
-  - in `only` mode, Tempo's day replaces *Fazer em breve*: the running
-    task and the tasks up to `_listDay`, the first heading's label in
-    `_onlyLabel` (Agora or the day); then `_AheadRow` (now given its
-    `link`) with *Ver os próximos dias*, which sets `_allDays` and draws
-    the later days under plain `_HeadingRow`s;
-  - `done:` and `_DoneTile` are removed.
-- `app/packages/timeline/lib/src/view/done_archive.dart`: `doneDayLabel`
-  is now a public top-level function.
-- `app/packages/artifacts/lib/src/view/artifact_page.dart`: three tabs
-  (`_doneTab = 2`), `PaceBars` in `_Summary` with the progress row gone,
-  `_Tasks` without done, and the new `_Done` tab.
-- `app/lib/home/view/home_page.dart` and `app/lib/demo/view/demo_app.dart`:
+**Lunna**
+
+![Lunna](img/build-lunna.png)
+
+**Focus**
+
+![Focus](img/build-focus.png)
+
+### The contract
+
+**On Tempo a delivery's card is the delivery; the hands still work on its
+task.** A tap on a card with a delivery, in Lista (Agora included) or on
+any line of its block or its lone task on the calendar, opens the
+delivery's page on Pendentes. A drag, a nudge, a swap, a seam and the
+running card's buttons act on the task, as before. Tempo's Para depois
+draws only tasks with no delivery; a delivery's backlog lives on its page.
+Nothing on the server changed: `GET /timeline` still sends every backlog
+task, and a drop into Tempo's Para depois is still counted in the whole
+backlog (`_wholeOf`), hidden tasks included.
+
+### The app
+
+- `timeline/lib/src/view/timeline_list.dart`
+  - `onDeliveryTap: ValueChanged<String>?`: every tap goes through `_open`,
+    which hands a card with an `artifactId` to it on Tempo (`only == null`),
+    and anything else to `onCardTap`.
+  - `_waiting` on Tempo leaves out the deliveries' tasks; `_placeOf` always
+    maps the drop through `_wholeOf`.
+  - A delivery's list (`only:`) has Tempo's stages: **Agora** (its running
+    task, only when one runs), **the one day** (`_listDay`), with the
+    empty text Tempo's day uses, a line *Mais N tarefas adiante · Ver os
+    próximos dias* that draws the later days here, and **Para depois**.
+    Each heading (Agora, the day, each later date) is a real heading entry
+    keyed by its own section, so the pinned heading follows the scroll and
+    says Agora, Ainda hoje, Amanhã or the date. The **+** under the day
+    writes right after the last of the delivery's tasks drawn, counted in
+    the whole queue (before, it wrote at the delivery's own count, which
+    the server read as a place in the whole queue); with none drawn, right
+    before its next one. The foot's `+` (`TimelineAim`) aims at the same
+    place while the day is at the top, and at the backlog below it.
+  - `done:`, `_DoneTile` and *Fazer em breve* are gone.
+- `timeline/lib/src/view/done_archive.dart`: `doneDayLabel` is shared.
+- `artifacts/lib/src/view/artifact_page.dart`: three tabs, Notas ·
+  Pendentes · Feitas, in a `FittedBox` so they shrink rather than overflow
+  on a narrow phone or with large text; `PaceBars` replaces the thin time
+  line and the *Feitas* progress row, with −1 dia / +1 dia beside it; the
+  new `_Done` tab (newest first, Hoje / Ontem / date, `DoneArchiveTile`,
+  no delivery tag).
+- `artifact_format.dart`: `ArtifactBar` removed (nothing used it).
+- `lib/home/view/home_page.dart`, `lib/demo/view/demo_app.dart`:
   `onDeliveryTap: (id) => openArtifact(context, id, tab: 1)`.
-- `app_pt.arb` (+ gen): `artifactPendingTab`, `artifactDoneTab`,
-  `artifactDoneEmpty`, `stageAheadShow`.
+- `app_pt.arb`: new `artifactPendingTab`, `artifactDoneTab`,
+  `artifactDoneEmpty`, `stageAheadShow`; removed `stageSoon`,
+  `stageSoonEmpty`, `stageDone`, `stageDoneEmpty`, `artifactTasksTab`,
+  `artifactProgressLabel`, `artifactTaskCount` (each grepped first).
 
-### What the build must do
+### The tests
 
-**Server:** nothing. `GET /timeline` keeps sending the deliveries' backlog
-tasks, because the delivery's page reads them from there. Hiding them on
-Tempo is the app's job.
+- `timeline/test/delivery_run_test.dart`, 7 new: a tap on a delivery's card
+  in Lista opens the delivery and a loose task its own page; the running
+  card in Agora opens the delivery; Para depois keeps only loose tasks; a
+  drop into Para depois counts the hidden delivery task (`index: 2`); on
+  the calendar a tap on a run's line and on a lone task opens the delivery,
+  a loose task opens itself; a short drag on a run's line still nudges
+  that task (`EventShifted('p2', 20)`).
+- `timeline/test/timeline_list_test.dart`: the kept list draws its tasks
+  under Ainda hoje with no Agora; new, Agora then Amanhã (empty) then the
+  line, whose tap draws the later tasks under their date, and the + that
+  writes after the running task (`queue(1)`) and, once the days are drawn,
+  after the last (`queue(4)`). The two drop tests now measure from the
+  day's heading and from the + under the backlog.
+- `artifacts/test/artifact_page_test.dart`, 2 new and 3 updated: the tabs
+  remember Pendentes (1) and Feitas (2); the page draws `PaceBars`;
+  Pendentes has no done task; Feitas is newest first under Hoje / Ontem
+  with no `AppTag`; a finished task opens from Feitas.
+- `.tool/check` passes (eslint, tsc and server tests are not touched; the
+  app's analyze and every touched package's tests under Focus and Lunna).
 
-**App:**
+### Where the build differs from the mockup
 
-1. In a delivery's list, only the first heading (Agora or the day) is a
-   drop target with its own pinned label. The second (the day under a
-   running task) and, once *Ver os próximos dias* is tapped, the later
-   days are drawn but are not in `drawn`. Make each a real heading entry
-   (section = that day, as the calendar does) so the pinned heading follows
-   the scroll and a drop on it lands on that day (`after` = the day's
-   first hour). Check `_placeOf` / `_hourAbove` against it. The `+` at the
-   end of the day writes at `Placement.queue(tasks.length)`, after the
-   hidden days too: make it land at the end of the day drawn.
-   `_allDays` is per list state: decide whether it resets when the page
-   is opened again (the preview keeps it per open).
-2. Tempo's `+` at the end of Para depois writes a task with no delivery, as
-   it does today. Moving a delivery's task into the backlog on Tempo makes
-   it disappear from Tempo. That is expected, but test that the drop lands
-   at the right place in the whole backlog (`_wholeOf`).
-3. `TimelineAim` in the delivery's list: the stage at the top is now a day
-   heading. Check that the `+` beside the bar still aims at the queue or at
-   that day.
-4. Remove whatever has no use left: `ArtifactBar` (if nothing else uses
-   it), and the ARB keys `artifactTasksTab`, `artifactProgressLabel`,
-   `artifactTaskCount`, `stageDone`, `stageDoneEmpty`, `stageSoon` (check
-   each with grep first).
-5. Tests to update: `artifacts/test/artifact_page_test.dart` (the tab label
-   and the done stage at ~174/250) and `timeline/test/timeline_list_test.dart`
-   (the `done:` stage at ~1624–1674). New specs:
-   - a delivery's backlog task is not in Tempo's Lista, and a loose one is;
-   - a drop into Tempo's backlog counts the hidden tasks;
-   - a tap on a delivery's card calls `onDeliveryTap` in Lista and in
-     Calendário (a run's line, and a lone task), a tap on a loose task
-     calls `onCardTap`, and a drag on a run's line still moves that task;
-   - Pendentes draws Agora, then Ainda hoje (or Amanhã after the working
-     day), one line counting the later tasks, then Para depois; tapping the
-     line draws the later days under their dates;
-   - Feitas groups by day, newest first;
-   - the page draws `PaceBars`.
-6. `AGENTS.md`: update "The timeline" (Para depois holds loose tasks; a
-   delivery's card opens the delivery, in Lista and on the calendar, where
-   the line still takes drags as its task) and the Entregas paragraph
-   (the delivery's three tabs). Update `product/spec/artifacts.md` the same
-   way.
-7. `dart format` here (Dart 3.12.1) rewrote lines in files I had not
-   touched. I reverted those files, but a few formatter-only hunks are left
-   in `timeline_list.dart` and `artifact_page.dart`. CI does not check
-   formatting. Drop those hunks if the diff should stay small.
+- The tabs sit in a `FittedBox`: three labels with counts are wider than
+  two, and in the test font (and on a 320 px phone) they ran off the edge.
+  At 390 px in Onest they are drawn at full size, as in the mockup.
+- The **+** under a delivery's day writes after its last task drawn rather
+  than at the end of its tasks (see above), as the brief asked.
+- The empty day on a delivery's page says what Tempo's empty day says
+  (*Nada com hora neste dia…*); *Nada na fila…* went with *Fazer em breve*.
 
 ### Decided unattended
 
@@ -200,12 +213,18 @@ Tempo is the app's job.
   passes cards without `artifactTitle`, so `DoneArchiveTile` draws no
   `AppTag`. The task's own page keeps its *Entrega* row.
 
-### Open questions
+- **Ver os próximos dias resets** when the page is opened again or its
+  tab is left: it is the list's own state, like its scroll, so the page
+  always opens on one day.
+- **The + with no task of the delivery drawn** writes right before its
+  next task in the whole queue, or at the end of the queue when it has
+  none.
 
-None left from round 1. One small call to confirm: the link *Ver os
-próximos dias* (2E) rather than Tempo's *Ver no calendário*.
+## 4. How to turn it on
 
-### Cost of the design session
+Nothing to turn on: no server change, no env var, no migration. The app
+build carries it.
 
-Not recorded here: the queue measures every run and writes the figures in
-the PR.
+## 5. Cost and time
+
+Measured by the queue: see the pull request.
