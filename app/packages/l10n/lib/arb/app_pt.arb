@@ -1283,6 +1283,7 @@
     }
   },
   "stageAheadOpen": "Ver no calendário",
+  "stageAheadShow": "Ver os próximos dias",
   "stageDayEmpty": "Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.",
   "deliveryTasks": "{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}",
   "@deliveryTasks": {

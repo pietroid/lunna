@@ -2615,6 +2615,12 @@ abstract class AppLocalizations {
   /// **'Ver no calendário'**
   String get stageAheadOpen;
 
+  /// No description provided for @stageAheadShow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver os próximos dias'**
+  String get stageAheadShow;
+
   /// No description provided for @stageDayEmpty.
   ///
   /// In pt, this message translates to:

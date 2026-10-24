@@ -1654,6 +1654,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get stageAheadOpen => 'Ver no calendário';
 
   @override
+  String get stageAheadShow => 'Ver os próximos dias';
+
+  @override
   String get stageDayEmpty => 'Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.';
 
   @override

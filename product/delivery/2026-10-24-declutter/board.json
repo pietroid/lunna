@@ -10,7 +10,7 @@
           "x": 24,
           "y": 230,
           "label": "Tap opens the delivery",
-          "text": "In Lista a delivery's card (DeliveryTile, here in Agora; also in Ainda hoje/Amanhã) opens the delivery's page on Pendentes, not the next task. The controls (pause, −15, +15, ✓) still act on the running task. The calendar is unchanged: each line there is its task."
+          "text": "In Lista a delivery's card (DeliveryTile, here in Agora; also in Ainda hoje/Amanhã) opens the delivery's page on Pendentes, not the next task. The controls (pause, −15, +15, ✓) still act on the running task."
         },
         {
           "id": "B",
@@ -21,17 +21,24 @@
         },
         {
           "id": "C",
+          "x": 24,
+          "y": 466,
+          "label": "Ainda hoje / Amanhã: the delivery's name",
+          "text": "Unchanged: a delivery's tasks in the day are drawn as its card, under the delivery's name, with only the next task beneath it."
+        },
+        {
+          "id": "D",
           "x": 150,
-          "y": 562,
+          "y": 642,
           "label": "Para depois: loose tasks only",
-          "text": "Reminders with no delivery. The delivery's backlog (Revisar a leitura, Enviar para a Renata) is not drawn here and leaves no counter behind; it is in the delivery's Para depois (screen 2). Drops still count the hidden ones, as a delivery's list already does."
+          "text": "Reminders with no delivery. The delivery's backlog (Revisar a leitura, Enviar para a Renata) is not drawn here and leaves no counter behind; it is in the delivery's Para depois (screen 2). Drops still count the hidden ones."
         }
       ]
     },
     {
       "png": "img/mockup-2.png",
       "title": "2 · The delivery: Pendentes",
-      "why": "Same bar as Entregas, three tabs, and Tempo's headings over the delivery's own tasks.",
+      "why": "Same bar as Entregas, three tabs, and Tempo's own stages over the delivery's tasks: Agora, one day, Para depois.",
       "pins": [
         {
           "id": "A",
@@ -51,8 +58,8 @@
           "id": "C",
           "x": 100,
           "y": 262,
-          "label": "Tempo's headings",
-          "text": "Agora when one of its tasks runs, then each day it reaches under the heading Tempo gives it (Ainda hoje, Amanhã, the date), then Para depois. Fazer em breve is gone. Every day is drawn: no 'Mais N adiante' line inside a delivery."
+          "label": "Tempo's structure",
+          "text": "Agora when one of its tasks runs, then one day only, Ainda hoje or Amanhã, chosen by the hour as Tempo chooses it (_listDay), then Para depois. Fazer em breve is gone."
         },
         {
           "id": "D",
@@ -63,8 +70,15 @@
         },
         {
           "id": "E",
+          "x": 314,
+          "y": 504,
+          "label": "The days after, a line away",
+          "text": "As on Tempo, the tasks after that day are one line: 'Mais 1 tarefa adiante'. The page has no calendar, so its link is 'Ver os próximos dias', which draws them here under their dates."
+        },
+        {
+          "id": "F",
           "x": 150,
-          "y": 668,
+          "y": 607,
           "label": "Its own Para depois",
           "text": "Where the delivery's backlog lives now that Tempo's Para depois leaves it out. + and the bar's + write into this delivery, as today."
         }
@@ -95,6 +109,34 @@
           "y": 432,
           "label": "Archive's tile, no tag",
           "text": "DoneArchiveTile: the check, the title, the hour it was done, the start of its notes; no delivery tag. A tap opens the finished task's page."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Calendário: the block is the delivery too",
+      "why": "A tap on a delivery's block opens the delivery, as in Lista; the hands still move each task.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 24,
+          "y": 260,
+          "label": "Tap opens the delivery",
+          "text": "A tap on any line of a delivery's block (here Calcular o mapa, Escrever a leitura) opens the delivery's page on Pendentes. A drag, a nudge, a swap and the seam still take the line's own task; the buttons act on the running one."
+        },
+        {
+          "id": "B",
+          "x": 24,
+          "y": 528,
+          "label": "A lone task of a delivery too",
+          "text": "Rascunhar o texto is the Post's only task here; its card names the delivery, and a tap opens the delivery as well."
+        },
+        {
+          "id": "C",
+          "x": 24,
+          "y": 442,
+          "label": "A loose task opens itself",
+          "text": "A task with no delivery opens its own page, as today."
         }
       ]
     }

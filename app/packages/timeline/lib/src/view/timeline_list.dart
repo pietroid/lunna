@@ -179,9 +179,9 @@ class TimelineList extends StatefulWidget {
   /// Only the list honours it; the calendar is the day, all of it.
   final Set<String>? only;
 
-  /// Called with a delivery's id when its card is tapped in Tempo's Lista,
-  /// where the card is the delivery rather than its next task. Null opens
-  /// the task, as the calendar always does.
+  /// Called with a delivery's id when its card is tapped on Tempo, in Lista
+  /// or on the calendar, where the card is the delivery rather than its
+  /// task. Null opens the task.
   final ValueChanged<String>? onDeliveryTap;
 
   /// How the day is drawn.
@@ -306,6 +306,10 @@ class _TimelineListState extends State<TimelineList> {
   /// What the first heading of a delivery's list says: Agora, or the day
   /// of its first task, as Tempo's headings say them.
   String? _onlyLabel;
+
+  /// Whether a delivery's list draws every day it reaches, once its line
+  /// was tapped, rather than Tempo's one.
+  bool _allDays = false;
   int _soonEnd = 0;
 
   /// Every row drawn in the last build, in order.
@@ -1907,12 +1911,29 @@ class _TimelineListState extends State<TimelineList> {
           if (!card.day.isAfter(day)) card,
       ];
     } else {
+      // A delivery's list keeps Tempo's one day too, with its running task
+      // (if any) at the top under Agora; the rest is a line away.
       _soonDay = null;
-      final first = tasks.firstOrNull;
-      _onlyLabel = first == null ? null : _label(_headingOf(first), now);
+      final day = _listDay(
+        tasks.where((card) => card.section != TimelineSection.agora),
+        now,
+      );
+      if (!_allDays) {
+        shown = [
+          for (final card in tasks)
+            if (card.section == TimelineSection.agora ||
+                !card.day.isAfter(day))
+              card,
+        ];
+      }
+      final first = shown.firstOrNull;
+      _onlyLabel = first == null
+          ? _label(day, now)
+          : _label(_headingOf(first), now);
     }
     final soonEnd = agora.length + shown.length;
     _soonEnd = whole ? soonEnd : tasks.length;
+    // The + under a delivery's day still writes at the end of its queue.
     final ahead = tasks.length - soonEnd;
 
     final soonKey = _headingKey(_soon);
@@ -1939,8 +1960,8 @@ class _TimelineListState extends State<TimelineList> {
     if (whole) {
       addRuns(shown, _soon);
     } else {
-      // A delivery's list is short: every day it reaches, each under the
-      // heading Tempo would give it, the first under the stage's own.
+      // Agora and the day each under the heading Tempo would give them, the
+      // first under the stage's own; and, once asked for, every day after.
       _Heading? heading = _unset;
       for (final card in shown) {
         final its = _headingOf(card);
@@ -1960,12 +1981,21 @@ class _TimelineListState extends State<TimelineList> {
       rows.add(
         _Slid(
           dy: shift(soonEnd),
-          child: _AheadRow(
-            count: ahead,
-            onTap: () => context.read<TimelineModeCubit?>()?.choose(
-              TimelineMode.calendar,
-            ),
-          ),
+          child: whole
+              ? _AheadRow(
+                  count: ahead,
+                  link: l10n.stageAheadOpen,
+                  onTap: () => context.read<TimelineModeCubit?>()?.choose(
+                    TimelineMode.calendar,
+                  ),
+                )
+              // A delivery's page has no calendar to send it to: the line
+              // opens the days after, here.
+              : _AheadRow(
+                  count: ahead,
+                  link: l10n.stageAheadShow,
+                  onTap: () => setState(() => _allDays = true),
+                ),
         ),
       );
     }
@@ -2000,13 +2030,13 @@ class _TimelineListState extends State<TimelineList> {
     return rows;
   }
 
-  /// Opens what a tap on [card] means: in Tempo's Lista a delivery's card
-  /// is the delivery, so its page; anything else, the task's.
+  /// Opens what a tap on [card] means: on Tempo, in Lista and on the
+  /// calendar, a delivery's card is the delivery, so its page; anything
+  /// else, the task's. A drag, a nudge or a swap still takes the task.
   void _open(TimelineEvent card) {
     final artifact = card.artifactId;
     final onDelivery = widget.onDeliveryTap;
-    if (_isList &&
-        widget.only == null &&
+    if (widget.only == null &&
         artifact != null &&
         onDelivery != null) {
       onDelivery(artifact);
@@ -2777,11 +2807,19 @@ class _HeadingRow extends StatelessWidget {
 
 /// What an empty stage says, which is also where a drop into it goes.
 /// The line that ends Lista's day: how many tasks are queued after it, and
-/// the way to them, the calendar.
+/// the way to them: the calendar on Tempo, the days after on a delivery's
+/// page.
 class _AheadRow extends StatelessWidget {
-  const _AheadRow({required this.count, required this.onTap});
+  const _AheadRow({
+    required this.count,
+    required this.link,
+    required this.onTap,
+  });
 
   final int count;
+
+  /// What the tap does, said after the count.
+  final String link;
   final VoidCallback onTap;
 
   @override
@@ -2798,7 +2836,7 @@ class _AheadRow extends StatelessWidget {
               TextSpan(text: l10n.stageAhead(count)),
               const TextSpan(text: ' · '),
               TextSpan(
-                text: l10n.stageAheadOpen,
+                text: link,
                 style: AppTypography.labelStrong.copyWith(
                   color: AppColors.ink2,
                 ),

@@ -13,13 +13,18 @@ import 'package:timeline/timeline.dart';
 
 /// Preview of the declutter delivery: Tempo's Lista with only loose tasks
 /// in Para depois, and a delivery's page in three tabs. `?s=1` Tempo,
-/// `?s=2` the delivery's Pendentes, `?s=3` its Feitas. Nothing ships.
+/// `?s=2` the delivery's Pendentes, `?s=3` its Feitas, `?s=4` Tempo's
+/// Calendário. Nothing ships.
 void main() {
   final now = DateTime(2026, 10, 23, 10);
   withClock(Clock.fixed(now), () => runApp(const _PreviewApp()));
 }
 
 final int _scene = int.tryParse(Uri.base.queryParameters['s'] ?? '') ?? 1;
+
+final TimelineMode _mode = _scene == 4
+    ? TimelineMode.calendar
+    : TimelineMode.list;
 
 class _PreviewApp extends StatelessWidget {
   const _PreviewApp();
@@ -137,9 +142,9 @@ Timeline _day() {
     _task(
       'rascunho',
       'Rascunhar o texto',
-      1,
-      11,
       0,
+      12,
+      15,
       45,
       delivery: _post,
       deliveryTitle: _postTitle,
@@ -287,7 +292,7 @@ class _SceneState extends State<_Scene> {
                   ..add(const TimelineRequested()),
           ),
           BlocProvider<TimelineModeCubit>(
-            create: (_) => TimelineModeCubit(initial: TimelineMode.list),
+            create: (_) => TimelineModeCubit(initial: _mode),
           ),
           BlocProvider<AgentCubit>(
             create: (_) => AgentCubit(repository: _agent),
@@ -305,7 +310,7 @@ class _SceneState extends State<_Scene> {
             ),
           ),
         ],
-        child: _scene == 1
+        child: _scene == 1 || _scene == 4
             ? const _Tempo()
             : ArtifactPage(id: _renata, initialTab: _scene == 3 ? 2 : 1),
       ),
@@ -357,7 +362,7 @@ class _Tempo extends StatelessWidget {
             const TimelineModeSwitch(),
             Expanded(
               child: TimelineList(
-                mode: TimelineMode.list,
+                mode: _mode,
                 aim: context.read<TimelineAim>(),
                 onCardTap: (card) => Navigator.of(context).push(
                   MaterialPageRoute<void>(
