@@ -5,7 +5,6 @@ import { ArtifactStoreModule } from '../artifacts/artifact-store.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { EventLayoutService } from './event-layout.service';
 import { EventsController } from './events.controller';
-import { PauseTickerService } from './pause-ticker.service';
 import { TasksController } from './tasks.controller';
 import { TimelineController } from './timeline.controller';
 import { TimelineService } from './timeline.service';
@@ -14,7 +13,7 @@ import { TimelineService } from './timeline.service';
 @Module({
   imports: [ConfigModule, CalendarModule, TasksModule, ArtifactStoreModule],
   controllers: [TimelineController, EventsController, TasksController],
-  providers: [TimelineService, EventLayoutService, PauseTickerService],
+  providers: [TimelineService, EventLayoutService],
   exports: [TimelineService, EventLayoutService],
 })
 export class EventsModule {}

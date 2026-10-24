@@ -1,6 +1,6 @@
 # A minute tick keeps Neon awake all day, for two people
 
-2026-10-23 · RFC · proposed (deep-research pass not run) · server, app, Neon settings · issue #35
+2026-10-23 · RFC · built in [the delivery](../../delivery/2026-10-23-neon-compute/README.md) (deep-research pass not run) · server, app, Neon settings · issue #35
 
 ## Neon bills hours awake, and our server never lets it sleep
 

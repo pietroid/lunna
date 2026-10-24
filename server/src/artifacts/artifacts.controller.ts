@@ -7,11 +7,13 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { Trace } from '../common/trace';
+import { CatchUpInterceptor } from '../events/catch-up.interceptor';
 import { owner } from '../events/request';
 import {
   CreateArtifactDto,
@@ -42,6 +44,7 @@ import {
  */
 @Controller()
 @UseGuards(SessionGuard)
+@UseInterceptors(CatchUpInterceptor)
 export class ArtifactsController {
   constructor(private readonly artifacts: ArtifactsService) {}
 

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/app/app.dart';
 import 'package:lunna/home/view/greeting.dart';
+import 'package:lunna/home/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template home_page}
@@ -231,7 +232,7 @@ class _Threads extends StatelessWidget {
 
     return Stack(
       children: [
-        const _MinuteRefresh(),
+        MinuteRefresh(onRefresh: () => _refresh(context)),
         TimelineList(
           // A list per mode, so each keeps its own scroll.
           key: ValueKey(mode),
@@ -255,57 +256,8 @@ class _Threads extends StatelessWidget {
     );
   }
 
-  /// Opens the card: its header, its commands, and its notes.
-  Future<void> _open(BuildContext context, TimelineEvent card) async {
-    await context.push<void>('/evento/${Uri.encodeComponent(card.id)}');
-  }
-}
-
-/// Refetches the timeline on the minute, and draws nothing.
-///
-/// Which list a timed card is in is worked out from the clock, on the server,
-/// when the list is read. So a card only walks into Agora as its hour comes
-/// round if somebody asks for the list again: this is the asking, and it is
-/// the whole of the minute-by-minute routine the timeline needs.
-///
-/// It is a widget with its own timer rather than a rebuild hook, because the
-/// fetch has to happen on the tick and not on the rebuild. Asking from inside
-/// a build would ask again for every state the answer produced.
-class _MinuteRefresh extends StatefulWidget {
-  const _MinuteRefresh();
-
-  @override
-  State<_MinuteRefresh> createState() => _MinuteRefreshState();
-}
-
-class _MinuteRefreshState extends State<_MinuteRefresh> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _schedule();
-  }
-
-  /// Wakes on the next minute boundary, not a minute from now, so the list
-  /// turns over at the same moment the clock above it does.
-  void _schedule() {
-    final now = DateTime.now();
-    final next = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      now.hour,
-    ).add(Duration(minutes: now.minute + 1));
-
-    _timer = Timer(next.difference(now), () {
-      if (!mounted) return;
-      _refresh();
-      _schedule();
-    });
-  }
-
-  void _refresh() {
+  /// Asks for the day again on the minute ([MinuteRefresh]).
+  void _refresh(BuildContext context) {
     final bloc = context.read<TimelineBloc>();
 
     // Not while a guard is up. The lists behind it are the ones from before
@@ -316,14 +268,10 @@ class _MinuteRefreshState extends State<_MinuteRefresh> {
     bloc.add(const TimelineRequested());
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  /// Opens the card: its header, its commands, and its notes.
+  Future<void> _open(BuildContext context, TimelineEvent card) async {
+    await context.push<void>('/evento/${Uri.encodeComponent(card.id)}');
   }
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 /// {@template open_day_hours}
