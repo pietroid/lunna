@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -16,6 +17,7 @@ import { Trace } from '../common/trace';
 import { ArtifactStore } from '../artifacts/artifact.store';
 import { TaskStore } from '../tasks/task.store';
 import { isoDayIn } from '../time/zone';
+import { CatchUpInterceptor } from './catch-up.interceptor';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
@@ -25,7 +27,6 @@ import { SwapTaskDto } from './dto/swap-task.dto';
 import { TimingDto } from './dto/timing.dto';
 import { DoneCard, Timeline } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
-import { PauseTickerService } from './pause-ticker.service';
 import {
   daysOf,
   owner,
@@ -51,11 +52,11 @@ import { StartNowGuard } from './timing';
  */
 @Controller('tasks')
 @UseGuards(SessionGuard)
+@UseInterceptors(CatchUpInterceptor)
 export class TasksController {
   constructor(
     private readonly timeline: TimelineService,
     private readonly layout: EventLayoutService,
-    private readonly ticker: PauseTickerService,
     private readonly artifacts: ArtifactStore,
     private readonly tasks: TaskStore,
   ) {}
@@ -251,9 +252,7 @@ export class TasksController {
     @Param('id') id: string,
     @Query('days') days?: string,
   ): Promise<Timeline> {
-    const who = owner(user);
-    this.ticker.watch(who);
-    await this.layout.pauseTask(who, id, Trace.start(user.id, id));
+    await this.layout.pauseTask(owner(user), id, Trace.start(user.id, id));
 
     return this._answer(user, days);
   }

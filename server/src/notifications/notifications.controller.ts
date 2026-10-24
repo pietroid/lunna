@@ -1,7 +1,14 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthUser } from '../auth/auth.tokens';
 import { SessionGuard } from '../auth/session.guard';
+import { CatchUpInterceptor } from '../events/catch-up.interceptor';
 import { NotificationPlan } from './dto/notification-plan.dto';
 import {
   DEFAULT_HORIZON_DAYS,
@@ -18,6 +25,7 @@ import {
  */
 @Controller('notifications')
 @UseGuards(SessionGuard)
+@UseInterceptors(CatchUpInterceptor)
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 

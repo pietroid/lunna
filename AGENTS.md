@@ -318,7 +318,8 @@ being lived through, `dia` for everything after it, under its `day`
 **An hour that has run out is not a section.** A block booked 11:20 to 11:25
 is finished at 11:26 and is simply not drawn any more; the row stays,
 because the hour happened. The app asks for the list again on each minute
-boundary. Only finishing something *early* removes the row, since that frees
+boundary while it is in sight, and once at once when it is shown again
+(`MinuteRefresh`); hidden, it asks nothing. Only finishing something *early* removes the row, since that frees
 an hour still ahead.
 
 Between cards the calendar draws the **free stretches** of the working day
@@ -389,8 +390,19 @@ break under Agora (`start: true` on the move), counts as starting it.
 Events never wait.
 
 **A paused block owes its work.** Its end is dragged along with the clock
-(by `catchUp`, on every read and on the server's minute tick) and the queue
-after it follows.
+(by `catchUp`, before every route that reads the day) and the queue after
+it follows.
+
+**Nothing on the server runs on a timer that touches Postgres.** Neon bills
+the hours its compute is awake and puts it to sleep after 5 quiet minutes,
+so whatever changes with the clock (a paused block's end, a task whose hour
+ran out, a routine's day nobody began) is stored as when it happened and
+settled on that person's next request: `CatchUpInterceptor`
+(`events/catch-up.interceptor.ts`) runs `catchUp` before the handler, bound
+with `@UseInterceptors` on every controller that reads the day (timeline,
+tasks, events, notifications, agent, artifacts). A new controller that
+reads the day takes the same decorator. See
+[the RFC](./product/research/2026-10-23-neon-compute/README.md).
 
 Adding a task (`POST /tasks`) puts it where it was asked for (see above).
 Adding a fixed block (`POST /events`) puts it at its hour. Dragging

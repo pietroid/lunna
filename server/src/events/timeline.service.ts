@@ -144,8 +144,9 @@ export class TimelineService {
       }
       events = await this._calendar.events(user, reach, now);
 
-      // A task whose hour ran out is over, and the minute tick writes it
-      // down as done. Until it does, it is neither running nor queued.
+      // A task whose hour ran out is over, and the next request's catchUp
+      // writes it down as done. Until it does, it is neither running nor
+      // queued.
       const over = new Set<string>();
       const pending = new Set(stored.map((task) => task.id));
       live = new Map();
@@ -159,7 +160,7 @@ export class TimelineService {
       }
 
       // A day of a routine nobody began by the end of its day is gone, as a
-      // fixed one's hour would be. The minute tick writes it down as such.
+      // fixed one's hour would be. catchUp writes it down as such.
       const missed = (task: Task) =>
         !live.has(task.id) && isMissed(task, now, zone, workDay);
       tasks = stored.filter((task) => !task.backlog && !missed(task));

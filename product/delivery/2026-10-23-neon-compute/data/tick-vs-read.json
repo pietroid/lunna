@@ -1,0 +1,731 @@
+{
+  "note": "cards compared by title and hour; writes are insert/update/delete statements",
+  "reads": 28,
+  "tickEqualsRead": 28,
+  "tickEqualsFixed": 28,
+  "bareEqualsTick": 0,
+  "writesAfterSetup": {
+    "tick": 1647,
+    "read": 63,
+    "fixed": 63,
+    "bare": 29
+  },
+  "tickMinutesThatWrote": 820,
+  "tickRowsWritten": 1641,
+  "firstTickWrites": [
+    {
+      "at": "09:21",
+      "rows": 2
+    },
+    {
+      "at": "09:22",
+      "rows": 2
+    },
+    {
+      "at": "09:23",
+      "rows": 2
+    }
+  ],
+  "samples": [
+    {
+      "at": "09:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–09:55",
+        "Relatório 10:00–10:45",
+        "Ligar 10:50–11:35",
+        "Almoço 12:00–13:00",
+        "Ler 13:05–13:50",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Email 09:00–09:45",
+        "Relatório 09:50–10:35",
+        "Ligar 10:40–11:25",
+        "Almoço 12:00–13:00",
+        "Ler 13:05–13:50",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "10:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–10:25",
+        "Relatório 10:30–11:15",
+        "Almoço 12:00–13:00",
+        "Ligar 13:05–13:50",
+        "Ler 13:55–14:40",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Relatório 10:00–10:45",
+        "Ligar 10:50–11:35",
+        "Almoço 12:00–13:00",
+        "Ler 13:05–13:50",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "10:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–10:55",
+        "Relatório 11:00–11:45",
+        "Almoço 12:00–13:00",
+        "Ligar 13:05–13:50",
+        "Ler 13:55–14:40",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Relatório 10:30–11:15",
+        "Almoço 12:00–13:00",
+        "Ligar 13:05–13:50",
+        "Ler 13:55–14:40",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "11:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–11:25",
+        "Almoço 12:00–13:00",
+        "Relatório 13:05–13:50",
+        "Ligar 13:55–14:40",
+        "Ler 14:45–15:30",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Relatório 11:00–11:45",
+        "Almoço 12:00–13:00",
+        "Ligar 13:05–13:50",
+        "Ler 13:55–14:40",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "11:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–11:55",
+        "Almoço 12:00–13:00",
+        "Relatório 13:05–13:50",
+        "Ligar 13:55–14:40",
+        "Ler 14:45–15:30",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 12:00–13:00",
+        "Relatório 13:05–13:50",
+        "Ligar 13:55–14:40",
+        "Ler 14:45–15:30",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "12:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–12:25",
+        "Almoço 12:30–13:30",
+        "Relatório 13:35–14:20",
+        "Ligar 14:25–15:10",
+        "Ler 15:15–16:00",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 12:00–13:00",
+        "Email 13:05–13:50",
+        "Relatório 13:55–14:40",
+        "Ligar 14:45–15:30",
+        "Ler 15:35–16:20",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "12:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–12:55",
+        "Almoço 13:00–14:00",
+        "Relatório 14:05–14:50",
+        "Ligar 14:55–15:40",
+        "Ler 15:45–16:30",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 12:30–13:30",
+        "Email 13:35–14:20",
+        "Relatório 14:25–15:10",
+        "Ligar 15:15–16:00",
+        "Ler 16:05–16:50",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "13:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–13:25",
+        "Almoço 13:30–14:30",
+        "Relatório 14:35–15:20",
+        "Ligar 15:25–16:10",
+        "Ler 16:15–17:00",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 13:00–14:00",
+        "Email 14:05–14:50",
+        "Relatório 14:55–15:40",
+        "Ligar 15:45–16:30",
+        "Ler 16:35–17:20",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "13:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–13:55",
+        "Almoço 14:00–15:00",
+        "Relatório 15:05–15:50",
+        "Ligar 15:55–16:40",
+        "Ler 16:45–17:30",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 13:30–14:30",
+        "Email 14:35–15:20",
+        "Relatório 15:25–16:10",
+        "Ligar 16:15–17:00",
+        "Ler 17:05–17:50",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "14:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–14:25",
+        "Almoço 14:30–15:30",
+        "Relatório 15:35–16:20",
+        "Ligar 16:25–17:10",
+        "Ler 17:15–18:00",
+        "Academia 18:00–19:00",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 14:00–15:00",
+        "Email 15:05–15:50",
+        "Relatório 15:55–16:40",
+        "Ligar 16:45–17:30",
+        "Academia 18:00–19:00",
+        "Ler 19:05–19:50",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "14:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–14:55",
+        "Almoço 15:00–16:00",
+        "Relatório 16:05–16:50",
+        "Ligar 16:55–17:40",
+        "Academia 18:00–19:00",
+        "Ler 19:05–19:50",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 14:30–15:30",
+        "Email 15:35–16:20",
+        "Relatório 16:25–17:10",
+        "Ligar 17:15–18:00",
+        "Academia 18:00–19:00",
+        "Ler 19:05–19:50",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "15:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–15:25",
+        "Almoço 15:30–16:30",
+        "Relatório 16:35–17:20",
+        "Academia 18:00–19:00",
+        "Ligar 19:05–19:50",
+        "Ler 19:55–20:40",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 15:00–16:00",
+        "Email 16:05–16:50",
+        "Relatório 16:55–17:40",
+        "Academia 18:00–19:00",
+        "Ligar 19:05–19:50",
+        "Ler 19:55–20:40",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "15:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–15:55",
+        "Almoço 16:00–17:00",
+        "Relatório 17:05–17:50",
+        "Academia 18:00–19:00",
+        "Ligar 19:05–19:50",
+        "Ler 19:55–20:40",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 15:30–16:30",
+        "Email 16:35–17:20",
+        "Academia 18:00–19:00",
+        "Relatório 19:05–19:50",
+        "Ligar 19:55–20:40",
+        "Ler 20:45–21:30",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "16:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–16:25",
+        "Almoço 16:30–17:30",
+        "Academia 18:00–19:00",
+        "Relatório 19:05–19:50",
+        "Ligar 19:55–20:40",
+        "Ler 20:45–21:30",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 16:00–17:00",
+        "Email 17:05–17:50",
+        "Academia 18:00–19:00",
+        "Relatório 19:05–19:50",
+        "Ligar 19:55–20:40",
+        "Ler 20:45–21:30",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "16:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–16:55",
+        "Almoço 17:00–18:00",
+        "Academia 18:00–19:00",
+        "Relatório 19:05–19:50",
+        "Ligar 19:55–20:40",
+        "Ler 20:45–21:30",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 16:30–17:30",
+        "Academia 18:00–19:00",
+        "Email 19:05–19:50",
+        "Relatório 19:55–20:40",
+        "Ligar 20:45–21:30",
+        "Ler 07:00–07:45",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "17:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–17:25",
+        "Academia 18:00–19:00",
+        "Almoço 19:05–20:05",
+        "Relatório 20:10–20:55",
+        "Ligar 21:00–21:45",
+        "Ler 07:00–07:45",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 17:00–18:00",
+        "Academia 18:00–19:00",
+        "Email 19:05–19:50",
+        "Relatório 19:55–20:40",
+        "Ligar 20:45–21:30",
+        "Ler 07:00–07:45",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "17:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–17:55",
+        "Academia 18:00–19:00",
+        "Almoço 19:05–20:05",
+        "Relatório 20:10–20:55",
+        "Ligar 21:00–21:45",
+        "Ler 07:00–07:45",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Academia 18:00–19:00",
+        "Almoço 19:05–20:05",
+        "Email 20:10–20:55",
+        "Relatório 21:00–21:45",
+        "Ligar 07:00–07:45",
+        "Ler 07:50–08:35",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "18:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–18:25",
+        "Academia 18:00–19:00",
+        "Almoço 19:05–20:05",
+        "Relatório 20:10–20:55",
+        "Ligar 21:00–21:45",
+        "Ler 07:00–07:45",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Academia 18:00–19:00",
+        "Almoço 19:05–20:05",
+        "Email 20:10–20:55",
+        "Relatório 21:00–21:45",
+        "Ligar 07:00–07:45",
+        "Ler 07:50–08:35",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "18:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–18:55",
+        "Academia 18:00–19:00",
+        "Almoço 19:00–20:00",
+        "Relatório 20:05–20:50",
+        "Ligar 20:55–21:40",
+        "Ler 07:00–07:45",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Academia 18:00–19:00",
+        "Almoço 19:05–20:05",
+        "Email 20:10–20:55",
+        "Relatório 21:00–21:45",
+        "Ligar 07:00–07:45",
+        "Ler 07:50–08:35",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "19:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–19:25",
+        "Almoço 19:30–20:30",
+        "Relatório 20:35–21:20",
+        "Ligar 07:00–07:45",
+        "Ler 07:50–08:35",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 19:05–20:05",
+        "Email 20:10–20:55",
+        "Relatório 21:00–21:45",
+        "Ligar 07:00–07:45",
+        "Ler 07:50–08:35",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "19:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–19:55",
+        "Almoço 20:00–21:00",
+        "Relatório 21:05–21:50",
+        "Ligar 07:00–07:45",
+        "Ler 07:50–08:35",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 19:30–20:30",
+        "Email 20:35–21:20",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "20:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–20:25",
+        "Almoço 20:30–21:30",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 20:00–21:00",
+        "Email 21:05–21:50",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "20:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–20:55",
+        "Almoço 21:00–22:00",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 20:30–21:30",
+        "Email 07:00–07:45",
+        "Relatório 07:50–08:35",
+        "Ligar 08:40–09:25",
+        "Ler 09:30–10:15",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "21:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–21:25",
+        "Almoço 07:00–08:00",
+        "Relatório 08:05–08:50",
+        "Ligar 08:55–09:40",
+        "Ler 09:45–10:30",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 21:00–22:00",
+        "Email 07:00–07:45",
+        "Relatório 07:50–08:35",
+        "Ligar 08:40–09:25",
+        "Ler 09:30–10:15",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "21:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–21:55",
+        "Almoço 07:00–08:00",
+        "Relatório 08:05–08:50",
+        "Ligar 08:55–09:40",
+        "Ler 09:45–10:30",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Almoço 07:00–08:00",
+        "Email 08:05–08:50",
+        "Relatório 08:55–09:40",
+        "Ligar 09:45–10:30",
+        "Ler 10:35–11:20",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "22:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–22:25",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Email 07:00–07:45",
+        "Relatório 07:50–08:35",
+        "Ligar 08:40–09:25",
+        "Ler 09:30–10:15",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "22:30",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–22:55",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Email 07:00–07:45",
+        "Relatório 07:50–08:35",
+        "Ligar 08:40–09:25",
+        "Ler 09:30–10:15",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    },
+    {
+      "at": "23:00",
+      "tickEqualsRead": true,
+      "tickEqualsFixed": true,
+      "bareEqualsTick": false,
+      "tick": [
+        "Email 09:00–23:25",
+        "Relatório 07:00–07:45",
+        "Ligar 07:50–08:35",
+        "Ler 08:40–09:25",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ],
+      "bare": [
+        "Email 07:00–07:45",
+        "Relatório 07:50–08:35",
+        "Ligar 08:40–09:25",
+        "Ler 09:30–10:15",
+        "Almoço 12:00–13:00",
+        "Academia 18:00–19:00"
+      ]
+    }
+  ]
+}
