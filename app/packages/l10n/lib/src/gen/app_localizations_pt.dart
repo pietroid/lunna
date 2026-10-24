@@ -1079,6 +1079,31 @@ class AppLocalizationsPt extends AppLocalizations {
   String get artifactMoreDay => 'Um dia a mais';
 
   @override
+  String artifactPendingTab(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Pendentes · $count',
+      zero: 'Pendentes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String artifactDoneTab(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Feitas · $count',
+      zero: 'Feitas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get artifactDoneEmpty => 'Nada feito ainda. O que você terminar desta entrega fica aqui.';
+
+  @override
   String artifactTasksTab(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1627,6 +1652,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get stageAheadOpen => 'Ver no calendário';
+
+  @override
+  String get stageAheadShow => 'Ver os próximos dias';
 
   @override
   String get stageDayEmpty => 'Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.';

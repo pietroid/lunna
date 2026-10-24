@@ -1781,6 +1781,24 @@ abstract class AppLocalizations {
   /// **'Um dia a mais'**
   String get artifactMoreDay;
 
+  /// No description provided for @artifactPendingTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Pendentes} other{Pendentes · {count}}}'**
+  String artifactPendingTab(int count);
+
+  /// No description provided for @artifactDoneTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Feitas} other{Feitas · {count}}}'**
+  String artifactDoneTab(int count);
+
+  /// No description provided for @artifactDoneEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada feito ainda. O que você terminar desta entrega fica aqui.'**
+  String get artifactDoneEmpty;
+
   /// No description provided for @artifactTasksTab.
   ///
   /// In pt, this message translates to:
@@ -2596,6 +2614,12 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Ver no calendário'**
   String get stageAheadOpen;
+
+  /// No description provided for @stageAheadShow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver os próximos dias'**
+  String get stageAheadShow;
 
   /// No description provided for @stageDayEmpty.
   ///

@@ -53,12 +53,7 @@ typedef _Room = ({FreeSlot slot, _Heading heading});
 typedef _Row = (DateTime, _Heading);
 
 /// A solved card on its way off the screen, frozen as it was let go.
-typedef _Flying = ({
-  TimelineEvent card,
-  double top,
-  double height,
-  double dx,
-});
+typedef _Flying = ({TimelineEvent card, double top, double height, double dx});
 
 /// One row as it was drawn, in the order it was drawn: the key it is
 /// measured by, the section it belongs to, and what it is.
@@ -173,8 +168,8 @@ class TimelineList extends StatefulWidget {
     this.aim,
     this.onAdjustDay,
     this.mode = TimelineMode.calendar,
+    this.onDeliveryTap,
     this.only,
-    this.done,
     super.key,
   });
 
@@ -184,10 +179,10 @@ class TimelineList extends StatefulWidget {
   /// Only the list honours it; the calendar is the day, all of it.
   final Set<String>? only;
 
-  /// What has been finished, drawn as a third stage under the backlog: the
-  /// same cards, quiet, newest first, and nothing to drop on. Null draws no
-  /// such stage, as Tempo does.
-  final List<TimelineEvent>? done;
+  /// Called with a delivery's id when its card is tapped on Tempo, in Lista
+  /// or on the calendar, where the card is the delivery rather than its
+  /// task. Null opens the task.
+  final ValueChanged<String>? onDeliveryTap;
 
   /// How the day is drawn.
   final TimelineMode mode;
@@ -307,6 +302,14 @@ class _TimelineListState extends State<TimelineList> {
   /// The day Lista's dated stage keeps, and how many tasks it draws counting
   /// Agora's: a + at its end writes there.
   DateTime? _soonDay;
+
+  /// What the first heading of a delivery's list says: Agora, or the day
+  /// of its first task, as Tempo's headings say them.
+  String? _onlyLabel;
+
+  /// Whether a delivery's list draws every day it reaches, once its line
+  /// was tapped, rather than Tempo's one.
+  bool _allDays = false;
   int _soonEnd = 0;
 
   /// Every row drawn in the last build, in order.
@@ -411,8 +414,14 @@ class _TimelineListState extends State<TimelineList> {
   /// [TimelineList.only].
   List<TimelineEvent> get _tasks => _kept(_state.tasks);
 
-  /// The backlog the list draws, the same way.
-  List<TimelineEvent> get _waiting => _kept(_state.backlog);
+  /// The backlog the list draws, the same way. Tempo's is the loose tasks
+  /// alone: a delivery's wait on its own page, not here.
+  List<TimelineEvent> get _waiting => widget.only == null
+      ? [
+          for (final card in _state.backlog)
+            if (card.artifactId == null) card,
+        ]
+      : _kept(_state.backlog);
 
   List<TimelineEvent> _kept(List<TimelineEvent> cards) {
     final only = widget.only;
@@ -452,7 +461,7 @@ class _TimelineListState extends State<TimelineList> {
           ? (index: index, backlog: false)
           : (index: index - line - 1, backlog: true);
 
-      return widget.only == null ? place : _wholeOf(id, place);
+      return _wholeOf(id, place);
     }
 
     final listed = {for (final card in _state.tasks) card.id};
@@ -462,7 +471,8 @@ class _TimelineListState extends State<TimelineList> {
     );
   }
 
-  /// [place], counted among the tasks [TimelineList.only] lets through,
+  /// [place], counted among the tasks the list draws ([TimelineList.only],
+  /// or Tempo's backlog without the deliveries' tasks),
   /// counted instead in the whole queue or backlog, which is what the
   /// server counts: right under the card drawn above it, or right over the
   /// first one when it went to the top, or at the end of a stage that draws
@@ -1160,7 +1170,7 @@ class _TimelineListState extends State<TimelineList> {
     if (id == null) {
       if (tapped && pressed != null) {
         final card = _state.byId(pressed);
-        if (card != null) widget.onCardTap(card);
+        if (card != null) _open(card);
       }
       return;
     }
@@ -1552,10 +1562,7 @@ class _TimelineListState extends State<TimelineList> {
             label: _labelOf(section, now),
             dy: next == null
                 ? 0.0
-                : (next - top - _pinHeight).clamp(
-                    -_pinHeight,
-                    0.0,
-                  ),
+                : (next - top - _pinHeight).clamp(-_pinHeight, 0.0),
           )
         : null;
     _away.value =
@@ -1714,10 +1721,7 @@ class _TimelineListState extends State<TimelineList> {
           _Slid(
             key: key,
             dy: dy,
-            child: _HeadingRow(
-              label: _label(entrySection, now),
-              first: first,
-            ),
+            child: _HeadingRow(label: _label(entrySection, now), first: first),
           ),
         );
         first = false;
@@ -1778,9 +1782,8 @@ class _TimelineListState extends State<TimelineList> {
                 // now.
                 onTap: widget.onWriteDown == null
                     ? null
-                    : () => widget.onWriteDown!(
-                        Placement.at(room.slot.earliest),
-                      ),
+                    : () =>
+                          widget.onWriteDown!(Placement.at(room.slot.earliest)),
               ),
               (null, _) => FreeStretch(
                 slot: room!.slot,
@@ -1845,7 +1848,9 @@ class _TimelineListState extends State<TimelineList> {
   /// card, the delivery's, with only its next task under the name.
   ///
   /// For a delivery's own tasks ([TimelineList.only]) every task with an
-  /// hour is one stage, Fazer em breve, and each task its own card.
+  /// hour is drawn, each its own card, under the headings Tempo gives the
+  /// day it falls on (Agora, Ainda hoje, Amanhã, the date), then Para
+  /// depois. What it finished is on its page's own tab, not here.
   ///
   /// Every row is as tall as it needs; there is no room in any stage.
   /// The backlog's heading is a row like any card to a drag, keyed so it can
@@ -1906,10 +1911,29 @@ class _TimelineListState extends State<TimelineList> {
           if (!card.day.isAfter(day)) card,
       ];
     } else {
+      // A delivery's list keeps Tempo's one day too, with its running task
+      // (if any) at the top under Agora; the rest is a line away.
       _soonDay = null;
+      final day = _listDay(
+        tasks.where((card) => card.section != TimelineSection.agora),
+        now,
+      );
+      if (!_allDays) {
+        shown = [
+          for (final card in tasks)
+            if (card.section == TimelineSection.agora ||
+                !card.day.isAfter(day))
+              card,
+        ];
+      }
+      final first = shown.firstOrNull;
+      _onlyLabel = first == null
+          ? _label(day, now)
+          : _label(_headingOf(first), now);
     }
     final soonEnd = agora.length + shown.length;
     _soonEnd = whole ? soonEnd : tasks.length;
+    // The + under a delivery's day still writes at the end of its queue.
     final ahead = tasks.length - soonEnd;
 
     final soonKey = _headingKey(_soon);
@@ -1921,11 +1945,7 @@ class _TimelineListState extends State<TimelineList> {
       card: null,
     ));
     rows.add(
-      _HeadingRow(
-        key: soonKey,
-        label: _labelOf(_soon, now),
-        first: !whole,
-      ),
+      _HeadingRow(key: soonKey, label: _labelOf(_soon, now), first: !whole),
     );
     if (shown.isEmpty) {
       rows.add(
@@ -1937,28 +1957,49 @@ class _TimelineListState extends State<TimelineList> {
         ),
       );
     }
-    addRuns(shown, _soon);
+    if (whole) {
+      addRuns(shown, _soon);
+    } else {
+      // Agora and the day each under the heading Tempo would give them, the
+      // first under the stage's own; and, once asked for, every day after.
+      _Heading? heading = _unset;
+      for (final card in shown) {
+        final its = _headingOf(card);
+        if (heading != _unset && its != heading) {
+          rows.add(
+            _Slid(
+              dy: shift(_indexOf(card.id)),
+              child: _HeadingRow(label: _label(its, now), first: false),
+            ),
+          );
+        }
+        heading = its;
+        addRuns([card], _soon);
+      }
+    }
     if (ahead > 0) {
       rows.add(
         _Slid(
           dy: shift(soonEnd),
-          child: _AheadRow(
-            count: ahead,
-            onTap: () => context.read<TimelineModeCubit?>()?.choose(
-              TimelineMode.calendar,
-            ),
-          ),
+          child: whole
+              ? _AheadRow(
+                  count: ahead,
+                  link: l10n.stageAheadOpen,
+                  onTap: () => context.read<TimelineModeCubit?>()?.choose(
+                    TimelineMode.calendar,
+                  ),
+                )
+              // A delivery's page has no calendar to send it to: the line
+              // opens the days after, here.
+              : _AheadRow(
+                  count: ahead,
+                  link: l10n.stageAheadShow,
+                  onTap: () => setState(() => _allDays = true),
+                ),
         ),
       );
     }
-    rows.add(
-      _addRow(
-        _soon,
-        Placement.queue(_soonEnd),
-        shift(soonEnd),
-        drawn,
-      ),
-    );
+    rows.add(_addRow(_soon, Placement.queue(_soonEnd), shift(soonEnd), drawn));
 
     drawn.add((
       key: _dividerKey,
@@ -1983,41 +2024,25 @@ class _TimelineListState extends State<TimelineList> {
 
     addRuns(_waiting, _backlog);
     rows.add(
-      _addRow(
-        _backlog,
-        const Placement.backlog(),
-        shift(_slots.length),
-        drawn,
-      ),
+      _addRow(_backlog, const Placement.backlog(), shift(_slots.length), drawn),
     );
 
-    final done = widget.done;
-    if (done != null) {
-      // Not a place to drop: a card is finished by being carried right, as
-      // anywhere else, so this stage only ever slides out of the way.
-      rows.add(
-        _Slid(
-          dy: shift(_slots.length),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _HeadingRow(label: l10n.stageDone(done.length), first: false),
-              if (done.isEmpty) _StageEmpty(text: l10n.stageDoneEmpty),
-              for (final card in done)
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.s1),
-                  child: _DoneTile(
-                    card: card,
-                    onTap: () => widget.onCardTap(card),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return rows;
+  }
+
+  /// Opens what a tap on [card] means: on Tempo, in Lista and on the
+  /// calendar, a delivery's card is the delivery, so its page; anything
+  /// else, the task's. A drag, a nudge or a swap still takes the task.
+  void _open(TimelineEvent card) {
+    final artifact = card.artifactId;
+    final onDelivery = widget.onDeliveryTap;
+    if (widget.only == null &&
+        artifact != null &&
+        onDelivery != null) {
+      onDelivery(artifact);
+      return;
+    }
+    widget.onCardTap(card);
   }
 
   /// What Lista's Agora draws: the running task, and the tasks of its
@@ -2222,6 +2247,7 @@ class _TimelineListState extends State<TimelineList> {
     if (section == _backlog) return context.l10n.stageBacklog;
     if (section == _agora) return context.l10n.sectionNow;
     if (section == _soon) {
+      if (widget.only != null && _onlyLabel != null) return _onlyLabel!;
       final day = _soonDay;
       return day == null ? context.l10n.stageSoon : _label(day, now);
     }
@@ -2779,67 +2805,21 @@ class _HeadingRow extends StatelessWidget {
   }
 }
 
-/// A finished task: the card it was, quieter, with the check in front.
-///
-/// It opens on a tap like any other, since its notes are still worth
-/// reading, and is not picked up.
-class _DoneTile extends StatelessWidget {
-  const _DoneTile({required this.card, required this.onTap});
-
-  final TimelineEvent card;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.fill,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s4,
-            vertical: AppSpacing.s3,
-          ),
-          child: Row(
-            children: [
-              const AppIcon(
-                iconData: AppIcons.check,
-                size: AppSpacing.s4,
-                color: AppColors.ink3,
-              ),
-              const SizedBox(width: AppSpacing.s2),
-              Expanded(
-                child: Text(
-                  card.title,
-                  style: AppTypography.body.copyWith(color: AppColors.ink3),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.s3),
-              Text(
-                durationLabel(context.l10n, card.durationMinutes),
-                style: AppTypography.label.copyWith(color: AppColors.ink3),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// What an empty stage says, which is also where a drop into it goes.
 /// The line that ends Lista's day: how many tasks are queued after it, and
-/// the way to them, the calendar.
+/// the way to them: the calendar on Tempo, the days after on a delivery's
+/// page.
 class _AheadRow extends StatelessWidget {
-  const _AheadRow({required this.count, required this.onTap});
+  const _AheadRow({
+    required this.count,
+    required this.link,
+    required this.onTap,
+  });
 
   final int count;
+
+  /// What the tap does, said after the count.
+  final String link;
   final VoidCallback onTap;
 
   @override
@@ -2856,7 +2836,7 @@ class _AheadRow extends StatelessWidget {
               TextSpan(text: l10n.stageAhead(count)),
               const TextSpan(text: ' · '),
               TextSpan(
-                text: l10n.stageAheadOpen,
+                text: link,
                 style: AppTypography.labelStrong.copyWith(
                   color: AppColors.ink2,
                 ),
@@ -2937,11 +2917,7 @@ class _Lifted extends StatelessWidget {
           ),
         ),
         if (hint != null)
-          Positioned(
-            right: AppSpacing.s3,
-            top: -AppSpacing.s4,
-            child: hint!,
-          ),
+          Positioned(right: AppSpacing.s3, top: -AppSpacing.s4, child: hint!),
       ],
     );
   }
