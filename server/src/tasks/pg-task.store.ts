@@ -74,6 +74,7 @@ export class PgTaskStore extends TaskStore {
           notBefore: new Date(day.occurrence),
           routineId: day.routineId,
           occurrence: new Date(day.occurrence),
+          checklist: day.checklist ?? null,
         })),
       )
       .onConflictDoNothing({ target: [task.routineId, task.occurrence] })
@@ -181,6 +182,7 @@ export class PgTaskStore extends TaskStore {
         doneAt: dateOf(next.doneAt),
         cancelled: next.cancelled === true,
         artifactId: next.artifactId ?? null,
+        checklist: next.checklist ?? null,
       })
       .where(and(eq(task.id, next.id), eq(task.userId, user.id)))
       .returning();
@@ -215,6 +217,7 @@ export class PgTaskStore extends TaskStore {
         artifactId: it.artifactId ?? null,
         routineId: it.routineId ?? null,
         occurrence: dateOf(it.occurrence),
+        checklist: it.checklist ?? null,
       })
       .onConflictDoNothing();
   }
@@ -238,6 +241,7 @@ function toTask(row: TaskRow): Task {
       : { occurrence: row.occurrence.toISOString() }),
     ...(row.cancelled ? { cancelled: true } : {}),
     ...(row.artifactId === null ? {} : { artifactId: row.artifactId }),
+    ...(row.checklist === null ? {} : { checklist: row.checklist }),
   };
 }
 

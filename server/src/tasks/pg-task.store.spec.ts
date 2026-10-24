@@ -155,6 +155,26 @@ describe('PgTaskStore', () => {
       });
     });
 
+    it('copies the list into the day, and keeps what is ticked off', async () => {
+      const id = await lunch();
+      const list = [
+        { title: 'Passar o café', done: false },
+        { title: 'Meditar', done: false },
+      ];
+      await store.materialize(OWNER, [
+        { ...day(id, '2026-03-10T15:00:00.000Z'), checklist: list },
+        day(id, '2026-03-11T15:00:00.000Z'),
+      ]);
+
+      const [today, tomorrow] = await store.pending(OWNER);
+      expect(today.checklist).toEqual(list);
+      expect(tomorrow.checklist).toBeUndefined();
+
+      const ticked = [{ ...list[0], done: true }, list[1]];
+      await store.update(OWNER, { ...today, checklist: ticked });
+      expect((await store.get(OWNER, today.id))?.checklist).toEqual(ticked);
+    });
+
     it('does not write back a day that was taken off', async () => {
       const id = await lunch();
       await store.materialize(OWNER, [day(id, '2026-03-10T15:00:00.000Z')]);

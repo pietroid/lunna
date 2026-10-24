@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { ArtifactStore } from '../artifacts/artifact.store';
 import { CalendarService } from '../calendar/calendar.service';
-import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
+import {
+  CalendarEvent,
+  CalendarUser,
+  ChecklistItem,
+} from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
@@ -330,6 +334,10 @@ export class EventLayoutService {
         : {}),
       ...(edit.notes !== undefined && edit.notes !== task.notes
         ? { notes: edit.notes }
+        : {}),
+      ...(edit.checklist !== undefined &&
+      !sameChecklist(edit.checklist, task.checklist)
+        ? { checklist: edit.checklist }
         : {}),
     };
     if (Object.keys(words).length > 0) {
@@ -1234,6 +1242,10 @@ export class EventLayoutService {
       ...(edit.notes !== undefined && edit.notes !== event.notes
         ? { notes: edit.notes }
         : {}),
+      ...(edit.checklist !== undefined &&
+      !sameChecklist(edit.checklist, event.checklist)
+        ? { checklist: edit.checklist }
+        : {}),
     };
 
     return Object.keys(words).length === 0
@@ -1484,5 +1496,16 @@ function refuseOutsideWorkDay(day: Day): void {
     day.now < opens
       ? 'Seu dia ainda não começou. Nada começa antes do horário do seu dia.'
       : 'Seu dia já terminou. Mude o horário do seu dia para começar algo agora.',
+  );
+}
+
+/** Whether two lists say the same, item by item. */
+function sameChecklist(
+  a: readonly ChecklistItem[],
+  b: readonly ChecklistItem[] | undefined,
+): boolean {
+  return (
+    a.length === (b?.length ?? 0) &&
+    a.every((it, i) => it.title === b![i].title && it.done === b![i].done)
   );
 }

@@ -8,4 +8,6 @@ export class RoutineDto {
   days?: string;
   /** Whether its hour is the point of it. Flexible when not said. */
   fixed?: boolean;
+  /** What each day of it is made of, in order. */
+  checklist?: string[];
 }

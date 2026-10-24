@@ -1,4 +1,4 @@
-import { RoutineDays } from '../../calendar/calendar.types';
+import { ChecklistItem, RoutineDays } from '../../calendar/calendar.types';
 import { StartNowGuard } from '../timing';
 
 /**
@@ -91,6 +91,11 @@ export class TimelineCard {
   routine?: RoutineDays;
   /** The artifact a task belongs to, named so the card can say so. */
   artifact?: CardArtifact;
+  /**
+   * A routine's day's own list (breakfast: the coffee, the dishes), each
+   * item ticked off or not, when the routine has one.
+   */
+  checklist?: ChecklistItem[];
 }
 
 /**
@@ -118,6 +123,7 @@ export class BacklogCard {
   /** Which days it repeats on, when it is a day of a routine. */
   routine?: RoutineDays;
   artifact?: CardArtifact;
+  checklist?: ChecklistItem[];
 }
 
 /**
@@ -196,6 +202,8 @@ export interface EventEdit {
   startTime?: string;
   /** Free text kept on the block. */
   notes?: string;
+  /** Its day's list, with what is ticked off now. */
+  checklist?: ChecklistItem[];
 }
 
 /** What the creation sheet said when the user wrote down a task. */
@@ -233,4 +241,6 @@ export interface TaskEdit {
   /** The work, pauses left out. */
   workMinutes?: number;
   notes?: string;
+  /** Its day's list, with what is ticked off now. */
+  checklist?: ChecklistItem[];
 }

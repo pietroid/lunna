@@ -55,13 +55,17 @@ of deliveries both are spent on.
   all time, at most three, the catalogue's order breaking ties; a kind never
   used is not among them. The filter line is *Todas*, those kinds, then
   every shelf (with a folder); one pick at a time, not remembered.
-- **Entregas is ordered by deadline** (`byDue`): the soonest first, those
-  with none last, the queue's own order breaking ties, under due-day
-  headings set as the timeline sets its days (`dueOf`: Hoje, today or
-  overdue; Amanhã; Nos próximos 7 dias; Mais adiante; Sem prazo). There is
-  no "Fila" heading. The page no longer drags; `POST /artifacts/:id/move
-  { index }` stays for the agent, counting the open deliveries as the queue
-  will be. A delivered one cannot be moved.
+- **Entregas is two groups** (`progressGroups`), headed as the timeline
+  heads its days: **Em andamento**, every open delivery with a task done or
+  minutes worked (`isStarted`), fixed, the one most behind first (`lagOf`:
+  the share of time gone less the share of work done, so the most red
+  showing past the green leads; no deadline counts as no time gone; the
+  queue's order breaks ties); then **Não iniciadas**, the rest, in the
+  queue's order. Only Não iniciadas drags (when no shelf filter is on): a
+  drop lands just before the row it was let go above, or after the last
+  one (`queueIndexOf`), posted as `POST /artifacts/:id/move { index }`
+  counted in the whole open queue, the same route the agent uses. A
+  delivered one cannot be moved. There is no "Fila" heading.
 - **One bar, two fills** (`PaceBars`): red (`AppColors.paceTime`) to the
   share of the time from creation to the end of the deadline day, and over
   it green (`AppColors.paceDone`) to the share of tasks done, or of minutes

@@ -199,6 +199,17 @@ Changing a routine deletes its days that have not begun yet, both kinds;
 the next read writes them again at the new hour and name. Removing a
 routine deletes the days ahead and keeps the ones that happened.
 
+A routine may have a **checklist** (`routine.checklist`, titles in order:
+breakfast is the coffee, meditating, the dishes). Each day is written down
+with its own copy (`task.checklist` or `event.checklist`, `[{ title, done
+}]`, null for no list), so ticking an item off today leaves tomorrow alone;
+a new list reaches the days not begun, like a new hour. The card carries it
+as `checklist`, and `PATCH /api/tasks|events/:id { checklist }` ticks it
+(the whole list, at most 30 items). Ticking the last item off finishes
+nothing. The card draws the list where the notes would go: the next item
+and "1 de 3" in Lista and Agora, every item on the calendar when the card
+has a line (20 px) for each; items are ticked on the event page.
+
 ### Notes
 
 Every task and every block has free-text `notes`. The event page edits them
@@ -478,12 +489,14 @@ Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
 code), something owed by a day, with an optional kind from the person's
 **catalogue** (shelves and kinds, empty until they fill it), a total time,
 a value and how the day may cut it. The open ones are a queue of their
-own, ordered by **deadline** under due-day headings (Hoje, Amanhã, Nos
-próximos 7 dias, Mais adiante, Sem prazo), each with **one bar**: the time
-gone in red (`paceTime`) under the work done in green (`paceDone`). The
-**goals** (money delivered, or a count of one kind, per week or month) are
-hidden by a flag (`ArtifactsPage(showGoals:)`, off) and a line sets the time the month's deliveries owe against
-the agenda's free hours. A delivery's tasks are ordinary tasks on the day
+own, drawn in two groups (`progressGroups`): **Em andamento** (some task
+done or minutes worked), fixed, the one whose time has run furthest past
+its work first (`lagOf`), and **Não iniciadas**, in the queue's order,
+which a drag sets. Each has **one bar**: the time gone in red (`paceTime`)
+under the work done in green (`paceDone`). The **goals** (money delivered,
+or a count of one kind, per week or month) are hidden by a flag
+(`ArtifactsPage(showGoals:)`, off) and a line sets the time the month's
+deliveries owe against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
 (`task.artifact_id`), and its Tarefas is Tempo's Lista kept to them
 (`TimelineList(only:, done:)`). **Money counts when a delivery is
 delivered** (`done_at`). The routes and the rules are in

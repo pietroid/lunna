@@ -98,6 +98,10 @@ class EventPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           _Summary(card: card, done: done),
+                          if (card.checklist.isNotEmpty) ...[
+                            const Divider(height: 1, color: AppColors.line),
+                            _Checklist(card: card, editable: !done),
+                          ],
                           const Divider(height: 1, color: AppColors.line),
                           Expanded(
                             // Keyed by the block, so the field never carries
@@ -398,6 +402,77 @@ class _Summary extends StatelessWidget {
 
 /// One labelled row of the summary: the label in ink3 on the left, in a
 /// column of its own, and what it says beside it.
+/// A routine's day's list, each item ticked off or back on with a tap.
+///
+/// Ticking the last one off does not finish the day: the block keeps its
+/// hour, and is finished where it runs, as any other.
+class _Checklist extends StatelessWidget {
+  const _Checklist({required this.card, required this.editable});
+
+  final TimelineEvent card;
+
+  /// Whether the items still tick: not on a task already done.
+  final bool editable;
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = context.read<TimelineBloc>();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s6,
+        AppSpacing.s3,
+        AppSpacing.s6,
+        AppSpacing.s3,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.eventChecklistLabel,
+            style: AppTypography.label.copyWith(color: AppColors.ink3),
+          ),
+          const SizedBox(height: AppSpacing.s1),
+          for (final (i, item) in card.checklist.indexed)
+            InkWell(
+              key: ValueKey('checklist-$i'),
+              borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+              onTap: editable
+                  ? () => bloc.add(ChecklistToggled(card.id, i))
+                  : null,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppSpacing.s8 + 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: AppSpacing.s6,
+                      child: Center(
+                        child: ChecklistMark(done: item.done, size: 12),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.s2),
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: AppTypography.body.copyWith(
+                          color: item.done ? AppColors.ink3 : AppColors.ink,
+                          decoration: item.done
+                              ? TextDecoration.lineThrough
+                              : null,
+                          decorationColor: AppColors.ink3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Property extends StatelessWidget {
   const _Property({required this.label, required this.child});
 

@@ -317,3 +317,18 @@ final class EventEdited extends TimelineBlocEvent {
   @override
   List<Object?> get props => [id, title, notes, workMinutes, startTime];
 }
+
+/// Ticks an item of a routine's day off, or back on.
+final class ChecklistToggled extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const ChecklistToggled(this.id, this.index);
+
+  /// The card whose list it is.
+  final String id;
+
+  /// Which item.
+  final int index;
+
+  @override
+  List<Object?> get props => [id, index];
+}

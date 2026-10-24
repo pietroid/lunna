@@ -1643,23 +1643,28 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get artifactsDueToday => 'Hoje';
+  String get artifactsInProgress => 'Em andamento';
 
   @override
-  String get artifactsDueTomorrow => 'Amanhã';
-
-  @override
-  String get artifactsDueWeek => 'Nos próximos 7 dias';
-
-  @override
-  String get artifactsDueLater => 'Mais adiante';
-
-  @override
-  String get artifactsDueNone => 'Sem prazo';
+  String get artifactsNotStarted => 'Não iniciadas';
 
   @override
   String get artifactPaceOn => 'no ritmo';
 
   @override
   String get artifactPaceBehind => 'atrás do ritmo';
+
+  @override
+  String get routineChecklistHint => 'Uma lista? Um item por linha';
+
+  @override
+  String get eventChecklistLabel => 'Lista';
+
+  @override
+  String checklistCount(int done, int total) {
+    return '$done de $total';
+  }
+
+  @override
+  String get checklistAllDone => 'Tudo feito';
 }

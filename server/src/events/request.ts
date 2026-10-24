@@ -203,6 +203,30 @@ export function requireTaskEdit(dto: EditEventDto): TaskEdit {
     edit.notes = dto.notes;
   }
 
+  if (dto.checklist !== undefined) {
+    const items: unknown = dto.checklist;
+    if (
+      !Array.isArray(items) ||
+      items.length > 30 ||
+      items.some(
+        (it) =>
+          typeof it !== 'object' ||
+          it === null ||
+          typeof (it as { title?: unknown }).title !== 'string' ||
+          (it as { title: string }).title.trim() === '' ||
+          (it as { title: string }).title.length > 200 ||
+          typeof (it as { done?: unknown }).done !== 'boolean',
+      )
+    ) {
+      throw new BadRequestException(
+        'checklist must be at most 30 items of { title, done }',
+      );
+    }
+    edit.checklist = (items as { title: string; done: boolean }[]).map(
+      (it) => ({ title: it.title.trim(), done: it.done }),
+    );
+  }
+
   return edit;
 }
 

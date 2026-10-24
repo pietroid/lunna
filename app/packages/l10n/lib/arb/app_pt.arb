@@ -1278,11 +1278,18 @@
       }
     }
   },
-  "artifactsDueToday": "Hoje",
-  "artifactsDueTomorrow": "Amanhã",
-  "artifactsDueWeek": "Nos próximos 7 dias",
-  "artifactsDueLater": "Mais adiante",
-  "artifactsDueNone": "Sem prazo",
+  "artifactsInProgress": "Em andamento",
+  "artifactsNotStarted": "Não iniciadas",
   "artifactPaceOn": "no ritmo",
-  "artifactPaceBehind": "atrás do ritmo"
+  "artifactPaceBehind": "atrás do ritmo",
+  "routineChecklistHint": "Uma lista? Um item por linha",
+  "eventChecklistLabel": "Lista",
+  "checklistCount": "{done} de {total}",
+  "@checklistCount": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "checklistAllDone": "Tudo feito"
 }

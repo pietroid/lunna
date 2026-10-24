@@ -2609,35 +2609,17 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}'**
   String deliveryTasks(int count, String time);
 
-  /// No description provided for @artifactsDueToday.
+  /// No description provided for @artifactsInProgress.
   ///
   /// In pt, this message translates to:
-  /// **'Hoje'**
-  String get artifactsDueToday;
+  /// **'Em andamento'**
+  String get artifactsInProgress;
 
-  /// No description provided for @artifactsDueTomorrow.
+  /// No description provided for @artifactsNotStarted.
   ///
   /// In pt, this message translates to:
-  /// **'Amanhã'**
-  String get artifactsDueTomorrow;
-
-  /// No description provided for @artifactsDueWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nos próximos 7 dias'**
-  String get artifactsDueWeek;
-
-  /// No description provided for @artifactsDueLater.
-  ///
-  /// In pt, this message translates to:
-  /// **'Mais adiante'**
-  String get artifactsDueLater;
-
-  /// No description provided for @artifactsDueNone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Sem prazo'**
-  String get artifactsDueNone;
+  /// **'Não iniciadas'**
+  String get artifactsNotStarted;
 
   /// No description provided for @artifactPaceOn.
   ///
@@ -2650,6 +2632,30 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'atrás do ritmo'**
   String get artifactPaceBehind;
+
+  /// No description provided for @routineChecklistHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Uma lista? Um item por linha'**
+  String get routineChecklistHint;
+
+  /// No description provided for @eventChecklistLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'Lista'**
+  String get eventChecklistLabel;
+
+  /// No description provided for @checklistCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{done} de {total}'**
+  String checklistCount(int done, int total);
+
+  /// No description provided for @checklistAllDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tudo feito'**
+  String get checklistAllDone;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

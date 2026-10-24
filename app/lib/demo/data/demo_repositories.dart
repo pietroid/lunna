@@ -314,6 +314,8 @@ class DemoTimelineRepository implements TimelineRepository {
     String? notes,
     int? workMinutes,
     DateTime? startTime,
+    // The demo's day has no routine with a list to tick.
+    List<ChecklistItem>? checklist,
     int days = TimelineRepository.defaultDays,
   }) async {
     final task = _task(id);

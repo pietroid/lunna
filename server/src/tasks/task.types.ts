@@ -1,3 +1,5 @@
+import { ChecklistItem } from '../calendar/calendar.types';
+
 /**
  * What there is to do, as the rest of the server knows it.
  *
@@ -38,6 +40,8 @@ export interface Task {
   occurrence?: string;
   /** A day of a routine that was taken off, or that its day ended without. */
   cancelled?: boolean;
+  /** The day's own list, for a day of a routine that has one. */
+  checklist?: ChecklistItem[];
 }
 
 /** One day of a flexible routine, to be written down as a task. */
@@ -47,6 +51,8 @@ export interface RoutineTask {
   minutes: number;
   /** ISO 8601, the routine's hour that day, which is also its anchor. */
   occurrence: string;
+  /** The routine's list, copied into the day. */
+  checklist?: ChecklistItem[];
 }
 
 /** What a task is written down with. */

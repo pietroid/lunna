@@ -15,6 +15,7 @@ import {
   CalendarEvent,
   CalendarRoutine,
   CalendarUser,
+  checklistOf,
   routineDaysOf,
 } from './calendar.types';
 
@@ -110,6 +111,7 @@ export class PgCalendarStore extends CalendarStore {
         pausedSeconds: Math.round(next.pausedSeconds ?? 0),
         notBefore: dateOf(next.notBefore),
         notes: next.notes,
+        checklist: next.checklist ?? null,
       })
       .where(and(eq(event.id, next.id), eq(event.userId, user.id)))
       .returning();
@@ -151,6 +153,7 @@ export class PgCalendarStore extends CalendarStore {
         notes: it.notes,
         taskId: it.taskId ?? null,
         routineId: it.routineId ?? null,
+        checklist: it.checklist ?? null,
       })
       .onConflictDoNothing();
     // A day of a routine is taken off by being marked, not deleted.
@@ -184,6 +187,7 @@ export class PgCalendarStore extends CalendarStore {
         endTime: new Date(input.endTime),
         days: input.days,
         fixed: input.fixed ?? false,
+        checklist: input.checklist ?? [],
       })
       .returning();
 
@@ -211,6 +215,9 @@ export class PgCalendarStore extends CalendarStore {
             : { endTime: new Date(patch.endTime) }),
           ...(patch.days === undefined ? {} : { days: patch.days }),
           ...(patch.fixed === undefined ? {} : { fixed: patch.fixed }),
+          ...(patch.checklist === undefined
+            ? {}
+            : { checklist: patch.checklist }),
         })
         .where(and(eq(routine.id, routineId), eq(routine.userId, user.id)))
         .returning();
@@ -270,6 +277,7 @@ export class PgCalendarStore extends CalendarStore {
         fixed: true,
         routineId: it.id,
         occurrence: day.start,
+        checklist: checklistOf(it.checklist) ?? null,
       })),
     );
     if (rows.length === 0) return;
@@ -306,6 +314,7 @@ function toEvent(row: EventRow, days: string | null): CalendarEvent {
     ...(row.taskId === null ? {} : { taskId: row.taskId }),
     ...(row.routineId === null ? {} : { routineId: row.routineId }),
     ...(routineDays === undefined ? {} : { routine: routineDays }),
+    ...(row.checklist === null ? {} : { checklist: row.checklist }),
   };
 }
 
@@ -320,6 +329,7 @@ function toRoutine(row: RoutineRow): CalendarRoutine | undefined {
     endTime: row.endTime.toISOString(),
     days,
     fixed: row.fixed,
+    checklist: row.checklist,
   };
 }
 

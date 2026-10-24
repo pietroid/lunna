@@ -355,6 +355,7 @@ function taskCard(day: Day, task: Task): TimelineCard | undefined {
     notBefore: live === undefined ? task.notBefore : undefined,
     routine: routineOf(day, task),
     artifact: artifactOf(day, task),
+    ...(task.checklist === undefined ? {} : { checklist: task.checklist }),
   };
 }
 
@@ -369,6 +370,7 @@ function backlogCard(day: Day, task: Task): BacklogCard {
     notes: task.notes,
     routine: routineOf(day, task),
     artifact: artifactOf(day, task),
+    ...(task.checklist === undefined ? {} : { checklist: task.checklist }),
   };
 }
 
@@ -410,6 +412,7 @@ function eventCard(day: Day, event: CalendarEvent): TimelineCard | undefined {
     started: false,
     awaitingStart: false,
     routine: event.routine,
+    ...(event.checklist === undefined ? {} : { checklist: event.checklist }),
   };
 }
 

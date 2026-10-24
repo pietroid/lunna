@@ -37,34 +37,69 @@ void main() {
     tasks: tasks,
   );
 
-  group('dueOf', () {
-    test('heads each delivery by the day it is due', () {
-      Due due(DateTime? deadline) =>
-          dueOf(artifact('a', deadline: deadline), now);
+  group('progressGroups', () {
+    // Created on 1 October, due at the end of the 31st: on the 21st, two
+    // thirds of the time are gone.
+    final due = DateTime(2026, 10, 31);
 
-      expect(due(DateTime(2026, 10, 19)), Due.today, reason: 'overdue');
-      expect(due(DateTime(2026, 10, 21)), Due.today);
-      expect(due(DateTime(2026, 10, 22)), Due.tomorrow);
-      expect(due(DateTime(2026, 10, 28)), Due.week, reason: 'day 7');
-      expect(due(DateTime(2026, 10, 29)), Due.later, reason: 'day 8');
-      expect(due(null), Due.none);
-    });
-  });
-
-  group('byDue', () {
-    test('puts the soonest first, none last, ties in the queue order', () {
-      final sorted = byDue([
-        artifact('none'),
-        artifact('week', deadline: DateTime(2026, 10, 25)),
-        artifact('today', deadline: DateTime(2026, 10, 21)),
-        artifact('week-too', deadline: DateTime(2026, 10, 25)),
-        artifact('late', deadline: DateTime(2026, 10, 20)),
+    test('puts what is under way first, the most behind on top', () {
+      final groups = progressGroups([
+        artifact('fresh'),
+        artifact(
+          'ahead',
+          deadline: due,
+          tasks: [step('1', done: true), step('2', done: true), step('3')],
+        ),
+        artifact('waiting', deadline: due),
+        artifact(
+          'behind',
+          deadline: due,
+          tasks: [step('1', done: true), step('2'), step('3'), step('4')],
+        ),
+        artifact('worked', doneMinutes: 20),
       ], now);
 
       expect(
-        [for (final a in sorted) a.id],
-        ['late', 'today', 'week', 'week-too', 'none'],
+        [for (final a in groups.started) a.id],
+        [
+          'behind',
+          'ahead',
+          'worked',
+        ],
       );
+      // Not begun keeps the queue's order, whatever the deadlines say.
+      expect([for (final a in groups.waiting) a.id], ['fresh', 'waiting']);
+    });
+
+    test('breaks a tie in lag by the queue order', () {
+      final groups = progressGroups([
+        artifact('b', doneMinutes: 30),
+        artifact('a', doneMinutes: 30),
+      ], now);
+      expect([for (final a in groups.started) a.id], ['b', 'a']);
+    });
+  });
+
+  group('queueIndexOf', () {
+    // The queue: two under way between the ones not begun.
+    final queue = [
+      artifact('w1'),
+      artifact('s1', doneMinutes: 10),
+      artifact('w2'),
+      artifact('s2', doneMinutes: 10),
+      artifact('w3'),
+    ];
+    final waiting = [queue[0], queue[2], queue[4]];
+
+    test('lands before the row it was let go above', () {
+      // w3 to the top of Não iniciadas: before w1.
+      expect(queueIndexOf(queue, waiting, 'w3', 0), 0);
+      // w1 between w2 and w3: before w3, counted without w1.
+      expect(queueIndexOf(queue, waiting, 'w1', 1), 3);
+    });
+
+    test('lands after the last row when let go at the end', () {
+      expect(queueIndexOf(queue, waiting, 'w1', 2), 4);
     });
   });
 
@@ -176,7 +211,11 @@ void main() {
       final data = ArtifactsData(
         artifacts: [
           artifact('hoje', deadline: DateTime(2026, 10, 21)),
-          artifact('semana', deadline: DateTime(2026, 10, 25)),
+          artifact(
+            'semana',
+            deadline: DateTime(2026, 10, 25),
+            tasks: [step('1', done: true), step('2')],
+          ),
         ],
         goals: [
           Goal(
@@ -229,26 +268,39 @@ void main() {
       expect(find.text(l10n.goalsSection), findsOneWidget);
     });
 
-    testWidgets('heads the deliveries by due day, as the timeline heads days', (
+    testWidgets('heads what is under way above what is not begun', (
       tester,
     ) async {
       await pumpPage(tester);
 
-      final today = find.text(l10n.artifactsDueToday);
-      final week = find.text(l10n.artifactsDueWeek);
-      expect(today, findsOneWidget);
-      expect(week, findsOneWidget);
+      final started = find.text(l10n.artifactsInProgress);
+      final waiting = find.text(l10n.artifactsNotStarted);
+      expect(started, findsOneWidget);
+      expect(waiting, findsOneWidget);
+      // Under way, though it is due later: the heading is the work, not
+      // the day.
+      final going = find.text('Entrega semana');
+      final fresh = find.text('Entrega hoje');
       expect(
-        tester.getTopLeft(today).dy,
-        lessThan(tester.getTopLeft(find.text('Entrega hoje')).dy),
+        tester.getTopLeft(started).dy,
+        lessThan(tester.getTopLeft(going).dy),
       );
       expect(
-        tester.getTopLeft(find.text('Entrega hoje')).dy,
-        lessThan(tester.getTopLeft(week).dy),
+        tester.getTopLeft(going).dy,
+        lessThan(tester.getTopLeft(waiting).dy),
       );
       expect(
-        tester.widget<Text>(today).style?.fontSize,
+        tester.getTopLeft(waiting).dy,
+        lessThan(tester.getTopLeft(fresh).dy),
+      );
+      expect(
+        tester.widget<Text>(started).style?.fontSize,
         AppTypography.title.fontSize,
+      );
+      // Only what is not begun is dragged.
+      expect(
+        find.byType(ReorderableDelayedDragStartListener),
+        findsOneWidget,
       );
     });
   });

@@ -10,6 +10,7 @@ import 'package:artifacts/src/view/artifact_row.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
 import 'package:artifacts/src/view/goal_card.dart';
 import 'package:artifacts/src/view/goal_sheet.dart';
+import 'package:artifacts/src/view/pace_bars.dart';
 import 'package:artifacts/src/view/shelf_filter.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -17,15 +18,17 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template artifacts_page}
-/// The Entregas tab: the deliveries, by the day each is due.
+/// The Entregas tab: the deliveries under way, then the ones not begun.
 ///
 /// The three forces on one screen. The goals say what the month asks for;
 /// the line under them says what the agenda can give, the time the queue
-/// owes this month against the free time left in it; the queue, in order of
-/// priority, is what both are spent on. Held, a row is dragged to another
-/// place. One line of the kinds she uses most and the catalogue's shelves
-/// filters the queue, and the list ends in a way to every delivery and a
-/// search.
+/// owes this month against the free time left in it; the deliveries are
+/// what both are spent on. Those under way (Em andamento) are fixed, the
+/// one whose time has run furthest past its work on top; those not begun
+/// (Não iniciadas) are the queue, in order of priority, and held, a row is
+/// dragged to another place in it. One line of the kinds she uses most
+/// and the catalogue's shelves filters the queue, and the list ends in a
+/// way to every delivery and a search.
 /// {@endtemplate}
 class ArtifactsPage extends StatefulWidget {
   /// {@macro artifacts_page}
@@ -54,6 +57,8 @@ class ArtifactsPage extends StatefulWidget {
 class _ArtifactsPageState extends State<ArtifactsPage> {
   /// What the queue is kept to.
   late Shelf _shelf = widget.initialShelf;
+
+  bool get _unfiltered => _shelf.category == null && _shelf.type == null;
 
   Future<void> _deleteGoal(Goal goal) async {
     final cubit = context.read<ArtifactsCubit>();
@@ -86,7 +91,11 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
     final now = clock.now();
     final all = data.queue;
     final queue = all.where(_shelf.keeps).toList();
-    final shown = byDue(queue, now).take(widget.shown).toList();
+    final cubit = context.read<ArtifactsCubit>();
+    final groups = progressGroups(queue, now);
+    // The first few, what is under way first, as the page draws them.
+    final started = groups.started.take(widget.shown).toList();
+    final waiting = groups.waiting.take(widget.shown - started.length).toList();
     final schedule = data.schedule;
     const side = EdgeInsets.symmetric(horizontal: AppSpacing.s5);
 
@@ -208,41 +217,61 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                   ],
                 ),
               ),
-              // The queue by the day each is due, the soonest on top: what
-              // has to be delivered today leads, whatever was dragged first.
-              for (final (due, rows) in dueGroups(shown, now)) ...[
-                // Set as the timeline sets its days and stages, the
-                // page's only headings.
-                SliverPadding(
-                  padding: side.copyWith(
-                    top: AppSpacing.s4,
-                    bottom: AppSpacing.s2,
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: Text(
-                      dueLabel(l10n, due),
-                      style: AppTypography.title,
-                    ),
-                  ),
-                ),
+              // What is under way, the one most behind its time on top,
+              // where nothing moves it: its place is how late it is. Then
+              // what has not been begun, the queue a drag puts in order.
+              if (started.isNotEmpty) ...[
+                _sectionHeading(l10n.artifactsInProgress),
                 SliverPadding(
                   padding: side,
                   sliver: SliverList.list(
                     children: [
-                      for (final artifact in rows)
+                      for (final artifact in started)
                         Padding(
                           key: ValueKey(artifact.id),
                           padding: const EdgeInsets.only(
                             bottom: AppSpacing.s2,
                           ),
-                          child: ArtifactRow(
-                            artifact: artifact,
-                            now: now,
-                            onTap: () =>
-                                unawaited(openArtifact(context, artifact.id)),
-                          ),
+                          child: _row(context, artifact, now),
                         ),
                     ],
+                  ),
+                ),
+              ],
+              if (waiting.isNotEmpty) ...[
+                _sectionHeading(l10n.artifactsNotStarted),
+                SliverPadding(
+                  padding: side,
+                  // Held, a row moves to another place in the queue, among
+                  // the others not begun. Only the whole queue is dragged: a
+                  // place among a shelf's says nothing about the rest.
+                  sliver: SliverReorderableList(
+                    itemCount: waiting.length,
+                    onReorderItem: (from, to) {
+                      final id = waiting[from].id;
+                      unawaited(
+                        cubit.move(
+                          id,
+                          queueIndexOf(all, waiting, id, to),
+                        ),
+                      );
+                    },
+                    itemBuilder: (context, index) {
+                      final artifact = waiting[index];
+                      final row = Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+                        child: _row(context, artifact, now),
+                      );
+                      return KeyedSubtree(
+                        key: ValueKey(artifact.id),
+                        child: _unfiltered
+                            ? ReorderableDelayedDragStartListener(
+                                index: index,
+                                child: row,
+                              )
+                            : row,
+                      );
+                    },
                   ),
                 ),
               ],
@@ -270,6 +299,26 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
     );
   }
 }
+
+/// One delivery's row, opening its page.
+Widget _row(BuildContext context, Artifact artifact, DateTime now) =>
+    ArtifactRow(
+      artifact: artifact,
+      now: now,
+      onTap: () => unawaited(openArtifact(context, artifact.id)),
+    );
+
+/// A heading of the deliveries, set as the timeline sets its days and
+/// stages.
+Widget _sectionHeading(String title) => SliverPadding(
+  padding: const EdgeInsets.fromLTRB(
+    AppSpacing.s5,
+    AppSpacing.s4,
+    AppSpacing.s5,
+    AppSpacing.s2,
+  ),
+  sliver: SliverToBoxAdapter(child: Text(title, style: AppTypography.title)),
+);
 
 /// A section's title, with what acts on it at the end of the line.
 class _Heading extends StatelessWidget {
@@ -313,61 +362,3 @@ class _Quiet extends StatelessWidget {
     );
   }
 }
-
-/// When a delivery is due, as Entregas heads it.
-enum Due {
-  /// Today, or already past.
-  today,
-
-  /// Tomorrow.
-  tomorrow,
-
-  /// Within the next seven days.
-  week,
-
-  /// Later than that.
-  later,
-
-  /// No deadline.
-  none,
-}
-
-/// Which heading [artifact] goes under, seen from [now].
-Due dueOf(Artifact artifact, DateTime now) {
-  final days = artifact.daysLeftAt(now);
-  return switch (days) {
-    null => Due.none,
-    <= 0 => Due.today,
-    1 => Due.tomorrow,
-    <= 7 => Due.week,
-    _ => Due.later,
-  };
-}
-
-/// [queue] by deadline, the soonest first and those with none last; the
-/// queue's own order breaks ties.
-List<Artifact> byDue(List<Artifact> queue, DateTime now) {
-  final order = {for (final (i, a) in queue.indexed) a.id: i};
-  int key(Artifact a) => a.daysLeftAt(now) ?? 1 << 30;
-  return [...queue]..sort((a, b) {
-    final byDay = key(a).compareTo(key(b));
-    return byDay != 0 ? byDay : order[a.id]!.compareTo(order[b.id]!);
-  });
-}
-
-/// [sorted] cut under its headings, in order, leaving out the empty ones.
-List<(Due, List<Artifact>)> dueGroups(List<Artifact> sorted, DateTime now) => [
-  for (final due in Due.values)
-    if (sorted.where((a) => dueOf(a, now) == due).toList() case final rows
-        when rows.isNotEmpty)
-      (due, rows),
-];
-
-/// The heading's words.
-String dueLabel(AppLocalizations l10n, Due due) => switch (due) {
-  Due.today => l10n.artifactsDueToday,
-  Due.tomorrow => l10n.artifactsDueTomorrow,
-  Due.week => l10n.artifactsDueWeek,
-  Due.later => l10n.artifactsDueLater,
-  Due.none => l10n.artifactsDueNone,
-};

@@ -125,6 +125,7 @@ export class MemoryTaskStore extends TaskStore {
         notBefore: day.occurrence,
         routineId: day.routineId,
         occurrence: day.occurrence,
+        ...(day.checklist === undefined ? {} : { checklist: day.checklist }),
       });
       written++;
     }
@@ -247,6 +248,7 @@ function toTask(stored: Task & { userId?: string }): Task {
     'routineId',
     'occurrence',
     'artifactId',
+    'checklist',
   ] as const) {
     if (task[key] === undefined) delete task[key];
   }

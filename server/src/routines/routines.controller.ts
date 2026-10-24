@@ -23,6 +23,10 @@ import { RoutinesService } from './routines.service';
 /** The longest a routine may be: the whole working day. */
 const MAX_ROUTINE_MINUTES = 15 * 60;
 
+/** The most items a routine's list may have, and the longest one. */
+export const MAX_CHECKLIST_ITEMS = 30;
+export const MAX_CHECKLIST_TITLE = 200;
+
 /**
  * The routines menu: what happens every day, and on which days.
  *
@@ -64,6 +68,7 @@ export class RoutinesController {
         durationMinutes: request.durationMinutes,
         days: request.days,
         fixed: request.fixed ?? false,
+        checklist: request.checklist ?? [],
       },
       Trace.start(user.id),
     );
@@ -133,6 +138,25 @@ function readRoutine(dto: RoutineDto): RoutineRequest {
       throw new BadRequestException('fixed must be a boolean');
     }
     request.fixed = dto.fixed;
+  }
+
+  if (dto.checklist !== undefined) {
+    const items: unknown = dto.checklist;
+    if (
+      !Array.isArray(items) ||
+      items.length > MAX_CHECKLIST_ITEMS ||
+      items.some(
+        (it) =>
+          typeof it !== 'string' ||
+          it.trim() === '' ||
+          it.length > MAX_CHECKLIST_TITLE,
+      )
+    ) {
+      throw new BadRequestException(
+        `checklist must be at most ${MAX_CHECKLIST_ITEMS} non-empty strings`,
+      );
+    }
+    request.checklist = (items as string[]).map((it) => it.trim());
   }
 
   return request;

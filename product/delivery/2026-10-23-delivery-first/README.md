@@ -52,6 +52,10 @@ The third board was approved on the issue:
 
 > approve
 
+The build was reviewed on the issue, and the person replied:
+
+> Routine checklist build them now. Agora one item is enough. About entregas, I want actually to group by "in progress" and "not started". The not started will be a queue that we can drag and the in progress will be fixed, ordered by which has more uncompleted work first (more red bar that is advancing the green bar)
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -216,6 +220,121 @@ groups by the `artifact.id` that `GET /api/timeline` already sends.
   `withClock(Clock.fixed(now))` at the test's Wednesday, and `.tool/check`
   passes again, all 18 steps.
 
+### Follow-up: routine checklists and Entregas in two groups
+
+After the reply to the build (section 1). Four scenes of the real build:
+Lista at 07:20 with breakfast running, Calendário at 10:00 with lunch's list
+drawn to scale, breakfast's page, and Entregas in its two groups.
+
+![Lunna, follow-up](img/followup-lunna.png)
+
+![Focus, follow-up](img/followup-focus.png)
+
+The Entregas screen of the strips above (by due day) is superseded by the
+fourth screen here; the other screens above still stand.
+
+**Routine checklists** (pin 4A, built now):
+
+- A routine has a list (`routine.checklist`, titles in order), written in
+  the routine's sheet under its name, one item a line ("Uma lista? Um item
+  por linha").
+- Each day of it is written down with **its own copy**, `[{ title, done }]`
+  (`task.checklist` for a flexible routine, `event.checklist` for a fixed
+  one), so ticking an item off today leaves tomorrow alone. Changing the
+  list rewrites the days not begun, as a new hour does; a day already begun
+  keeps the list it had.
+- The card draws the list **where the notes would go**: the next item and
+  "1 de 3" in Lista and in Agora (one item is enough, as the reply said),
+  "Tudo feito" once all are ticked; on the calendar every item, ticked ones
+  struck through, when the card has a 20 px line for each (a 75-minute
+  lunch fits three), else the next item alone.
+- Items are ticked on the block's page, under its hour and length (Lista),
+  drawn at once and saved through `PATCH /api/tasks|events/:id
+  { checklist }`. Ticking the last item off finishes nothing: the day is
+  finished where it runs, as any block.
+- The design drew the checklist with `DeliveryTile`; it is drawn by
+  `EventTile` instead, since a list item is not a task with an hour: the
+  card keeps its own gestures, controls and fill.
+
+**Entregas in two groups**, replacing the due-day headings:
+
+- **Em andamento**: every open delivery with a task done or minutes worked
+  (`isStarted`). Fixed: no drag. The one most behind first, by `lagOf`, the
+  share of time gone less the share of work done, so the delivery with the
+  most red showing past the green leads. No deadline counts as no time gone
+  (it sorts by its work alone, after the late ones); the queue's order
+  breaks ties.
+- **Não iniciadas**: the rest, in the queue's order, which a long press and
+  a drag set (`SliverReorderableList`), as Entregas did before the due
+  days. A drop lands just before the row it was let go above, or after the
+  last one (`queueIndexOf`), and is posted to the existing `POST
+  /artifacts/:id/move { index }` counted in the whole queue, so the
+  deliveries under way keep their places in it. No drag while a shelf
+  filter is on, as before.
+- Both headings are set as the timeline's days (`AppTypography.title`). The
+  key under each bar now shrinks with an ellipsis instead of overflowing
+  when both its sides are long ("3 de 5 etapas" and "faltam 6 dias" on a
+  narrow phone).
+
+**Files:**
+
+- Server: `db/schema.ts` and `drizzle/0012_routine_checklist.sql` (three
+  `jsonb` columns: `routine.checklist` not null default `[]`,
+  `task.checklist` and `event.checklist` nullable);
+  `calendar/calendar.types.ts` (`ChecklistItem`, `checklistOf`); both
+  calendar stores and both task stores (copy on write-down, round-trip,
+  revive for Desfazer); `calendar.service.ts` (`routineDays` carries the
+  list); `routines/` (the DTO, the entity, validation in
+  `routines.controller.ts`: at most 30 non-empty items of 200 characters;
+  `routines.service.ts` writes it); `events/` (the card's `checklist`,
+  `TaskEdit`/`EventEdit`, validation in `request.ts`, the edit in
+  `event-layout.service.ts`).
+- App: `timeline/models` (`ChecklistItem`, `TimelineEvent.checklist`,
+  `nextItem`, `Routine.checklist`); `timeline/data` (`edit(checklist:)`,
+  the routine's add and edit); `timeline/bloc` (`ChecklistToggled`, drawn
+  before the server answers); `widgets/checklist.dart` (new:
+  `ChecklistLine`, `ChecklistMark`); `widgets/event_tile.dart`;
+  `view/event_page.dart` (`_Checklist`); `lib/routines/view/routines_page.dart`
+  (the field); `artifacts/view/pace_bars.dart` (`isStarted`, `lagOf`,
+  `progressGroups`, `queueIndexOf`) and `artifacts_page.dart` (the two
+  groups; `Due`, `dueOf`, `byDue`, `dueGroups` and their five strings are
+  gone); `l10n` (`artifactsInProgress`, `artifactsNotStarted`,
+  `routineChecklistHint`, `eventChecklistLabel`, `checklistCount`,
+  `checklistAllDone`).
+- Docs: `AGENTS.md` (Routines, Entregas) and `product/spec/artifacts.md`.
+
+**Tests:**
+
+- `server/src/events/events.controller.spec.ts`, "routines › with a list"
+  (7, through the real routes, `RoutinesController` now in the harness):
+  each flexible day gets the list unticked, ticking one day leaves the next
+  alone and keeps the hour, a fixed day does the same as an event, a new
+  list rewrites the days ahead (trimmed), a routine is written down with
+  its list, bad lists are refused on both routes, no list on a routine
+  without one.
+- PGlite: `pg-task.store.spec.ts` (the list copied into a day and ticked)
+  and `pg-calendar.store.spec.ts` (copied into a fixed day, ticked, and a
+  new list ahead), so the migration and the `jsonb` round-trip are proved
+  on a real Postgres.
+- `app/packages/timeline/test/checklist_test.dart` (new, 10): the JSON, the
+  next item, the routine's list; the card in Lista (next item, "1 de 3", no
+  notes), all done, the calendar with room (every item) and without (the
+  next, the card its size), Agora (one item); the page's tap dispatching
+  `ChecklistToggled`; the bloc drawing the tick at once and sending the
+  whole list.
+- `app/packages/artifacts/test/pace_test.dart`: `dueOf`/`byDue` replaced by
+  `progressGroups` (the most behind first, minutes worked counting, ties by
+  queue order; not begun keeps the queue's order) and `queueIndexOf`
+  (before a row, at the end); the page's test now checks Em andamento above
+  Não iniciadas, a delivery due later but under way above one due today
+  and not begun, the title style, and one drag handle for the one row not
+  begun.
+- `.tool/check` passes after the follow-up, all 18 steps: `flutter
+  analyze`, every touched package's tests under Focus and Lunna (timeline
+  156, artifacts 37, agent, app_ui, analytics, api_client, notifications),
+  and the server's eslint, tsc and tests (the timeline end-to-end spec now
+  116). No flaky test was seen.
+
 ### Where the build differs from the design
 
 - **Dragging a card carries its next task, not the whole run.** In Lista
@@ -236,12 +355,16 @@ groups by the `artifact.id` that `GET /api/timeline` already sends.
 - **A delivery's own Tarefas** (`TimelineList(only:)`) keeps one stage,
   *Fazer em breve*, a card per task: it lists all of one delivery's tasks,
   so neither the day cut nor the grouping applies.
-- **Routine checklists** (pin 4A) are not built: second phase, as the
-  design said.
+- **Routine checklists** (pin 4A) were left out of the first build and
+  are built in the follow-up above, drawn by `EventTile` rather than
+  `DeliveryTile`.
+- **Entregas is grouped by progress, not by due day** (follow-up): the due
+  headings of pin 5B are gone.
 
 ## 4. How to turn it on
 
-Nothing to set: no env var, no migration, no server route. The goals come
+Nothing to set: no env var and no new route. The follow-up adds one
+migration (`0012_routine_checklist`), which runs on server boot. The goals come
 back with `ArtifactsPage(showGoals: true)`.
 
 ## 5. Cost and time
@@ -306,13 +429,31 @@ model was called by the build.
   - The card's drag carries its next task; the run move is left out (see
     "Where the build differs").
 
+- Follow-up, from the reply to the build:
+  - **In progress** is "some task done or some minutes worked"
+    (`stepsDone > 0 || doneMinutes > 0`). A delivery whose first task is
+    running but none is finished still reads as not begun: the delivery
+    model the app gets has no running task, and adding it would be a server
+    change the reply didn't ask for.
+  - **"More red past the green"** is read as `lagOf` = share of time gone
+    minus share of work done, largest first. A delivery with no deadline
+    has no red, so it counts as no time gone and sorts after the lagging
+    ones, by its work.
+  - The page's **"Ver todas" cap** (`shown`) counts the two groups in
+    order, Em andamento first.
+  - **Ticking items happens on the event page**, not on the card: taps on
+    Tempo's cards are read by the list's one gesture listener, which opens
+    the card. Ticking the last item **does not finish** the day.
+  - A routine's list is **copied into each day**, so today's ticks never
+    leak into tomorrow, and a day already begun keeps its list when the
+    routine's changes.
+  - The routine sheet's list is **one text field, an item a line**, rather
+    than an item editor with add and remove buttons: the smallest thing
+    that writes a list. Not shot, since it is the existing sheet with one
+    more field under the name.
+
 ## Open questions
 
-1. **Routine checklists** (Café da manhã with items): build them now
-   (items on `routine`, written into each day) or later? The mockup assumes
-   later.
-2. **Several deliveries in Agora** ("focando em várias entregas"): only one
-   task runs at a time today. Should Agora also show other deliveries
-   started today but not running, or is one running delivery enough?
-3. Entregas' **drag to reorder** goes away with the deadline order. Is that
-   right, or should a drag within a heading still set priority?
+None left: the three of the build were answered on the issue (checklists
+now, one item in Agora, Entregas by progress with the not-begun queue
+dragged).

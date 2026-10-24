@@ -7,4 +7,6 @@ export class EditEventDto {
   startTime?: string;
   /** Free text kept on the block. */
   notes?: string;
+  /** A routine's day's list, with what is ticked off now. */
+  checklist?: { title: string; done: boolean }[];
 }
