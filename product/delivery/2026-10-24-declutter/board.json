@@ -1,0 +1,102 @@
+{
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Tempo: the delivery is a door",
+      "why": "Lista keeps the day and the loose reminders; a delivery's own tasks live on its page.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 24,
+          "y": 230,
+          "label": "Tap opens the delivery",
+          "text": "In Lista a delivery's card (DeliveryTile, here in Agora; also in Ainda hoje/Amanhã) opens the delivery's page on Pendentes, not the next task. The controls (pause, −15, +15, ✓) still act on the running task. The calendar is unchanged: each line there is its task."
+        },
+        {
+          "id": "B",
+          "x": 24,
+          "y": 414,
+          "label": "A loose task opens itself",
+          "text": "A task with no delivery opens its own page, as today."
+        },
+        {
+          "id": "C",
+          "x": 150,
+          "y": 562,
+          "label": "Para depois: loose tasks only",
+          "text": "Reminders with no delivery. The delivery's backlog (Revisar a leitura, Enviar para a Renata) is not drawn here and leaves no counter behind; it is in the delivery's Para depois (screen 2). Drops still count the hidden ones, as a delivery's list already does."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · The delivery: Pendentes",
+      "why": "Same bar as Entregas, three tabs, and Tempo's headings over the delivery's own tasks.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 24,
+          "y": 147,
+          "label": "The Entregas bar",
+          "text": "PaceBars, as on the delivery's row in Entregas: work done in green over time gone in red, with its key (3 de 8 etapas · faltam 4 dias). Replaces the thin red time line; the Progresso row goes, since the key says it. −1 dia / +1 dia stay beside it."
+        },
+        {
+          "id": "B",
+          "x": 24,
+          "y": 214,
+          "label": "Notas · Pendentes · Feitas",
+          "text": "Three tabs in AppSegmented: pen, clock (AppIcons.time) and check, with counts. The page still opens where it was left; from Tempo it opens on Pendentes."
+        },
+        {
+          "id": "C",
+          "x": 100,
+          "y": 262,
+          "label": "Tempo's headings",
+          "text": "Agora when one of its tasks runs, then each day it reaches under the heading Tempo gives it (Ainda hoje, Amanhã, the date), then Para depois. Fazer em breve is gone. Every day is drawn: no 'Mais N adiante' line inside a delivery."
+        },
+        {
+          "id": "D",
+          "x": 24,
+          "y": 459,
+          "label": "No delivery label",
+          "text": "Cards here never name the delivery (no tag, no stack mark): the page's title already does."
+        },
+        {
+          "id": "E",
+          "x": 150,
+          "y": 668,
+          "label": "Its own Para depois",
+          "text": "Where the delivery's backlog lives now that Tempo's Para depois leaves it out. + and the bar's + write into this delivery, as today."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · The delivery: Feitas",
+      "why": "What was done gets its own tab, last, instead of a stage under the backlog.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 364,
+          "y": 238,
+          "label": "Feitas, last tab",
+          "text": "The done stage leaves Pendentes; TimelineList loses its done: parameter."
+        },
+        {
+          "id": "B",
+          "x": 24,
+          "y": 286,
+          "label": "By the day it was done",
+          "text": "Hoje, Ontem, then the date, newest first: the headings of Menu → Feitas (doneDayLabel, now shared)."
+        },
+        {
+          "id": "C",
+          "x": 24,
+          "y": 432,
+          "label": "Archive's tile, no tag",
+          "text": "DoneArchiveTile: the check, the title, the hour it was done, the start of its notes; no delivery tag. A tap opens the finished task's page."
+        }
+      ]
+    }
+  ]
+}

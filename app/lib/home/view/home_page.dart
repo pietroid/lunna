@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -238,6 +239,9 @@ class _Threads extends StatelessWidget {
           key: ValueKey(mode),
           mode: mode,
           onCardTap: (card) => _open(context, card),
+          // In Lista a delivery's card is the delivery: it opens on what is
+          // left to do of it.
+          onDeliveryTap: (id) => unawaited(openArtifact(context, id, tab: 1)),
           // Where the button at the foot of the app writes follows the day
           // on screen, so it is kept above this screen, where the button is.
           aim: context.read<TimelineAim>(),
