@@ -221,27 +221,31 @@ class _NotesDockViewState extends State<_NotesDockView> {
       // Swapped in place, with no animation: the bar is where the finger
       // expects it, every time. A tap on it is a tap inside the notes, which
       // keep the keyboard and the cursor dictation writes at.
-      child: TextFieldTapRegion(
-        child: SizedBox(
-          width: width,
-          child: recording
-              ? AskPill(
-                  child: VoiceBar(
-                    voice: voice,
-                    stopLabel: l10n.dictationStop,
-                    discardLabel: l10n.dictationDiscard,
-                    onStop: () => unawaited(_stop()),
-                    onDiscard: () => unawaited(_discard()),
+      child: DockHero(
+        fabIcon: AppIcons.microphone,
+        child: TextFieldTapRegion(
+          child: SizedBox(
+            width: width,
+            child: recording
+                ? AskPill(
+                    child: VoiceBar(
+                      voice: voice,
+                      stopLabel: l10n.dictationStop,
+                      discardLabel: l10n.dictationDiscard,
+                      onStop: () => unawaited(_stop()),
+                      onDiscard: () => unawaited(_discard()),
+                    ),
+                  )
+                : AskDock(
+                    about: widget.about,
+                    hero: false,
+                    fab: AppFab(
+                      iconData: AppIcons.microphone,
+                      tooltip: l10n.dictationStart,
+                      onPressed: () => unawaited(_start()),
+                    ),
                   ),
-                )
-              : AskDock(
-                  about: widget.about,
-                  fab: AppFab(
-                    iconData: AppIcons.microphone,
-                    tooltip: l10n.dictationStart,
-                    onPressed: () => unawaited(_start()),
-                  ),
-                ),
+          ),
         ),
       ),
     );

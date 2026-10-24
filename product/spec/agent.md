@@ -179,8 +179,28 @@ only the conversation being had; the past reaches it only through
 sight until it is pulled down, dimmed and read only, each under the day and
 hour it began, their plans one line (aplicado, desfeito, não aplicado).
 
-On the app, the ask bar and the + are one row, centred at the foot of
-Tempo (`AskDock`); the lists leave room under their last card for it.
+On the app, the ask bar and a round button are one row (`AskDock`),
+**on every screen, in the same place**: every tab and every page floats it
+at `AskDock.location` (centred) with `AskDock.animator` (no animation), and
+its lists leave room under their last row for it (`kNotesDockClearance`).
+The three tabs share one dock, so changing tabs moves nothing and only the
+button beside the bar changes what it writes. Between pages the dock is a
+`Hero` (`DockHero`, one tag): a push, a pop or a swipe back slides the page
+under a still picture of the bar beside the arriving page's button (no
+pointer, nothing live), and the arriving page's dock takes over when it
+lands. Only a sheet covers it.
+
+| Screen | The round button | The conversation is about |
+|--------|------------------|---------------------------|
+| Tempo | + writes on the day in sight | the day in sight |
+| Entregas | + Nova entrega | the day in sight |
+| Menu | + writes on Tempo's day, bringing Tempo forward | the day in sight |
+| Rotina | + Nova rotina, at the next whole hour of the working day | nothing more |
+| Feitas | + writes a task into Para depois | nothing more |
+| Todas as entregas | + Nova entrega | nothing more |
+| A delivery, Tarefas | + writes one of its tasks | the delivery |
+| A delivery's or a task's notes | microphone that dictates (`NotesDock`) | the delivery / the task |
+
 Tapping the bar opens the sheet empty, on the field, keyboard up: no
 welcome and no suggested questions.
 The suggestion is drawn above the list, and "Agora não" rests it for 24
@@ -273,7 +293,9 @@ live wave, stop), and the words rise above it in a card as they are heard
 composer offers the microphone and draws the same recorder. There is one
 recording for the app (`VoiceCubit`, provided in `main.dart`), so tapping
 the card opens the sheet with the recording carrying on, and closing the
-sheet leaves it on Tempo; leaving Tempo for another tab discards it.
+sheet leaves it on the bar it was started on. Changing tabs keeps it
+going, since the bar is still there; it is sent with the day Tempo is
+showing.
 
 The microphone records as soon as a finger lands on it, the way WhatsApp
 records a voice message (`VoiceHold`, caught above the microphone, since

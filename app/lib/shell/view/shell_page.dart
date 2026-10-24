@@ -18,7 +18,9 @@ import 'package:timeline/timeline.dart';
 /// rebuilt on every tap: moving between them is not navigation, it is looking
 /// somewhere else, and a list should be where it was left.
 ///
-/// The [AppFab] writes down whatever the tab in front is about. On Entregas
+/// Every tab has the agent's bar at its foot ([AskDock]), in the same
+/// place, and the + beside it. The + writes down whatever the tab in front is
+/// about. On Entregas
 /// that is a delivery. Anywhere else it is something on the timeline, on the
 /// day Tempo is showing: at the first free hour in sight on the calendar, at
 /// the end of the day at the top of the list; from Menu it brings Tempo
@@ -65,11 +67,6 @@ class _ShellPageState extends State<ShellPage> {
   }
 
   void _onSelected(int index) {
-    // A recording started on Tempo's bar is drawn only there; leaving Tempo
-    // drops it rather than keep listening out of sight.
-    if (index != _timelineIndex) {
-      unawaited(context.read<VoiceCubit>().cancel());
-    }
     if (index == _artifactsIndex) {
       unawaited(context.read<ArtifactsCubit>().load());
     }
@@ -113,30 +110,21 @@ class _ShellPageState extends State<ShellPage> {
             index: _index,
             children: const [HomePage(), ArtifactsPage(), MenuPage()],
           ),
-          floatingActionButton: _index == _timelineIndex
-              ? AskDock(
-                  // The conversation is about the day Tempo is showing.
-                  day: () => _aim.value?.at,
-                  fab: AppFab(
-                    tooltip: l10n.shellWriteDown,
-                    onPressed: () => unawaited(_onFabPressed()),
-                  ),
-                )
-              : AppFab(
-                  tooltip: _index == _artifactsIndex
-                      ? l10n.artifactsNew
-                      : l10n.shellWriteDown,
-                  onPressed: () => unawaited(_onFabPressed()),
-                ),
-          // On Tempo the bar and the + are one row, centred on the column.
-          floatingActionButtonLocation: _index == _timelineIndex
-              ? FloatingActionButtonLocation.centerFloat
-              : AppFab.location,
-          // The + is at the same place on every tab, so changing tabs
-          // swaps what is drawn and moves nothing: no scaling out and in,
-          // no slide between the two locations.
-          floatingActionButtonAnimator:
-              FloatingActionButtonAnimator.noAnimation,
+          // One dock for the three tabs: the bar and a recording on it stay
+          // as they are when the tab changes, and only the + beside it
+          // changes what it writes.
+          floatingActionButton: AskDock(
+            // The conversation is about the day Tempo is showing.
+            day: () => _aim.value?.at,
+            fab: AppFab(
+              tooltip: _index == _artifactsIndex
+                  ? l10n.artifactsNew
+                  : l10n.shellWriteDown,
+              onPressed: () => unawaited(_onFabPressed()),
+            ),
+          ),
+          floatingActionButtonLocation: AskDock.location,
+          floatingActionButtonAnimator: AskDock.animator,
           bottomNavigationBar: AppBottomBar(
             currentIndex: _index,
             onSelected: _onSelected,

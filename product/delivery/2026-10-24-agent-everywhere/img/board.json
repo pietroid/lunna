@@ -1,0 +1,32 @@
+{
+  "title": "O agente em toda tela: uma barra, sempre no mesmo lugar",
+  "screens": [
+    {"png": "mockup-1.png", "title": "Entregas", "why": "A aba ganha a barra; o + vai para o lado dela.",
+     "pins": [
+      {"id":"A","x":28,"y":730,"label":"Mesma barra de Tempo","text":"O mesmo AskDock, no mesmo ponto. Trocar de aba não mexe nela, e uma gravação em curso continua."},
+      {"id":"B","x":347,"y":730,"label":"+ = Nova entrega","text":"O + sai do canto da coluna e fica ao lado da barra, como em Tempo. Continua criando uma entrega."},
+      {"id":"C","x":209,"y":811,"label":"Sem animação na troca","text":"As três abas usam um só dock (centerFloat, noAnimation): só o + muda o que escreve."}
+    ]},
+    {"png": "mockup-2.png", "title": "Menu", "why": "Até o Menu conversa com o agente.",
+     "pins": [
+      {"id":"A","x":28,"y":730,"label":"Barra no Menu","text":"Pergunta sobre o dia que Tempo mostra, como em Tempo."},
+      {"id":"B","x":347,"y":730,"label":"+ anota no dia","text":"Como hoje: traz Tempo para a frente e abre a criação."}
+    ]},
+    {"png": "mockup-3.png", "title": "Rotina", "why": "Uma página empilhada também tem a barra.",
+     "pins": [
+      {"id":"A","x":28,"y":802,"label":"A barra fica parada","text":"Ao abrir ou voltar, a página desliza por baixo e a barra não (Hero). Só desce a altura da barra de abas."},
+      {"id":"B","x":348,"y":802,"label":"+ = Nova rotina","text":"Abre a mesma folha de tocar no dia, na próxima hora cheia do dia de trabalho."}
+    ]},
+    {"png": "mockup-4.png", "title": "Feitas", "why": "Nada para criar aqui, mas o agente está.",
+     "pins": [
+      {"id":"A","x":28,"y":802,"label":"Barra em Feitas","text":"Mesma barra; a lista ganha espaço para rolar a última linha acima dela."},
+      {"id":"B","x":348,"y":802,"label":"+ vai para Para depois","text":"Sem nada próprio a escrever, o + anota uma tarefa no backlog, de qualquer lugar."}
+    ]},
+    {"png": "mockup-5.png", "title": "Notas da entrega", "why": "Nas notas, o botão redondo dita.",
+     "pins": [
+      {"id":"A","x":352,"y":802,"label":"Mesmo lugar, outro botão","text":"Nas notas o redondo é o microfone que dita; durante a transição a barra é uma figura parada com o ícone da página que chega."},
+      {"id":"B","x":281,"y":802,"label":"O microfone pequeno pergunta","text":"Como hoje: fala com o agente sobre esta entrega."},
+      {"id":"C","x":150,"y":202,"label":"Notas ↔ Tarefas sem pulo","text":"Trocar de aba troca o dock no lugar, sem crescer do nada."}
+    ]}
+  ]
+}

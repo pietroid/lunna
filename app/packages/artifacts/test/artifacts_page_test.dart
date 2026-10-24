@@ -1,5 +1,7 @@
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:bloc_test/bloc_test.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,8 @@ import 'package:l10n/l10n.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockRepository extends Mock implements ArtifactsRepository {}
+
+class _MockVoiceCubit extends MockCubit<VoiceState> implements VoiceCubit {}
 
 void main() {
   setUpAll(() {
@@ -109,13 +113,24 @@ void main() {
     tester.view.physicalSize = const Size(390, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    // The agent's bar on Todas as entregas reads the app's microphone.
+    final voice = _MockVoiceCubit();
+    when(() => voice.state).thenReturn(const VoiceState());
 
     return tester.pumpWidget(
-      BlocProvider(
-        create: (_) => ArtifactsCubit(
-          repository: repository,
-          initial: ArtifactsState(status: ArtifactsStatus.ready, data: data),
-        ),
+      MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) => ArtifactsCubit(
+              repository: repository,
+              initial: ArtifactsState(
+                status: ArtifactsStatus.ready,
+                data: data,
+              ),
+            ),
+          ),
+          BlocProvider<VoiceCubit>.value(value: voice),
+        ],
         child: MaterialApp(
           theme: AppTheme.current,
           locale: const Locale('pt', 'BR'),

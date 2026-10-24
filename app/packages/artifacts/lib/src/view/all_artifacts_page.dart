@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/src/bloc/artifacts_cubit.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_page.dart';
 import 'package:artifacts/src/view/artifact_row.dart';
+import 'package:artifacts/src/view/artifact_sheet.dart';
 import 'package:artifacts/src/view/shelf_filter.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -105,7 +107,8 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                 AppSpacing.s5,
                 AppSpacing.s3,
                 AppSpacing.s5,
-                AppSpacing.s8,
+                // Room to scroll the last row clear of the dock.
+                kNotesDockClearance,
               ),
               children: [
                 Row(
@@ -165,6 +168,15 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
           ),
         ),
       ),
+      // The agent's bar, as on every screen, and the + of Entregas.
+      floatingActionButton: AskDock(
+        fab: AppFab(
+          tooltip: l10n.artifactsNew,
+          onPressed: () => unawaited(showArtifactSheet(context)),
+        ),
+      ),
+      floatingActionButtonLocation: AskDock.location,
+      floatingActionButtonAnimator: AskDock.animator,
     );
   }
 }

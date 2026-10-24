@@ -555,6 +555,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routinesDelete => 'Excluir rotina';
 
   @override
+  String get routinesNew => 'Nova rotina';
+
+  @override
   String get landingHeadline => 'Diga o que precisa. O dia se arruma.';
 
   @override

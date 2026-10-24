@@ -128,10 +128,21 @@ void main() {
       await settle(tester);
       await tester.tap(find.text(l10n.landingChapterDeliveriesTitle).first);
       await settle(tester);
+      // Entregas has the agent's bar too.
+      final dock = tester.state(find.byType(AskDock));
+      // Measured from the phone's bottom bar: the landing moves the phone
+      // itself between chapters.
+      Rect place() => tester
+          .getRect(find.byType(AskBar))
+          .shift(-tester.getTopLeft(find.byType(AppBottomBar)));
+      final before = place();
 
       await tester.tap(inBar(l10n.shellTimelineTab));
       await settle(tester);
 
+      // The same dock, where it was: changing tabs moves nothing.
+      expect(tester.state(find.byType(AskDock)), same(dock));
+      expect(place(), rectMoreOrLessEquals(before));
       expect(find.text(l10n.landingChapterTimeText), findsOneWidget);
       expect(find.text(l10n.landingChapterDeliveriesText), findsNothing);
     });

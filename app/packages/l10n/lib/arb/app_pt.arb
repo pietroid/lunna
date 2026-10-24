@@ -423,6 +423,7 @@
   "routinesTitleHint": "Almoço, rotina da manhã…",
   "commonSave": "Salvar",
   "routinesDelete": "Excluir rotina",
+  "routinesNew": "Nova rotina",
   "landingHeadline": "Diga o que precisa. O dia se arruma.",
   "landingPitch": "{brand, select, lunna{A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.} other{O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.}}",
   "@landingPitch": {

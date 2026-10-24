@@ -194,6 +194,29 @@ void main() {
     expect(find.byType(PaceBars), findsOneWidget);
   });
 
+  testAt('Notas and Pendentes draw the bar in the same place', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    // A phone with a home indicator, which lifts the floating slot.
+    tester.view
+      ..padding = const FakeViewPadding(bottom: 34)
+      ..viewPadding = const FakeViewPadding(bottom: 34);
+    await pump(tester);
+
+    // Notas: the notes' own dock, the microphone beside the bar.
+    expect(find.byType(NotesDock), findsOneWidget);
+    expect(find.byType(DockHero), findsOneWidget);
+    final notes = tester.getRect(find.byType(AskBar));
+
+    await tester.tap(find.text(l10n.artifactPendingTab(2)));
+    await tester.pump();
+
+    // Pendentes: the page's floating dock, the + beside the bar, swapped in
+    // where the other was.
+    expect(find.byType(NotesDock), findsNothing);
+    expect(find.byType(DockHero), findsOneWidget);
+    expect(tester.getRect(find.byType(AskBar)), notes);
+  });
+
   testAt('dictates into the notes, a paragraph each time, saved as typed', (
     tester,
   ) async {

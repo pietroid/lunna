@@ -490,7 +490,15 @@ Three tabs: **Tempo** (the timeline), **Entregas** (see below) and
 and ends. The `AppFab` (a `+`) writes down whatever the tab in front is
 about: on Entregas a delivery, anywhere else something on the day Tempo is
 showing (from Menu it brings Tempo forward). It sits in the same spot on
-every tab and never animates between them (`noAnimation`). The
+every tab and never animates between them (`noAnimation`).
+**The agent's bar is on every screen, in the same place**: one `AskDock`
+for the three tabs and one per page, floated at `AskDock.location` with
+`AskDock.animator`, a `DockHero` held still while pages slide under it,
+with the screen's own round button beside it (the `AppFab` on the tabs,
+Nova rotina on Rotina, a task on Feitas, the microphone on notes). A new
+page floats an `AskDock` too and leaves `kNotesDockClearance` under its
+last row; see "The agent" in [product/spec/agent.md](./product/spec/agent.md).
+The
 greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
 
 **Feitas** (`/feitas`, `DoneArchivePage` over `DoneArchiveCubit`) is every
