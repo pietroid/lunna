@@ -29,7 +29,7 @@ change of widget, place or animator:
 |-------|--------|-------------------------|
 | Tempo | the shell's FAB slot, `AskDock`, `centerFloat` | Entregas and Menu swapped it for a lone + at the column's end: the bar vanished |
 | Entregas, Menu | a lone `AppFab` at `AppFab.location` | no bar at all |
-| A delivery, Tarefas | the page's FAB slot, **default animator** | the FAB is null on Notas, so switching to Tarefas *scaled the bar up out of nothing* |
+| A delivery, Pendentes | the page's FAB slot, **default animator** | the FAB is null on Notas, so switching to Pendentes *scaled the bar up out of nothing* |
 | A delivery's / a task's notes | inside the body (`Stack`), `NotesDock` | pushed with the page: on a push the old bar slid off with Tempo while the new one slid in with the page |
 | Rotina, Feitas, Todas as entregas | nothing | — |
 
@@ -52,7 +52,7 @@ covers it.
 | Rotina | + **Nova rotina**, at the next whole hour of the working day | — |
 | Feitas | + writes a task into Para depois | — |
 | Todas as entregas | + Nova entrega | — |
-| A delivery, Tarefas | + writes one of its tasks (as today) | the delivery |
+| A delivery, Pendentes | + writes one of its tasks (as today) | the delivery |
 | A delivery's / a task's notes | microphone that dictates (as today) | the delivery / the task |
 
 ### Decisions
@@ -68,7 +68,7 @@ covers it.
 | 3B | Rotina's + opens the same sheet as tapping the day, at the next whole hour inside the working day (else its start) | it adds no new gesture, only a way in |
 | 4B | Feitas has nothing of its own to write: its + puts a task into Para depois | the button keeps its shape and place; the backlog needs no hour |
 | 4A | Pages that scroll under the dock get `kNotesDockClearance` at the end | the last row can be scrolled clear of it |
-| 5C | Notas ↔ Tarefas swaps the dock in place | the scale-in was one of the "weird" animations |
+| 5C | Notas ↔ Pendentes swaps the dock in place | the scale-in was one of the "weird" animations |
 | — | No subject (`about`) for Entregas, Menu, Rotina, Feitas | the server's subjects are a task or a delivery; a list page adds no fact the agent can't read. No server change |
 | — | Icons unchanged: the crescent (`AppIcons.agent`), `plus`, `microphone` | nothing new to draw |
 
@@ -111,13 +111,13 @@ list page sends no subject (`about`), as Tempo's never did.
 | `lib/routines/view/routines_page.dart` | the dock, + Nova rotina at the next whole hour of the working day, `kNotesDockClearance` under the grid |
 | `packages/timeline/lib/src/view/done_archive.dart`, `lib/app/view/app.dart` | Feitas takes a `dock:` (the timeline package doesn't know the agent); the app hands it an `AskDock` whose + puts a task into Para depois |
 | `packages/artifacts/lib/src/view/all_artifacts_page.dart` | the dock, + Nova entrega, clearance |
-| `packages/artifacts/lib/src/view/artifact_page.dart` | Tarefas' dock at `AskDock.location`, no scale-in |
+| `packages/artifacts/lib/src/view/artifact_page.dart` | Pendentes' dock at `AskDock.location`, no scale-in |
 | `app_pt.arb` | `routinesNew` ("Nova rotina") |
 
 ### Checked against the brief
 
 - **Where the docks sit.** Notas draws its dock in the body (inside the
-  page's `SafeArea`, 16 px up). Tarefas draws its dock in the Scaffold's
+  page's `SafeArea`, 16 px up). Pendentes draws its dock in the Scaffold's
   floating slot (16 px plus the bottom safe area, or 16 px above the
   keyboard). These come to the same pixel with and without a home
   indicator and with the keyboard up, so the dock didn't need to move. A
@@ -130,7 +130,7 @@ list page sends no subject (`about`), as Tempo's never did.
   `/feitas` and `/evento/:id` (go_router), plus the `MaterialPageRoute`s
   for a delivery, Todas as entregas and a finished task. Each page has
   exactly one `DockHero`: the shell's `IndexedStack` has one floating
-  slot, and the delivery page draws either Notas' or Tarefas' dock, never
+  slot, and the delivery page draws either Notas' or Pendentes' dock, never
   both. Sheets are `PopupRoute`s, and heroes only fly between
   `PageRoute`s. A finished task's page still has its dock (`isInteractive`
   is `managed`, which is always true).
@@ -147,9 +147,9 @@ New:
   of the bar beside the arriving page's microphone, at the exact rect the
   dock had. Nothing in it takes taps. On landing the new dock sits at the
   same rect, and on a pop the page underneath draws its +.
-- `artifacts/test/artifact_page_test.dart` ("Notas and Tarefas draw the bar
+- `artifacts/test/artifact_page_test.dart` ("Notas and Pendentes draw the bar
   in the same place"): with a 34 px bottom safe area, the bar's rect on
-  Notas equals its rect on Tarefas, with one `DockHero` on each.
+  Notas equals its rect on Pendentes, with one `DockHero` on each.
 - `test/landing/landing_page_test.dart` ("a tab tapped in the phone moves
   the chapter"): Entregas draws the bar, and going back to Tempo keeps the
   **same** `AskDock` state at the same place, measured against the bottom
@@ -162,6 +162,13 @@ deleted before commit; the rerun without it is clean. The check doesn't
 run the app's own tests or timeline's, so they were run by hand under
 both brands. Counts: app 20, agent 69, artifacts 38, timeline 156, all
 passing, with no flaky tests.
+
+After merging main (#41, which renamed the delivery's Tarefas tab to
+Pendentes, `artifactTasksTab` → `artifactPendingTab`), the artifacts
+test above no longer compiled. The failure was this branch's own test,
+so no stash was needed to prove it: the test now taps
+`artifactPendingTab(2)`, and this document says Pendentes throughout.
+`.tool/check --all` then passes, all 18 steps under both brands.
 
 ### Where the build differs from the mockup
 
