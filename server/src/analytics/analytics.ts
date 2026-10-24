@@ -36,8 +36,8 @@ export class PostHogAnalytics implements Analytics {
   private readonly _client: PostHog;
 
   constructor(key: string, host: string) {
-    // Autocapture catches what escapes every request: the minute tick, a
-    // promise nobody awaited.
+    // Autocapture catches what escapes every request: a promise nobody
+    // awaited, an idle database connection lost.
     this._client = new PostHog(key, {
       host,
       enableExceptionAutocapture: true,

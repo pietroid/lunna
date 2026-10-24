@@ -14,7 +14,6 @@ import { Timeline } from '../events/entities/event.entity';
 import { EventLayoutService } from '../events/event-layout.service';
 import { EventsController } from '../events/events.controller';
 import { TasksController } from '../events/tasks.controller';
-import { PauseTickerService } from '../events/pause-ticker.service';
 import { TimelineController } from '../events/timeline.controller';
 import { TimelineService } from '../events/timeline.service';
 import {
@@ -187,7 +186,6 @@ describe('the agent', () => {
         AgentService,
         TimelineService,
         EventLayoutService,
-        PauseTickerService,
         CalendarService,
         { provide: OpenRouterClient, useValue: model },
         { provide: CalendarStore, useClass: MemoryCalendarStore },

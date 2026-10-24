@@ -12,7 +12,6 @@ import { CalendarService } from '../calendar/calendar.service';
 import { CalendarStore, MemoryCalendarStore } from '../calendar/calendar.store';
 import { Timeline } from '../events/entities/event.entity';
 import { EventLayoutService } from '../events/event-layout.service';
-import { PauseTickerService } from '../events/pause-ticker.service';
 import { TasksController } from '../events/tasks.controller';
 import { TimelineController } from '../events/timeline.controller';
 import { TimelineService } from '../events/timeline.service';
@@ -92,7 +91,6 @@ describe('ArtifactsController', () => {
       providers: [
         TimelineService,
         EventLayoutService,
-        PauseTickerService,
         CalendarService,
         ArtifactsService,
         { provide: CalendarStore, useClass: MemoryCalendarStore },

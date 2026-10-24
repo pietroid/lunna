@@ -8,11 +8,13 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { Trace } from '../common/trace';
+import { CatchUpInterceptor } from '../events/catch-up.interceptor';
 import { Timeline } from '../events/entities/event.entity';
 import { daysOf, owner } from '../events/request';
 import { TimelineService } from '../events/timeline.service';
@@ -43,6 +45,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
  */
 @Controller('agent')
 @UseGuards(SessionGuard)
+@UseInterceptors(CatchUpInterceptor)
 export class AgentController {
   constructor(
     private readonly agent: AgentService,

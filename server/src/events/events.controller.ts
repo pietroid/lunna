@@ -7,17 +7,18 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
 import { Trace } from '../common/trace';
+import { CatchUpInterceptor } from './catch-up.interceptor';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
 import { Timeline } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
-import { PauseTickerService } from './pause-ticker.service';
 import {
   daysOf,
   owner,
@@ -38,11 +39,11 @@ import { TimelineService } from './timeline.service';
  */
 @Controller('events')
 @UseGuards(SessionGuard)
+@UseInterceptors(CatchUpInterceptor)
 export class EventsController {
   constructor(
     private readonly timeline: TimelineService,
     private readonly layout: EventLayoutService,
-    private readonly ticker: PauseTickerService,
   ) {}
 
   /** Writes a fixed block down at its hour. */
@@ -107,9 +108,7 @@ export class EventsController {
     @Param('id') id: string,
     @Query('days') days?: string,
   ): Promise<Timeline> {
-    const who = owner(user);
-    this.ticker.watch(who);
-    await this.layout.pauseEvent(who, id, Trace.start(user.id, id));
+    await this.layout.pauseEvent(owner(user), id, Trace.start(user.id, id));
 
     return this._answer(user, days);
   }

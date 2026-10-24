@@ -17,6 +17,8 @@ import {
   ArtifactStore,
 } from '../artifacts/artifact.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
+import { NotificationsController } from '../notifications/notifications.controller';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   BacklogCard,
   DoneCard,
@@ -25,7 +27,6 @@ import {
 } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
 import { EventsController } from './events.controller';
-import { PauseTickerService } from './pause-ticker.service';
 import { TasksController } from './tasks.controller';
 import { TimelineController } from './timeline.controller';
 import { TimelineService } from './timeline.service';
@@ -185,11 +186,12 @@ describe('the day', () => {
         EventsController,
         TasksController,
         RoutinesController,
+        NotificationsController,
       ],
       providers: [
         TimelineService,
         EventLayoutService,
-        PauseTickerService,
+        NotificationsService,
         CalendarService,
         RoutinesService,
         { provide: CalendarStore, useClass: MemoryCalendarStore },
@@ -1018,6 +1020,38 @@ describe('the day', () => {
       expect(hhmm(stretched.endTime)).toBe('10:37');
       expect(stretched.workMinutes).toBe(30);
       expect(gapBetween(stretched, next)).toBe(5);
+    });
+
+    it('is still paused when read long after its hour would have run out', async () => {
+      const [running] = tasks(await add('Escrever', 30).expect(201));
+      await begin('Escrever');
+
+      later(10);
+      await post(`/tasks/${running.id}/pause`).expect(201);
+
+      // Nothing ticks while nobody reads: the first read an hour later
+      // settles the whole hour, and the task still owes its 20 minutes.
+      later(60);
+      const [paused] = (await read()).tasks;
+      expect(paused.id).toBe(running.id);
+      expect(paused.pausedAt).toBeDefined();
+      expect(hhmm(paused.endTime)).toBe('11:30');
+    });
+
+    it('catches up on any route that reads the day, not only the timeline', async () => {
+      const [running] = tasks(await add('Escrever', 30).expect(201));
+      await begin('Escrever');
+
+      later(10);
+      await post(`/tasks/${running.id}/pause`).expect(201);
+
+      later(60);
+      await request(app.getHttpServer())
+        .get('/notifications/schedule')
+        .expect(200);
+
+      const row = store.all(owner).find((it) => it.title === 'Escrever');
+      expect(hhmm(row!.endTime)).toBe('11:30');
     });
 
     it('owes exactly the same work after resuming', async () => {

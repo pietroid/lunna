@@ -10,7 +10,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-ui](./2026-10-17-agent-ui/README.md) ·
 [posthog](./2026-10-21-posthog/README.md) ·
 [agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
-[multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md)
+[multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md) ·
+[neon-compute](./2026-10-23-neon-compute/README.md)
 
 ## Tools: what the model is given
 
@@ -203,3 +204,26 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** PostHog, [Heatmaps](https://posthog.com/docs/toolbar/heatmaps): the clickmap counts DOM elements.
 - **Here:** coordinate heatmaps on the web build only; replay taps on the phones.
 - **Met in:** posthog, idea 4.
+
+## Cost: what the infrastructure bills
+
+### Scale to zero is your quietest loop
+> Scale to zero is a property of your quietest loop, not of your traffic.
+
+- **Read:** [neondatabase/neon#12909](https://github.com/neondatabase/neon/discussions/12909) (a poller every ~4.5 min kept 0.25 CU up all month); Neon, [Compute lifecycle](https://neon.com/docs/introduction/compute-lifecycle): asleep after 5 minutes with no active queries.
+- **Here:** `PauseTickerService` queried every minute, and an open web tab refreshes every minute: ~158 CU-hours a month for two people.
+- **Met in:** neon-compute, slides 4–6.
+
+### Derive on read, don't poll
+> Poll only what you can't compute; derive the rest on read.
+
+- **Read:** Chrome, [Timer throttling in Chrome 88](https://developer.chrome.com/blog/timer-throttling-in-chrome-88): hidden tabs' timers run once a minute; prefer push to polling.
+- **Here:** a paused block's end is `now + owed`, so `catchUp` runs before each read instead of on a clock.
+- **Met in:** neon-compute, slides 7–8.
+
+### Settle on access, from absolute times
+> Store when something happened; work out the rest from now, when someone asks.
+
+- **Read:** Redis, [EXPIRE: How Redis expires keys](https://redis.io/docs/latest/commands/expire/): "a key is passively expired when a client tries to access it", expiry kept as absolute timestamps so time flows while the server is down.
+- **Here:** a paused block's end is `now + owed` and a queued task's hour is `relayout` on read, so no tick and no "last read" watermark. The tick had hidden a `catchUp` bug that only a long gap shows.
+- **Met in:** neon-compute, slide 9.

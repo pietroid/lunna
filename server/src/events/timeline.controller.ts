@@ -1,11 +1,15 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AuthUser } from '../auth/auth.tokens';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { SessionGuard } from '../auth/session.guard';
-import { Trace } from '../common/trace';
+import { CatchUpInterceptor } from './catch-up.interceptor';
 import { Timeline } from './entities/event.entity';
-import { EventLayoutService } from './event-layout.service';
-import { PauseTickerService } from './pause-ticker.service';
 import { daysOf, owner } from './request';
 import { TimelineService } from './timeline.service';
 
@@ -17,29 +21,24 @@ import { TimelineService } from './timeline.service';
  */
 @Controller('timeline')
 @UseGuards(SessionGuard)
+@UseInterceptors(CatchUpInterceptor)
 export class TimelineController {
-  constructor(
-    private readonly timeline: TimelineService,
-    private readonly layout: EventLayoutService,
-    private readonly ticker: PauseTickerService,
-  ) {}
+  constructor(private readonly timeline: TimelineService) {}
 
   /**
    * Every task, and everything the calendar draws for [days] days counting
    * today.
    *
-   * A paused block is caught up first, so the day read back is the one the
-   * clock says rather than the one from the last tick.
+   * A paused block is caught up first ([CatchUpInterceptor]), so the day
+   * read back is the one the clock says.
    */
   @Get()
   async read(
     @CurrentUser() user: AuthUser,
     @Query('days') days?: string,
   ): Promise<Timeline> {
-    const who = owner(user);
-    this.ticker.watch(who);
-    await this.layout.catchUp(who, Trace.start(user.id));
-
-    return this.timeline.view(await this.timeline.day(who, daysOf(days)));
+    return this.timeline.view(
+      await this.timeline.day(owner(user), daysOf(days)),
+    );
   }
 }

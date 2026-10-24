@@ -56,7 +56,7 @@ A new write route gets its row in `events.ts`, or it is not counted.
 - **Server:** the interceptor reports every failure that is not a refusal
   (a 5xx, or an error with no status) with `captureException` and
   `{ method, route, status }`; `enableExceptionAutocapture` catches what
-  escapes every request (the minute tick). `AnalyticsModule` flushes on
+  escapes every request (a promise nobody awaited). `AnalyticsModule` flushes on
   shutdown.
 - **App:** Flutter's errors, the platform dispatcher's and the native ones
   (PostHog's own handlers, after `bootstrap`'s log), every error a bloc

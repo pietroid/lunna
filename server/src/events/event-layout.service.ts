@@ -915,26 +915,35 @@ export class EventLayoutService {
    * Keeps the calendar true as the minutes pass.
    *
    * Drags every paused block's end along with the clock, and writes down as
-   * done every task whose hour ran out. Run by the minute tick and before
-   * every read of the day, and safe to run any number of times: the end of a
-   * paused block is always now plus what is still owed, so a second call in
-   * the same minute changes nothing and a call after the server was down for
-   * an hour catches the whole hour up at once.
+   * done every task whose hour ran out. Run before every route that reads
+   * the day ([CatchUpInterceptor]), never on a timer, and safe to run any
+   * number of times: the end of a paused block is always now plus what is
+   * still owed, so a second call in the same minute changes nothing and a
+   * call after nobody looked for an hour catches the whole hour up at once.
+   * A block is judged over by the end it has once caught up, so a task
+   * paused for longer than it had left is still paused, not done.
    */
   async catchUp(
     user: CalendarUser,
     trace: Trace,
     now = new Date(),
   ): Promise<void> {
-    const events = await this._calendar.events(user, undefined, now);
-
-    for (const event of events) {
-      if (!event.managed || event.pausedAt === undefined) continue;
-
-      const end = pausedEnd(event, now);
-      if (end.getTime() === Date.parse(event.endTime)) continue;
-
-      await this._revise(user, event, { endTime: end.toISOString() }, trace);
+    const events: CalendarEvent[] = [];
+    for (const event of await this._calendar.events(user, undefined, now)) {
+      const end =
+        event.managed && event.pausedAt !== undefined
+          ? pausedEnd(event, now)
+          : undefined;
+      events.push(
+        end === undefined || end.getTime() === Date.parse(event.endTime)
+          ? event
+          : await this._revise(
+              user,
+              event,
+              { endTime: end.toISOString() },
+              trace,
+            ),
+      );
     }
 
     const over = events.filter(
