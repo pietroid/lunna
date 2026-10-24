@@ -63,6 +63,14 @@ class App extends StatelessWidget {
                  return cubit;
                },
                child: DoneArchivePage(
+                 // Nothing here to write down but the day's: the + puts a
+                 // task in Para depois, as it would from anywhere.
+                 dock: AskDock(
+                   fab: AppFab(
+                     tooltip: context.l10n.shellWriteDown,
+                     onPressed: () => unawaited(writeDownOnTimeline(context)),
+                   ),
+                 ),
                  // A finished task is not on the timeline, so its page is
                  // handed the card the archive drew.
                  onOpen: (card) => Navigator.of(context).push(

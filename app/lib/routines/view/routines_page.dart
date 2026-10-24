@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -132,6 +134,15 @@ class _RoutinesPageState extends State<RoutinesPage> {
     );
   }
 
+  /// Where the + writes a routine: the next whole hour of the working day,
+  /// or its first hour when the day is over or not begun.
+  int _nextHour() {
+    final workDay = context.read<TimelineBloc>().state.workDay;
+    final now = clock.now();
+    final next = (now.hour + 1) * 60;
+    return next >= workDay.start && next < workDay.end ? next : workDay.start;
+  }
+
   static String _time(int minute) =>
       '${(minute ~/ 60).toString().padLeft(2, '0')}:'
       '${(minute % 60).toString().padLeft(2, '0')}';
@@ -241,6 +252,16 @@ class _RoutinesPageState extends State<RoutinesPage> {
           ),
         ),
       ),
+      // The agent's bar, as on every screen; the + beside it writes a
+      // routine, as a tap on the day does.
+      floatingActionButton: AskDock(
+        fab: AppFab(
+          tooltip: context.l10n.routinesNew,
+          onPressed: () => unawaited(_create(_nextHour())),
+        ),
+      ),
+      floatingActionButtonLocation: AskDock.location,
+      floatingActionButtonAnimator: AskDock.animator,
     );
   }
 }

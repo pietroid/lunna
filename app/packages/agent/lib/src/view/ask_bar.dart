@@ -27,10 +27,35 @@ import 'package:l10n/l10n.dart';
 /// - **Tapped** (or locked), the bar is the recorder, and the + beside it
 ///   becomes the send button. The words above it open the conversation with
 ///   them in the field, for whoever wants to change them before sending.
+///
+/// **It is on every screen, in the same place.** Every tab and every page
+/// floats it at [location] with [animator]: changing tabs swaps the + beside
+/// it and moves nothing, and a page pushed or popped slides under it while
+/// the dock stays still ([DockHero]). Only a sheet covers it.
 /// {@endtemplate}
 class AskDock extends StatefulWidget {
   /// {@macro ask_dock}
-  const AskDock({required this.fab, this.day, this.about, super.key});
+  const AskDock({
+    required this.fab,
+    this.day,
+    this.about,
+    this.hero = true,
+    super.key,
+  });
+
+  /// Where every screen floats the dock: centred on the content column, over
+  /// the bottom bar on the tabs and at the foot of a page elsewhere.
+  static const FloatingActionButtonLocation location =
+      FloatingActionButtonLocation.centerFloat;
+
+  /// How a screen swaps one dock for another: in place, with no scaling out
+  /// and in.
+  static const FloatingActionButtonAnimator animator =
+      FloatingActionButtonAnimator.noAnimation;
+
+  /// Whether the dock is its page's [DockHero]; false when something around
+  /// it already is (the notes' dock).
+  final bool hero;
 
   /// The + beside the bar.
   final Widget fab;
@@ -140,7 +165,7 @@ class _AskDockState extends State<AskDock> {
         2 * kFloatingActionButtonMargin;
     final voice = context.watch<VoiceCubit>().state;
 
-    return Listener(
+    final dock = Listener(
       onPointerDown: (event) => _down = event.position,
       onPointerMove: _move,
       // Wherever the finger is let go, the microphone it held is gone.
@@ -170,6 +195,73 @@ class _AskDockState extends State<AskDock> {
                 ],
               ),
       ),
+    );
+    if (!widget.hero) return dock;
+
+    final fab = widget.fab;
+    return DockHero(
+      fabIcon: fab is AppFab ? fab.iconData : AppIcons.plus,
+      child: dock,
+    );
+  }
+}
+
+/// {@template dock_hero}
+/// The dock, held still while a page slides in or out under it.
+///
+/// Every page has a dock of its own, so a push would slide one in with the
+/// page and the other out with the page behind. As a hero the two are one:
+/// it stays where it was (or glides the bottom bar's height, between a tab
+/// and a page), drawn as a still picture of the bar beside the arriving
+/// page's round button ([fabIcon]), and the arriving page's dock takes over
+/// when the page has landed. Sheets are not pages: they cover it.
+/// {@endtemplate}
+class DockHero extends StatelessWidget {
+  /// {@macro dock_hero}
+  const DockHero({
+    required this.child,
+    this.fabIcon = AppIcons.plus,
+    super.key,
+  });
+
+  /// The dock itself.
+  final Widget child;
+
+  /// The glyph of the round button beside the bar, for the picture drawn
+  /// while the page moves.
+  final AppIconData fabIcon;
+
+  /// One dock per page, so one tag for all of them.
+  static const tag = 'agent-dock';
+
+  @override
+  Widget build(BuildContext context) {
+    return Hero(
+      tag: tag,
+      // A swipe back on iOS holds it still too.
+      transitionOnUserGestures: true,
+      flightShuttleBuilder: (_, _, direction, from, to) {
+        final arriving =
+            (direction == HeroFlightDirection.push ? to : from).widget;
+        final icon = arriving is DockHero ? arriving.fabIcon : fabIcon;
+        // A picture, never a second live dock: nothing in it records, and
+        // it reads nothing the page around it provides.
+        return IgnorePointer(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Row(
+              children: [
+                Expanded(
+                  child: AskBar(onOpen: () {}, onListen: () {}),
+                ),
+                const SizedBox(width: AppSpacing.s3),
+                AppFab(iconData: icon, onPressed: () {}),
+              ],
+            ),
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

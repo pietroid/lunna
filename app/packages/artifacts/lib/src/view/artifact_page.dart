@@ -234,8 +234,10 @@ class _ArtifactPageState extends State<ArtifactPage> {
                     ),
                   ),
                 ),
-          floatingActionButtonLocation:
-              FloatingActionButtonLocation.centerFloat,
+          floatingActionButtonLocation: AskDock.location,
+          // Notas draws its own dock in the same place: Tarefas' comes in
+          // without growing out of nothing.
+          floatingActionButtonAnimator: AskDock.animator,
         ),
       ),
     );

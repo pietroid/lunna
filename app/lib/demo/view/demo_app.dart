@@ -264,13 +264,10 @@ class _DemoShellState extends State<_DemoShell> {
         index: _index,
         children: const [_DemoTempo(), ArtifactsPage()],
       ),
-      floatingActionButton: _index == 0
-          ? AskDock(day: clock.now, fab: fab)
-          : fab,
-      floatingActionButtonLocation: _index == 0
-          ? FloatingActionButtonLocation.centerFloat
-          : AppFab.location,
-      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
+      // The agent's bar on every tab, as in the app.
+      floatingActionButton: AskDock(day: clock.now, fab: fab),
+      floatingActionButtonLocation: AskDock.location,
+      floatingActionButtonAnimator: AskDock.animator,
       bottomNavigationBar: AppBottomBar(
         currentIndex: _index,
         onSelected: _onSelected,

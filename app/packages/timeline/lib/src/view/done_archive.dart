@@ -24,7 +24,11 @@ import 'package:timeline/src/widgets/widgets.dart';
 /// {@endtemplate}
 class DoneArchivePage extends StatelessWidget {
   /// {@macro done_archive_page}
-  const DoneArchivePage({required this.onOpen, super.key});
+  const DoneArchivePage({required this.onOpen, this.dock, super.key});
+
+  /// The agent's bar at the foot of the page, as on every screen; the
+  /// timeline knows no agent, so the app hands it in.
+  final Widget? dock;
 
   /// Opens a task's page; the archive reads itself again once it closes,
   /// since its notes may have changed there.
@@ -116,11 +120,12 @@ class DoneArchivePage extends StatelessWidget {
                     return false;
                   },
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(
+                    padding: EdgeInsets.fromLTRB(
                       AppSpacing.s6,
                       AppSpacing.s2,
                       AppSpacing.s6,
-                      AppSpacing.s12,
+                      // Room to scroll the last row clear of the dock.
+                      dock == null ? AppSpacing.s12 : kNotesDockClearance,
                     ),
                     children: [
                       AppTextField(
@@ -173,6 +178,9 @@ class DoneArchivePage extends StatelessWidget {
           ),
         ),
       ),
+      floatingActionButton: dock,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
     );
   }
 }

@@ -1055,6 +1055,12 @@ abstract class AppLocalizations {
   /// **'Excluir rotina'**
   String get routinesDelete;
 
+  /// No description provided for @routinesNew.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova rotina'**
+  String get routinesNew;
+
   /// No description provided for @landingHeadline.
   ///
   /// In pt, this message translates to:
