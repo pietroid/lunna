@@ -33,16 +33,6 @@ class DoneArchivePage extends StatelessWidget {
   /// How close to the end of the list the next page is asked for.
   static const _nearEnd = 600.0;
 
-  String _dayLabel(AppLocalizations l10n, DateTime day, DateTime now) {
-    final today = DateTime(now.year, now.month, now.day);
-    final days = today.difference(day).inDays;
-    if (days <= 0) return l10n.archiveToday;
-    if (days == 1) return l10n.archiveYesterday;
-
-    final date = l10n.sectionDay(day);
-    return date.isEmpty ? date : date[0].toUpperCase() + date.substring(1);
-  }
-
   List<Widget> _rows(BuildContext context, DoneArchiveState state) {
     final l10n = context.l10n;
     final cubit = context.read<DoneArchiveCubit>();
@@ -61,7 +51,7 @@ class DoneArchivePage extends StatelessWidget {
               bottom: AppSpacing.s2,
             ),
             child: Text(
-              _dayLabel(l10n, its, now),
+              doneDayLabel(l10n, its, now),
               style: AppTypography.title,
             ),
           ),
@@ -191,6 +181,18 @@ class _Spinner extends StatelessWidget {
   }
 }
 
+/// The heading over the tasks done on [day], looking from [now]: Hoje,
+/// Ontem, or the date.
+String doneDayLabel(AppLocalizations l10n, DateTime day, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  final days = today.difference(day).inDays;
+  if (days <= 0) return l10n.archiveToday;
+  if (days == 1) return l10n.archiveYesterday;
+
+  final date = l10n.sectionDay(day);
+  return date.isEmpty ? date : date[0].toUpperCase() + date.substring(1);
+}
+
 /// {@template done_archive_tile}
 /// One task in the archive: the check, its name and the hour it was done
 /// at, then its artifact and the start of its notes, when it has them.
@@ -245,9 +247,7 @@ class DoneArchiveTile extends StatelessWidget {
                   const SizedBox(width: AppSpacing.s3),
                   Text(
                     hhmm(card.startTime),
-                    style: AppTypography.label.copyWith(
-                      color: AppColors.ink3,
-                    ),
+                    style: AppTypography.label.copyWith(color: AppColors.ink3),
                   ),
                 ],
               ),

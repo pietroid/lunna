@@ -7,6 +7,7 @@ import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_format.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
+import 'package:artifacts/src/view/pace_bars.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -34,13 +35,13 @@ Future<void> openArtifact(BuildContext context, String id, {int? tab}) {
 ///
 /// The name beside the back button, edited where it is written. Under it the
 /// deadline, a tap away from a picker, and the artifact's own row of buttons:
-/// a day less, a day more, done. The bar is its time, as on the running
-/// block.
+/// a day less, a day more, done. The bar is the one Entregas draws: the
+/// work done in green over the time gone in red ([PaceBars]).
 ///
-/// Under that, two spaces of their own: the notes, and the tasks, opening
-/// on whichever was last chosen for this artifact, on this device. The tasks
-/// are Tempo's Lista kept to this artifact, with Tempo's bar and + at the
-/// foot.
+/// Under that, three spaces of their own: the notes, what is still to do
+/// (Pendentes), and what was done (Feitas), opening on whichever was last
+/// chosen for this artifact, on this device. Pendentes is Tempo's Lista
+/// kept to this artifact, with Tempo's bar and + at the foot.
 /// {@endtemplate}
 class ArtifactPage extends StatefulWidget {
   /// {@macro artifact_page}
@@ -54,8 +55,8 @@ class ArtifactPage extends StatefulWidget {
   /// The artifact's id.
   final String id;
 
-  /// Which space opens first: 0 the notes, 1 the tasks. Null opens the one
-  /// this device last chose.
+  /// Which space opens first: 0 the notes, 1 what is to do, 2 what was
+  /// done. Null opens the one this device last chose.
   final int? initialTab;
 
   /// The recording the notes are dictated with, when handed in (tests and
@@ -69,6 +70,7 @@ class ArtifactPage extends StatefulWidget {
 class _ArtifactPageState extends State<ArtifactPage> {
   static const _notesTab = 0;
   static const _tasksTab = 1;
+  static const _doneTab = 2;
 
   /// Where this artifact's last choice of space is kept, on this device:
   /// each artifact opens the way it was left.
@@ -182,7 +184,11 @@ class _ArtifactPageState extends State<ArtifactPage> {
                               AppSpacing.s6,
                               AppSpacing.s2,
                             ),
-                            child: Align(
+                            // Three tabs with their counts: on a narrow
+                            // phone, or with large text, they shrink to fit
+                            // rather than run off the edge.
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: AppSegmented(
                                 selected: _tab,
@@ -193,8 +199,14 @@ class _ArtifactPageState extends State<ArtifactPage> {
                                     iconData: AppIcons.pen,
                                   ),
                                   AppSegment(
-                                    label: context.l10n.artifactTasksTab(
+                                    label: context.l10n.artifactPendingTab(
                                       artifact.steps - artifact.stepsDone,
+                                    ),
+                                    iconData: AppIcons.time,
+                                  ),
+                                  AppSegment(
+                                    label: context.l10n.artifactDoneTab(
+                                      artifact.stepsDone,
                                     ),
                                     iconData: AppIcons.check,
                                   ),
@@ -205,6 +217,8 @@ class _ArtifactPageState extends State<ArtifactPage> {
                           Expanded(
                             child: _tab == _tasksTab
                                 ? _Tasks(artifact: artifact, aim: _aim)
+                                : _tab == _doneTab
+                                ? _Done(artifact: artifact)
                                 : _Notes(
                                     key: ValueKey(artifact.id),
                                     artifact: artifact,
@@ -389,23 +403,19 @@ class _Summary extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (artifact.tasks.isNotEmpty)
-            _Property(
-              label: l10n.artifactProgressLabel,
-              child: Text(
-                l10n.artifactTaskCount(artifact.stepsDone, artifact.steps),
-                style: AppTypography.labelStrong.copyWith(color: AppColors.ink),
-              ),
-            ),
-          // The bar is its time, and beside it the buttons that move the
+          // The bar Entregas draws, work over time, whose key already says
+          // how many tasks are done; beside it the buttons that move the
           // deadline a day either way.
-          if (dated)
+          if (!artifact.isDone)
             Row(
               children: [
                 Expanded(
-                  child: ArtifactBar(artifact: artifact, now: now),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.s2),
+                    child: PaceBars(artifact: artifact, now: now),
+                  ),
                 ),
-                if (!artifact.isDone) ...[
+                if (dated) ...[
                   const SizedBox(width: AppSpacing.s2),
                   _Action(
                     tooltip: l10n.artifactLessDay,
@@ -525,9 +535,9 @@ class _Action extends StatelessWidget {
   }
 }
 
-/// The artifact's tasks, drawn by the very list Tempo draws in Lista, kept
-/// to this artifact's: Fazer em breve with their hours, Para depois,
-/// and what was done.
+/// The artifact's tasks still to do, drawn by the very list Tempo draws in
+/// Lista, kept to this artifact's: each day it reaches under Tempo's
+/// headings, then Para depois.
 ///
 /// So everything a card does there it does here: held, it moves up, down
 /// and across the line; carried right it is done; carried left it is
@@ -540,31 +550,17 @@ class _Tasks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final far = DateTime(9999);
-    final done = [
-      for (final t in artifact.tasks)
-        if (t.place == TaskPlace.done) t,
-    ]..sort((a, b) => (b.doneAt ?? far).compareTo(a.doneAt ?? far));
-    final cards = [for (final t in done) _doneCard(t)];
-
     return TimelineList(
       mode: TimelineMode.list,
       only: {
         for (final t in artifact.tasks)
           if (t.place != TaskPlace.done) t.id,
       },
-      done: cards,
       aim: aim,
-      // A finished task is not on the timeline, so its page is handed the
-      // card this list drew.
       onCardTap: (card) => unawaited(
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => EventPage(
-              id: card.id,
-              finished: cards.where((it) => it.id == card.id).firstOrNull,
-              dock: NotesDock.task,
-            ),
+            builder: (_) => EventPage(id: card.id, dock: NotesDock.task),
           ),
         ),
       ),
@@ -577,7 +573,90 @@ class _Tasks extends StatelessWidget {
       ),
     );
   }
+}
 
+/// What was done of the artifact, newest first, under the day it was done
+/// on, as Feitas in the Menu draws it. Nothing here names the artifact: the
+/// page already does.
+class _Done extends StatelessWidget {
+  const _Done({required this.artifact});
+
+  final Artifact artifact;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final now = clock.now();
+    final done = [
+      for (final t in artifact.tasks)
+        if (t.place == TaskPlace.done) _doneCard(t),
+    ]..sort((a, b) => b.startTime.compareTo(a.startTime));
+    final rows = <Widget>[];
+    DateTime? day;
+    for (final card in done) {
+      final at = card.startTime;
+      final its = DateTime(at.year, at.month, at.day);
+      if (its != day) {
+        day = its;
+        rows.add(
+          Padding(
+            padding: EdgeInsets.only(
+              top: rows.isEmpty ? AppSpacing.s2 : AppSpacing.s6,
+              bottom: AppSpacing.s1,
+            ),
+            child: Text(
+              doneDayLabel(l10n, its, now),
+              style: AppTypography.title,
+            ),
+          ),
+        );
+      }
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(top: AppSpacing.s1),
+          child: DoneArchiveTile(
+            card: card,
+            // A finished task is not on the timeline, so its page is
+            // handed the card drawn here.
+            onTap: () => unawaited(
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => EventPage(
+                    id: card.id,
+                    finished: card,
+                    dock: NotesDock.task,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s6,
+        0,
+        AppSpacing.s6,
+        AppSpacing.s12,
+      ),
+      children: [
+        if (rows.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.s3),
+            child: Text(
+              l10n.artifactDoneEmpty,
+              style: AppTypography.label.copyWith(color: AppColors.ink3),
+            ),
+          ),
+        ...rows,
+      ],
+    );
+  }
+
+  /// A done task as a card whose start is when it was done, as Feitas
+  /// reads them.
   static TimelineEvent _doneCard(ArtifactTask task) {
     final at = task.doneAt ?? clock.now();
     return TimelineEvent(
