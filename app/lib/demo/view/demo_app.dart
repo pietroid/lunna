@@ -316,6 +316,7 @@ class _DemoTempo extends StatelessWidget {
                       builder: (_) => EventPage(id: card.id),
                     ),
                   ),
+                  onDeliveryTap: (id) => openArtifact(context, id, tab: 1),
                 ),
               ),
             ],

@@ -1585,24 +1585,18 @@ void main() {
 
     final queue = [block('x', 30, 30), block('c', 65, 30), block('y', 100, 30)];
     final backlog = [shelved('d', 'Textos'), shelved('z', 'Gaveta')];
-    final finished = TimelineEvent(
-      id: 'e',
-      title: 'Logo',
-      section: TimelineSection.backlog,
-      startTime: now.subtract(const Duration(hours: 1)),
-      endTime: now.subtract(const Duration(hours: 1)),
-      durationMinutes: 45,
-    );
-
     Future<(TimelineBloc, List<TimelineEvent>)> pumpKept(
-      WidgetTester tester,
-    ) async {
+      WidgetTester tester, {
+      List<TimelineEvent>? tasks,
+      Set<String> only = const {'c', 'd'},
+      List<Placement>? written,
+    }) async {
       final bloc = _MockTimelineBloc();
       when(() => bloc.state).thenReturn(
         TimelineState(
           status: TimelineStatus.success,
-          cards: queue,
-          tasks: queue,
+          cards: tasks ?? queue,
+          tasks: tasks ?? queue,
           backlog: backlog,
         ),
       );
@@ -1619,9 +1613,9 @@ void main() {
               value: bloc,
               child: TimelineList(
                 onCardTap: tapped.add,
+                onWriteDown: written?.add,
                 mode: TimelineMode.list,
-                only: const {'c', 'd'},
-                done: [finished],
+                only: only,
               ),
             ),
           ),
@@ -1632,21 +1626,76 @@ void main() {
       return (bloc as TimelineBloc, tapped);
     }
 
-    testAt('draws only those, and what was done under them', (tester) async {
+    testAt('draws only those, under the day Tempo keeps', (tester) async {
       final l10n = lookupAppLocalizations(const Locale('pt'));
       final (_, tapped) = await pumpKept(tester);
 
       double top(String text) => tester.getTopLeft(find.text(text)).dy;
       expect(find.text('Bloco x'), findsNothing);
       expect(find.text('Gaveta'), findsNothing);
-      expect(top(l10n.stageSoon), lessThan(top('Bloco c')));
+      // No Agora: nothing of theirs runs.
+      expect(find.text(l10n.sectionNow), findsNothing);
+      expect(top(l10n.sectionToday), lessThan(top('Bloco c')));
       expect(top('Bloco c'), lessThan(top(l10n.stageBacklog)));
       expect(top(l10n.stageBacklog), lessThan(top('Textos')));
-      expect(top('Textos'), lessThan(top(l10n.stageDone(1))));
-      expect(top(l10n.stageDone(1)), lessThan(top('Logo')));
 
-      await tester.tap(find.text('Logo'));
-      expect(tapped.single.id, 'e');
+      await tester.tap(find.text('Bloco c'));
+      expect(tapped.single.id, 'c');
+    });
+
+    testAt('keeps Agora and one day, and draws the days after when asked', (
+      tester,
+    ) async {
+      final l10n = lookupAppLocalizations(const Locale('pt'));
+      final inTwoDays = DateTime(now.year, now.month, now.day + 2, 9);
+      TimelineEvent far(String id, int minutes) => TimelineEvent(
+        id: id,
+        title: 'Longe $id',
+        section: TimelineSection.dia,
+        startTime: inTwoDays.add(Duration(minutes: minutes)),
+        endTime: inTwoDays.add(Duration(minutes: minutes + 30)),
+        durationMinutes: 30,
+      );
+      final written = <Placement>[];
+      await pumpKept(
+        tester,
+        tasks: [running, block('x', 30, 30), far('f', 0), far('g', 35)],
+        only: const {'a', 'f', 'g'},
+        written: written,
+      );
+
+      double top(String text) => tester.getTopLeft(find.text(text)).dy;
+      expect(top(l10n.sectionNow), lessThan(top('Escrever')));
+      // Nothing of theirs is left today, so the day kept is tomorrow, as
+      // on Tempo, where they have nothing either.
+      expect(top('Escrever'), lessThan(top(l10n.sectionTomorrow)));
+      expect(find.text(l10n.stageDayEmpty), findsOneWidget);
+      expect(find.text('Longe f'), findsNothing);
+      final line = find.text(
+        '${l10n.stageAhead(2)} · ${l10n.stageAheadShow}',
+        findRichText: true,
+      );
+      expect(line, findsOneWidget);
+
+      // The + under the day writes right after the last of theirs drawn,
+      // the running one, counted in the whole queue.
+      await tester.tap(find.text('Adicionar').first);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(written, [const Placement.queue(1)]);
+
+      await tester.tap(line);
+      await tester.pump();
+      expect(line, findsNothing);
+      final date = l10n.sectionDay(DateTime(now.year, now.month, now.day + 2));
+      final heading = date[0].toUpperCase() + date.substring(1);
+      expect(top(heading), lessThan(top('Longe f')));
+      expect(top('Longe f'), lessThan(top('Longe g')));
+      expect(top('Longe g'), lessThan(top(l10n.stageBacklog)));
+
+      // And now after the last of them.
+      await tester.tap(find.text('Adicionar').first);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(written.last, const Placement.queue(4));
     });
 
     testAt('counts a drop in the whole queue, right over the card under it', (
@@ -1655,7 +1704,7 @@ void main() {
       final l10n = lookupAppLocalizations(const Locale('pt'));
       final (bloc, _) = await pumpKept(tester);
 
-      final heading = tester.getBottomLeft(find.text(l10n.stageSoon)).dy;
+      final heading = tester.getBottomLeft(find.text(l10n.sectionToday)).dy;
       final card = tester.getTopLeft(find.widgetWithText(EventTile, 'Bloco c'));
       await drag(tester, 'Textos', (heading + card.dy) / 2);
 
@@ -1665,14 +1714,12 @@ void main() {
     testAt('counts a drop in the whole backlog, right under the card above', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final (bloc, _) = await pumpKept(tester);
 
       final card = tester.getBottomLeft(
         find.widgetWithText(EventTile, 'Textos'),
       );
-      final done = tester.getTopLeft(find.text(l10n.stageDone(1))).dy;
-      await drag(tester, 'Bloco c', (card.dy + done) / 2);
+      await drag(tester, 'Bloco c', card.dy + 8);
 
       verify(
         () => bloc.add(const EventMoved(id: 'c', index: 1, backlog: true)),

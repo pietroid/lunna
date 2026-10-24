@@ -297,19 +297,8 @@
   },
   "timelineModeList": "Lista",
   "timelineModeCalendar": "Calendário",
-  "stageSoon": "Fazer em breve",
   "stageBacklog": "Para depois",
-  "stageSoonEmpty": "Nada na fila. Arraste uma tarefa para cá para ela ganhar uma hora.",
   "stageBacklogEmpty": "Nada esperando. Arraste para cá o que ainda não tem lugar na fila.",
-  "stageDone": "{count, plural, =0{Feitas} =1{1 feita} other{{count} feitas}}",
-  "@stageDone": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "stageDoneEmpty": "Nada feito ainda. Arraste uma tarefa para a direita quando terminar.",
   "promptToBacklog": "Deixar para depois",
   "promptToQueue": "Entra na fila, onde houver espaço",
   "promptPickTime": "Escolher horário",
@@ -747,17 +736,6 @@
       }
     }
   },
-  "artifactTaskCount": "{done} de {total}",
-  "@artifactTaskCount": {
-    "placeholders": {
-      "done": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "artifactDoneOn": "entregue {date}",
   "@artifactDoneOn": {
     "placeholders": {
@@ -770,17 +748,25 @@
   "artifactPlusDay": "+1 dia",
   "artifactLessDay": "Um dia a menos",
   "artifactMoreDay": "Um dia a mais",
-  "artifactTasksTab": "{count, plural, =0{Tarefas} other{Tarefas · {count}}}",
-  "@artifactTasksTab": {
+  "artifactPendingTab": "{count, plural, =0{Pendentes} other{Pendentes · {count}}}",
+  "@artifactPendingTab": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
+  "artifactDoneTab": "{count, plural, =0{Feitas} other{Feitas · {count}}}",
+  "@artifactDoneTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "artifactDoneEmpty": "Nada feito ainda. O que você terminar desta entrega fica aqui.",
   "artifactNotesTab": "Notas",
   "artifactDeadlineLabel": "Prazo",
-  "artifactProgressLabel": "Feitas",
   "artifactNotesHint": "Escreva o que quiser sobre a entrega…",
   "artifactAddTask": "Nova tarefa",
   "artifactTasksDone": "{count, plural, =1{1 feita} other{{count} feitas}}",
@@ -1267,6 +1253,7 @@
     }
   },
   "stageAheadOpen": "Ver no calendário",
+  "stageAheadShow": "Ver os próximos dias",
   "stageDayEmpty": "Nada com hora neste dia. Arraste uma tarefa para cá para ela ganhar uma hora.",
   "deliveryTasks": "{count, plural, =1{1 tarefa} other{{count} tarefas}} · {time}",
   "@deliveryTasks": {

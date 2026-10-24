@@ -126,6 +126,7 @@ void main() {
     WidgetTester tester, {
     String id = 'p',
     DictationCubit? dictation,
+    Artifact? shown,
   }) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -145,7 +146,7 @@ void main() {
                 repository: repository,
                 initial: ArtifactsState(
                   status: ArtifactsStatus.ready,
-                  data: data([artifact]),
+                  data: data([shown ?? artifact]),
                 ),
               ),
             ),
@@ -171,12 +172,26 @@ void main() {
     await pump(tester);
     expect(find.text(l10n.artifactNotesHint), findsOneWidget);
 
-    await tester.tap(find.text(l10n.artifactTasksTab(2)));
+    await tester.tap(find.text(l10n.artifactPendingTab(2)));
     await tester.pump();
     expect(
       (await SharedPreferences.getInstance()).getInt('artifact.tab.p'),
       1,
     );
+
+    await tester.tap(find.text(l10n.artifactDoneTab(1)));
+    await tester.pump();
+    expect(
+      (await SharedPreferences.getInstance()).getInt('artifact.tab.p'),
+      2,
+    );
+  });
+
+  testAt('draws the bar Entregas draws, work over time', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await pump(tester);
+
+    expect(find.byType(PaceBars), findsOneWidget);
   });
 
   testAt('Notas and Tarefas draw the bar in the same place', (tester) async {
@@ -267,16 +282,41 @@ void main() {
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     expect(find.text('Tarefa x'), findsNothing);
-    expect(top(l10n.stageSoon), lessThan(top('Tarefa c')));
+    expect(top(l10n.sectionToday), lessThan(top('Tarefa c')));
     expect(top('Tarefa c'), lessThan(top(l10n.stageBacklog)));
     expect(top(l10n.stageBacklog), lessThan(top('Tarefa d')));
-    expect(top(l10n.stageDone(1)), lessThan(top('Tarefa e')));
+    // What was done has its own tab.
+    expect(find.text('Tarefa e'), findsNothing);
+  });
+
+  testAt('keeps what was done in Feitas, newest first, under its day', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'artifact.tab.p': 2});
+    final older = artifact.copyWith(
+      tasks: [
+        ...artifact.tasks,
+        task('f', TaskPlace.done, doneAt: DateTime(2026, 6, 9, 15)),
+        task('g', TaskPlace.done, doneAt: DateTime(2026, 6, 10, 9, 30)),
+      ],
+    );
+    when(() => repository.load()).thenAnswer((_) async => data([older]));
+    await pump(tester, shown: older);
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(find.text('Tarefa c'), findsNothing);
+    expect(top(l10n.archiveToday), lessThan(top('Tarefa g')));
+    expect(top('Tarefa g'), lessThan(top('Tarefa e')));
+    expect(top('Tarefa e'), lessThan(top(l10n.archiveYesterday)));
+    expect(top(l10n.archiveYesterday), lessThan(top('Tarefa f')));
+    // Nothing names the delivery: the page does.
+    expect(find.byType(AppTag), findsNothing);
   });
 
   testAt('opens a finished task on its notes, saying when it was done', (
     tester,
   ) async {
-    SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
+    SharedPreferences.setMockInitialValues({'artifact.tab.p': 2});
     await pump(tester);
 
     await tester.tap(find.text('Tarefa e'));

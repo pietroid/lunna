@@ -280,7 +280,9 @@ remembered on the device (`TimelineModeCubit`):
   (the running task, the break, or `DayOverTile` outside the working day),
   **one day** of tasks with an hour, **Ainda hoje** while the working day is
   open and has tasks left (or nothing is queued at all), otherwise
-  **Amanhã** (`_listDay`), and **Para depois** (the backlog). Tasks queued
+  **Amanhã** (`_listDay`), and **Para depois** (the backlog, the loose
+  tasks only: a delivery's backlog is drawn on its page, not here, and a
+  drop still counts it, `_wholeOf`). Tasks queued
   after that day are not drawn: one line counts them, "Mais N tarefas
   adiante · Ver no calendário", which switches to Calendário. The days of
   routines are drawn on the calendar only, and come into the list once
@@ -292,12 +294,15 @@ remembered on the device (`TimelineModeCubit`):
 
   **The delivery is the card.** Tasks of one delivery that follow each
   other (`deliveryRuns`) are one `DeliveryTile`: the delivery's name, the
-  run's hours, and under it only the **next** task. To a tap and a drag the
-  card is that next task, and a drop under it lands after the whole run.
-  Agora's run keeps the running task's controls and ends in `RunBar`, a
-  piece per task of the run. A task with no delivery keeps its `EventTile`.
-  A delivery's own Tarefas (`only:`) keeps one stage, *Fazer em breve*, a
-  card per task.
+  run's hours, and under it only the **next** task. A tap opens the
+  **delivery** (`onDeliveryTap`, on Pendentes); to a drag the card is that
+  next task, and a drop under it lands after the whole run. Agora's run
+  keeps the running task's controls and ends in `RunBar`, a piece per task
+  of the run. A task with no delivery keeps its `EventTile` and opens its
+  own page. A delivery's own Pendentes (`only:`) has Tempo's stages, a card
+  per task: Agora when one of its tasks runs, the one day, a line counting
+  the later ones ("Ver os próximos dias", which draws them there under
+  their dates), and its Para depois.
 - **Calendário**: everything, to scale, day after day. Scrolling near the
   end asks for another week (`TimelineExtended`), up to 120 days. **Agora**
   is always drawn, the break with its line whenever nothing runs, and a
@@ -308,9 +313,10 @@ remembered on the device (`TimelineModeCubit`):
   Tasks of one delivery that follow each other with no room drawn between
   them are **one block** as tall as theirs together, each task a line at
   its hour when there is a line's room for each (else the next task alone),
-  and each line is its task to a tap, a drag, a nudge or a swap; a run's
-  seam is not pulled. Agora's run draws every line, with the running one's
-  controls. A delivery's lone task is the card it always was. Every free
+  and each line is its task to a drag, a nudge or a swap; a run's seam is
+  not pulled. A tap on any line, or on a delivery's lone task, opens the
+  delivery, as in Lista. Agora's run draws every line, with the running
+  one's controls. A delivery's lone task is the card it always was. Every free
   stretch carries a small **+**
   and its hours, both stuck to the top of the part of it in sight (placed
   while painting, so they never lag the scroll); the hours run from the
@@ -517,8 +523,10 @@ under the work done in green (`paceDone`). The **goals** (money delivered,
 or a count of one kind, per week or month) are hidden by a flag
 (`ArtifactsPage(showGoals:)`, off) and a line sets the time the month's
 deliveries owe against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
-(`task.artifact_id`), and its Tarefas is Tempo's Lista kept to them
-(`TimelineList(only:, done:)`). **Money counts when a delivery is
+(`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
+(Tempo's Lista kept to them, `TimelineList(only:)`) and **Feitas** (what
+was done, newest first under Hoje / Ontem / the date), under the same
+`PaceBars` as its row in Entregas. Tempo opens it on Pendentes. **Money counts when a delivery is
 delivered** (`done_at`). The routes and the rules are in
 [product/spec/artifacts.md](./product/spec/artifacts.md): read it before
 touching `server/src/artifacts/` or `app/packages/artifacts/`.

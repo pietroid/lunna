@@ -57,6 +57,7 @@ void main() {
     required List<TimelineEvent> tasks,
     List<TimelineEvent> backlog = const [],
     TimelineMode mode = TimelineMode.list,
+    List<String>? opened,
   }) async {
     final bloc = _MockTimelineBloc();
     when(() => bloc.state).thenReturn(
@@ -78,7 +79,11 @@ void main() {
         home: Scaffold(
           body: BlocProvider<TimelineBloc>.value(
             value: bloc,
-            child: TimelineList(onCardTap: tapped.add, mode: mode),
+            child: TimelineList(
+              onCardTap: tapped.add,
+              onDeliveryTap: opened?.add,
+              mode: mode,
+            ),
           ),
         ),
       ),
@@ -87,6 +92,17 @@ void main() {
 
     return (bloc as TimelineBloc, tapped);
   }
+
+  /// A task of delivery p waiting in the backlog.
+  final boxed = TimelineEvent.fromJson(const {
+    'id': 'y',
+    'kind': 'task',
+    'title': 'Caixa',
+    'section': 'backlog',
+    'durationMinutes': 30,
+    'workMinutes': 30,
+    'artifact': {'id': 'p', 'title': 'Entrega p'},
+  });
 
   group('deliveryRuns', () {
     test('joins only the tasks of one delivery that follow each other', () {
@@ -196,6 +212,78 @@ void main() {
       // The rest of the run is in the bar, not in lines of its own.
       expect(find.text('Tarefa p1'), findsNothing);
     });
+
+    testAt('opens the delivery on a tap on its card, and a loose task on '
+        'its own', (tester) async {
+      final opened = <String>[];
+      final (_, tapped) = await pump(
+        tester,
+        tasks: [running, ...run, after],
+        opened: opened,
+      );
+
+      await tester.tap(find.text('Entrega p'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(opened, ['p']);
+      expect(tapped, isEmpty);
+
+      await tester.tap(find.text('Tarefa c'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(opened, ['p']);
+      expect(tapped.single.id, 'c');
+    });
+
+    testAt('opens the delivery from its running card in Agora', (
+      tester,
+    ) async {
+      final opened = <String>[];
+      await pump(
+        tester,
+        tasks: [
+          task('a', -10, 30, artifact: 'p', section: TimelineSection.agora),
+        ],
+        opened: opened,
+      );
+
+      await tester.tap(find.text('Entrega p'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(opened, ['p']);
+    });
+
+    testAt('keeps only the loose tasks in Para depois', (tester) async {
+      await pump(tester, tasks: [running], backlog: [boxed, shelved]);
+
+      expect(find.text('Armário'), findsOneWidget);
+      expect(find.text('Caixa'), findsNothing);
+    });
+
+    testAt('counts a drop in Para depois among the hidden tasks too', (
+      tester,
+    ) async {
+      final (bloc, _) = await pump(
+        tester,
+        tasks: [running, after],
+        backlog: [boxed, shelved],
+      );
+
+      final card = tester.getRect(find.text('Armário'));
+      final from = tester.getCenter(find.text('Tarefa c'));
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 350));
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveTo(
+          Offset.lerp(from, Offset(from.dx, card.bottom + 24), step / 8)!,
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      // Under the loose one, which is second in the whole backlog.
+      verify(
+        () => bloc.add(const EventMoved(id: 'c', index: 2, backlog: true)),
+      ).called(1);
+    });
   });
 
   group('Calendário', () {
@@ -244,6 +332,72 @@ void main() {
 
       expect(find.byType(DeliveryTile), findsNothing);
       expect(find.byType(EventTile), findsNWidgets(2));
+    });
+
+    testAt('opens the delivery on a tap on any line of its block', (
+      tester,
+    ) async {
+      final opened = <String>[];
+      final (_, tapped) = await pump(
+        tester,
+        tasks: [
+          task('p1', 25, 30, artifact: 'p'),
+          task('p2', 60, 40, artifact: 'p'),
+          task('c', 140, 30),
+        ],
+        mode: TimelineMode.calendar,
+        opened: opened,
+      );
+
+      await tester.tap(find.text('Tarefa p2'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(opened, ['p']);
+
+      await tester.tap(find.text('Tarefa c'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(opened, ['p']);
+      expect(tapped.single.id, 'c');
+    });
+
+    testAt('opens the delivery from its lone task too', (tester) async {
+      final opened = <String>[];
+      final (_, tapped) = await pump(
+        tester,
+        tasks: [task('p1', 25, 30, artifact: 'p')],
+        mode: TimelineMode.calendar,
+        opened: opened,
+      );
+
+      await tester.tap(find.text('Tarefa p1'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(opened, ['p']);
+      expect(tapped, isEmpty);
+    });
+
+    testAt('still nudges the line it was held by', (tester) async {
+      final (bloc, _) = await pump(
+        tester,
+        tasks: [
+          task('p1', 25, 30, artifact: 'p'),
+          task('p2', 60, 40, artifact: 'p'),
+        ],
+        mode: TimelineMode.calendar,
+        opened: <String>[],
+      );
+
+      final from = tester.getCenter(find.text('Tarefa p2'));
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 350));
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveTo(
+          from + Offset(0, 20 * TimelineScale.perMinute * step / 8),
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      verify(() => bloc.add(const EventShifted('p2', 20))).called(1);
     });
   });
 
