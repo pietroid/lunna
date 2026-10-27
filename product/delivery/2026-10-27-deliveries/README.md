@@ -2,7 +2,9 @@
 
 Issue [#48](https://github.com/pietroid/lunna/issues/48), **mockup track**,
 designed and built unattended by the queue. The design was approved on
-the issue ("Approve"); the build is sections 3 to 5.
+the issue ("Approve"); the build is sections 3 to 5. The review of the
+build asked to remove the schedule line (open question 1) and merge: see
+*After the review* in section 3.
 
 ## 1. The prompt
 
@@ -23,6 +25,10 @@ From [issue #48](https://github.com/pietroid/lunna/issues/48), verbatim:
 Answer on the issue, after the design:
 
 > Approve
+
+Answer on the issue, after the build:
+
+> Remove the line, and then merge it
 
 ## 2. The design
 
@@ -114,7 +120,8 @@ Drawn from known patterns, not browsed (no Mobbin session here):
 The approval answered neither, so the build kept both as proposed:
 
 1. Should the schedule line (*A fila pede … · você tem … livres até …*) go too?
-   Kept for now.
+   Kept for now. **Answered after the build: remove it** (section 3,
+   *After the review*).
 2. Should an overdue delivery that was **never begun** be pulled into Em
    andamento as urgent? Proposed: no, it stays in the queue with its day
    in red.
@@ -131,6 +138,28 @@ first, red and tagged; (2) a delivery with no day dropped into Em
 andamento asks for one; (3) begun, it lands by the rule, its bar empty;
 (4) Em andamento's **+ Adicionar**: the creation sheet with a day already
 set a week out, no "Entra na fila", and **Começar**.
+
+### After the review
+
+"Remove the line" was read as open question 1, the one line the build
+had kept on purpose: the schedule line under the title (*A fila pede
+14h30 · você tem 31h livres até sáb, 31 out*). It is gone, and the
+prints above are re-shot from the final code:
+
+- `ArtifactsPage` no longer draws it; the space it held closed, so Em
+  andamento's heading sits right under the title (with the goals on, they
+  keep their gap above the list).
+- `goalSchedule` left `app_pt.arb` (and the generated l10n).
+- `schedule` stays in the model and in `GET /artifacts`: nothing else
+  reads it in the app, but the server's figure is cheap and the goals
+  (hidden by the flag) may want it back. The server is untouched.
+- `artifacts_page_test`: the goals test now checks that *A fila pede* is
+  not drawn. `AGENTS.md` and `product/spec/artifacts.md` say so.
+- `.tool/check` on the change: every step green (app analyze, every
+  package's tests under Focus and Lunna).
+
+The merge is the person's (or the queue's) to do: this run leaves the
+change in the branch's files for the PR.
 
 ### The contract
 

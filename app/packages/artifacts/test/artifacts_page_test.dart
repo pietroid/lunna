@@ -162,7 +162,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testAt('draws the goals, the agenda against the queue, and five of it', (
+  testAt('draws the goals and five of the queue', (
     tester,
   ) async {
     await pump(tester, full, home: const ArtifactsPage(showGoals: true));
@@ -171,20 +171,8 @@ void main() {
       find.text(l10n.goalInMonth(l10n.goalRevenue, 'outubro')),
       findsOneWidget,
     );
-    expect(
-      find.text(
-        l10n.goalSchedule(
-          '11h15',
-          '26h',
-          AppWheelPicker.dayLabel(
-            l10n,
-            DateTime(2026, 10, 31),
-            now: now,
-          ).toLowerCase(),
-        ),
-      ),
-      findsOneWidget,
-    );
+    // The agenda against the queue is not drawn any more.
+    expect(find.textContaining('A fila pede'), findsNothing);
     expect(find.byType(ArtifactRow), findsNWidgets(5));
     expect(find.text(l10n.artifactsSeeAll(6)), findsOneWidget);
     expect(find.text('Mapa · Renata'), findsNothing);

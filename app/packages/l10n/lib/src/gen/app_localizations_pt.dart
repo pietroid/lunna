@@ -1367,11 +1367,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get goalCovered => 'a fila cobre o resto';
 
   @override
-  String goalSchedule(String need, String free, String date) {
-    return 'A fila pede $need · você tem $free livres até $date';
-  }
-
-  @override
   String get artifactsAll => 'Todas';
 
   @override

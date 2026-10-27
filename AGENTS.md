@@ -528,8 +528,8 @@ it was begun to the end of its day in red (`paceTime`) under its minutes
 done in green (`paceDone`), keyed with the time done and the day due.
 The **goals** (money delivered,
 or a count of one kind, per week or month) are hidden by a flag
-(`ArtifactsPage(showGoals:)`, off) and a line sets the time the month's
-deliveries owe against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
+(`ArtifactsPage(showGoals:)`, off), and so is the line that set the
+month's deliveries against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
 (`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
 (Tempo's Lista kept to them, `TimelineList(only:)`) and **Feitas** (what
 was done, newest first under Hoje / Ontem / the date), under the same

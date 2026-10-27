@@ -130,7 +130,10 @@ of deliveries both are spent on.
   or not begun, no red.
 - **The goals are hidden** (`ArtifactsPage(showGoals: false)`, the
   default): no goal cards and no "Nova meta". The model, the routes and the
-  agent's goal verbs are untouched, and the schedule line stays.
+  agent's goal verbs are untouched.
+- **No schedule line**: the line that set what the queue owes this month
+  against the agenda's free hours (*A fila pede … · você tem … livres
+  até …*) is not drawn. `schedule` is still in `GET /artifacts`.
 
 ## Routes
 

@@ -2159,12 +2159,6 @@ abstract class AppLocalizations {
   /// **'a fila cobre o resto'**
   String get goalCovered;
 
-  /// No description provided for @goalSchedule.
-  ///
-  /// In pt, this message translates to:
-  /// **'A fila pede {need} · você tem {free} livres até {date}'**
-  String goalSchedule(String need, String free, String date);
-
   /// No description provided for @artifactsAll.
   ///
   /// In pt, this message translates to:

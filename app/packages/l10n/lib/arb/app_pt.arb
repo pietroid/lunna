@@ -1040,20 +1040,6 @@
     }
   },
   "goalCovered": "a fila cobre o resto",
-  "goalSchedule": "A fila pede {need} · você tem {free} livres até {date}",
-  "@goalSchedule": {
-    "placeholders": {
-      "need": {
-        "type": "String"
-      },
-      "free": {
-        "type": "String"
-      },
-      "date": {
-        "type": "String"
-      }
-    }
-  },
   "artifactsAll": "Todas",
   "artifactsSeeAll": "Ver todas as {count}",
   "@artifactsSeeAll": {

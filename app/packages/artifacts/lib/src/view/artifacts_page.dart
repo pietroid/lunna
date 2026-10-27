@@ -22,10 +22,8 @@ import 'package:timeline/timeline.dart';
 /// {@template artifacts_page}
 /// The Entregas tab: the deliveries under way, then the ones not begun.
 ///
-/// The three forces on one screen. The goals say what the month asks for;
-/// the line under them says what the agenda can give, the time the queue
-/// owes this month against the free time left in it; the deliveries are
-/// what both are spent on. Those under way (Em andamento) are fixed, the
+/// The goals say what the month asks for (hidden for now); the deliveries
+/// are what it is spent on. Those under way (Em andamento) are fixed, the
 /// one whose time has run furthest past its work on top; those not begun
 /// (Não iniciadas) are the queue, in order of priority, and held, a row is
 /// dragged to another place in it. One line of the kinds she uses most
@@ -97,7 +95,6 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
     // The first few, what is under way first, as the page draws them.
     final started = groups.started.take(widget.shown).toList();
     final waiting = groups.waiting.take(widget.shown - started.length).toList();
-    final schedule = data.schedule;
     const side = EdgeInsets.symmetric(horizontal: AppSpacing.s5);
 
     return SafeArea(
@@ -171,35 +168,8 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                             },
                           ),
                         ),
+                      const SizedBox(height: AppSpacing.s3),
                     ],
-                    const SizedBox(height: AppSpacing.s3),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.s1,
-                      ),
-                      child: Row(
-                        children: [
-                          const AppIcon(
-                            iconData: AppIcons.timer,
-                            size: AppSpacing.s4,
-                            color: AppColors.ink3,
-                          ),
-                          const SizedBox(width: AppSpacing.s2),
-                          Expanded(
-                            child: Text(
-                              l10n.goalSchedule(
-                                formatMinutes(l10n, schedule.needMinutes),
-                                formatMinutes(l10n, schedule.freeMinutes),
-                                dayName(l10n, schedule.until, now),
-                              ),
-                              style: AppTypography.caption,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.s4),
-                    const SizedBox(height: AppSpacing.s3),
                     if (data.catalog.isNotEmpty) ...[
                       ShelfFilter(
                         categories: data.catalog,
