@@ -33,6 +33,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
     int? blockMinutes,
     DateTime? deadline,
     bool top = false,
+    bool started = false,
   }) async {
     final type = data.catalog
         .expand((shelf) => shelf.types)
@@ -43,6 +44,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
       title: title,
       minutes: minutes ?? type?.minutes ?? 60,
       createdAt: clock.now(),
+      startedAt: started ? clock.now() : null,
       type: type,
       category: data.catalog
           .where((shelf) => shelf.types.contains(type))
@@ -67,6 +69,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
     DateTime? Function()? deadline,
     String? notes,
     bool? done,
+    bool? started,
   }) async => _put([
     for (final it in data.artifacts)
       if (it.id == id)
@@ -75,19 +78,25 @@ class DemoArtifactsRepository implements ArtifactsRepository {
           deadline: deadline,
           notes: notes,
           doneAt: done == null ? null : () => done ? clock.now() : null,
+          startedAt: started == null
+              ? null
+              : () => started ? it.startedAt ?? clock.now() : null,
         )
       else
         it,
   ]);
 
   @override
-  Future<ArtifactsData> move(String id, int index) async {
+  Future<ArtifactsData> move(String id, int index, {bool stop = false}) async {
     final queue = data.queue;
     final artifact = queue.where((it) => it.id == id).firstOrNull;
     if (artifact == null) return data;
     queue
       ..remove(artifact)
-      ..insert(index.clamp(0, queue.length - 1), artifact);
+      ..insert(
+        index.clamp(0, queue.length),
+        stop ? artifact.copyWith(startedAt: () => null) : artifact,
+      );
     return _put([...queue, ...data.done]);
   }
 
@@ -147,12 +156,14 @@ ArtifactsData demoArtifacts(AppLocalizations l10n) {
     CatalogCategory category, {
     required int due,
     int done = 0,
+    int? begun,
   }) => Artifact(
     id: id,
     title: title,
     minutes: type.minutes,
     doneMinutes: done,
     createdAt: month,
+    startedAt: begun == null ? null : inDays(begun),
     type: type,
     category: category,
     value: type.price,
@@ -168,6 +179,7 @@ ArtifactsData demoArtifacts(AppLocalizations l10n) {
         atendimentos,
         due: 2,
         done: 120,
+        begun: -5,
       ),
       artifact('post', l10n.demoDeliveryPost, post, conteudo, due: 3),
       artifact('julia', l10n.demoDeliveryJulia, mapa, atendimentos, due: 6),

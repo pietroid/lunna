@@ -43,7 +43,8 @@ class ArtifactsRepository {
   Future<ArtifactsData> load() =>
       _data(() => apiClient.get<Map<String, dynamic>>('/artifacts'));
 
-  /// Puts a delivery in the queue, at its top or its end.
+  /// Puts a delivery in the queue, at its top or its end, or, [started],
+  /// begins it at once (it needs a [deadline]).
   Future<ArtifactsData> create({
     required String title,
     String? typeId,
@@ -52,6 +53,7 @@ class ArtifactsRepository {
     int? blockMinutes,
     DateTime? deadline,
     bool top = false,
+    bool started = false,
   }) => _data(
     () => apiClient.post<Map<String, dynamic>>(
       '/artifacts',
@@ -65,18 +67,21 @@ class ArtifactsRepository {
           'blockMinutes': blockMinutes,
         'deadline': ?_day(deadline),
         'at': top ? 'top' : 'end',
+        if (started) 'started': true,
       },
     ),
   );
 
-  /// Changes a delivery's name, deadline, notes or doneness. A [deadline]
-  /// function that answers null takes the deadline away.
+  /// Changes a delivery's name, deadline, notes or doneness, or begins it
+  /// ([started], which needs a deadline). A [deadline] function that
+  /// answers null takes the deadline away.
   Future<ArtifactsData> update(
     String id, {
     String? title,
     DateTime? Function()? deadline,
     String? notes,
     bool? done,
+    bool? started,
   }) => _data(
     () => apiClient.patch<Map<String, dynamic>>(
       '/artifacts/$id',
@@ -84,18 +89,21 @@ class ArtifactsRepository {
         'title': ?title,
         'notes': ?notes,
         'done': ?done,
+        'started': ?started,
         if (deadline != null) 'deadline': _day(deadline()),
       },
     ),
   );
 
-  /// Moves a delivery to [index] in the queue.
-  Future<ArtifactsData> move(String id, int index) => _data(
-    () => apiClient.post<Map<String, dynamic>>(
-      '/artifacts/$id/move',
-      data: {'index': index},
-    ),
-  );
+  /// Moves a delivery to [index] in the queue; with [stop], dropped among
+  /// those not begun, it is no longer begun.
+  Future<ArtifactsData> move(String id, int index, {bool stop = false}) =>
+      _data(
+        () => apiClient.post<Map<String, dynamic>>(
+          '/artifacts/$id/move',
+          data: {'index': index, if (stop) 'started': false},
+        ),
+      );
 
   /// Removes a delivery, and what waited in the backlog for it. Its tasks
   /// on the day, and the ones done, stay.

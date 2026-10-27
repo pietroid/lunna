@@ -11,6 +11,8 @@ export class CreateArtifactDto {
   deadline?: string | null;
   /** Where it enters the queue: `top` or `end` (the default). */
   at?: string;
+  /** Begun at once, in Em andamento. Needs a deadline. */
+  started?: boolean;
 }
 
 /** A change to a delivery: only what is given changes. */
@@ -24,11 +26,15 @@ export class EditArtifactDto {
   blockMinutes?: number | null;
   /** Marks it delivered, or open again. */
   done?: boolean;
+  /** Begins it (needs a deadline), or puts it back among those not begun. */
+  started?: boolean;
 }
 
 /** A delivery dragged to another place in the queue. */
 export class MoveArtifactDto {
   index?: number;
+  /** False: dragged into Não iniciadas, so it is no longer begun. */
+  started?: boolean;
 }
 
 /** A task written down in a delivery. */

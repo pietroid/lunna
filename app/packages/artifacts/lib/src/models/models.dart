@@ -207,9 +207,7 @@ class Artifact extends Equatable {
       title: json['title'] as String,
       notes: json['notes'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
-      startedAt: startedAt == null
-          ? null
-          : DateTime.parse(startedAt).toLocal(),
+      startedAt: startedAt == null ? null : DateTime.parse(startedAt).toLocal(),
       category: category,
       type: type,
       minutes: (json['minutes'] as num?)?.toInt() ?? 0,

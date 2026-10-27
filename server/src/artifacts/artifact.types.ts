@@ -25,6 +25,11 @@ export interface Artifact {
   position: number;
   /** ISO 8601, when it was written down. */
   createdAt: string;
+  /**
+   * ISO 8601, when it was begun: dragged into Em andamento, or a task of
+   * it begun on the day. Absent while it waits in Não iniciadas.
+   */
+  startedAt?: string;
   /** ISO 8601, when it was delivered. Absent while it is open. */
   doneAt?: string;
 }
@@ -38,6 +43,8 @@ export interface NewArtifact {
   /** Null says whole, even for a kind that comes in blocks. */
   blockMinutes?: number | null;
   deadline?: string;
+  /** Begun at once, in Em andamento: it needs a deadline. */
+  started?: boolean;
 }
 
 /** Where a new delivery enters the queue. */
@@ -144,6 +151,8 @@ export interface ArtifactView {
   blockMinutes: number | null;
   deadline: string | null;
   createdAt: string;
+  /** When it was begun; null while it waits in Não iniciadas. */
+  startedAt: string | null;
   doneAt: string | null;
   /** Its tasks, in their order. */
   tasks: ArtifactTaskView[];
@@ -215,11 +224,17 @@ export interface ArtifactEdit {
   value?: number | null;
   blockMinutes?: number | null;
   done?: boolean;
+  /**
+   * Begins it (Em andamento), which needs a deadline, or puts it back
+   * among the ones not begun.
+   */
+  started?: boolean;
 }
 
 /** A new delivery as the store writes it: whole is no blocks at all. */
-export type ArtifactRecord = Omit<NewArtifact, 'blockMinutes'> & {
+export type ArtifactRecord = Omit<NewArtifact, 'blockMinutes' | 'started'> & {
   blockMinutes?: number;
+  startedAt?: string;
   /** Absent: the end of the queue. */
   position?: number;
 };

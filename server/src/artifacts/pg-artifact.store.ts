@@ -65,6 +65,8 @@ export class PgArtifactStore extends ArtifactStore {
         value: input.value ?? null,
         blockMinutes: input.blockMinutes ?? null,
         deadline: input.deadline ?? null,
+        startedAt:
+          input.startedAt === undefined ? null : new Date(input.startedAt),
         position,
       })
       .returning();
@@ -84,6 +86,8 @@ export class PgArtifactStore extends ArtifactStore {
         blockMinutes: next.blockMinutes ?? null,
         deadline: next.deadline ?? null,
         position: next.position,
+        startedAt:
+          next.startedAt === undefined ? null : new Date(next.startedAt),
         doneAt: next.doneAt === undefined ? null : new Date(next.doneAt),
       })
       .where(and(eq(artifact.id, next.id), eq(artifact.userId, user.id)))
@@ -224,6 +228,8 @@ export class PgArtifactStore extends ArtifactStore {
             blockMinutes: row.blockMinutes ?? null,
             deadline: row.deadline ?? null,
             position: row.position,
+            startedAt:
+              row.startedAt === undefined ? null : new Date(row.startedAt),
             doneAt: row.doneAt === undefined ? null : new Date(row.doneAt),
             createdAt: new Date(row.createdAt),
           })
@@ -286,6 +292,9 @@ function toArtifact(row: ArtifactRow): Artifact {
     ...(row.value === null ? {} : { value: row.value }),
     ...(row.blockMinutes === null ? {} : { blockMinutes: row.blockMinutes }),
     ...(row.deadline === null ? {} : { deadline: row.deadline }),
+    ...(row.startedAt === null
+      ? {}
+      : { startedAt: row.startedAt.toISOString() }),
     ...(row.doneAt === null ? {} : { doneAt: row.doneAt.toISOString() }),
   };
 }

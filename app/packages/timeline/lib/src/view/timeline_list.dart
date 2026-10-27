@@ -2767,7 +2767,8 @@ class _BackToNow extends StatelessWidget {
   }
 }
 
-/// The + that ends a section of the list.
+/// The + that ends a section of the list ([AppAddRow]), or a little room
+/// where nothing is written down.
 class _AddRow extends StatelessWidget {
   const _AddRow({required this.onTap});
 
@@ -2775,38 +2776,12 @@ class _AddRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onTap = this.onTap;
     if (onTap == null) return const SizedBox(height: AppSpacing.s2);
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.s1),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.s3,
-              vertical: AppSpacing.s3,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const AppIcon(
-                  iconData: AppIcons.plus,
-                  size: AppSpacing.s4,
-                  color: AppColors.ink3,
-                ),
-                const SizedBox(width: AppSpacing.s2),
-                Text(
-                  context.l10n.timelineAdd,
-                  style: AppTypography.label.copyWith(color: AppColors.ink3),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: AppAddRow(onTap: onTap),
     );
   }
 }

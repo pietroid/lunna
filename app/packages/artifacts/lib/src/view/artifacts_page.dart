@@ -13,6 +13,7 @@ import 'package:artifacts/src/view/goal_card.dart';
 import 'package:artifacts/src/view/goal_sheet.dart';
 import 'package:artifacts/src/view/pace_bars.dart';
 import 'package:artifacts/src/view/shelf_filter.dart';
+import 'package:artifacts/src/view/start_sheet.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -92,7 +93,6 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
     final now = clock.now();
     final all = data.queue;
     final queue = all.where(_shelf.keeps).toList();
-    final cubit = context.read<ArtifactsCubit>();
     final groups = progressGroups(queue, now);
     // The first few, what is under way first, as the page draws them.
     final started = groups.started.take(widget.shown).toList();
@@ -218,54 +218,43 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                   ],
                 ),
               ),
-              // What is under way, the one most behind its time on top,
-              // where nothing moves it: its place is how late it is. Then
-              // what has not been begun, the queue a drag puts in order.
+              // What is under way, the urgent ones and then the one most
+              // behind its time on top, where its place is how late it is.
+              // Then what has not been begun, the queue a drag puts in
+              // order. One list, so a row is dragged across the line
+              // between them: up, it is begun; down, it is not.
               if (all.isNotEmpty) ...[
                 _sectionHeading(l10n.artifactsInProgress),
                 SliverPadding(
                   padding: side,
-                  sliver: SliverList.list(
-                    children: [
-                      for (final artifact in started)
-                        Padding(
-                          key: ValueKey(artifact.id),
-                          padding: const EdgeInsets.only(
-                            bottom: AppSpacing.s2,
-                          ),
-                          child: _row(context, artifact, now),
-                        ),
-                      // Written down here, a delivery is begun at once,
-                      // and so asks for its day.
-                      _AddRow(
-                        onTap: () => unawaited(showArtifactSheet(context)),
-                      ),
-                    ],
-                  ),
-                ),
-                _sectionHeading(l10n.artifactsNotStarted),
-                SliverPadding(
-                  padding: side,
-                  // Held, a row moves to another place in the queue, among
-                  // the others not begun. Only the whole queue is dragged: a
-                  // place among a shelf's says nothing about the rest.
                   sliver: SliverReorderableList(
-                    itemCount: waiting.length,
-                    onReorderItem: (from, to) {
-                      final id = waiting[from].id;
-                      unawaited(
-                        cubit.move(
-                          id,
-                          queueIndexOf(all, waiting, id, to),
-                        ),
-                      );
-                    },
+                    itemCount: started.length + 1 + waiting.length,
+                    onReorderItem: (from, to) => unawaited(
+                      _drop(context, all, started, waiting, from, to),
+                    ),
                     itemBuilder: (context, index) {
-                      final artifact = waiting[index];
+                      if (index == started.length) {
+                        return KeyedSubtree(
+                          key: const ValueKey(_line),
+                          child: _Line(
+                            title: l10n.artifactsNotStarted,
+                            // Written down here, a delivery is begun at
+                            // once, and so asks for its day.
+                            onAdd: () => unawaited(
+                              showArtifactSheet(context, started: true),
+                            ),
+                          ),
+                        );
+                      }
+                      final artifact = index < started.length
+                          ? started[index]
+                          : waiting[index - started.length - 1];
                       final row = Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.s2),
                         child: _row(context, artifact, now),
                       );
+                      // Only the whole queue is dragged: a place among a
+                      // shelf's says nothing about the rest.
                       return KeyedSubtree(
                         key: ValueKey(artifact.id),
                         child: _unfiltered
@@ -281,8 +270,9 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                 SliverPadding(
                   padding: side,
                   sliver: SliverToBoxAdapter(
-                    child: _AddRow(
-                      onTap: () => unawaited(showArtifactSheet(context)),
+                    child: AppAddRow(
+                      onTap: () =>
+                          unawaited(showArtifactSheet(context, top: false)),
                     ),
                   ),
                 ),
@@ -310,6 +300,48 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
       ),
     );
   }
+}
+
+/// The key of the line between the two groups in the list they share.
+const _line = '_line';
+
+/// A row let go at [to] (counted once it left [from]) in the list of
+/// [started], the line, and [waiting].
+///
+/// Above the line, a delivery not begun is begun, asking for its day first
+/// when it has none (closed, nothing happens); its place there is the
+/// rule's, not where it was let go. Below it, a delivery under way is no
+/// longer begun, and either takes the place in the queue it was let go
+/// at, counted in the whole of [all] as a move counts.
+Future<void> _drop(
+  BuildContext context,
+  List<Artifact> all,
+  List<Artifact> started,
+  List<Artifact> waiting,
+  int from,
+  int to,
+) async {
+  final cubit = context.read<ArtifactsCubit>();
+  if (from == started.length) return;
+  final wasStarted = from < started.length;
+  final artifact = wasStarted
+      ? started[from]
+      : waiting[from - started.length - 1];
+  // Where the line is once the row has left the list.
+  final line = wasStarted ? started.length - 1 : started.length;
+  if (to <= line) {
+    if (wasStarted) return;
+    var deadline = artifact.deadline;
+    if (deadline == null) {
+      deadline = await showStartSheet(context, artifact);
+      if (deadline == null) return;
+      return cubit.start(artifact.id, deadline: deadline);
+    }
+    return cubit.start(artifact.id);
+  }
+  final index = queueIndexOf(all, waiting, artifact.id, to - line - 1);
+  if (wasStarted) return cubit.stop(artifact.id, index);
+  return cubit.move(artifact.id, index);
 }
 
 /// One delivery's row, opening its page.
@@ -353,42 +385,28 @@ class _Heading extends StatelessWidget {
   }
 }
 
-/// The last line of a section, as the timeline ends its stages: a + and
-/// Adicionar, writing a delivery down in that section.
-class _AddRow extends StatelessWidget {
-  const _AddRow({required this.onTap});
+/// The line between the two groups: Em andamento's + and the heading of
+/// Não iniciadas. A row is dropped either side of it, never moved itself.
+class _Line extends StatelessWidget {
+  const _Line({required this.title, required this.onAdd});
 
-  final VoidCallback onTap;
+  final String title;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s3,
-            vertical: AppSpacing.s3,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppAddRow(onTap: onAdd),
+        Padding(
+          padding: const EdgeInsets.only(
+            top: AppSpacing.s4,
+            bottom: AppSpacing.s2,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const AppIcon(
-                iconData: AppIcons.plus,
-                size: AppSpacing.s4,
-                color: AppColors.ink3,
-              ),
-              const SizedBox(width: AppSpacing.s2),
-              Text(
-                context.l10n.timelineAdd,
-                style: AppTypography.label.copyWith(color: AppColors.ink3),
-              ),
-            ],
-          ),
+          child: Text(title, style: AppTypography.title),
         ),
-      ),
+      ],
     );
   }
 }

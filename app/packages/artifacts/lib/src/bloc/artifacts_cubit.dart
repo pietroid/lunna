@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:artifacts/src/data/artifacts_repository.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:bloc/bloc.dart';
+import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 
 /// Whether Entregas has been read yet.
@@ -101,7 +102,7 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
   /// Reads everything.
   Future<void> load() => _run(_repository.load);
 
-  /// Puts a delivery in the queue.
+  /// Puts a delivery in the queue, or, [started], begins it at once.
   Future<bool> create({
     required String title,
     CatalogType? type,
@@ -110,6 +111,7 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
     int? blockMinutes,
     DateTime? deadline,
     bool top = false,
+    bool started = false,
   }) => _run(
     () => _repository.create(
       title: title,
@@ -119,6 +121,7 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
       blockMinutes: blockMinutes,
       deadline: deadline,
       top: top,
+      started: started,
     ),
   );
 
@@ -149,29 +152,70 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
 
   /// Moves a delivery to [index] in the queue, drawn there at once.
   Future<void> move(String id, int index) {
-    final data = state.data;
-    if (data != null) {
-      final queue = data.queue;
-      final moving = queue.where((a) => a.id == id).firstOrNull;
-      if (moving != null) {
-        queue
-          ..remove(moving)
-          ..insert(index.clamp(0, queue.length), moving);
-        emit(
-          state.copyWith(
-            data: ArtifactsData(
-              artifacts: [...queue, ...data.done],
-              catalog: data.catalog,
-              goals: data.goals,
-              schedule: data.schedule,
-              topTypes: data.topTypes,
-            ),
-          ),
-        );
-      }
-    }
+    _moveNow(id, index, (a) => a);
     return _run(() => _repository.move(id, index));
   }
+
+  /// Begins a delivery: it goes to Em andamento, its time running from
+  /// now to the end of its [deadline] (given when it had none), drawn
+  /// there at once. A refusal puts it back.
+  Future<void> start(String id, {DateTime? deadline}) async {
+    final before = state.data;
+    final artifact = state.byId(id);
+    if (before == null || artifact == null) return;
+    _put(
+      before,
+      before.artifacts.map(
+        (a) => a.id != id
+            ? a
+            : a.copyWith(
+                startedAt: () => a.startedAt ?? clock.now(),
+                deadline: deadline == null ? null : () => deadline,
+              ),
+      ),
+    );
+    final ok = await _run(
+      () => _repository.update(
+        id,
+        started: true,
+        deadline: deadline == null ? null : () => deadline,
+      ),
+    );
+    if (!ok) _put(before, before.artifacts);
+  }
+
+  /// Puts a delivery back among those not begun, at [index] in the queue,
+  /// drawn there at once.
+  Future<void> stop(String id, int index) {
+    _moveNow(id, index, (a) => a.copyWith(startedAt: () => null));
+    return _run(() => _repository.move(id, index, stop: true));
+  }
+
+  /// Draws [id] at [index] in the queue at once, changed by [change].
+  void _moveNow(String id, int index, Artifact Function(Artifact) change) {
+    final data = state.data;
+    if (data == null) return;
+    final queue = data.queue;
+    final moving = queue.where((a) => a.id == id).firstOrNull;
+    if (moving == null) return;
+    queue
+      ..remove(moving)
+      ..insert(index.clamp(0, queue.length), change(moving));
+    _put(data, [...queue, ...data.done]);
+  }
+
+  /// Draws [artifacts] in place of [data]'s, the rest as it was.
+  void _put(ArtifactsData data, Iterable<Artifact> artifacts) => emit(
+    state.copyWith(
+      data: ArtifactsData(
+        artifacts: [...artifacts],
+        catalog: data.catalog,
+        goals: data.goals,
+        schedule: data.schedule,
+        topTypes: data.topTypes,
+      ),
+    ),
+  );
 
   /// Removes a delivery, and what waited in the backlog for it, so the day
   /// reads itself again.

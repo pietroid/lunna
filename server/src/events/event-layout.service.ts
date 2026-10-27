@@ -1029,6 +1029,31 @@ export class EventLayoutService {
     if (task.notBefore !== undefined) {
       await this._tasks.update(user, { ...task, notBefore: undefined });
     }
+    await this._beginArtifact(user, task, start);
+  }
+
+  /**
+   * A task of a delivery begun begins the delivery, when it was not: it
+   * goes to Em andamento and its time runs from now.
+   */
+  private async _beginArtifact(
+    user: CalendarUser,
+    task: Task,
+    start: Date,
+  ): Promise<void> {
+    if (task.artifactId === undefined || this._artifacts === undefined) return;
+    const artifact = await this._artifacts.get(user, task.artifactId);
+    if (
+      artifact === undefined ||
+      artifact.startedAt !== undefined ||
+      artifact.doneAt !== undefined
+    ) {
+      return;
+    }
+    await this._artifacts.update(user, {
+      ...artifact,
+      startedAt: start.toISOString(),
+    });
   }
 
   /**

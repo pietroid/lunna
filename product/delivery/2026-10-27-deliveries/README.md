@@ -1,9 +1,8 @@
 # Entregas, simplified: the day it is due, what is late first, both sections dragged
 
 Issue [#48](https://github.com/pietroid/lunna/issues/48), **mockup track**,
-designed unattended by the queue. This is the draft: sections 1 and 2 and
-the Build brief. The person approves (or answers) on the issue; the build
-is a fresh session, `/create build deliveries`.
+designed and built unattended by the queue. The design was approved on
+the issue ("Approve"); the build is sections 3 to 5.
 
 ## 1. The prompt
 
@@ -20,6 +19,10 @@ From [issue #48](https://github.com/pietroid/lunna/issues/48), verbatim:
 > - We can drag nao iniciadas para em andamento and vice versa, but the ordering depends on the logic that we already have
 > - We should have adicionar buttons also to the last part of each section, as we do in the timeline
 > - Review if the proportions are right: consider the total time vs completed ratio on one side and total delivery delta vs already passed since beginning
+
+Answer on the issue, after the design:
+
+> Approve
 
 ## 2. The design
 
@@ -108,99 +111,142 @@ Drawn from known patterns, not browsed (no Mobbin session here):
 
 ### Open questions
 
+The approval answered neither, so the build kept both as proposed:
+
 1. Should the schedule line (*A fila pede … · você tem … livres até …*) go too?
    Kept for now.
 2. Should an overdue delivery that was **never begun** be pulled into Em
    andamento as urgent? Proposed: no, it stays in the queue with its day
    in red.
 
-## Build brief
+## 3. What was built
 
-Starts with `/create build deliveries`. Read this, then
-`product/spec/artifacts.md`, then the files below.
+![Lunna, the real build](img/build-lunna.png)
 
-### Files the design session wrote (uncommitted, kept for the build)
+![Focus, the real build](img/build-focus.png)
 
-- `app/lib/deliveries_preview.dart`: the preview entry point, scenes 1–3
-  (fixed clock, Tue 27 Oct 10:00). Delete after the build's prints.
-- `app/packages/artifacts/lib/src/models/models.dart`: `Artifact.startedAt`
-  (from `startedAt` on the wire, in `copyWith` and `props`); `progressAt`
-  now runs from `startedAt` and is null when not begun.
-- `app/packages/artifacts/lib/src/view/pace_bars.dart`: `workDone` by
-  minutes; `isStarted` = `startedAt != null`; `isUrgent`; `progressGroups`
-  puts urgent first; the key (time done; the due day or *atrasada*).
-- `app/packages/artifacts/lib/src/view/artifact_row.dart`: rewritten (no
-  subtitle, urgent tint and tag, not-begun rows with no bar).
-- `app/packages/artifacts/lib/src/view/start_sheet.dart` (new) and its
-  export in `view.dart`: `showStartSheet(context, artifact) → DateTime?`.
-- `app/packages/artifacts/lib/src/view/artifacts_page.dart`: both headings
-  always drawn, an `_AddRow` ending each section (both open
-  `showArtifactSheet` for now).
-- `app/packages/app_ui/lib/src/theme/app_colors.dart`: `urgentFill`.
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`): `artifactUrgent`,
-  `artifactStartTitle`, `artifactStartBody`, `artifactStartInDays`,
-  `artifactStartInWeeks`, `artifactStartOtherDay`,
-  `artifactStartOtherDayHint`, `artifactStart`. The add row reuses
-  `timelineAdd`.
+The real widgets, shot from a preview entry point on fixed data (Tuesday
+27 October, 10:00; deleted after the prints): (1) Entregas, the late one
+first, red and tagged; (2) a delivery with no day dropped into Em
+andamento asks for one; (3) begun, it lands by the rule, its bar empty;
+(4) Em andamento's **+ Adicionar**: the creation sheet with a day already
+set a week out, no "Entra na fila", and **Começar**.
 
-The existing `pace_test.dart` and `artifacts_page_test.dart` were not run
-in the design session and expect the old rules (steps, `isStarted` by work
-done, the subtitle): they will fail until the build updates them.
+### The contract
+
+**Begun is a stored fact, and nothing is begun without a deadline.**
+`artifact.started_at` is set by a drag into Em andamento, by writing one
+down there, or by beginning one of its tasks on the day; it is cleared
+only by a drag back into Não iniciadas. The red bar runs from it to the
+end of the deadline day; the green is minutes done over the whole time.
+Urgent = begun and (past its day or more than 15 points behind), always
+first.
 
 ### Server
 
-- `artifact.started_at timestamptz null` (schema + `npm run db:generate`);
-  the migration backfills it, for open deliveries with a done task, with
-  that delivery's earliest task `event` start (or `done_at`).
-- `ArtifactView.startedAt` on the wire.
-- `PATCH /artifacts/:id { started: true|false, deadline? }`: `true` sets
-  `started_at` = now if null, and **refuses** without a deadline on the row
-  or in the request (*"Dê um prazo para começar a entrega."*); `false`
-  clears it. A delivered one is refused as today. Combine with
-  `POST /artifacts/:id/move { index }` for a drop into Não iniciadas (one
-  call: accept `started: false` on the move, or two calls; pick one and
-  write it in the spec).
-- `POST /artifacts { …, started: true }` begins it on creation (needs a
-  deadline, same refusal).
-- Beginning a task of a delivery (`POST /tasks/:id/start`, a drop with
-  `start: true`, the guard's answers) sets its `started_at` when null.
-- The agent: `actions/` gets the start/stop verb only if cheap (one
-  `Action`); otherwise note it in the spec's *Not yet*.
-- Analytics: the new write gets its row in `server/src/analytics/events.ts`
-  if it is a new route.
-- Specs: the PATCH (start with/without a deadline, stop, refusal on a
-  delivered one), the backfill (PGlite), a task start beginning its
-  delivery.
+- `db/schema.ts`: `artifact.started_at timestamptz`. Migration
+  `drizzle/0013_artifact_started.sql` adds it and backfills it, for open
+  deliveries, with the earliest start of any of their tasks' events or
+  the earliest `done_at`, whichever came first.
+- `artifacts/`: `startedAt` on `Artifact`, `ArtifactView` and both
+  stores. `POST /artifacts { started: true }` and `PATCH /artifacts/:id
+  { started: true|false }`; `true` needs a deadline (on the row or in
+  the same request), or it's refused with *"Dê um prazo para começar a
+  entrega."*, and keeps the first start's hour if it was already begun. A
+  delivered one is refused (*"Essa entrega já foi entregue."*).
+  `POST /artifacts/:id/move { index, started: false }` stops and places it
+  in one call; `started: true` on a move is refused (beginning is the
+  PATCH's, since it may need a day).
+- `events/event-layout.service.ts`: `_begin` (every way a task starts:
+  the ▶, a drop with `start: true`, the guard's answers) calls
+  `_beginArtifact`, which sets the task's delivery's `started_at` when it
+  was null.
+- No new route, so no new analytics row (`PATCH` and `move` already have
+  theirs).
 
 ### App
 
-- `ArtifactsRepository.update(..., started:)` / `create(..., started:)`,
-  cubit `start(id, {DateTime? deadline})`, `stop(id, index)`, optimistic
-  like `move`. `DemoArtifactsRepository` follows (landing demo).
-- **The drag across** (`artifacts_page.dart`): one `SliverReorderableList`
-  over `[...started, divider, ...waiting]`, where the divider item is Em
-  andamento's add row plus the Não iniciadas heading, not draggable. A drop
-  above the divider: begin (sheet first if no deadline; closing it
-  cancels, the cubit restores the row); index ignored, the rule sorts.
-  Below: stop when it was begun, then the queue index (`queueIndexOf`
-  over `waiting`). Drag stays off under a shelf filter. Em andamento rows
-  drag too now.
-- `_AddRow`: promote to `app_ui` as `AppAddRow` and use it in
-  `timeline_list.dart` too (one widget, two places).
-- Em andamento's add opens `ArtifactSheet(started: true)`: the deadline
-  row is required, the "Entra na fila" row hidden.
-- The delivery's page uses `PaceBars` too: check its header reads well
-  with the new key (time, due day).
-- Tests: `pace_test.dart` (minutes share, from `startedAt`, urgent first,
-  overdue counts, not begun has no time), `artifacts_page_test.dart`
-  (no subtitle, urgent tag, due day, both add rows, both headings with an
-  empty Em andamento, a drop across begins / stops, the sheet's cancel),
-  `models_test.dart` (`startedAt` read). Under both brands.
-- Spec: rewrite "Entregas is two groups" and "One bar, two fills" in
-  `product/spec/artifacts.md`, and the Entregas paragraph in `AGENTS.md`
-  (Em andamento by `started_at`, urgent first, minutes over time from the
-  start).
+- `artifacts`: `Artifact.startedAt`; `progressAt` from it; `workDone` by
+  minutes; `isStarted`, `isUrgent`, `progressGroups` (urgent first).
+  `ArtifactRow` with no subtitle, the urgent tint and tag, no bar when not
+  begun. `PaceBars` keyed with time done and the day due.
+  `ArtifactsRepository.create(started:)`, `update(started:)`,
+  `move(stop:)`; `ArtifactsCubit.start(id, deadline:)` and `stop(id,
+  index)`, both drawn before the server answers, `start` put back on a
+  refusal. `StartSheet` (`showStartSheet`). `ArtifactSheet(started:,
+  top:)`. `ArtifactsPage`: one `SliverReorderableList` over
+  `[...started, the line, ...waiting]`; `_drop` begins, stops or moves.
+- `app_ui`: `AppAddRow` (new), Tempo's add row promoted; `timeline_list`
+  uses it. `AppColors.urgentFill` in both brands.
+- `lib/demo/data/demo_artifacts.dart`: the landing demo follows the new
+  signatures; *Mapa astral da Renata* is begun five days before, so the
+  demo still has something under way.
+- `product/spec/artifacts.md` and the Entregas paragraph of `AGENTS.md`
+  rewritten for the new rules.
 
-### Cost and time of the design session
+### Tests
 
-Measured by the queue, which writes the figures in the PR.
+- Server, 350 in all, passing. New: 5 in `artifacts.controller.spec.ts`
+  (written down begun or not, with and without a day; begin, ask a day,
+  keep the first hour, stop; stop on a move at its place; refused on a
+  delivered one; begun by a task begun on the day, and staying stopped
+  after), the `startedAt` round trip and the `0013_artifact_started`
+  backfill on PGlite in `pg-artifact.store.spec.ts`.
+- App, `artifacts` package 48, passing under both brands: `pace_test`
+  rewritten (urgent first, overdue counts, minutes share, from
+  `startedAt`, no clock when not begun, both groups drag, two add rows, an
+  empty Em andamento still headed, the urgent tint, tag and danger-ink day,
+  a drag up begins, a drag up with no day opens the sheet and closing it
+  begins nothing, a drag down stops at its place), `models_test`
+  (`startedAt` read, the bar from it), `artifacts_cubit_test` (start drawn
+  at once, a refused start put back, stop drawn in place).
+- `.tool/check --all`: every step green (app analyze; every package's
+  tests under Focus and Lunna; server eslint, tsc, tests). No flaky test
+  showed up.
+
+### Where the build differs from the mockup
+
+- **The row snaps back while the sheet asks for a day.** The mockup drew
+  the dragged delivery already in Em andamento under the sheet (2A). Here
+  it stays in Não iniciadas until **Começar**, then moves to its place.
+  The result is the same, and closing the sheet leaves nothing to undo.
+- **The sheet from Em andamento's + ends in *Começar*** rather than *Pôr
+  na fila*, and opens with a day a week out (the deadline is required, so
+  the button is never disabled for want of one). Not on the board; it
+  follows 1F.
+- **Não iniciadas' + writes at the end of the queue** by default (the
+  sheet's *Entra na fila* starts on *No fim*); the `AppFab` keeps
+  writing at the top, as before.
+- The start sheet's day column takes the room its short names leave
+  (*Escolher no calendário* was cut off in the first print).
+
+### Decided unattended in the build
+
+- **Stopping is one call**: `POST /artifacts/:id/move { index, started:
+  false }`, so a drop into Não iniciadas can't leave a delivery stopped
+  but out of place. Beginning stays on the `PATCH`, since it may carry
+  the day.
+- **A task begun begins its delivery even after it was stopped**: the
+  stop holds until the next task of it is begun on Tempo.
+- **The migration backfills from the first task begun or done**, which
+  is a little wider than the brief's "a done task": a delivery whose one
+  task is running counts as begun too.
+
+### Not done
+
+- The agent has no verb to begin or stop a delivery, and the delivery's
+  page has no control for it: written in the spec's *Not yet*.
+- Never run against a real Postgres (Neon): the migration ran on PGlite in
+  the spec.
+
+## 4. How to turn it on
+
+Nothing to set. The migration runs on the server's boot
+(`migrateDatabase`), backfilling `started_at`; no env var. An app build
+older than this server sends no `started`, so deliveries begun before
+the migration show as begun (the backfill) and new ones are begun only by
+starting one of their tasks.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

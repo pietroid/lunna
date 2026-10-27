@@ -138,10 +138,17 @@ class _Choice extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Expanded(child: Text(label, style: AppTypography.body)),
-            Text(
-              day,
-              style: AppTypography.label.copyWith(color: AppColors.ink2),
+            // The names are short; the day takes what is left.
+            Text(label, style: AppTypography.body),
+            const SizedBox(width: AppSpacing.s3),
+            Expanded(
+              child: Text(
+                day,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: AppTypography.label.copyWith(color: AppColors.ink2),
+              ),
             ),
             const SizedBox(width: AppSpacing.s3),
             SizedBox(

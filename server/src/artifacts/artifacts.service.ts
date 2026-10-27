@@ -37,6 +37,9 @@ import {
   stretchStart,
 } from './stretch';
 
+/** What beginning a delivery with no day is refused with. */
+const NEEDS_DEADLINE = 'Dê um prazo para começar a entrega.';
+
 /** How many of the most used kinds the answer names. */
 const TOP_TYPES = 3;
 
@@ -140,9 +143,13 @@ export class ArtifactsService {
    */
   async create(
     user: CalendarUser,
-    input: NewArtifact,
+    { started, ...input }: NewArtifact,
     at: QueueEnd,
+    now = new Date(),
   ): Promise<string> {
+    if (started === true && input.deadline === undefined) {
+      throw new BadRequestException(NEEDS_DEADLINE);
+    }
     let next = input;
     if (input.typeId !== undefined) {
       const type = await this._type(user, input.typeId);
@@ -169,6 +176,7 @@ export class ArtifactsService {
     const created = await this._artifacts.insert(user, {
       ...rest,
       ...(blockMinutes == null ? {} : { blockMinutes }),
+      ...(started === true ? { startedAt: now.toISOString() } : {}),
       position,
     });
     return created.id;
@@ -195,6 +203,17 @@ export class ArtifactsService {
       next.doneAt = now.toISOString();
     }
     if (edit.done === false) delete next.doneAt;
+    if (edit.started !== undefined && artifact.doneAt !== undefined) {
+      throw new BadRequestException('Essa entrega já foi entregue.');
+    }
+    if (edit.started === true && next.startedAt === undefined) {
+      // A clock needs an end: nothing is begun without a day.
+      if (next.deadline === undefined) {
+        throw new BadRequestException(NEEDS_DEADLINE);
+      }
+      next.startedAt = now.toISOString();
+    }
+    if (edit.started === false) delete next.startedAt;
 
     await this._artifacts.update(user, next);
   }
@@ -202,8 +221,15 @@ export class ArtifactsService {
   /**
    * Moves an open delivery to [index] in the queue of open ones, counted as
    * the queue will be once it is there. Fractional, so one row is written.
+   * With [stop], it was dropped among those not begun, and is no longer
+   * begun, whatever was done of it.
    */
-  async move(user: CalendarUser, id: string, index: number): Promise<void> {
+  async move(
+    user: CalendarUser,
+    id: string,
+    index: number,
+    { stop = false } = {},
+  ): Promise<void> {
     const artifact = await this._require(user, id);
     if (artifact.doneAt !== undefined) {
       throw new BadRequestException('Essa entrega já foi entregue.');
@@ -223,7 +249,9 @@ export class ArtifactsService {
             ? before + 1
             : (before + after) / 2;
 
-    await this._artifacts.update(user, { ...artifact, position });
+    const next: Artifact = { ...artifact, position };
+    if (stop) delete next.startedAt;
+    await this._artifacts.update(user, next);
   }
 
   /**
@@ -397,6 +425,7 @@ function viewOf(artifact: Artifact, tasks: Task[], day: Day): ArtifactView {
     blockMinutes: artifact.blockMinutes ?? null,
     deadline: artifact.deadline ?? null,
     createdAt: artifact.createdAt,
+    startedAt: artifact.startedAt ?? null,
     doneAt: artifact.doneAt ?? null,
     tasks: tasks.map((task) => taskViewOf(task, day)),
   };
