@@ -1,13 +1,14 @@
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_format.dart';
 import 'package:l10n/l10n.dart';
 
-/// How far a delivery's work has got, from 0 to 1: its tasks done out of
-/// its tasks, or, with none written down, its minutes worked.
+/// How far a delivery's work has got, from 0 to 1: the minutes of its
+/// tasks done out of its whole time, so a three-hour task weighs twelve
+/// times a fifteen-minute one, as the clock it is read against does.
 double workDone(Artifact artifact) {
   if (artifact.isDone) return 1;
-  if (artifact.steps > 0) return artifact.stepsDone / artifact.steps;
   if (artifact.minutes == 0) return 0;
   return (artifact.doneMinutes / artifact.minutes).clamp(0, 1);
 }
@@ -35,10 +36,10 @@ bool isBehind(Artifact artifact, DateTime now) {
 /// red showing past the green is work lagging behind it, by as much as
 /// shows. A delivery half done with half its time gone is all green.
 ///
-/// Under it, a key in the same two colours: what the green counts (tasks
-/// done) and what the red is running to (when it ends), the latter in the
-/// danger ink once the day has passed. With no deadline there is only the
-/// green.
+/// Under it, a key in the same two colours: what the green counts (the
+/// time done of the whole) and what the red is running to (the day it is
+/// due), the latter in the danger ink once it is urgent ([isUrgent]). With
+/// no deadline, or not begun, there is only the green.
 /// {@endtemplate}
 class PaceBars extends StatelessWidget {
   /// {@macro pace_bars}
@@ -55,7 +56,7 @@ class PaceBars extends StatelessWidget {
     final l10n = context.l10n;
     final a = artifact;
     final time = a.progressAt(now);
-    final remaining = remainingLabel(l10n, a, now);
+    final deadline = a.deadline;
     final work = workDone(a);
 
     return Column(
@@ -82,18 +83,21 @@ class PaceBars extends StatelessWidget {
             Flexible(
               child: _Key(
                 color: AppColors.paceDone,
-                text: a.steps > 0
-                    ? l10n.artifactSteps(a.stepsDone, a.steps)
-                    : '${(work * 100).round()}%',
+                text: l10n.artifactTimeDone(
+                  formatMinutes(l10n, a.doneMinutes),
+                  formatMinutes(l10n, a.minutes),
+                ),
               ),
             ),
             const SizedBox(width: AppSpacing.s3),
-            if (time != null && remaining != null)
+            if (time != null && deadline != null)
               Flexible(
                 child: _Key(
                   color: AppColors.paceTime,
-                  text: remaining,
-                  ink: isOverdue(a, now) ? AppColors.dangerInk : null,
+                  text: isOverdue(a, now)
+                      ? remainingLabel(l10n, a, now)!
+                      : deadlineLabel(l10n, a, now),
+                  ink: isUrgent(a, now) ? AppColors.dangerInk : null,
                 ),
               ),
           ],
@@ -157,10 +161,17 @@ class _Key extends StatelessWidget {
   }
 }
 
-/// Whether any of [artifact]'s work is done: a task ticked off, or minutes
-/// worked on it.
-bool isStarted(Artifact artifact) =>
-    artifact.stepsDone > 0 || artifact.doneMinutes > 0;
+/// Whether it has been begun: moved into Em andamento, or a task of it
+/// begun on the day. Moved back to Não iniciadas, it is not, whatever was
+/// done of it.
+bool isStarted(Artifact artifact) => artifact.startedAt != null;
+
+/// Whether a delivery under way is late: its day has gone by, or its time
+/// is ahead of its work by more than [paceSlack]. Entregas draws it first,
+/// on a red-tinged card tagged Urgente.
+bool isUrgent(Artifact artifact, DateTime now) =>
+    isStarted(artifact) &&
+    (isOverdue(artifact, now) || isBehind(artifact, now));
 
 /// How far the red runs past the green at [now]: the share of the time gone
 /// less the share of the work done. Negative when the work is ahead; with
@@ -169,7 +180,8 @@ double lagOf(Artifact artifact, DateTime now) =>
     (artifact.progressAt(now) ?? 0) - workDone(artifact);
 
 /// [queue] (in its order) cut in two, as Entregas draws it: what is under
-/// way, the one most behind its time first, and what has not been begun,
+/// way, the urgent ones first and then the one most behind its time first,
+/// and what has not been begun,
 /// left in the queue's order, which is the one a drag sets.
 ({List<Artifact> started, List<Artifact> waiting}) progressGroups(
   List<Artifact> queue,
@@ -178,6 +190,8 @@ double lagOf(Artifact artifact, DateTime now) =>
   final order = {for (final (i, a) in queue.indexed) a.id: i};
   final started = queue.where(isStarted).toList()
     ..sort((a, b) {
+      final urgent = isUrgent(a, now);
+      if (urgent != isUrgent(b, now)) return urgent ? -1 : 1;
       final byLag = lagOf(b, now).compareTo(lagOf(a, now));
       return byLag != 0 ? byLag : order[a.id]!.compareTo(order[b.id]!);
     });

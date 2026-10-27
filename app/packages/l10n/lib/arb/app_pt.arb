@@ -1270,6 +1270,35 @@
   "artifactsNotStarted": "Não iniciadas",
   "artifactPaceOn": "no ritmo",
   "artifactPaceBehind": "atrás do ritmo",
+  "artifactUrgent": "Urgente",
+  "artifactStartTitle": "Começar {title}",
+  "@artifactStartTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "artifactStartBody": "Ela vai para Em andamento e o tempo dela passa a correr até o prazo. Até quando?",
+  "artifactStartInDays": "{days, plural, =1{Em 1 dia} other{Em {days} dias}}",
+  "@artifactStartInDays": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "artifactStartInWeeks": "{weeks, plural, =1{Em 1 semana} other{Em {weeks} semanas}}",
+  "@artifactStartInWeeks": {
+    "placeholders": {
+      "weeks": {
+        "type": "int"
+      }
+    }
+  },
+  "artifactStartOtherDay": "Outro dia",
+  "artifactStartOtherDayHint": "Escolher no calendário",
+  "artifactStart": "Começar",
   "routineChecklistHint": "Uma lista? Um item por linha",
   "eventChecklistLabel": "Lista",
   "checklistCount": "{done} de {total}",

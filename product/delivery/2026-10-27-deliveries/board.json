@@ -1,0 +1,109 @@
+{
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Entregas: the name and how it is going",
+      "why": "No subtitle; what is under way shows its day, and the late one is first and red.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 300,
+          "y": 313,
+          "label": "No subtitle",
+          "text": "The second line (kind · time · no ritmo) and the value are gone. A row is its name and its bar."
+        },
+        {
+          "id": "B",
+          "x": 250,
+          "y": 210,
+          "label": "Urgente, first",
+          "text": "Overdue, or time >15 pts ahead of work: urgentFill card + AppTag Urgente (AppIcons.warning, dangerInk). Always first in Em andamento, then the lag rule."
+        },
+        {
+          "id": "C",
+          "x": 262,
+          "y": 256,
+          "label": "The day it is due",
+          "text": "Red key: 'até amanhã', 'até sex, 6 nov'; 'atrasada N dias' once past. dangerInk when urgent."
+        },
+        {
+          "id": "D",
+          "x": 140,
+          "y": 256,
+          "label": "Green is time",
+          "text": "'1h de 3h': minutes of done tasks over the whole time, the same share the green bar draws."
+        },
+        {
+          "id": "E",
+          "x": 225,
+          "y": 607,
+          "label": "Not begun: no bar",
+          "text": "No clock runs yet, so no bar: its time and its day at the end of the line."
+        },
+        {
+          "id": "F",
+          "x": 140,
+          "y": 513,
+          "label": "+ Adicionar per section",
+          "text": "Tempo's add row ends each section. Em andamento: begun at once (asks its day). Não iniciadas: end of the queue."
+        },
+        {
+          "id": "G",
+          "x": 190,
+          "y": 562,
+          "label": "Drag across",
+          "text": "Long press drags a row up into Em andamento (begins it) or down into Não iniciadas (stops it, lands where dropped). Both headings always drawn."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Begun with no day: asks for one",
+      "why": "The red bar runs from the start to the deadline, so a delivery needs a day before its clock starts.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 190,
+          "y": 164,
+          "label": "Dropped in Em andamento",
+          "text": "Sinastria (no deadline) was dragged up. With a deadline it starts at once, no sheet."
+        },
+        {
+          "id": "B",
+          "x": 202,
+          "y": 642,
+          "label": "Four days to pick",
+          "text": "Em 3 dias, Em 1 semana (picked), Em 2 semanas, Outro dia (wheel picker). Começar is the one accent."
+        },
+        {
+          "id": "C",
+          "x": 310,
+          "y": 483,
+          "label": "Close cancels",
+          "text": "Nothing is begun without a day: the row goes back to Não iniciadas where it was."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Begun: placed by the rule",
+      "why": "Where it was let go does not matter in Em andamento; the order is urgent first, then most behind.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 300,
+          "y": 313,
+          "label": "Lands by the rule",
+          "text": "Lag 0 (no time gone, no work): under the urgent one, above Curso de tarô (lag ≈ 0, later in the queue)."
+        },
+        {
+          "id": "B",
+          "x": 150,
+          "y": 358,
+          "label": "Its clock starts now",
+          "text": "'0 min de 2h', 'até ter, 3 nov': the bar fills from started_at to the end of the day picked."
+        }
+      ]
+    }
+  ]
+}

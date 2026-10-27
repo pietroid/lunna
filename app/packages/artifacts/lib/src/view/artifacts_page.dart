@@ -7,6 +7,7 @@ import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/all_artifacts_page.dart';
 import 'package:artifacts/src/view/artifact_page.dart';
 import 'package:artifacts/src/view/artifact_row.dart';
+import 'package:artifacts/src/view/artifact_sheet.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
 import 'package:artifacts/src/view/goal_card.dart';
 import 'package:artifacts/src/view/goal_sheet.dart';
@@ -220,7 +221,7 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
               // What is under way, the one most behind its time on top,
               // where nothing moves it: its place is how late it is. Then
               // what has not been begun, the queue a drag puts in order.
-              if (started.isNotEmpty) ...[
+              if (all.isNotEmpty) ...[
                 _sectionHeading(l10n.artifactsInProgress),
                 SliverPadding(
                   padding: side,
@@ -234,11 +235,14 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                           ),
                           child: _row(context, artifact, now),
                         ),
+                      // Written down here, a delivery is begun at once,
+                      // and so asks for its day.
+                      _AddRow(
+                        onTap: () => unawaited(showArtifactSheet(context)),
+                      ),
                     ],
                   ),
                 ),
-              ],
-              if (waiting.isNotEmpty) ...[
                 _sectionHeading(l10n.artifactsNotStarted),
                 SliverPadding(
                   padding: side,
@@ -272,6 +276,14 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                             : row,
                       );
                     },
+                  ),
+                ),
+                SliverPadding(
+                  padding: side,
+                  sliver: SliverToBoxAdapter(
+                    child: _AddRow(
+                      onTap: () => unawaited(showArtifactSheet(context)),
+                    ),
                   ),
                 ),
               ],
@@ -336,6 +348,46 @@ class _Heading extends StatelessWidget {
           Expanded(child: Text(title, style: AppTypography.title)),
           trailing,
         ],
+      ),
+    );
+  }
+}
+
+/// The last line of a section, as the timeline ends its stages: a + and
+/// Adicionar, writing a delivery down in that section.
+class _AddRow extends StatelessWidget {
+  const _AddRow({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s3,
+            vertical: AppSpacing.s3,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppIcon(
+                iconData: AppIcons.plus,
+                size: AppSpacing.s4,
+                color: AppColors.ink3,
+              ),
+              const SizedBox(width: AppSpacing.s2),
+              Text(
+                context.l10n.timelineAdd,
+                style: AppTypography.label.copyWith(color: AppColors.ink3),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -9,4 +9,5 @@ export 'goal_card.dart';
 export 'goal_sheet.dart';
 export 'pace_bars.dart';
 export 'shelf_filter.dart';
+export 'start_sheet.dart';
 export 'type_sheet.dart';

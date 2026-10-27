@@ -115,6 +115,12 @@ abstract final class AppColors {
       ? Color(0xFF1FA37A)
       : Color(0xFF00B481);
 
+  /// The fill behind a delivery that is late: [fill] with a little red in
+  /// it, so the card reads as urgent before its tag is read.
+  static const urgentFill = AppBrand.isLunna
+      ? Color(0xFFFDEDEF)
+      : Color(0xFF2A1418);
+
   /// The fill behind a block a routine puts on every day.
   ///
   /// One of the two fills that is not a state. Lunch and the morning routine
