@@ -44,17 +44,6 @@ export interface Task {
   checklist?: ChecklistItem[];
 }
 
-/** One day of a flexible routine, to be written down as a task. */
-export interface RoutineTask {
-  routineId: string;
-  title: string;
-  minutes: number;
-  /** ISO 8601, the routine's hour that day, which is also its anchor. */
-  occurrence: string;
-  /** The routine's list, copied into the day. */
-  checklist?: ChecklistItem[];
-}
-
 /** What a task is written down with. */
 export interface NewTask {
   title: string;

@@ -86,7 +86,7 @@ app/
     app_ui/             the design system: AppBrand, theme, tokens, widgets
     auth/               Better Auth client: Google sign-in, token store
     l10n/               every user-facing string (pt-BR)
-    notifications/      local reminder queue + background refresh
+    notifications/      local reminder queue, its buttons, background refresh
     artifacts/          Entregas: goals, queue, catalogue, sheets, the delivery's page
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
@@ -104,7 +104,7 @@ server/
     events/             the timeline routes, the read model, the layout rules
     links/              link previews: the guarded page fetcher, the image proxy
     tasks/              TaskStore (Postgres) over the task table
-    notifications/      the reminder plan, derived from the calendar
+    notifications/      the reminder plan (asks per edge), derived from the calendar
     artifacts/          ArtifactStore (+ its module): deliveries, catalogue, goals, the schedule
     routines/           routine CRUD and day expansion
     time/               work hours, zones, the scheduler
@@ -182,20 +182,15 @@ is every day's, and `fixed`. **Reading a window writes down each day of each
 routine that falls in it**, with `INSERT … ON CONFLICT DO NOTHING` on
 (`routine_id`, `occurrence`):
 
-- A **flexible** routine (the default) writes each day as a `task` anchored
-  at the routine's hour (`not_before`). `TimelineService.day` does it, from
-  `CalendarService.routineDays`, which hands out only days whose hour is
-  still ahead. The day slides when something runs into it and waits to be
-  begun, like any anchored task. One nobody began by the end of its working
-  day is written off as `cancelled` (`isMissed`, by `catchUp`).
-- A **fixed** routine writes each day as an `event` row, in
-  `CalendarStore.window`. Nothing moves it.
+Every routine is **fixed** (`fixed` defaults to true; the flexible kind
+was removed with the reminders' lifecycle, see "Reminders"): each day is
+written as an `event` row, in `CalendarStore.window`. Nothing moves it.
 
 From then on that day is its own row and the other days are untouched.
 Taking a day off marks it `cancelled` rather than deleting it, so the next
 read does not bring it back.
 
-Changing a routine deletes its days that have not begun yet, both kinds;
+Changing a routine deletes its days that have not begun yet;
 the next read writes them again at the new hour and name. Removing a
 routine deletes the days ahead and keeps the ones that happened.
 
@@ -243,11 +238,11 @@ Two kinds of card:
   read (`TimelineService.day`), so the list and the calendar can never
   disagree. It either takes its turn in the queue, or keeps an hour of its
   own (`not_before`, the **anchor**): written down at an hour, dropped into
-  empty room at one, given one on the event page, snoozed, or a day of a
-  flexible routine. A task gets an `event` row (`event.task_id`) only when
+  empty room at one, given one on the event page, or snoozed. A task gets an `event` row (`event.task_id`) only when
   it is begun; that row is its real hour, and pause, extend and finish work
   on it. Ticking a task off sets `done_at`. A begun task whose hour runs out
-  is written down as done by `catchUp`. A task with `backlog` set waits in
+  with nobody saying so runs on in overtime, and is written down as done by
+  `catchUp` at the next fixed block or the end of the working day. A task with `backlog` set waits in
   the **backlog** ("Para depois") instead: it keeps its order and its
   length, has no hour, and the layout never sees it. `POST /tasks` writes
   into the backlog unless it says `backlog: false`, and then at the end of
@@ -424,9 +419,17 @@ current minute then: its first task is the next day's.
 queue, or an anchored one whose hour has come, sits at the current minute
 (`awaitingStart`) until the user says so. `POST /tasks/:id/start` writes its
 hour onto the calendar from this minute; `POST /tasks/:id/snooze` anchors it
-fifteen minutes out. Dropping a task at the very top of the day, or on the
+ten minutes after the later of its hour and now. Dropping a task at the very top of the day, or on the
 break under Agora (`start: true` on the move), counts as starting it.
-Events never wait.
+Events never wait: a fixed block starts at its hour, answered or not
+(`POST /events/:id/start` only confirms it, `POST /events/:id/delay`
+moves an unanswered one ten minutes on).
+
+**An end is answered, not assumed.** A begun block past its end with no
+`closed_at` is in overtime: its end follows the clock, capped at the next
+fixed block or the working day's end, where `catchUp` closes it. Done,
+extend (from the later of its end and now) and the reminders' buttons
+answer it.
 
 **A paused block owes its work.** Its end is dragged along with the clock
 (by `catchUp`, before every route that reads the day) and the queue after
@@ -434,8 +437,8 @@ it follows.
 
 **Nothing on the server runs on a timer that touches Postgres.** Neon bills
 the hours its compute is awake and puts it to sleep after 5 quiet minutes,
-so whatever changes with the clock (a paused block's end, a task whose hour
-ran out, a routine's day nobody began) is stored as when it happened and
+so whatever changes with the clock (a paused block's end, a block in
+overtime, one closed at its cap) is stored as when it happened and
 settled on that person's next request: `CatchUpInterceptor`
 (`events/catch-up.interceptor.ts`) runs `catchUp` before the handler, bound
 with `@UseInterceptors` on every controller that reads the day (timeline,
@@ -540,13 +543,27 @@ touching `server/src/artifacts/` or `app/packages/artifacts/`.
 
 ### Reminders
 
-`notifications.service.ts` plans them from the day for the next days. Only
-the **next** task (the earliest, anchored or not) gets a reminder, a `confirmStart` at its hour that asks
-rather than announces; tapping it opens *Começar agora* / *Esperar 15 min*.
-Every other task's hour moves too often to be worth one. Events get a plain
-`starting` reminder. An item's `eventId` is the id of the card a tap opens:
-the task's for a task. The phone mirrors the
-plan into local notifications, so reminders arrive without push or network.
+A block has two edges, its start and its end, and **every reminder asks
+about one of them** (`askStart`, `askEnd`), at its hour and again 10 and
+20 minutes later while nobody answers (the re-asks only within 24 h). A
+task not begun is asked about only when it is the next one; a fixed block,
+meetings included, is asked at both edges, plus a 15-minute `headsUp` when
+something runs right up to it. On iOS each ask has three buttons:
+**Confirmar** and **+10 min** answer from the lock screen without opening
+the app (a background engine posts the same route the card's button does,
+`X-Lunna-Via: notification`), and **Falar com a Lunna** opens the agent
+about the card. **A tap on the reminder itself always opens the app on the
+card.** Android has no buttons yet (#56) and keeps the start sheet.
+
+**Nothing ends in silence.** A begun block whose end passes with no answer
+(`event.closed_at` unset) is in **overtime**: `catchUp` drags its end along
+with the clock, the queue after it slides, and the card says "atrasado N
+min" (`overtimeMinutes`). It is closed, its task done there, at the start
+of the next fixed block or at the end of the working day. A fixed block
+starts at its hour whether or not anyone confirms it (`confirmed_at`).
+Every "not yet" and "more time" is **10 minutes from the later of the
+planned hour and now** (`STEP_MINUTES`, the app's `stepMinutes`). See
+[product/spec/notifications.md](./product/spec/notifications.md).
 
 ### The agent
 

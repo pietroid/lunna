@@ -1,8 +1,20 @@
+import 'package:app_ui/app_ui.dart' show AppBrand;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:l10n/l10n.dart';
+import 'package:notifications/src/models/notification_answer.dart';
 import 'package:timezone/timezone.dart' as tz;
+
+/// Where a reminder's button chosen without opening the app is answered.
+///
+/// Must be a top-level or static function marked
+/// `@pragma('vm:entry-point')`: the system runs it in an engine of its own,
+/// with nothing of the app set up.
+typedef BackgroundAction = void Function(NotificationResponse response);
+
+/// The category of a reminder that asks, whose buttons answer it.
+const askCategory = 'ask';
 
 /// {@template queued_notification}
 /// One reminder as the operating system's queue holds it.
@@ -17,6 +29,7 @@ class QueuedNotification {
     required this.timeSensitive,
     required this.daily,
     required this.payload,
+    this.asks = false,
   });
 
   /// The queue's own integer id.
@@ -40,6 +53,10 @@ class QueuedNotification {
 
   /// What comes back when it is tapped.
   final String payload;
+
+  /// Whether it asks about a block, and so carries the buttons that answer
+  /// it (on iOS; Android's come with #56).
+  final bool asks;
 }
 
 /// The device's notification queue, reduced to what the scheduler needs.
@@ -48,11 +65,17 @@ class QueuedNotification {
 /// channel. [LocalNotificationQueue] is the one real implementation.
 abstract interface class NotificationQueue {
   /// Sets the queue up, without asking for permission. [onTap] receives the
-  /// payload of a reminder tapped while the app is running.
-  Future<void> initialize({required void Function(String? payload) onTap});
+  /// payload of a reminder tapped while the app is running, and the id of
+  /// the button when one that opens the app was chosen;
+  /// [onBackgroundAction] answers the buttons that do not open it.
+  Future<void> initialize({
+    required void Function(String? payload, String? actionId) onTap,
+    BackgroundAction? onBackgroundAction,
+  });
 
-  /// The payload of the reminder that launched the app, if one did.
-  Future<String?> launchPayload();
+  /// The reminder that launched the app, and the button that did, if one
+  /// did.
+  Future<({String? payload, String? actionId})?> launchResponse();
 
   /// Whether reminders may be shown at all.
   Future<bool> isPermitted();
@@ -112,22 +135,48 @@ class LocalNotificationQueue implements NotificationQueue {
         AndroidFlutterLocalNotificationsPlugin
       >();
 
+  /// A reminder's three buttons, on iOS: Confirmar and +10 min answer
+  /// without opening the app; talking it over opens it. Android draws none
+  /// until #56, and its reminders open the app as before.
+  static final _askCategory = DarwinNotificationCategory(
+    askCategory,
+    actions: [
+      DarwinNotificationAction.plain(
+        NotificationAction.confirm.id,
+        _l10n.notificationActionConfirm,
+      ),
+      DarwinNotificationAction.plain(
+        NotificationAction.later.id,
+        _l10n.notificationActionLater,
+      ),
+      DarwinNotificationAction.plain(
+        NotificationAction.talk.id,
+        _l10n.notificationActionTalk(AppBrand.id),
+        options: {DarwinNotificationActionOption.foreground},
+      ),
+    ],
+  );
+
   @override
   Future<void> initialize({
-    required void Function(String? payload) onTap,
+    required void Function(String? payload, String? actionId) onTap,
+    BackgroundAction? onBackgroundAction,
   }) async {
     await _plugin.initialize(
-      settings: const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      settings: InitializationSettings(
+        android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
         // Nothing is asked for here. The prompt waits for the moment the
         // user does something a reminder would be for.
         iOS: DarwinInitializationSettings(
           requestAlertPermission: false,
           requestBadgePermission: false,
           requestSoundPermission: false,
+          notificationCategories: [_askCategory],
         ),
       ),
-      onDidReceiveNotificationResponse: (response) => onTap(response.payload),
+      onDidReceiveNotificationResponse: (response) =>
+          onTap(response.payload, response.actionId),
+      onDidReceiveBackgroundNotificationResponse: onBackgroundAction,
     );
 
     await _android?.createNotificationChannel(_blocksChannel);
@@ -135,11 +184,12 @@ class LocalNotificationQueue implements NotificationQueue {
   }
 
   @override
-  Future<String?> launchPayload() async {
+  Future<({String? payload, String? actionId})?> launchResponse() async {
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details == null || !details.didNotificationLaunchApp) return null;
 
-    return details.notificationResponse?.payload;
+    final response = details.notificationResponse;
+    return (payload: response?.payload, actionId: response?.actionId);
   }
 
   @override
@@ -207,6 +257,7 @@ class LocalNotificationQueue implements NotificationQueue {
           interruptionLevel: notification.timeSensitive
               ? InterruptionLevel.timeSensitive
               : InterruptionLevel.active,
+          categoryIdentifier: notification.asks ? askCategory : null,
         ),
       ),
     );

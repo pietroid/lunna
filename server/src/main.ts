@@ -29,7 +29,8 @@ async function bootstrap() {
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    // X-Lunna-Via: where a write came from, for the measuring.
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Lunna-Via'],
     exposedHeaders: ['set-auth-token'],
     maxAge: 86400,
   });

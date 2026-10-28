@@ -2,17 +2,19 @@ import 'package:equatable/equatable.dart';
 
 /// What a reminder is for.
 ///
-/// [confirmStart], [starting] and [almostFinishing] follow a block.
-/// [morning] and [evening] follow the clock, once each every day.
+/// [askStart], [askEnd] and [headsUp] follow a block, and ask: their
+/// buttons answer for it. [morning] and [evening] follow the clock, once
+/// each every day.
 enum NotificationKind {
-  /// A flexible block's hour came, and it waits for the user to begin it.
-  confirmStart,
+  /// A block's hour came: a task waits to be begun, a fixed block started.
+  askStart,
 
-  /// A fixed block begins.
-  starting,
+  /// A block's end came: is it over?
+  askEnd,
 
-  /// A block ends in a few minutes.
-  almostFinishing,
+  /// A fixed block is a quarter of an hour away, and something runs right
+  /// up to it.
+  headsUp,
 
   /// The day begins.
   morning,
@@ -25,6 +27,41 @@ enum NotificationKind {
   static NotificationKind? fromName(Object? name) {
     for (final kind in values) {
       if (kind.name == name) return kind;
+    }
+    return null;
+  }
+}
+
+/// Whether the card a reminder asks about is a task or a fixed block, which
+/// picks the route its buttons post to.
+enum NotificationCard {
+  /// A task, begun or not.
+  task,
+
+  /// A fixed block.
+  event;
+
+  /// The card named [name] on the wire, or null.
+  static NotificationCard? fromName(Object? name) {
+    for (final card in values) {
+      if (card.name == name) return card;
+    }
+    return null;
+  }
+}
+
+/// Which end of the block a reminder asks about.
+enum NotificationEdge {
+  /// Its start: Confirmar begins it, +10 min puts it off.
+  start,
+
+  /// Its end: Confirmar ticks it off, +10 min gives it more time.
+  end;
+
+  /// The edge named [name] on the wire, or null.
+  static NotificationEdge? fromName(Object? name) {
+    for (final edge in values) {
+      if (edge.name == name) return edge;
     }
     return null;
   }
@@ -47,6 +84,8 @@ class PlannedNotification extends Equatable {
     required this.body,
     this.timeSensitive = false,
     this.eventId,
+    this.card,
+    this.edge,
   });
 
   /// Reads one item of the plan, or null when it is unusable.
@@ -70,6 +109,8 @@ class PlannedNotification extends Equatable {
       body: body,
       timeSensitive: json['timeSensitive'] == true,
       eventId: eventId is String && eventId.isNotEmpty ? eventId : null,
+      card: NotificationCard.fromName(json['card']),
+      edge: NotificationEdge.fromName(json['edge']),
     );
   }
 
@@ -95,6 +136,15 @@ class PlannedNotification extends Equatable {
   /// The block it is about, when it is about one.
   final String? eventId;
 
+  /// Whether [eventId] is a task or a fixed block, on an ask.
+  final NotificationCard? card;
+
+  /// Which end of the block it asks about, on an ask.
+  final NotificationEdge? edge;
+
+  /// Whether its buttons have something to answer for.
+  bool get asks => eventId != null && card != null && edge != null;
+
   @override
   List<Object?> get props => [
     id,
@@ -104,6 +154,8 @@ class PlannedNotification extends Equatable {
     body,
     timeSensitive,
     eventId,
+    card,
+    edge,
   ];
 }
 

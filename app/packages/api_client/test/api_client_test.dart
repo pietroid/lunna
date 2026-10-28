@@ -21,12 +21,16 @@ class _Server implements HttpClientAdapter {
 
   final int? status;
 
+  /// The headers of every request it was sent.
+  final List<Map<String, dynamic>> headers = [];
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    headers.add(options.headers);
     final status = this.status;
     if (status == null) {
       throw DioException.connectionError(
@@ -80,6 +84,36 @@ void main() {
 
     test('does not hear of a dropped network', () async {
       expect(await failuresFor(null), isEmpty);
+    });
+  });
+
+  group('ApiClient via', () {
+    Future<Object?> viaOf({String? via}) async {
+      final server = _Server(200);
+      final dio = Dio(BaseOptions(baseUrl: 'https://lunna.test/api'))
+        ..httpClientAdapter = server;
+      final client = via == null
+          ? ApiClient(
+              baseUrl: 'https://lunna.test/api',
+              tokenProvider: const _Tokens(),
+              dio: dio,
+            )
+          : ApiClient(
+              baseUrl: 'https://lunna.test/api',
+              tokenProvider: const _Tokens(),
+              dio: dio,
+              via: via,
+            );
+      await client.post<Object?>('/tasks/t-1/done');
+      return server.headers.single[ApiClient.viaHeader];
+    }
+
+    test('says a request came from the app', () async {
+      expect(await viaOf(), 'app');
+    });
+
+    test('says one came from a reminder when built for it', () async {
+      expect(await viaOf(via: 'notification'), 'notification');
     });
   });
 }

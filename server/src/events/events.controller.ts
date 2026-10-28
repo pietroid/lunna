@@ -17,6 +17,7 @@ import { CatchUpInterceptor } from './catch-up.interceptor';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
+import { SnoozeEventDto } from './dto/snooze-event.dto';
 import { Timeline } from './entities/event.entity';
 import { EventLayoutService } from './event-layout.service';
 import {
@@ -26,6 +27,7 @@ import {
   requireLength,
   requireEvent,
   requireEventEdit,
+  requireSnooze,
 } from './request';
 import { TimelineService } from './timeline.service';
 
@@ -85,6 +87,39 @@ export class EventsController {
     @Query('days') days?: string,
   ): Promise<Timeline> {
     await this.layout.doneEvent(owner(user), id, Trace.start(user.id, id));
+
+    return this._answer(user, days);
+  }
+
+  /** The person said a fixed block began: its reminders stop asking. */
+  @Post(':id/start')
+  async start(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    await this.layout.startEvent(owner(user), id, Trace.start(user.id, id));
+
+    return this._answer(user, days);
+  }
+
+  /**
+   * Not yet: a fixed block whose start nobody answered starts [minutes]
+   * (ten unless said) after the later of its hour and now.
+   */
+  @Post(':id/delay')
+  async delay(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: SnoozeEventDto,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    await this.layout.delayEvent(
+      owner(user),
+      id,
+      requireSnooze(dto.minutes),
+      Trace.start(user.id, id),
+    );
 
     return this._answer(user, days);
   }

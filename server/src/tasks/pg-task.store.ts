@@ -4,12 +4,10 @@ import {
   asc,
   desc,
   eq,
-  gt,
   ilike,
   isNotNull,
   isNull,
   lt,
-  notInArray,
   or,
 } from 'drizzle-orm';
 import { CalendarUser } from '../calendar/calendar.types';
@@ -17,7 +15,7 @@ import { DB } from '../db/db';
 import type { Database } from '../db/db';
 import { task, TaskRow } from '../db/schema';
 import { TaskStore } from './task.store';
-import { DonePage, NewTask, RoutineTask, Task } from './task.types';
+import { DonePage, NewTask, Task } from './task.types';
 
 /** The tasks, in Postgres. */
 @Injectable()
@@ -58,50 +56,6 @@ export class PgTaskStore extends TaskStore {
       .orderBy(asc(task.position), asc(task.createdAt));
 
     return rows.map(toTask);
-  }
-
-  async materialize(user: CalendarUser, days: RoutineTask[]): Promise<number> {
-    if (days.length === 0) return 0;
-
-    const rows = await this._db
-      .insert(task)
-      .values(
-        days.map((day) => ({
-          userId: user.id,
-          title: day.title,
-          minutes: day.minutes,
-          position: 0,
-          notBefore: new Date(day.occurrence),
-          routineId: day.routineId,
-          occurrence: new Date(day.occurrence),
-          checklist: day.checklist ?? null,
-        })),
-      )
-      .onConflictDoNothing({ target: [task.routineId, task.occurrence] })
-      .returning({ id: task.id });
-
-    return rows.length;
-  }
-
-  async dropRoutineAhead(
-    user: CalendarUser,
-    routineId: string,
-    now: Date,
-    keep: Set<string>,
-  ): Promise<void> {
-    if (!isUuid(routineId)) return;
-
-    await this._db
-      .delete(task)
-      .where(
-        and(
-          eq(task.userId, user.id),
-          eq(task.routineId, routineId),
-          isNull(task.doneAt),
-          gt(task.occurrence, now),
-          ...(keep.size === 0 ? [] : [notInArray(task.id, [...keep])]),
-        ),
-      );
   }
 
   async done(user: CalendarUser, page: DonePage): Promise<Task[]> {

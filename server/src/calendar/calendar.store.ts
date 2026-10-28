@@ -22,6 +22,10 @@ export interface NewEvent {
   taskId?: string;
   /** Whether it was begun, which a task's hour always was. */
   started?: boolean;
+  /** ISO 8601, when its start was answered; a begun task's is its start. */
+  confirmedAt?: string;
+  /** ISO 8601, when its end was settled; set for a block already over. */
+  closedAt?: string;
 }
 
 /** What a routine is booked or changed with. */
@@ -36,10 +40,7 @@ export interface RoutinePatch {
   checklist?: string[];
 }
 
-/**
- * What a routine is booked with. Flexible, and one thing with no list,
- * unless it says otherwise.
- */
+/** What a routine is booked with. One thing with no list, unless it says otherwise. */
 export type NewRoutine = Required<Omit<RoutinePatch, 'fixed' | 'checklist'>> & {
   title: string;
   fixed?: boolean;
@@ -53,11 +54,10 @@ export type NewRoutine = Required<Omit<RoutinePatch, 'fixed' | 'checklist'>> & {
  * Postgres in production ([PgCalendarStore]); memory in the tests that drive
  * the timeline end to end ([MemoryCalendarStore]), which have no database.
  *
- * **Fixed routines are expanded here.** A read of a window first writes down
- * every day of every fixed routine that falls in it and is not already
- * there, so from the moment the timeline can see such a day it is an
- * ordinary row that pauses and finishes like any other block. A flexible
- * routine's days are tasks, which the timeline writes down itself.
+ * **Routines are expanded here.** A read of a window first writes down
+ * every day of every routine that falls in it and is not already there, so
+ * from the moment the timeline can see such a day it is an ordinary row
+ * that pauses and finishes like any other block.
  */
 export abstract class CalendarStore {
   /** Every live event whose span touches [from, to], earliest first. */
@@ -162,7 +162,7 @@ export class MemoryCalendarStore extends CalendarStore {
     zone: Zone,
   ): Promise<CalendarEvent[]> {
     for (const routine of this._routines.values()) {
-      if (routine.userId !== user.id || !routine.fixed) continue;
+      if (routine.userId !== user.id) continue;
 
       for (const day of occurrencesBetween(routine, from, to, zone)) {
         const key = `${routine.id}@${day.start.toISOString()}`;
@@ -187,6 +187,13 @@ export class MemoryCalendarStore extends CalendarStore {
           occurrenceKey: key,
           cancelled: false,
           ...(checklist === undefined ? {} : { checklist }),
+          // A day written down after it ended is history, and asks nothing.
+          ...(day.end.getTime() <= Date.now()
+            ? {
+                confirmedAt: day.start.toISOString(),
+                closedAt: day.end.toISOString(),
+              }
+            : {}),
         });
       }
     }
@@ -196,7 +203,8 @@ export class MemoryCalendarStore extends CalendarStore {
         .filter(
           (it) =>
             Date.parse(it.startTime) < to.getTime() &&
-            Date.parse(it.endTime) > from.getTime(),
+            (Date.parse(it.endTime) > from.getTime() ||
+              it.closedAt === undefined),
         )
         .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime)),
     );
@@ -226,6 +234,10 @@ export class MemoryCalendarStore extends CalendarStore {
       cancelled: false,
       ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
       ...(event.started === true ? { started: true } : {}),
+      ...(event.confirmedAt === undefined
+        ? {}
+        : { confirmedAt: event.confirmedAt }),
+      ...(event.closedAt === undefined ? {} : { closedAt: event.closedAt }),
     };
     this._events.set(id, stored);
 
@@ -285,7 +297,7 @@ export class MemoryCalendarStore extends CalendarStore {
   ): Promise<CalendarRoutine> {
     const stored: StoredRoutine = {
       ...routine,
-      fixed: routine.fixed ?? false,
+      fixed: routine.fixed ?? true,
       checklist: routine.checklist ?? [],
       id: randomUUID(),
       userId: user.id,

@@ -93,18 +93,29 @@ function ofKind(items: NotificationItem[], kind: string): NotificationItem[] {
   return items.filter((item) => item.kind === kind);
 }
 
-describe('the next task', () => {
-  it('asks to be begun at the hour the queue gives it', async () => {
-    const items = await itemsFor([], 1, [queued('t1')]);
-    const [asking] = ofKind(items, 'confirmStart');
+function times(items: NotificationItem[]): string[] {
+  return items.map((item) => item.fireAt);
+}
 
-    expect(asking).toMatchObject({
-      fireAt: '2026-09-21T14:00:00-03:00',
+describe('the next task', () => {
+  it('is asked to be begun at its hour, and twice more ten minutes apart', async () => {
+    const items = await itemsFor([], 1, [queued('t1')]);
+    const asks = ofKind(items, 'askStart');
+
+    expect(times(asks)).toEqual([
+      '2026-09-21T14:00:00-03:00',
+      '2026-09-21T14:10:00-03:00',
+      '2026-09-21T14:20:00-03:00',
+    ]);
+    expect(asks[0]).toMatchObject({
       title: 'Escrever relatório',
       body: 'Está na hora. Começamos?',
       timeSensitive: true,
       eventId: 't1',
+      card: 'task',
+      edge: 'start',
     });
+    expect(new Set(asks.map((item) => item.id)).size).toBe(3);
   });
 
   it('is the only task asked about', async () => {
@@ -113,128 +124,185 @@ describe('the next task', () => {
       queued('t2', {}, '2026-09-21T17:35:00.000Z'),
     ]);
 
-    expect(ofKind(items, 'confirmStart').map((item) => item.eventId)).toEqual([
-      't1',
-    ]);
+    expect(
+      new Set(ofKind(items, 'askStart').map((item) => item.eventId)),
+    ).toEqual(new Set(['t1']));
   });
 
-  it('is not asked about once its hour has come', async () => {
+  it('keeps its re-asks from the hour it came due while it waits', async () => {
+    // Anchored at 12:00 and still waiting at 12:04: the queue puts it at
+    // this minute, but it was asked at noon, so it is asked at 12:10 and
+    // 12:20, not ten minutes after every sync.
     const items = await itemsFor([], 1, [
-      queued('t1', {}, '2026-09-21T15:04:00.000Z'),
+      queued(
+        't1',
+        { notBefore: '2026-09-21T15:00:00.000Z' },
+        '2026-09-21T15:04:00.000Z',
+      ),
     ]);
 
-    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
+    expect(times(ofKind(items, 'askStart'))).toEqual([
+      '2026-09-21T12:10:00-03:00',
+      '2026-09-21T12:20:00-03:00',
+    ]);
   });
 
-  it('gets a new id when the queue moves it', async () => {
-    const [before] = ofKind(
-      await itemsFor([], 1, [queued('t1')]),
-      'confirmStart',
-    );
+  it('gets new ids when the queue moves it', async () => {
+    const [before] = ofKind(await itemsFor([], 1, [queued('t1')]), 'askStart');
     const [after] = ofKind(
       await itemsFor([], 1, [queued('t1', {}, '2026-09-21T17:30:00.000Z')]),
-      'confirmStart',
+      'askStart',
     );
 
     expect(after.id).not.toBe(before.id);
   });
 
-  it('gets a new id when it is renamed', async () => {
-    const [before] = ofKind(
-      await itemsFor([], 1, [queued('t1')]),
-      'confirmStart',
-    );
+  it('gets new ids when it is renamed', async () => {
+    const [before] = ofKind(await itemsFor([], 1, [queued('t1')]), 'askStart');
     const [after] = ofKind(
       await itemsFor([], 1, [queued('t1', { title: 'Outra coisa' })]),
-      'confirmStart',
+      'askStart',
     );
 
     expect(after.id).not.toBe(before.id);
   });
 });
 
-describe('a block', () => {
-  it('that is fixed is announced at its start, with its end', async () => {
+describe('a fixed block', () => {
+  it('says it started, three times, until the start is answered', async () => {
     const items = await itemsFor([block()]);
-    const [starting] = ofKind(items, 'starting');
+    const asks = ofKind(items, 'askStart');
 
-    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
-    expect(starting).toMatchObject({
-      kind: 'starting',
-      fireAt: '2026-09-21T14:00:00-03:00',
-      title: 'Revisão de código',
-      body: 'Começa agora, até 15:00',
+    expect(times(asks)).toEqual([
+      '2026-09-21T14:00:00-03:00',
+      '2026-09-21T14:10:00-03:00',
+      '2026-09-21T14:20:00-03:00',
+    ]);
+    expect(asks[0]).toMatchObject({
+      title: 'Revisão de código começou',
+      body: 'Até 15:00',
       timeSensitive: true,
       eventId: 'evt-1',
+      card: 'event',
+      edge: 'start',
     });
+
+    const confirmed = block({ confirmedAt: '2026-09-21T15:01:00.000Z' });
+    expect(ofKind(await itemsFor([confirmed]), 'askStart')).toHaveLength(0);
   });
 
-  it('that a routine repeats is announced, not asked about', async () => {
+  it('asks whether it ended, three times, until it is closed', async () => {
     const items = await itemsFor([block({ routine: 'daily' })]);
+    const asks = ofKind(items, 'askEnd');
 
-    expect(ofKind(items, 'confirmStart')).toHaveLength(0);
-    expect(ofKind(items, 'starting')).toHaveLength(1);
-  });
-
-  it('is announced ten minutes before its end', async () => {
-    const [almost] = ofKind(await itemsFor([block()]), 'almostFinishing');
-
-    expect(almost).toMatchObject({
-      fireAt: '2026-09-21T14:50:00-03:00',
-      body: 'Finaliza em 10 minutos',
-      timeSensitive: false,
+    expect(times(asks)).toEqual([
+      '2026-09-21T15:00:00-03:00',
+      '2026-09-21T15:10:00-03:00',
+      '2026-09-21T15:20:00-03:00',
+    ]);
+    expect(asks[0]).toMatchObject({
+      title: 'Revisão de código terminou?',
+      card: 'event',
+      edge: 'end',
     });
+
+    const closed = block({ closedAt: '2026-09-21T15:01:00.000Z' });
+    const left = await itemsFor([closed]);
+    expect(left.filter((item) => item.eventId !== undefined)).toEqual([]);
   });
 
-  it('under twenty minutes gets no reminder before its end', async () => {
-    const short = block({ endTime: '2026-09-21T17:19:00.000Z' });
-    const items = await itemsFor([short]);
+  it('in overtime is asked about from the end it was planned to have', async () => {
+    // Planned to 12:00, nobody answered; its end is now dragged to 12:05.
+    const late = block({
+      startTime: '2026-09-21T14:00:00.000Z',
+      endTime: '2026-09-21T15:05:00.000Z',
+      overtimeFrom: '2026-09-21T15:00:00.000Z',
+      confirmedAt: '2026-09-21T14:00:00.000Z',
+    });
 
-    expect(ofKind(items, 'starting')).toHaveLength(1);
-    expect(ofKind(items, 'almostFinishing')).toHaveLength(0);
+    expect(times(ofKind(await itemsFor([late]), 'askEnd'))).toEqual([
+      '2026-09-21T12:10:00-03:00',
+      '2026-09-21T12:20:00-03:00',
+    ]);
   });
 
-  it('of exactly twenty minutes still gets one', async () => {
-    const edge = block({ endTime: '2026-09-21T17:20:00.000Z' });
+  it('gets a heads-up only when something runs right up to it', async () => {
+    const lunch = block({ id: 'lunch', title: 'Almoço' });
+    expect(ofKind(await itemsFor([lunch]), 'headsUp')).toHaveLength(0);
 
-    expect(ofKind(await itemsFor([edge]), 'almostFinishing')).toHaveLength(1);
+    // 13:00 to 13:55, then the break, then lunch at 14:00.
+    const before = queued('t1', { minutes: 55 }, '2026-09-21T16:00:00.000Z');
+    const [heads] = ofKind(await itemsFor([lunch], 1, [before]), 'headsUp');
+    expect(heads).toMatchObject({
+      fireAt: '2026-09-21T13:45:00-03:00',
+      title: 'Almoço em 15 minutos',
+      body: 'Das 14:00 às 15:00',
+      eventId: 'lunch',
+      card: 'event',
+      edge: 'start',
+    });
   });
 
   it('that Lunna did not book gets nothing', async () => {
     const meeting = block({ managed: false });
     const items = await itemsFor([meeting]);
 
-    expect(ofKind(items, 'starting')).toHaveLength(0);
-    expect(ofKind(items, 'almostFinishing')).toHaveLength(0);
+    expect(items.filter((item) => item.eventId !== undefined)).toEqual([]);
   });
 
-  it('that is a begun task opens the task when tapped', async () => {
+  it('never gets the old almost-finishing reminder', async () => {
+    const kinds = new Set((await itemsFor([block()], 7)).map((it) => it.kind));
+    expect([...kinds].sort()).toEqual(
+      ['askEnd', 'askStart', 'evening', 'morning'].sort(),
+    );
+  });
+});
+
+describe('a begun task', () => {
+  it('is asked whether it ended, and opens the task when tapped', async () => {
     // 11:30 to 13:00: begun, not finished.
     const running = block({
       fixed: false,
       started: true,
+      confirmedAt: '2026-09-21T14:30:00.000Z',
       taskId: 't1',
       startTime: '2026-09-21T14:30:00.000Z',
       endTime: '2026-09-21T16:00:00.000Z',
     });
     const items = await itemsFor([running]);
 
-    expect(ofKind(items, 'starting')).toHaveLength(0);
-    expect(ofKind(items, 'almostFinishing')[0]).toMatchObject({
-      fireAt: '2026-09-21T12:50:00-03:00',
+    expect(ofKind(items, 'askStart')).toHaveLength(0);
+    expect(ofKind(items, 'askEnd')[0]).toMatchObject({
+      fireAt: '2026-09-21T13:00:00-03:00',
       eventId: 't1',
+      card: 'task',
+      edge: 'end',
     });
   });
 
-  it('that is paused gets no reminder before an end that keeps moving', async () => {
+  it('that is paused is not asked about an end that keeps moving', async () => {
     const paused = block({
+      taskId: 't1',
       startTime: '2026-09-21T14:30:00.000Z',
       endTime: '2026-09-21T16:00:00.000Z',
       pausedAt: '2026-09-21T15:00:00.000Z',
       remainingSeconds: 1800,
     });
 
-    expect(ofKind(await itemsFor([paused]), 'almostFinishing')).toHaveLength(0);
+    expect(ofKind(await itemsFor([paused]), 'askEnd')).toHaveLength(0);
+  });
+});
+
+describe('the re-asks', () => {
+  it('are queued for the next 24 hours only; the first ask always is', async () => {
+    const tomorrow = block({
+      startTime: '2026-09-22T15:00:00.000Z',
+      endTime: '2026-09-22T16:00:00.000Z',
+    });
+    const asks = ofKind(await itemsFor([tomorrow], 2), 'askStart');
+
+    // 12:00 tomorrow is inside the day; 12:10 and 12:20 are past 12:04.
+    expect(times(asks)).toEqual(['2026-09-22T12:00:00-03:00']);
   });
 });
 
@@ -247,7 +315,7 @@ describe('reminder ids', () => {
   });
 
   it('change when the block moves', async () => {
-    const [before] = ofKind(await itemsFor([block()]), 'starting');
+    const [before] = ofKind(await itemsFor([block()]), 'askStart');
     const [after] = ofKind(
       await itemsFor([
         block({
@@ -255,17 +323,17 @@ describe('reminder ids', () => {
           endTime: '2026-09-21T18:30:00.000Z',
         }),
       ]),
-      'starting',
+      'askStart',
     );
 
     expect(after.id).not.toBe(before.id);
   });
 
   it('change when the block is renamed', async () => {
-    const [before] = ofKind(await itemsFor([block()]), 'starting');
+    const [before] = ofKind(await itemsFor([block()]), 'askStart');
     const [after] = ofKind(
       await itemsFor([block({ title: 'Outra coisa' })]),
-      'starting',
+      'askStart',
     );
 
     expect(after.id).not.toBe(before.id);

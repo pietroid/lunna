@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { CalendarUser } from '../calendar/calendar.types';
-import { DonePage, NewTask, RoutineTask, Task } from './task.types';
+import { DonePage, NewTask, Task } from './task.types';
 
 /**
  * Where the tasks are kept.
@@ -23,29 +23,6 @@ export abstract class TaskStore {
    * position order. A day of a routine that was taken off is not one.
    */
   abstract ofArtifacts(user: CalendarUser): Promise<Task[]>;
-
-  /**
-   * Writes down each day of a flexible routine that is not there yet, as a
-   * task anchored at the routine's hour that day. A day already written,
-   * done, begun or taken off is left exactly as it is. Answers with how many
-   * were written.
-   */
-  abstract materialize(
-    user: CalendarUser,
-    days: RoutineTask[],
-  ): Promise<number>;
-
-  /**
-   * Forgets every day of [routineId] still ahead of [now] that is not done,
-   * apart from the tasks in [keep], which were begun. The next read writes
-   * them again as the routine now says.
-   */
-  abstract dropRoutineAhead(
-    user: CalendarUser,
-    routineId: string,
-    now: Date,
-    keep: Set<string>,
-  ): Promise<void>;
 
   /**
    * The tasks finished, newest first (by [Task.doneAt], then by id), one
@@ -101,57 +78,6 @@ export class MemoryTaskStore extends TaskStore {
         .sort((a, b) => a.position - b.position)
         .map(toTask),
     );
-  }
-
-  materialize(user: CalendarUser, days: RoutineTask[]): Promise<number> {
-    let written = 0;
-
-    for (const day of days) {
-      const exists = [...this._tasks.values()].some(
-        (it) =>
-          it.routineId === day.routineId && it.occurrence === day.occurrence,
-      );
-      if (exists) continue;
-
-      const id = randomUUID();
-      this._tasks.set(id, {
-        id,
-        userId: user.id,
-        title: day.title,
-        notes: '',
-        minutes: day.minutes,
-        position: 0,
-        backlog: false,
-        notBefore: day.occurrence,
-        routineId: day.routineId,
-        occurrence: day.occurrence,
-        ...(day.checklist === undefined ? {} : { checklist: day.checklist }),
-      });
-      written++;
-    }
-
-    return Promise.resolve(written);
-  }
-
-  dropRoutineAhead(
-    user: CalendarUser,
-    routineId: string,
-    now: Date,
-    keep: Set<string>,
-  ): Promise<void> {
-    for (const [id, task] of this._tasks) {
-      if (
-        task.userId === user.id &&
-        task.routineId === routineId &&
-        task.doneAt === undefined &&
-        !keep.has(id) &&
-        Date.parse(task.occurrence ?? '') > now.getTime()
-      ) {
-        this._tasks.delete(id);
-      }
-    }
-
-    return Promise.resolve();
   }
 
   done(user: CalendarUser, page: DonePage): Promise<Task[]> {

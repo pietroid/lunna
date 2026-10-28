@@ -250,6 +250,18 @@ class EventTile extends StatelessWidget {
             else
               ChecklistLine.next(context, card, quiet: _quiet),
           ],
+          if (_isNow && card.isLate) ...[
+            const SizedBox(height: AppSpacing.s2),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppTag(
+                text: context.l10n.timelineLate(card.overtimeMinutes),
+                iconData: AppIcons.warning,
+                fill: AppColors.danger,
+                ink: AppColors.dangerInk,
+              ),
+            ),
+          ],
           if (_isNow) ...[
             const SizedBox(height: AppSpacing.s2),
             NowProgress(card: card, trailing: _actions()),
@@ -259,7 +271,7 @@ class EventTile extends StatelessWidget {
     );
   }
 
-  /// Pause, fifteen minutes either way, and done, when there is anyone to
+  /// Pause, ten minutes either way, and done, when there is anyone to
   /// tell.
   Widget? _actions() {
     if (!card.isInteractive || onPauseToggled == null) return null;
@@ -343,7 +355,7 @@ class EventControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = clock.now();
     final running = card.isRunningAt(now);
-    final shortens = card.canShorten(15, now);
+    final shortens = card.canShorten(stepMinutes, now);
     final waiting = card.awaitingStart && onSnoozed != null;
 
     return Row(
@@ -384,10 +396,10 @@ class EventControls extends StatelessWidget {
             ),
           ),
         _Action(
-          tooltip: context.l10n.controlLess15,
-          onTap: shortens ? () => onAdjusted(-15) : null,
+          tooltip: context.l10n.controlLess10,
+          onTap: shortens ? () => onAdjusted(-stepMinutes) : null,
           child: Text(
-            '−15',
+            '−$stepMinutes',
             style: AppTypography.labelStrong.copyWith(
               color: shortens ? AppColors.ink2 : AppColors.ink3,
             ),
@@ -395,11 +407,11 @@ class EventControls extends StatelessWidget {
         ),
         _Action(
           tooltip: waiting
-              ? context.l10n.controlWait15
-              : context.l10n.controlMore15,
-          onTap: waiting ? onSnoozed : () => onAdjusted(15),
+              ? context.l10n.controlWait10
+              : context.l10n.controlMore10,
+          onTap: waiting ? onSnoozed : () => onAdjusted(stepMinutes),
           child: Text(
-            '+15',
+            '+$stepMinutes',
             style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
           ),
         ),

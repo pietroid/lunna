@@ -613,7 +613,7 @@ class _RoutineSheetState extends State<_RoutineSheet> {
   );
   late int _start = widget.startMinute;
   late int _duration = widget.durationMinutes;
-  late bool _fixed = widget.fixed;
+  late final bool _fixed = widget.fixed;
 
   @override
   void dispose() {
@@ -737,23 +737,8 @@ class _RoutineSheetState extends State<_RoutineSheet> {
                   spacing: AppSpacing.s2,
                   runSpacing: AppSpacing.s2,
                   children: [
-                    // Flexible slides when something runs into it and waits
-                    // to be begun; fixed never moves.
-                    AppSegmented(
-                      selected: _fixed ? 1 : 0,
-                      onSelected: (index) =>
-                          setState(() => _fixed = index == 1),
-                      segments: [
-                        AppSegment(
-                          label: context.l10n.promptFlexible,
-                          iconData: AppIcons.time,
-                        ),
-                        AppSegment(
-                          label: context.l10n.promptFixed,
-                          iconData: AppIcons.pin,
-                        ),
-                      ],
-                    ),
+                    // No flexible or fixed to choose: every routine is fixed,
+                    // starts at its hour and asks how it ended.
                     AppPillButton(
                       iconData: AppIcons.time,
                       label: time,
