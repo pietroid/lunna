@@ -88,6 +88,7 @@ five delivered:
 | `move_artifact` | `ref`, `after`/`before` | a place in the queue of deliveries |
 | `new_kind` | `name`, `shelf`, `minutes`, `price`, `as` | a kind in the catalogue |
 | `new_goal` | `target`, `deadline` | a money goal by a day, starting where the last ends ([goals.md](./goals.md)) |
+| `edit_goal` | `ref`, `target`, `deadline` | the goal's sheet, saved: another amount or last day (its first day stays; refused on a goal gone by, or a day reaching the next goal's first) |
 | `remove_goal` | `ref` | the goal deleted; the deliveries stay |
 
 A kind named loosely resolves to the catalogue's by its words; a value, a

@@ -545,6 +545,19 @@ export const CASES: Case[] = [
         : `goals: ${JSON.stringify(s.goals)}`,
   },
   {
+    id: 'goal-edit',
+    why: 'edit_goal: another amount for the running goal, the day kept',
+    setup: (w) => w.goal(4000, '2026-11-30'),
+    said: 'aumenta minha meta pra 6 mil',
+    expect: 'plan',
+    check: (s) =>
+      s.goals.length === 1 &&
+      s.goals[0].target === 6000 &&
+      s.goals[0].deadline === '2026-11-30'
+        ? true
+        : `goals: ${JSON.stringify(s.goals)}`,
+  },
+  {
     id: 'kind-new',
     why: 'new_kind: a kind with its shelf, length and price',
     said: 'adiciona no catálogo o tipo leitura de tarot, em atendimentos, 1 hora, 150 reais',

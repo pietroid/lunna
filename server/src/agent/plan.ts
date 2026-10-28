@@ -20,6 +20,7 @@ export type ChangeKind =
   | 'move_artifact'
   | 'add_kind'
   | 'add_goal'
+  | 'edit_goal'
   | 'remove_goal';
 
 /** One line of a plan, as the app draws it. */
@@ -61,6 +62,8 @@ export interface PlanChange {
   shelf?: string;
   /** For a goal: what it counts, how much, and by which day (`YYYY-MM-DD`). */
   goal?: { kind: GoalKind; target: number; deadline: string };
+  /** For a goal changed: how much and by which day it was before. */
+  wasGoal?: { kind: GoalKind; target: number; deadline: string };
 }
 
 /** Something new a gesture writes down. */
@@ -140,6 +143,11 @@ export type Gesture =
       target: number;
       /** `YYYY-MM-DD`, its last day. */
       deadline: string;
+    }
+  | {
+      do: 'edit_goal';
+      id: string;
+      edit: { target?: number; deadline?: string };
     }
   | { do: 'remove_goal'; id: string };
 

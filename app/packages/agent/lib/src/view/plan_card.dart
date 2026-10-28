@@ -301,6 +301,23 @@ class _ChangeRow extends StatelessWidget {
             ].join(' · '),
           ),
         );
+      case PlanChangeKind.editGoal:
+        final goal = change.goal;
+        final wasGoal = change.wasGoal;
+        return AnswerRow(
+          mark: const AnswerMark(icon: AppIcons.goal),
+          title: change.title,
+          detail: TextSpan(
+            children: [
+              TextSpan(text: '${l10n.agentChangeEditGoal} · '),
+              if (wasGoal != null) ...[
+                TextSpan(text: _goal(l10n, wasGoal), style: struck),
+                const TextSpan(text: ' → '),
+              ],
+              if (goal != null) TextSpan(text: _goal(l10n, goal)),
+            ],
+          ),
+        );
       case PlanChangeKind.removeGoal:
         return AnswerRow(
           mark: const AnswerMark(

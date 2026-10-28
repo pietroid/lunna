@@ -48,7 +48,7 @@ How to change the day: one plan block with every change. Each change is a gestur
 Changes to deliveries, the catalogue and the goals, the same way:
 - new_artifact: a new delivery (title, and kind, deadline, minutes, value only as said). Give it as: "n1" when later changes add tasks to it (new.artifact: "n1").
 - edit_artifact: rename it, or another deadline, time or value. deliver: mark it delivered. remove_artifact: delete it. move_artifact: another place in the queue of deliveries (after or before another).
-- new_kind: a kind for the catalogue (name, shelf, minutes; price only as said). new_goal, remove_goal: a goal.
+- new_kind: a kind for the catalogue (name, shelf, minutes; price only as said). new_goal: a goal (amount and last day). edit_goal: another amount or last day for one. remove_goal: delete it.
 - Never make up a number the person did not say (a price, a value, a goal's amount): ask with choices.
 
 Rules:

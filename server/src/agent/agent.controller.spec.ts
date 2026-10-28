@@ -1555,6 +1555,86 @@ describe('the agent', () => {
       });
     });
 
+    it('gives a goal another amount and day, and takes it back', async () => {
+      const goals = app.get(ArtifactStore);
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 4000,
+        starts: '2026-03-01',
+        deadline: '2026-03-31',
+      });
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 5000,
+        starts: '2026-04-01',
+        deadline: '2026-04-30',
+      });
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'meta de 6 mil até o dia 25' },
+            changes: [
+              {
+                do: 'edit_goal',
+                ref: 'g1',
+                target: 6000,
+                deadline: '2026-03-25',
+              },
+            ],
+          }),
+      ];
+
+      const asked = await ask('Muda a meta pra 6 mil até o dia 25');
+      expect(asked.status).toBe(201);
+      const plan = (asked.body as AgentReply).plan!;
+      expect(plan.changes[0]).toMatchObject({
+        kind: 'edit_goal',
+        title: 'Faturamento',
+        goal: { kind: 'money', target: 6000, deadline: '2026-03-25' },
+        wasGoal: { kind: 'money', target: 4000, deadline: '2026-03-31' },
+      });
+      await applyAndUndo(plan.id, async () => {
+        expect(await goals.goals(USER)).toMatchObject([
+          { target: 6000, starts: '2026-03-01', deadline: '2026-03-25' },
+          { target: 5000, starts: '2026-04-01', deadline: '2026-04-30' },
+        ]);
+      });
+    });
+
+    it("refuses a goal's day that reaches the next goal", async () => {
+      const goals = app.get(ArtifactStore);
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 4000,
+        starts: '2026-03-01',
+        deadline: '2026-03-31',
+      });
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 5000,
+        starts: '2026-04-01',
+        deadline: '2026-04-30',
+      });
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'meta até 10/04' },
+            changes: [{ do: 'edit_goal', ref: 'g1', deadline: '2026-04-10' }],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toContain(
+            'O próximo objetivo começa em 01/04',
+          );
+          return say('O próximo objetivo começa em 01/04.')(messages);
+        },
+      ];
+
+      const asked = await ask('Estica a meta até 10/04');
+      expect(asked.status).toBe(201);
+      expect((asked.body as AgentReply).plan).toBeUndefined();
+      expect((await goals.goals(USER))[0].deadline).toBe('2026-03-31');
+    });
+
     it('moves a delivery in its queue and gives another a new deadline', async () => {
       await delivery('Tese', [], { deadline: '2026-03-20' });
       await delivery('Curso');

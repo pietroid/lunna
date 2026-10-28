@@ -918,6 +918,7 @@
   },
   "agentChangeNewKind": "novo tipo",
   "agentChangeNewGoal": "novo objetivo",
+  "agentChangeEditGoal": "objetivo",
   "agentChangeRemoveGoal": "apagar o objetivo",
   "agentGoalPerWeek": "{amount} por semana",
   "@agentGoalPerWeek": {

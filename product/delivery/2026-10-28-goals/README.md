@@ -43,6 +43,13 @@ Then, on the second round, the person replied:
 The three open questions of that round were left unanswered, so the build
 takes the options drawn (see "Decided unattended").
 
+On the build, the person replied:
+
+> Yes add the edit agent. The rest is what you suggested
+
+So the agent can now change a goal too (`edit_goal`, below), and every
+other choice of the build stays as it was.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -131,7 +138,8 @@ this run.
   Anteriores.
 - **Build**: a goal's day may not reach the next goal's first day (so no
   day counts twice); a goal is changed from its card (amount and day, no
-  suggestions); the agent can write and remove a goal but not change one;
+  suggestions); the agent can write, change and remove a goal (changing
+  it was added on the person's reply to the build);
   old repeating goals become the stretch they are in when the migration
   runs, measured in the database's day rather than the person's zone
   (a few hours' difference around midnight, once).
@@ -152,6 +160,13 @@ delivery page's Valor row, and the value sheet it opens.
 Focus, the same scenes:
 
 ![Focus](img/build-focus.png)
+
+After the review, the agent's plan changing two goals (the amount of one,
+the day of the other), Lunna then Focus:
+
+![The agent changing goals, Lunna](img/build-agent-lunna.png)
+
+![The agent changing goals, Focus](img/build-agent-focus.png)
 
 ### The contract
 
@@ -188,6 +203,16 @@ the agent say the same number.
   deliveries due by then R$ 1.500 (1)`; the prompt, the plan's `goal: {
   kind, target, deadline }` and the eval case (`goal-said`: "quero faturar 4
   mil até o fim do mês que vem" → 30/11) follow.
+- Agent, **after the review**: `edit_goal { ref, target?, deadline? }`,
+  the card's sheet saved through `ArtifactsService.editGoal`, so the same
+  refusals hold (the day after the goal's first, before the next goal's
+  first). The agent refuses itself a goal gone by, a change that changes
+  nothing and taking the day away. The plan's line is `edit_goal` with
+  `goal` (as it leaves it) and `wasGoal` (as it was). Desfazer writes an
+  edited goal back over itself (`put` in `gestures.ts`: goals were only
+  ever made and removed until now). Prompt, `product/spec/agent.md` and
+  `goals.md` say so; eval case `goal-edit` ("aumenta minha meta pra 6
+  mil" → R$ 6.000, the day kept), never run against the real model.
 
 ### App
 
@@ -201,7 +226,10 @@ the agent say the same number.
   gains `queuedCount`; `Artifact.copyWith(value:)`.
 - `ArtifactsPage(showGoals:)` and the goal strip are gone from Entregas.
 - Agent package: a plan's goal reads "novo objetivo · R$ 8.000 até 30/11";
-  a plan kept from before still reads "por mês / por semana".
+  a plan kept from before still reads "por mês / por semana". A goal
+  changed reads "objetivo · ~~R$ 10.000 até 30/11~~ → R$ 12.000 até
+  30/11" under the target icon (`PlanChangeKind.editGoal`,
+  `PlanChange.wasGoal`, string `agentChangeEditGoal`).
 - 30 strings of the old goal UI removed from `app_pt.arb`; four added
   (`goalEditTitle`, `goalReadbackSince`, `artifactValueClear`,
   `artifactValueHint`); the agent's
@@ -219,6 +247,11 @@ the agent say the same number.
   owner), `agent.controller.spec.ts` (a goal by a day applied and undone,
   read back on the board; the agent asked for the day). `npm test` on
   artifacts + agent: 91 passed.
+- After the review: `agent.controller.spec.ts` gains two (a goal given
+  another amount and day, applied and undone, the next goal untouched; a
+  day reaching the next goal's first refused back to the model, nothing
+  changed), the agent's server suites 65 passed; the agent package's
+  `history_test.dart` draws an `edit_goal` line.
 - App: **new** `goals_page_test.dart` (9: the suggestions on Wed 28 Oct →
   dom 8 nov / seg 30 nov, the start after a running goal, empty state,
   writing, sections, the pace tag at exactly 15 % and one real past it, the
@@ -228,7 +261,9 @@ the agent say the same number.
   Artifacts: 57 passed under Focus and under Lunna; the goal and model
   tests also under `TZ` UTC, America/Sao_Paulo, Pacific/Auckland and
   America/Los_Angeles. Agent package: 69 passed.
-- `.tool/check`: every step passed (flutter analyze, every package's tests under Focus and Lunna, server eslint, tsc and the whole `npm test`). The first run caught prettier and two untyped `body.message` reads in my server specs, fixed before the second.
+- `.tool/check` after the review: every step passed (its first run caught
+  prettier in the new agent spec, fixed).
+- `.tool/check` before it: every step passed (flutter analyze, every package's tests under Focus and Lunna, server eslint, tsc and the whole `npm test`). The first run caught prettier and two untyped `body.message` reads in my server specs, fixed before the second.
 
 ### Where the build differs from the mockup
 

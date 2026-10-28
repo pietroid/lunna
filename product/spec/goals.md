@@ -77,7 +77,8 @@ queued, queuedCount }]`, by start.
 
 The agent writes one with `new_goal { target, deadline }` (a day word or
 `YYYY-MM-DD`; it asks when either is missing) and removes one with
-`remove_goal`; it has no verb to change one yet.
+`remove_goal`; it changes one with `edit_goal { ref, target?, deadline? }`
+(the card's sheet: a goal gone by is refused).
 
 ## The app
 

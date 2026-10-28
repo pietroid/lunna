@@ -246,8 +246,16 @@ async function put(hands: Hands, user: CalendarUser, it: Row): Promise<void> {
         await hands.artifacts.revive(user, it);
       }
       return;
+    case 'goal':
+      if ((await hands.artifacts.goals(user)).some((g) => g.id === it.row.id)) {
+        const { target, deadline } = it.row;
+        await hands.artifacts.updateGoal(user, it.row.id, { target, deadline });
+      } else {
+        await hands.artifacts.revive(user, it);
+      }
+      return;
     default:
-      // Shelves, kinds and goals are never edited, only made and removed.
+      // Shelves and kinds are never edited, only made and removed.
       await hands.artifacts.revive(user, it);
   }
 }

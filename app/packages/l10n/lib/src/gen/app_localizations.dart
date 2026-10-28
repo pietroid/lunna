@@ -2009,6 +2009,12 @@ abstract class AppLocalizations {
   /// **'novo objetivo'**
   String get agentChangeNewGoal;
 
+  /// No description provided for @agentChangeEditGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'objetivo'**
+  String get agentChangeEditGoal;
+
   /// No description provided for @agentChangeRemoveGoal.
   ///
   /// In pt, this message translates to:

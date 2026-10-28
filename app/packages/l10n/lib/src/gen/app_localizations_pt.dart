@@ -1247,6 +1247,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentChangeNewGoal => 'novo objetivo';
 
   @override
+  String get agentChangeEditGoal => 'objetivo';
+
+  @override
   String get agentChangeRemoveGoal => 'apagar o objetivo';
 
   @override
