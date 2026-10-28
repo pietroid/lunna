@@ -3,8 +3,9 @@
 Issue [#48](https://github.com/pietroid/lunna/issues/48), **mockup track**,
 designed and built unattended by the queue. The design was approved on
 the issue ("Approve"); the build is sections 3 to 5. The review of the
-build asked to remove the schedule line (open question 1) and merge: see
-*After the review* in section 3.
+build asked to remove the schedule line (open question 1) and merge, and
+then pointed out it was still drawn on the board: see *After the review*
+in section 3.
 
 ## 1. The prompt
 
@@ -30,6 +31,10 @@ Answer on the issue, after the build:
 
 > Remove the line, and then merge it
 
+Answer on the issue, after the line was removed:
+
+> Have you removed the line? I still see it
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -37,7 +42,9 @@ Answer on the issue, after the build:
 Each screen alone: [1](img/mockup-1.png) · [2](img/mockup-2.png) ·
 [3](img/mockup-3.png). Pins in [board.json](board.json). Drawn by the real
 app (Lunna) on Tuesday 27 October at 10:00, from
-`app/lib/deliveries_preview.dart`.
+`app/lib/deliveries_preview.dart`. Redrawn after the review from the
+final code, so it no longer shows the schedule line the approved board
+had under the title; nothing else on it changed.
 
 The flow: Entregas is the name of each delivery and how it is going,
 nothing else (1). What is under way shows the day it is due, and the one
@@ -157,6 +164,15 @@ prints above are re-shot from the final code:
   not drawn. `AGENTS.md` and `product/spec/artifacts.md` say so.
 - `.tool/check` on the change: every step green (app analyze, every
   package's tests under Focus and Lunna).
+
+**"I still see it."** The app no longer drew the line, but the
+design board did: it was the approved mockup, shot before the line was
+removed, and it is the picture the issue's comment shows. The board
+(`img/mockup-board.png` and `mockup-1..3.png`) is redrawn by the real
+app from the final code, with the same three scenes and pins moved up
+with the content (56 px; the sheet's pins stay). Now no image on this
+page or on the issue shows the line. No code changed in this round, and
+`.tool/check` stays green.
 
 The merge is the person's (or the queue's) to do: this run leaves the
 change in the branch's files for the PR.
