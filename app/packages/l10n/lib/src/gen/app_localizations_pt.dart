@@ -1737,4 +1737,43 @@ class AppLocalizationsPt extends AppLocalizations {
   String goalReadbackSince(String date, String amount) {
     return 'Conta desde $date: uns $amount por semana.';
   }
+
+  @override
+  String get shellPanelTab => 'Painel';
+
+  @override
+  String get panelTasks => 'Tarefas';
+
+  @override
+  String get overviewNow => 'Agora';
+
+  @override
+  String get overviewNext => 'Em seguida';
+
+  @override
+  String get overviewBreak => 'Nada em andamento';
+
+  @override
+  String get overviewSeeDay => 'Ver o dia';
+
+  @override
+  String get overviewMainDelivery => 'Entrega principal';
+
+  @override
+  String get overviewNoDelivery => 'Nenhuma entrega em andamento';
+
+  @override
+  String get overviewSeeDeliveries => 'Entregas';
+
+  @override
+  String get overviewMainGoal => 'Objetivo';
+
+  @override
+  String get overviewNoGoal => 'Nenhum objetivo agora';
+
+  @override
+  String get overviewSeeGoals => 'Objetivos';
+
+  @override
+  String get demoSuggestionRenata => 'O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?';
 }

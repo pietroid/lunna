@@ -177,6 +177,9 @@ class AppIcons {
   /// A goal: an amount, or a count, to reach in a stretch of time.
   static const goal = AppIconData.phosphor(PhosphorIconsRegular.target);
 
+  /// Painel: the tasks, the deliveries and the goals, kept in one place.
+  static const panel = AppIconData.phosphor(PhosphorIconsRegular.squaresFour);
+
   /// Looks through a list.
   static const search = AppIconData.phosphor(
     PhosphorIconsRegular.magnifyingGlass,

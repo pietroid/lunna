@@ -1,0 +1,58 @@
+{
+  "title": "Lunna home: one home, one Painel, three tabs",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Lunna, the home",
+      "why": "Opens on what to do now: Lunna's offer, the block running, the one after.",
+      "pins": [
+        {"id": "A", "x": 290, "y": 144, "label": "Lunna's offer first", "text": "The existing SuggestionCard moves here from Tempo: one offer, made from the day and the deliveries. It goes once taken or turned down."},
+        {"id": "B", "x": 280, "y": 259, "label": "One accent", "text": "Encaixar applies the plan, as today. It is the screen's one filled red button."},
+        {"id": "C", "x": 254, "y": 341, "label": "CTA to the calendar", "text": "Each heading ends in a pill naming where it leads in Painel. Ver o dia opens Painel > Tarefas on the calendar."},
+        {"id": "D", "x": 186, "y": 429, "label": "Agora, with its buttons", "text": "The same EventTile as Tempo's Agora: pause, -10/+10, done. Nothing new to learn. On a break it says 'Nada em andamento'."},
+        {"id": "E", "x": 133, "y": 491, "label": "Em seguida", "text": "The next card on the calendar, task or fixed block, with its hours. Only one: this screen is not a list."},
+        {"id": "F", "x": 123, "y": 804, "label": "Tab 1: Lunna", "text": "Named after the brand ('Focus' on Focus), with the crescent mark (AppIcons.agent). The app opens here."},
+        {"id": "G", "x": 238, "y": 804, "label": "Tab 2: Painel", "text": "Tempo, Entregas and Objetivos merge into one tab. Phosphor squares-four (AppIcons.panel). Menu stays the third tab."}
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Lunna, further down",
+      "why": "The main delivery and the main goal, each with a way to manage it.",
+      "pins": [
+        {"id": "A", "x": 248, "y": 379, "label": "Entregas", "text": "Opens Painel > Entregas."},
+        {"id": "B", "x": 275, "y": 433, "label": "Main delivery", "text": "Entregas' first: the most urgent under way, else the first not begun. The real ArtifactRow with its pace bar. A tap opens the delivery on Pendentes."},
+        {"id": "C", "x": 243, "y": 538, "label": "Objetivos", "text": "Opens Painel > Objetivos."},
+        {"id": "D", "x": 264, "y": 631, "label": "Main goal", "text": "The goal being measured now, Objetivos' GoalCard. A tap opens its sheet to edit it."}
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Painel › Tarefas",
+      "why": "Ver o dia lands here: Tempo as it was, on the calendar.",
+      "pins": [
+        {"id": "A", "x": 343, "y": 35, "label": "Levels as a heading", "text": "Tarefas · Entregas · Objetivos is the screen's title, set as words (AppTitleTabs): ink for the one in front, quiet grey for the others. No pill, so it never looks like the Lista/Calendário switch below it."},
+        {"id": "B", "x": 259, "y": 88, "label": "Lista / Calendário stays", "text": "The one control on Tarefas. The choice is now kept by the shell, so the home can open the calendar directly."},
+        {"id": "C", "x": 196, "y": 626, "label": "Tempo, unchanged", "text": "Same list, same calendar, same gestures. Only the greeting and the offer left, to the Lunna tab."}
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Painel › Entregas",
+      "why": "The deliveries, as they were, under the same heading.",
+      "pins": [
+        {"id": "A", "x": 326, "y": 37, "label": "Search moves up", "text": "Entregas' search sits at the end of the heading row, only while Entregas is in front."},
+        {"id": "B", "x": 284, "y": 159, "label": "Same page", "text": "ArtifactsPage(titled: false): the shelf filter, Em andamento, Não iniciadas, drag to begin. Nothing else changed."},
+        {"id": "C", "x": 305, "y": 728, "label": "+ follows the level", "text": "On Entregas the + writes a delivery; on Objetivos a goal; on Tarefas and on Lunna something on the day."}
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · Painel › Objetivos",
+      "why": "The goals, the third level, with the same layout.",
+      "pins": [
+        {"id": "A", "x": 205, "y": 343, "label": "Same page", "text": "GoalsPage(titled: false): current, Próximos, Anteriores. Every level stays mounted, so each keeps its scroll."}
+      ]
+    }
+  ]
+}

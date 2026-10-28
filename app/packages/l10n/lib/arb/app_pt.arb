@@ -1349,5 +1349,18 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shellPanelTab": "Painel",
+  "panelTasks": "Tarefas",
+  "overviewNow": "Agora",
+  "overviewNext": "Em seguida",
+  "overviewBreak": "Nada em andamento",
+  "overviewSeeDay": "Ver o dia",
+  "overviewMainDelivery": "Entrega principal",
+  "overviewNoDelivery": "Nenhuma entrega em andamento",
+  "overviewSeeDeliveries": "Entregas",
+  "overviewMainGoal": "Objetivo",
+  "overviewNoGoal": "Nenhum objetivo agora",
+  "overviewSeeGoals": "Objetivos",
+  "demoSuggestionRenata": "O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?"
 }

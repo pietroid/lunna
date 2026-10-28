@@ -23,7 +23,10 @@ import 'package:timeline/timeline.dart';
 /// {@endtemplate}
 class GoalsPage extends StatelessWidget {
   /// {@macro goals_page}
-  const GoalsPage({super.key});
+  const GoalsPage({this.titled = true, super.key});
+
+  /// Whether it draws its own heading. Painel heads it with its tabs.
+  final bool titled;
 
   Future<void> _delete(BuildContext context, Goal goal) async {
     final cubit = context.read<ArtifactsCubit>();
@@ -70,18 +73,23 @@ class GoalsPage extends StatelessWidget {
             maxWidth: AppSpacing.maxContentWidth,
           ),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               AppSpacing.s5,
-              AppSpacing.s5,
+              titled ? AppSpacing.s5 : AppSpacing.s2,
               AppSpacing.s5,
               kNotesDockClearance,
             ),
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.s1),
-                child: Text(l10n.shellGoalsTab, style: AppTypography.headline),
-              ),
-              const SizedBox(height: AppSpacing.s4),
+              if (titled) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.s1),
+                  child: Text(
+                    l10n.shellGoalsTab,
+                    style: AppTypography.headline,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.s4),
+              ],
               if (goals.isEmpty) const _Empty(),
               for (final goal in current) ...[
                 GoalCard(

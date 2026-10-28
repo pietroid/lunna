@@ -6,18 +6,17 @@ import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
-import 'package:lunna/app/app.dart';
-import 'package:lunna/home/view/greeting.dart';
 import 'package:lunna/home/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template home_page}
-/// The timeline: who you are and what time it is at the top, the switch
-/// between the list and the calendar under it, and the day below.
+/// Tarefas, in Painel: the switch between the list and the calendar, and
+/// the day below.
 ///
-/// There is no field on this screen. Writing something down starts from the
-/// button at the foot of the app, which keeps this screen about what is
-/// already there rather than about the next thing to add to it.
+/// The greeting, the clock and the agent's offer are on the Lunna tab
+/// (`OverviewPage`); this screen is the day itself. Which way it is drawn
+/// is kept above it ([TimelineModeCubit], given by the shell), so the Lunna
+/// tab can open it on the calendar.
 /// {@endtemplate}
 class HomePage extends StatelessWidget {
   /// {@macro home_page}
@@ -25,45 +24,11 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<TimelineModeCubit>(
-          create: (_) {
-            final cubit = TimelineModeCubit();
-            unawaited(cubit.restore());
-            return cubit;
-          },
-        ),
-        BlocProvider<SuggestionCubit>(
-          create: (context) {
-            final cubit = SuggestionCubit(
-              repository: context.read<AgentRepository>(),
-            );
-            unawaited(cubit.load());
-            return cubit;
-          },
-        ),
+    return const Column(
+      children: [
+        TimelineModeSwitch(),
+        Expanded(child: _Threads()),
       ],
-      child: SafeArea(
-        bottom: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: AppSpacing.maxContentWidth,
-            ),
-            child: const Column(
-              children: [
-                _Header(),
-                TimelineModeSwitch(),
-                // The agent's one unasked-for offer sits above the day it
-                // is about, and goes once it is taken or turned down.
-                SuggestionCard(),
-                Expanded(child: _Threads()),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -110,109 +75,6 @@ class TimelineModeSwitch extends StatelessWidget {
           // until the day is changed by hand rather than timing out.
           const UndoChip(),
         ],
-      ),
-    );
-  }
-}
-
-/// The greeting, the date, and the clock.
-class _Header extends StatelessWidget {
-  const _Header();
-
-  @override
-  Widget build(BuildContext context) {
-    final firstName = context.select<AppBloc, String?>(
-      (bloc) => bloc.state.firstName,
-    );
-    final now = DateTime.now();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s6,
-        AppSpacing.s5,
-        AppSpacing.s6,
-        AppSpacing.s4,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // The greeting is the account: it is the only thing on the
-                // screen that names the person, so it is also the only thing
-                // that opens their menu.
-                _Profile(greeting: greeting(context.l10n, now, firstName)),
-                const SizedBox(height: AppSpacing.s1),
-                Text(
-                  longDate(context.l10n, now),
-                  style: AppTypography.label,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.s3),
-          // The ring fills over the person's own day, as the server last
-          // sent it.
-          Builder(
-            builder: (context) {
-              final workDay = context.select<TimelineBloc, WorkDay>(
-                (bloc) => bloc.state.workDay,
-              );
-
-              return AppDayClock(
-                startHour: workDay.start / 60,
-                endHour: workDay.end / 60,
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// The greeting, and the account menu behind it: the routines, and signing
-/// out.
-class _Profile extends StatelessWidget {
-  const _Profile({required this.greeting});
-
-  final String greeting;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<void>(
-      padding: EdgeInsets.zero,
-      tooltip: '',
-      offset: const Offset(0, AppSpacing.s8),
-      constraints: const BoxConstraints(minWidth: AppSpacing.s12 * 3),
-      itemBuilder: (context) => [
-        PopupMenuItem<void>(
-          onTap: () => unawaited(context.push<void>('/rotina')),
-          child: Row(
-            children: [
-              const AppIcon(iconData: AppIcons.repeat, size: AppSpacing.s5),
-              const SizedBox(width: AppSpacing.s3),
-              Text(context.l10n.homeRoutines),
-            ],
-          ),
-        ),
-        PopupMenuItem<void>(
-          onTap: () => context.read<AppBloc>().add(const AppLogoutRequested()),
-          child: Row(
-            children: [
-              const AppIcon(iconData: AppIcons.logout, size: AppSpacing.s5),
-              const SizedBox(width: AppSpacing.s3),
-              Text(context.l10n.homeSignOut),
-            ],
-          ),
-        ),
-      ],
-      child: Text(
-        greeting,
-        style: AppTypography.headline,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }

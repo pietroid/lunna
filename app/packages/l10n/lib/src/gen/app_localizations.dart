@@ -2716,6 +2716,84 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Conta desde {date}: uns {amount} por semana.'**
   String goalReadbackSince(String date, String amount);
+
+  /// No description provided for @shellPanelTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Painel'**
+  String get shellPanelTab;
+
+  /// No description provided for @panelTasks.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefas'**
+  String get panelTasks;
+
+  /// No description provided for @overviewNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora'**
+  String get overviewNow;
+
+  /// No description provided for @overviewNext.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em seguida'**
+  String get overviewNext;
+
+  /// No description provided for @overviewBreak.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada em andamento'**
+  String get overviewBreak;
+
+  /// No description provided for @overviewSeeDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver o dia'**
+  String get overviewSeeDay;
+
+  /// No description provided for @overviewMainDelivery.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entrega principal'**
+  String get overviewMainDelivery;
+
+  /// No description provided for @overviewNoDelivery.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma entrega em andamento'**
+  String get overviewNoDelivery;
+
+  /// No description provided for @overviewSeeDeliveries.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entregas'**
+  String get overviewSeeDeliveries;
+
+  /// No description provided for @overviewMainGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivo'**
+  String get overviewMainGoal;
+
+  /// No description provided for @overviewNoGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhum objetivo agora'**
+  String get overviewNoGoal;
+
+  /// No description provided for @overviewSeeGoals.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivos'**
+  String get overviewSeeGoals;
+
+  /// No description provided for @demoSuggestionRenata.
+  ///
+  /// In pt, this message translates to:
+  /// **'O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?'**
+  String get demoSuggestionRenata;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
