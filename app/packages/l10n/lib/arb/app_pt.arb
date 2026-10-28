@@ -1140,7 +1140,6 @@
   },
   "artifactValue": "Valor",
   "artifactDeadline": "Prazo",
-  "artifactCountsFor": "Conta para",
   "artifactPlace": "Entra na fila",
   "artifactPlaceTop": "No topo",
   "artifactPlaceEnd": "No fim",
@@ -1357,7 +1356,7 @@
     }
   },
   "goalOnPace": "No ritmo",
-  "goalQueuedLine": "{count, plural, =1{Na fila: {amount} em 1 entrega até {date}} other{Na fila: {amount} em {count} entregas até {date}}}",
+  "goalQueuedLine": "{count, plural, =1{Com 1 entrega até {date}, chega a {amount}} other{Com {count} entregas até {date}, chega a {amount}}}",
   "@goalQueuedLine": {
     "placeholders": {
       "count": {
@@ -1365,6 +1364,17 @@
       },
       "amount": {
         "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "goalQueuedReaches": "{count, plural, =1{Com 1 entrega até {date}, alcança o objetivo} other{Com {count} entregas até {date}, alcança o objetivo}}",
+  "@goalQueuedReaches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       },
       "date": {
         "type": "String"

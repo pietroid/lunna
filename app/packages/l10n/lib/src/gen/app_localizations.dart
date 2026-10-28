@@ -2345,12 +2345,6 @@ abstract class AppLocalizations {
   /// **'Prazo'**
   String get artifactDeadline;
 
-  /// No description provided for @artifactCountsFor.
-  ///
-  /// In pt, this message translates to:
-  /// **'Conta para'**
-  String get artifactCountsFor;
-
   /// No description provided for @artifactPlace.
   ///
   /// In pt, this message translates to:
@@ -2768,8 +2762,14 @@ abstract class AppLocalizations {
   /// No description provided for @goalQueuedLine.
   ///
   /// In pt, this message translates to:
-  /// **'{count, plural, =1{Na fila: {amount} em 1 entrega até {date}} other{Na fila: {amount} em {count} entregas até {date}}}'**
+  /// **'{count, plural, =1{Com 1 entrega até {date}, chega a {amount}} other{Com {count} entregas até {date}, chega a {amount}}}'**
   String goalQueuedLine(int count, String amount, String date);
+
+  /// No description provided for @goalQueuedReaches.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{Com 1 entrega até {date}, alcança o objetivo} other{Com {count} entregas até {date}, alcança o objetivo}}'**
+  String goalQueuedReaches(int count, String date);
 
   /// No description provided for @goalReached.
   ///

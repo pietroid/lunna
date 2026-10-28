@@ -37,9 +37,10 @@ GoalQueue goalQueue(Goal goal, List<Artifact> queue) {
 /// of the target; under it red ([AppColors.paceTime]) is what its days ask
 /// to be in by now, were the target reached evenly. Green covering the red
 /// is on pace; red showing past it is behind, by as much as shows, and a
-/// tag says by how much. Under the bar a line says what the queue still
-/// holds towards it. A goal that has not begun is drawn quiet, with the day
-/// it begins and no bar.
+/// tag says by how much. Under the bar a line says where the open
+/// deliveries due by its day would take it: no delivery names a goal, the
+/// goal finds them by their day and their value ([goalQueue]). A goal
+/// that has not begun is drawn quiet, with the day it begins and no bar.
 /// {@endtemplate}
 class GoalCard extends StatelessWidget {
   /// {@macro goal_card}
@@ -192,6 +193,7 @@ class GoalCard extends StatelessWidget {
               Container(height: 1, color: AppColors.line),
               const SizedBox(height: AppSpacing.s3),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const AppIcon(
                     iconData: AppIcons.artifacts,
@@ -201,12 +203,20 @@ class GoalCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.s2),
                   Expanded(
                     child: Text(
-                      l10n.goalQueuedLine(
-                        queue.count,
-                        formatMoney(queue.value),
-                        shortDay(l10n, goal.lastDay),
-                      ),
-                      maxLines: 1,
+                      goal.done + queue.value >= goal.target
+                          ? l10n.goalQueuedReaches(
+                              queue.count,
+                              shortDay(l10n, goal.lastDay),
+                            )
+                          : l10n.goalQueuedLine(
+                              queue.count,
+                              // Kept on one line with its R\$.
+                              formatMoney(
+                                goal.done + queue.value,
+                              ).replaceFirst(' ', '\u00a0'),
+                              shortDay(l10n, goal.lastDay),
+                            ),
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.label,
                     ),

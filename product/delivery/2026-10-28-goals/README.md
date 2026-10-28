@@ -27,6 +27,15 @@ From the issue, verbatim:
 > week" (last day of next month), the user can simply change the date
 > manually if the want.
 
+On the design, reviewed on the issue, the person replied:
+
+> We don't need to associate a delivery to a goal. It is computed
+> automatically, the goal is responsible for being aware of the deliveries
+> and understanding how much will be reached from the deliveries
+
+So the delivery sheet no longer names a goal ("Conta para" is gone), and
+the goal's card now says where the open deliveries take it (pin K).
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -45,8 +54,11 @@ the end of next month offered and next month picked. On the tab the running
 goal gets the same two-fill bar as a delivery: green is what was billed
 (deliveries delivered since it began, their `value`), red is what its days ask
 for by today. The goals after it wait under Próximos; the ones gone by are
-listed under Anteriores. For money to count, every delivery now carries an
-editable **Valor**, which a kind's price only fills in.
+listed under Anteriores. Under the bar the goal says **where the open
+deliveries take it**: it finds them by itself (worth something, due by its
+day) and adds them to what is billed. No delivery is tied to a goal. For
+money to count, every delivery now carries an editable **Valor**, which a
+kind's price only fills in.
 
 ### References
 
@@ -74,10 +86,10 @@ this run.
 | H | Dual bar | Green: `done / target`. Red: `timeAt(now)`, the share of calendar time from its start to the end of its last day. `PaceBar` is shared with deliveries. |
 | I | Key | Green "R$ 2.850 faturados", red "R$ 4.495 até hoje" (= target × time gone); the red text uses the danger ink when behind. |
 | J | Pace tag | *R$ X abaixo do ritmo* (danger) when the red leads by more than 15 % of the target (`paceSlack`), otherwise *No ritmo*, or *R$ X acima do ritmo* when ahead. |
-| K | Queue | One line: the value of the open deliveries due by its day, and how many there are. This is what could still count. |
+| K | Forecast | One line, computed by the goal: the open deliveries worth something and due by its last day, added to what is billed. "Com 3 entregas até 30 nov, chega a R$ 3.900", or "…, alcança o objetivo" when they cover the target. |
 | L | Next goals | Under Próximos: no bar, the day it starts. |
 | M | Past goals | Under Anteriores, newest first: *Alcançado*, or the amount reached. A long press removes a goal (any section). |
-| N, O | Money on a delivery | The Valor row in the delivery sheet is always editable, filled in with the kind's price ("do tipo Mapa astral"). *Conta para* names the goal. |
+| N | Money on a delivery | The Valor row in the delivery sheet is always editable, filled in with the kind's price ("do tipo Mapa astral"). The sheet names **no goal**: there is no link between a delivery and a goal (the *Conta para* row of the first round is gone, and so is pin O). |
 | P | Delivery page | Valor gets its own row under Tipo (it was appended to the kind line). With no value it reads "Adicionar valor". |
 
 ### Decided unattended
@@ -100,6 +112,11 @@ this run.
 - **One tab, goals out of Entregas**: `ArtifactsPage(showGoals:)` and its
   goal strip go. The goals stay in `GET /artifacts` and in `ArtifactsCubit`,
   so there is no new repository.
+- **The forecast is the open deliveries due by the goal's last day**,
+  their `value` added to what is billed, with no weighting by how far along
+  they are. A delivery with no deadline, or due after the goal's day, does
+  not count towards it. Each delivery counts once, for the goal whose
+  stretch holds its deadline (goals follow each other, so there is one).
 - **Wording**: *Objetivo* everywhere a person reads it ("Novo objetivo",
   "Criar objetivo"). The code keeps `Goal`.
 
@@ -112,14 +129,16 @@ build; the preview is deleted after Phase 4):
 - `app/packages/artifacts/lib/src/view/goals_page.dart` (new):
   `GoalsPage`, the tab.
 - `.../view/goal_card.dart`: rewritten as `GoalCard` (dual bar, pace tag,
-  queue line), `GoalRow` (past goals), `goalQueue`.
+  the forecast line), `GoalRow` (past goals), `goalQueue` (the goal finding
+  its deliveries).
 - `.../view/goal_sheet.dart`: rewritten as amount + by when, with
   `goalStartAfter` and `goalSuggestions`. **`_save` still calls the old
   `addGoal(period:)`**: the build posts `{ target, deadline }`.
 - `.../view/pace_bars.dart`: `PaceBar` (the bar alone) and `PaceKey` made
   public; `PaceBars` uses them.
 - `.../view/artifact_sheet.dart`: Valor editable for every delivery,
-  filled in with the kind's price, and always sent.
+  filled in with the kind's price, and always sent. The *Conta para* row
+  and `_goalFor` are gone, so the sheet no longer reads the goals.
 - `.../view/artifact_page.dart`: a Valor row of its own. **It has no tap
   yet.**
 - `.../models/models.dart`: `Goal.isOverAt`, `lastDay`, `timeAt`,
@@ -127,7 +146,9 @@ build; the preview is deleted after Phase 4):
 - `.../format.dart`: `shortDay`; `goalLabel` is now "R$ 10.000 até 30 nov".
 - `.../view/view.dart`: exports `goals_page.dart`.
 - `app/lib/shell/view/shell_page.dart`: the 4th tab and the FAB on it.
-- `app/packages/l10n/lib/arb/app_pt.arb` + `gen/`: the new strings.
+- `app/packages/l10n/lib/arb/app_pt.arb` + `gen/`: the new strings
+  (`goalQueuedLine` is the forecast, `goalQueuedReaches` when it covers
+  the target; `artifactCountsFor` removed).
 
 **Server** (`server/src/artifacts/`, read `product/spec/artifacts.md` first):
 
@@ -139,8 +160,9 @@ build; the preview is deleted after Phase 4):
   otherwise today. Refuse, in Portuguese, a deadline that is not after the
   start ("Escolha um dia depois de …") or a target ≤ 0.
 - `GoalView`: `{ id, kind, target, start, end (day after deadline), done,
-  queued }`. `done` is the value delivered in [start, end). `queued` is the
-  value of open deliveries due by the deadline. Past goals are kept and
+  queued, queuedCount }`. `done` is the value delivered in [start, end). `queued` is the
+  value of open deliveries due by the deadline, counted by the goal: no
+  column or route ties a delivery to a goal, and none is added. Past goals are kept and
   measured too (Anteriores needs them).
 - `PATCH /goals/:id { target?, deadline? }` so a goal can be edited (a
   tap on the card opens the sheet filled in). `DELETE` as today.
@@ -151,6 +173,11 @@ build; the preview is deleted after Phase 4):
 - A row in `analytics/events.ts` for the PATCH.
 
 **App:**
+
+- The forecast reads `GoalView.queued` (and its count) from the server
+  rather than `goalQueue` over the cubit's list, so the app and the agent
+  say the same number; drop `goalQueue` then, or keep it for the landing's
+  fakes.
 
 - `ArtifactsRepository.addGoal({ target, deadline })` and
   `updateGoal`; `update(id, value:)`; the cubit's `addGoal`, `editGoal`
@@ -167,11 +194,15 @@ build; the preview is deleted after Phase 4):
 - Tests: `artifacts_page_test.dart` opens `showGoalSheet(kind: count)`,
   which no longer exists. Replace it with goals-page tests: the empty state,
   the suggestions on a fixed clock (Wed 28 Oct → dom 8 nov / seg 30 nov),
-  the start after a running goal, the pace tag at the 15 % edge, and a
-  delivery's value from its kind. Run under several `TZ`s.
+  the start after a running goal, the pace tag at the 15 % edge, the forecast ("chega a" and
+  "alcança o objetivo", a delivery due after the goal's day left out), and
+  a delivery's value from its kind with no goal row in its sheet. Run under several `TZ`s.
 - Spec: rewrite "Goal" and the goal rules in `product/spec/artifacts.md`
   (or a new `product/spec/goals.md`), and add the fourth tab to AGENTS.md's
   shell paragraph.
+
+**Settled on the issue:** a delivery is never associated with a goal; the
+goal computes what counts and what the queue will bring.
 
 **Open questions** (also on the issue):
 

@@ -92,10 +92,10 @@
         },
         {
           "id": "K",
-          "x": 374,
+          "x": 40,
           "y": 226,
-          "label": "Queue",
-          "text": "What open deliveries due by its day are worth: what could still count."
+          "label": "Forecast",
+          "text": "The goal finds the open deliveries worth something and due by its day, and says where they take it: chega a R$ X, or alcança o objetivo."
         },
         {
           "id": "L",
@@ -116,21 +116,14 @@
     {
       "png": "img/mockup-4.png",
       "title": "4 · Money on a delivery",
-      "why": "Every delivery can carry a value, which is what a money goal counts.",
+      "why": "Every delivery can carry a value. It names no goal: the goals count it on their own.",
       "pins": [
         {
           "id": "N",
           "x": 225,
-          "y": 592,
+          "y": 643,
           "label": "Valor",
-          "text": "Always editable now; a kind's price only fills it in (do tipo …)."
-        },
-        {
-          "id": "O",
-          "x": 150,
-          "y": 690,
-          "label": "Conta para",
-          "text": "Names the goal its value will count towards once delivered."
+          "text": "Always editable now; a kind's price only fills it in (do tipo …). No \"Conta para\" row: a delivery is not tied to a goal."
         }
       ]
     },

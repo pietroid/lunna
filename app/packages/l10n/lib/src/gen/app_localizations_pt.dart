@@ -1478,9 +1478,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get artifactDeadline => 'Prazo';
 
   @override
-  String get artifactCountsFor => 'Conta para';
-
-  @override
   String get artifactPlace => 'Entra na fila';
 
   @override
@@ -1752,8 +1749,19 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Na fila: $amount em $count entregas até $date',
-      one: 'Na fila: $amount em 1 entrega até $date',
+      other: 'Com $count entregas até $date, chega a $amount',
+      one: 'Com 1 entrega até $date, chega a $amount',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String goalQueuedReaches(int count, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Com $count entregas até $date, alcança o objetivo',
+      one: 'Com 1 entrega até $date, alcança o objetivo',
     );
     return '$_temp0';
   }
