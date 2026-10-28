@@ -262,10 +262,19 @@
   "controlResume": "Retomar",
   "controlPause": "Pausar",
   "controlStartNow": "Começar agora",
-  "controlLess15": "Menos 15 min",
-  "controlWait15": "Esperar 15 min",
-  "controlMore15": "Mais 15 min",
+  "controlLess10": "Menos 10 min",
+  "controlWait10": "Esperar 10 min",
+  "controlMore10": "Mais 10 min",
   "controlDone": "Concluir",
+  "timelineLate": "atrasado {minutes} min",
+  "@timelineLate": {
+    "description": "On a running card whose end passed with nobody saying it was over.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "nowPausedLeft": "Pausado · faltam {left}",
   "@nowPausedLeft": {
     "placeholders": {
@@ -402,12 +411,23 @@
     }
   },
   "notificationChannelBlocks": "Blocos",
-  "notificationChannelBlocksDescription": "Quando um bloco começa e quando está perto de terminar.",
+  "notificationChannelBlocksDescription": "Quando um bloco começa e quando termina, com um botão para responder.",
+  "notificationActionConfirm": "Confirmar",
+  "notificationActionLater": "+10 min",
+  "notificationActionTalk": "{brand, select, lunna{Falar com a Lunna} other{Falar com o Focus}}",
+  "@notificationActionTalk": {
+    "description": "A reminder's third button: opens the app with the agent asked about that card.",
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
   "notificationChannelDaily": "Bom dia e boa noite",
   "notificationChannelDailyDescription": "Um recado no começo e no fim do dia.",
   "remindersNextBlock": "Próximo bloco",
   "remindersAskTitle": "Quer lembretes?",
-  "remindersAskBody": "Pergunto quando é hora de começar um bloco, aviso dez minutos antes de acabar, e mando um bom dia e um boa noite.",
+  "remindersAskBody": "Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.",
   "remindersEnable": "Ativar lembretes",
   "commonNotNow": "Agora não",
   "remindersStartTitle": "Começar “{title}”?",

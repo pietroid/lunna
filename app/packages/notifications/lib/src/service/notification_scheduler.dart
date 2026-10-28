@@ -4,6 +4,7 @@ import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:notifications/src/data/notifications_repository.dart';
+import 'package:notifications/src/models/notification_answer.dart';
 import 'package:notifications/src/models/notification_plan.dart';
 import 'package:notifications/src/service/notification_queue.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,14 +12,17 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 /// {@template notification_tap}
-/// A reminder the user tapped.
+/// A reminder the user tapped, or one of its buttons.
 /// {@endtemplate}
 class NotificationTap {
   /// {@macro notification_tap}
   const NotificationTap({
     this.eventId,
     this.title,
-    this.confirmStart = false,
+    this.kind,
+    this.card,
+    this.edge,
+    this.action,
   });
 
   /// The block it was about, when it was about one.
@@ -27,8 +31,41 @@ class NotificationTap {
   /// What the reminder said, which for a block is the block's name.
   final String? title;
 
-  /// Whether it asked the user to begin a block, which a tap answers.
-  final bool confirmStart;
+  /// What the reminder was for.
+  final NotificationKind? kind;
+
+  /// Whether [eventId] is a task or a fixed block, on an ask.
+  final NotificationCard? card;
+
+  /// Which end of the block it asked about, on an ask.
+  final NotificationEdge? edge;
+
+  /// The button chosen, or null for a tap on the notification itself,
+  /// which always opens the app on the card.
+  final NotificationAction? action;
+
+  /// Whether it asked the person to begin a task.
+  bool get asksToStartTask =>
+      kind == NotificationKind.askStart && card == NotificationCard.task;
+
+  /// The write [action] stands for, or null when it writes nothing: a tap,
+  /// talking it over, or a reminder that asked nothing.
+  NotificationAnswer? get answer {
+    final id = eventId;
+    final card = this.card;
+    final edge = this.edge;
+    final action = this.action;
+    if (id == null || card == null || edge == null || action == null) {
+      return null;
+    }
+
+    return NotificationAnswer.of(
+      card: card,
+      edge: edge,
+      id: id,
+      action: action,
+    );
+  }
 }
 
 /// {@template notification_scheduler}
@@ -52,6 +89,7 @@ class NotificationScheduler {
     Future<SharedPreferences> Function()? preferences,
     DateTime Function()? now,
     bool? supported,
+    this._onBackgroundAction,
   }) : _queue = queue ?? LocalNotificationQueue(),
        _preferences = preferences ?? SharedPreferences.getInstance,
        _now = now ?? DateTime.now,
@@ -72,6 +110,12 @@ class NotificationScheduler {
   final DateTime Function() _now;
   final bool _supported;
 
+  /// Where a button chosen without opening the app is answered: a top-level
+  /// function the system runs in an engine of its own (see
+  /// [NotificationQueue.initialize]). Null where nothing answers in the
+  /// background, which is a sync from that very engine.
+  final BackgroundAction? _onBackgroundAction;
+
   final _taps = StreamController<NotificationTap>.broadcast();
 
   Future<void>? _initialized;
@@ -89,8 +133,23 @@ class NotificationScheduler {
 
     tz_data.initializeTimeZones();
     await _queue.initialize(
-      onTap: (payload) => _taps.add(tapOf(payload)),
+      onTap: (payload, actionId) => _taps.add(tapOf(payload, actionId)),
+      onBackgroundAction: _onBackgroundAction,
     );
+  }
+
+  /// Makes the write [tap]'s button stands for, then syncs, which takes
+  /// off the re-asks of the edge it answered. Answers whether it wrote.
+  ///
+  /// What a button chosen from the lock screen runs, in the background
+  /// engine; nothing here needs the app's screens.
+  Future<bool> answer(NotificationTap tap) async {
+    final answer = tap.answer;
+    if (answer == null) return false;
+
+    await _repository.answer(answer);
+    await sync();
+    return true;
   }
 
   /// The reminder that launched the app, if one did.
@@ -98,8 +157,8 @@ class NotificationScheduler {
     if (!_supported) return null;
     await initialize();
 
-    final payload = await _queue.launchPayload();
-    return payload == null ? null : tapOf(payload);
+    final launch = await _queue.launchResponse();
+    return launch == null ? null : tapOf(launch.payload, launch.actionId);
   }
 
   /// Whether the user has not been asked yet and could be.
@@ -189,6 +248,7 @@ class NotificationScheduler {
           daily:
               item.kind == NotificationKind.morning ||
               item.kind == NotificationKind.evening,
+          asks: item.asks,
           payload: payloadOf(item),
         ),
       );
@@ -275,26 +335,35 @@ String payloadOf(PlannedNotification item) {
     'kind': item.kind.name,
     'title': item.title,
     if (item.eventId != null) 'eventId': item.eventId,
+    if (item.card != null) 'card': item.card!.name,
+    if (item.edge != null) 'edge': item.edge!.name,
   });
 }
 
-/// A tap, read off a reminder's payload.
-NotificationTap tapOf(String? payload) {
-  if (payload == null || payload.isEmpty) return const NotificationTap();
+/// A tap, read off a reminder's payload, and the button chosen ([actionId],
+/// null for the notification itself).
+NotificationTap tapOf(String? payload, [String? actionId]) {
+  final action = NotificationAction.fromId(actionId);
+  if (payload == null || payload.isEmpty) {
+    return NotificationTap(action: action);
+  }
 
   try {
     final json = jsonDecode(payload);
-    if (json is! Map<String, dynamic>) return const NotificationTap();
+    if (json is! Map<String, dynamic>) return NotificationTap(action: action);
 
     final eventId = json['eventId'];
     final title = json['title'];
     return NotificationTap(
       eventId: eventId is String ? eventId : null,
       title: title is String ? title : null,
-      confirmStart: json['kind'] == NotificationKind.confirmStart.name,
+      kind: NotificationKind.fromName(json['kind']),
+      card: NotificationCard.fromName(json['card']),
+      edge: NotificationEdge.fromName(json['edge']),
+      action: action,
     );
   } on FormatException {
-    return const NotificationTap();
+    return NotificationTap(action: action);
   }
 }
 

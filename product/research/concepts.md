@@ -11,7 +11,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [posthog](./2026-10-21-posthog/README.md) ·
 [agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
 [multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md) ·
-[neon-compute](./2026-10-23-neon-compute/README.md)
+[neon-compute](./2026-10-23-neon-compute/README.md) ·
+[notification-lifecycle](./2026-10-28-notification-lifecycle/README.md)
 
 ## Tools: what the model is given
 
@@ -219,7 +220,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Chrome, [Timer throttling in Chrome 88](https://developer.chrome.com/blog/timer-throttling-in-chrome-88): hidden tabs' timers run once a minute; prefer push to polling.
 - **Here:** a paused block's end is `now + owed`, so `catchUp` runs before each read instead of on a clock.
-- **Met in:** neon-compute, slides 7–8.
+- **Met in:** neon-compute, slides 7–8; notification-lifecycle, slides 5 and 7 (overtime dragged on read; the Live Activity changes on state only).
 
 ### Settle on access, from absolute times
 > Store when something happened; work out the rest from now, when someone asks.
@@ -227,3 +228,19 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** Redis, [EXPIRE: How Redis expires keys](https://redis.io/docs/latest/commands/expire/): "a key is passively expired when a client tries to access it", expiry kept as absolute timestamps so time flows while the server is down.
 - **Here:** a paused block's end is `now + owed` and a queued task's hour is `relayout` on read, so no tick and no "last read" watermark. The tick had hidden a `catchUp` bug that only a long gap shows.
 - **Met in:** neon-compute, slide 9.
+
+## Interruptions: when to ask
+
+### Ask at the edges
+> Defer an interruption to a breakpoint; the coarser the breakpoint, the cheaper.
+
+- **Read:** Iqbal & Bailey, [Understanding and Developing Models for Detecting and Differentiating Breakpoints](https://www.interruptions.net/literature/Iqbal_Bailey-CHI07.pdf) (CHI 2007): ~2, ~4 and ~7 min to the next fine, medium and coarse breakpoint.
+- **Here:** the start and end of a block are the coarsest breakpoints a planner knows; re-ask 10 min later; warn 15 min before a fixed block something runs into.
+- **Met in:** notification-lifecycle, slide 6.
+
+### The lock screen counts by itself
+> A Live Activity can't reach the network, but its timer counts on its own: update it on state, never on the clock.
+
+- **Read:** Apple, [Displaying live data with Live Activities](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities): `Text(timerInterval:)`, 4 KB, start in the foreground or from a `LiveActivityIntent`.
+- **Here:** the running block's activity is updated on start, pause, ±10, done and overtime; no push server and no minute updates.
+- **Met in:** notification-lifecycle, slide 7.

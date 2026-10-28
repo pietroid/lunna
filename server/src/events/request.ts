@@ -265,9 +265,12 @@ export function requireSwap(other: string | undefined): string {
   return id;
 }
 
-/** How long a snooze is: between one minute and four hours. */
+/** The step of every "not yet" and "more time": the reminders' +10. */
+export const STEP_MINUTES = 10;
+
+/** How long a snooze or a delay is: between one minute and four hours. */
 export function requireSnooze(minutes: number | undefined): number {
-  const value = minutes ?? 15;
+  const value = minutes ?? STEP_MINUTES;
   if (!Number.isInteger(value) || value <= 0 || value > 240) {
     throw new BadRequestException('minutes must be between 1 and 240');
   }

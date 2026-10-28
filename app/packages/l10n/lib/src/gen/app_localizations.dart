@@ -629,29 +629,35 @@ abstract class AppLocalizations {
   /// **'Começar agora'**
   String get controlStartNow;
 
-  /// No description provided for @controlLess15.
+  /// No description provided for @controlLess10.
   ///
   /// In pt, this message translates to:
-  /// **'Menos 15 min'**
-  String get controlLess15;
+  /// **'Menos 10 min'**
+  String get controlLess10;
 
-  /// No description provided for @controlWait15.
+  /// No description provided for @controlWait10.
   ///
   /// In pt, this message translates to:
-  /// **'Esperar 15 min'**
-  String get controlWait15;
+  /// **'Esperar 10 min'**
+  String get controlWait10;
 
-  /// No description provided for @controlMore15.
+  /// No description provided for @controlMore10.
   ///
   /// In pt, this message translates to:
-  /// **'Mais 15 min'**
-  String get controlMore15;
+  /// **'Mais 10 min'**
+  String get controlMore10;
 
   /// No description provided for @controlDone.
   ///
   /// In pt, this message translates to:
   /// **'Concluir'**
   String get controlDone;
+
+  /// On a running card whose end passed with nobody saying it was over.
+  ///
+  /// In pt, this message translates to:
+  /// **'atrasado {minutes} min'**
+  String timelineLate(int minutes);
 
   /// No description provided for @nowPausedLeft.
   ///
@@ -950,8 +956,26 @@ abstract class AppLocalizations {
   /// No description provided for @notificationChannelBlocksDescription.
   ///
   /// In pt, this message translates to:
-  /// **'Quando um bloco começa e quando está perto de terminar.'**
+  /// **'Quando um bloco começa e quando termina, com um botão para responder.'**
   String get notificationChannelBlocksDescription;
+
+  /// No description provided for @notificationActionConfirm.
+  ///
+  /// In pt, this message translates to:
+  /// **'Confirmar'**
+  String get notificationActionConfirm;
+
+  /// No description provided for @notificationActionLater.
+  ///
+  /// In pt, this message translates to:
+  /// **'+10 min'**
+  String get notificationActionLater;
+
+  /// A reminder's third button: opens the app with the agent asked about that card.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{Falar com a Lunna} other{Falar com o Focus}}'**
+  String notificationActionTalk(String brand);
 
   /// No description provided for @notificationChannelDaily.
   ///
@@ -980,7 +1004,7 @@ abstract class AppLocalizations {
   /// No description provided for @remindersAskBody.
   ///
   /// In pt, this message translates to:
-  /// **'Pergunto quando é hora de começar um bloco, aviso dez minutos antes de acabar, e mando um bom dia e um boa noite.'**
+  /// **'Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.'**
   String get remindersAskBody;
 
   /// No description provided for @remindersEnable.

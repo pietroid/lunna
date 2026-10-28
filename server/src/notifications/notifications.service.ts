@@ -3,7 +3,14 @@ import { Injectable } from '@nestjs/common';
 import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { intervalOf } from '../events/event-sections';
 import { Day, inOrder, TimelineService } from '../events/timeline.service';
-import { addMinutes, minutesOf, WorkDay } from '../time/work-hours';
+import { STEP_MINUTES } from '../events/request';
+import { Task } from '../tasks/task.types';
+import {
+  addMinutes,
+  BLOCK_GAP_MINUTES,
+  Interval,
+  WorkDay,
+} from '../time/work-hours';
 import {
   addDaysIn,
   atHourIn,
@@ -14,18 +21,24 @@ import {
   Zone,
 } from '../time/zone';
 import {
+  NotificationCard,
+  NotificationEdge,
   NotificationItem,
   NotificationKind,
   NotificationPlan,
 } from './dto/notification-plan.dto';
 import {
-  almostFinishingBody,
   CONFIRM_START_BODY,
+  ENDED_BODY,
+  endedTitle,
   EVENING_MESSAGES,
   EVENING_TITLE,
+  headsUpBody,
+  headsUpTitle,
   MORNING_MESSAGES,
   MORNING_TITLE,
-  startingBody,
+  startedBody,
+  startedTitle,
 } from './notification-copy';
 
 /** How many days ahead a plan reaches when the app does not say. */
@@ -34,16 +47,21 @@ export const DEFAULT_HORIZON_DAYS = 7;
 /** The furthest a plan reaches, whatever the app asks for. */
 export const MAX_HORIZON_DAYS = 14;
 
-/** How long before a block ends the "almost finishing" reminder fires. */
-export const ALMOST_FINISHING_MINUTES = 10;
+/**
+ * How many times an edge nobody answered is asked about: at the hour, then
+ * again [STEP_MINUTES] later, and once more. Then it is quiet: an ignored
+ * reminder means busy, not broken.
+ */
+export const ASKS_PER_EDGE = 3;
 
 /**
- * The shortest block that gets an "almost finishing" reminder.
- *
- * Below this, ten minutes before the end is at or right after the start,
- * and the two reminders would arrive on top of each other.
+ * How far ahead the re-asks are queued. The phone holds 64 reminders at
+ * most, and re-asks for next week would crowd out its first asks.
  */
-export const ALMOST_FINISHING_MIN_BLOCK_MINUTES = 20;
+export const REASK_HOURS = 24;
+
+/** How long before a fixed block its heads-up comes. */
+export const HEADS_UP_MINUTES = 15;
 
 /**
  * The hour the evening reminder fires.
@@ -59,15 +77,17 @@ export const EVENING_HOUR = 21;
  *
  * Derived, never stored. The server owns the schedule and the phone only
  * mirrors it, so the plan is rebuilt from the day on every ask and there is
- * no table of reminders to fall out of step with the day it describes.
+ * no table of reminders to fall out of step with the day it describes. An
+ * edge that was answered has no asks left in the next plan, which is how a
+ * button's answer cancels the re-asks: the phone syncs after it.
  *
  * Only the blocks Lunna booked get a reminder. A meeting that arrived from
  * an outside calendar already has that calendar to announce it, and two
  * alerts for one event is worse than one.
  *
- * Of the tasks, only the next one gets a reminder. Every other task's hour
- * moves each time the queue is reordered or something runs late, so a
- * reminder for each would be a stream of wrong times.
+ * Of the tasks not begun, only the next one is asked about. Every other
+ * task's hour moves each time the queue is reordered or something runs
+ * late, so a reminder for each would be a stream of wrong times.
  */
 @Injectable()
 export class NotificationsService {
@@ -80,16 +100,24 @@ export class NotificationsService {
   ): Promise<NotificationPlan> {
     const zone = this._timeline.zone(user);
     const until = addDaysIn(now, horizonDays, zone);
+    const reask = now.getTime() + REASK_HOURS * 3_600_000;
     const day = await this._timeline.day(user, horizonDays + 1, now);
 
-    const items = [
+    const planned: Planned[] = [
       ...day.events.flatMap((event) => blockItems(day, event)),
       ...nextTaskItems(day),
       ...dailyItems(now, horizonDays, zone, day.workDay),
-    ]
+    ];
+    const items = planned
       .filter((item) => {
         const at = Date.parse(item.fireAt);
+        if (item.repeat === true && at > reask) return false;
         return at > now.getTime() && at <= until.getTime();
+      })
+      .map((item): NotificationItem => {
+        const copy = { ...item };
+        delete copy.repeat;
+        return copy;
       })
       .sort((a, b) => Date.parse(a.fireAt) - Date.parse(b.fireAt));
 
@@ -97,74 +125,154 @@ export class NotificationsService {
   }
 }
 
+/** A reminder, and whether it is a re-ask, which only the next day gets. */
+type Planned = NotificationItem & { repeat?: boolean };
+
 /**
- * The reminder the next task earns: at its hour, asking rather than
- * announcing, because a task waits for the user to begin it.
+ * The asks the next task earns: at the hour it came due, asking rather than
+ * announcing, because a task waits for the person to begin it.
  */
-function nextTaskItems(day: Day): NotificationItem[] {
+function nextTaskItems(day: Day): Planned[] {
   // The earliest, not the first in the queue: a lunch anchored at noon comes
   // before the queue's next task when the queue's runs past it.
   const next = inOrder(day).find((task) => !day.live.has(task.id));
   const slot = next === undefined ? undefined : day.placed.get(next.id);
   if (next === undefined || slot === undefined) return [];
 
-  return [
-    itemOf({
-      kind: 'confirmStart',
-      source: next.id,
-      at: slot.start,
-      zone: day.zone,
-      title: next.title,
-      body: CONFIRM_START_BODY,
-      timeSensitive: true,
-      eventId: next.id,
-    }),
-  ];
+  return asks({
+    kind: 'askStart',
+    edge: 'start',
+    card: 'task',
+    source: next.id,
+    at: dueOf(day, next, slot),
+    zone: day.zone,
+    title: next.title,
+    body: CONFIRM_START_BODY,
+    eventId: next.id,
+  });
+}
+
+/**
+ * The hour a task came due.
+ *
+ * Its slot, while that is ahead. Once it has come, a task waiting to be
+ * begun sits at the current minute, so the slot says only "now": it came
+ * due at its anchor, or else when what was before it ended and the break
+ * was over, or else when the working day opened. Without this the re-asks
+ * would slide ahead of the clock on every sync and never fire.
+ */
+function dueOf(day: Day, task: Task, slot: Interval): Date {
+  if (slot.start > day.now) return slot.start;
+
+  let due = atMinuteIn(day.now, day.workDay.start, day.zone);
+  if (task.notBefore !== undefined) {
+    due = laterOf(due, new Date(task.notBefore));
+  }
+  for (const event of day.events) {
+    const end = addMinutes(new Date(event.endTime), BLOCK_GAP_MINUTES);
+    if (end <= day.now) due = laterOf(due, end);
+  }
+
+  return due > day.now ? slot.start : due;
 }
 
 /** The reminders one block earns, before the past is dropped. */
-function blockItems(day: Day, event: CalendarEvent): NotificationItem[] {
-  if (!event.managed) return [];
+function blockItems(day: Day, event: CalendarEvent): Planned[] {
+  if (!event.managed || event.closedAt !== undefined) return [];
 
   const interval = intervalOf(event);
   if (interval === undefined) return [];
 
   // A tap opens the card, and a begun task's card is the task.
-  const card = event.taskId ?? event.id;
+  const task = event.taskId !== undefined;
+  const card: NotificationCard = task ? 'task' : 'event';
+  const eventId = event.taskId ?? event.id;
   const zone = day.zone;
-  const items = [
-    itemOf({
-      kind: 'starting',
-      source: event.id,
-      at: interval.start,
-      zone,
-      title: event.title,
-      body: startingBody(formatTimeIn(interval.end, zone)),
-      timeSensitive: true,
-      eventId: card,
-    }),
-  ];
+  const items: Planned[] = [];
+
+  if (!task && event.confirmedAt === undefined) {
+    items.push(
+      ...asks({
+        kind: 'askStart',
+        edge: 'start',
+        card,
+        source: event.id,
+        at: interval.start,
+        zone,
+        title: startedTitle(event.title),
+        body: startedBody(formatTimeIn(interval.end, zone)),
+        eventId,
+      }),
+    );
+    if (runsUpTo(day, event, interval.start)) {
+      items.push(
+        itemOf({
+          kind: 'headsUp',
+          edge: 'start',
+          card,
+          source: event.id,
+          at: addMinutes(interval.start, -HEADS_UP_MINUTES),
+          zone,
+          title: headsUpTitle(event.title, HEADS_UP_MINUTES),
+          body: headsUpBody(
+            formatTimeIn(interval.start, zone),
+            formatTimeIn(interval.end, zone),
+          ),
+          eventId,
+        }),
+      );
+    }
+  }
 
   // A paused block's end is dragged along with the clock, so any hour
-  // written down for it now is wrong by the next minute. It gets its
-  // reminder back when it runs again and the next sync sees a real end.
-  const paused = event.pausedAt !== undefined;
-  if (!paused && minutesOf(interval) >= ALMOST_FINISHING_MIN_BLOCK_MINUTES) {
+  // written down for it now is wrong by the next minute. It is asked about
+  // again when it runs and the next sync sees a real end. One in overtime
+  // is asked about from the end it was planned to have.
+  if (event.pausedAt === undefined) {
     items.push(
-      itemOf({
-        kind: 'almostFinishing',
+      ...asks({
+        kind: 'askEnd',
+        edge: 'end',
+        card,
         source: event.id,
-        at: addMinutes(interval.end, -ALMOST_FINISHING_MINUTES),
+        at: new Date(event.overtimeFrom ?? interval.end),
         zone,
-        title: event.title,
-        body: almostFinishingBody(ALMOST_FINISHING_MINUTES),
-        timeSensitive: false,
-        eventId: card,
+        title: endedTitle(event.title),
+        body: ENDED_BODY,
+        eventId,
       }),
     );
   }
 
   return items;
+}
+
+/**
+ * Whether something runs right up to [start], so the end ask of whatever
+ * is before a fixed block would come too late to move it: a block or a
+ * queued task that began before it and ends within the break of it.
+ */
+function runsUpTo(day: Day, fixed: CalendarEvent, start: Date): boolean {
+  const near = addMinutes(start, -BLOCK_GAP_MINUTES).getTime();
+  const spans = [
+    ...day.events
+      .filter((event) => event.id !== fixed.id)
+      .flatMap((event) => intervalOf(event) ?? []),
+    ...day.placed.values(),
+  ];
+
+  return spans.some((span) => span.start < start && span.end.getTime() >= near);
+}
+
+/**
+ * The asks of one edge: at [spec.at], then again every [STEP_MINUTES], as
+ * many as [ASKS_PER_EDGE]. Each repeat is its own reminder, with its own id.
+ */
+function asks(spec: Parameters<typeof itemOf>[0]): Planned[] {
+  return Array.from({ length: ASKS_PER_EDGE }, (_, i) => ({
+    ...itemOf({ ...spec, at: addMinutes(spec.at, i * STEP_MINUTES) }),
+    ...(i === 0 ? {} : { repeat: true }),
+  }));
 }
 
 /** The morning and evening reminders for each day from today on. */
@@ -220,8 +328,10 @@ function itemOf(spec: {
   zone: Zone;
   title: string;
   body: string;
-  timeSensitive: boolean;
+  timeSensitive?: boolean;
   eventId?: string;
+  card?: NotificationCard;
+  edge?: NotificationEdge;
 }): NotificationItem {
   const epoch = Math.floor(spec.at.getTime() / 1000);
   const text = hashOf(`${spec.title}\n${spec.body}`).slice(0, 8);
@@ -232,8 +342,11 @@ function itemOf(spec: {
     fireAt: isoIn(spec.at, spec.zone),
     title: spec.title,
     body: spec.body,
-    timeSensitive: spec.timeSensitive,
+    // Every ask breaks through a Focus mode; the day's greetings do not.
+    timeSensitive: spec.timeSensitive ?? spec.edge !== undefined,
     ...(spec.eventId === undefined ? {} : { eventId: spec.eventId }),
+    ...(spec.card === undefined ? {} : { card: spec.card }),
+    ...(spec.edge === undefined ? {} : { edge: spec.edge }),
   };
 }
 
@@ -251,4 +364,9 @@ function pick(messages: readonly string[], seed: string): string {
 
 function hashOf(text: string): string {
   return createHash('sha1').update(text).digest('hex');
+}
+
+/** Whichever of [a] and [b] comes later. */
+function laterOf(a: Date, b: Date): Date {
+  return a > b ? a : b;
 }

@@ -1,5 +1,5 @@
 {
-  "id": "8e1a4166-15a8-4b21-a44d-d62f0cc33fa2",
+  "id": "2ebd392e-d2e8-49d7-92b7-30272de478d1",
   "prevId": "0a6b5ca9-f356-4ced-91cf-b992a3e7b275",
   "version": "7",
   "dialect": "postgresql",
@@ -825,6 +825,24 @@
           "primaryKey": false,
           "notNull": false
         },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "overtime_from": {
+          "name": "overtime_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -970,16 +988,10 @@
           "name": "period",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "starts": {
           "name": "starts",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "deadline": {
-          "name": "deadline",
           "type": "date",
           "primaryKey": false,
           "notNull": true
@@ -1146,7 +1158,7 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": false
+          "default": true
         },
         "checklist": {
           "name": "checklist",

@@ -19,7 +19,7 @@ import {
   minutesOf,
   WorkDay,
 } from '../time/work-hours';
-import { addDaysIn, atMinuteIn, startOfDayIn, Zone } from '../time/zone';
+import { addDaysIn, startOfDayIn, Zone } from '../time/zone';
 import {
   BacklogCard,
   CardArtifact,
@@ -130,18 +130,11 @@ export class TimelineService {
     let events: CalendarEvent[] = [];
     let live = new Map<string, CalendarEvent>();
     let placed = new Map<string, Interval>();
-    let tasks: Task[] = [];
-    let backlog: Task[] = [];
-    let stored: Task[] | undefined;
+    const stored = await this._tasks.pending(user);
+    const tasks = stored.filter((task) => !task.backlog);
+    const backlog = stored.filter((task) => task.backlog);
 
     for (let pass = 0; pass < MAX_PASSES; pass++) {
-      // The days of flexible routines are tasks, written down as the read
-      // reaches them, like a fixed routine's days are written as events.
-      const days = await this._calendar.routineDays(user, reach, now);
-      const written = await this._tasks.materialize(user, days);
-      if (stored === undefined || written > 0) {
-        stored = await this._tasks.pending(user);
-      }
       events = await this._calendar.events(user, reach, now);
 
       // A task whose hour ran out is over, and the next request's catchUp
@@ -158,13 +151,6 @@ export class TimelineService {
           over.add(event.taskId);
         }
       }
-
-      // A day of a routine nobody began by the end of its day is gone, as a
-      // fixed one's hour would be. catchUp writes it down as such.
-      const missed = (task: Task) =>
-        !live.has(task.id) && isMissed(task, now, zone, workDay);
-      tasks = stored.filter((task) => !task.backlog && !missed(task));
-      backlog = stored.filter((task) => task.backlog && !missed(task));
 
       const queue = tasks.filter(
         (task) => !live.has(task.id) && !over.has(task.id),
@@ -284,23 +270,6 @@ export function isAnchored(day: Day, task: Task): boolean {
   return task.notBefore !== undefined && !day.live.has(task.id);
 }
 
-/**
- * Whether [task] is a day of a routine whose working day ended before
- * anybody began it.
- */
-export function isMissed(
-  task: Task,
-  now: Date,
-  zone: Zone,
-  workDay: WorkDay,
-): boolean {
-  if (task.routineId === undefined || task.occurrence === undefined) {
-    return false;
-  }
-
-  return atMinuteIn(new Date(task.occurrence), workDay.end, zone) <= now;
-}
-
 /** Where a task's hour is: the one it is taking, or the one it is given. */
 export function intervalOfTask(day: Day, taskId: string): Interval | undefined {
   const live = day.live.get(taskId);
@@ -353,6 +322,7 @@ function taskCard(day: Day, task: Task): TimelineCard | undefined {
       live === undefined ? task.minutes : Math.round(workSecondsOf(live) / 60),
     started: live !== undefined,
     awaitingStart: awaiting,
+    ...overtimeOf(day, live),
     notBefore: live === undefined ? task.notBefore : undefined,
     routine: routineOf(day, task),
     artifact: artifactOf(day, task),
@@ -412,9 +382,24 @@ function eventCard(day: Day, event: CalendarEvent): TimelineCard | undefined {
     workMinutes: Math.round(workSecondsOf(event) / 60),
     started: false,
     awaitingStart: false,
+    ...overtimeOf(day, event),
     routine: event.routine,
     ...(event.checklist === undefined ? {} : { checklist: event.checklist }),
   };
+}
+
+/** `overtimeMinutes`, to spread into a card: nothing while it is on time. */
+function overtimeOf(
+  day: Day,
+  event: CalendarEvent | undefined,
+): { overtimeMinutes?: number } {
+  if (event?.overtimeFrom === undefined || event.closedAt !== undefined) {
+    return {};
+  }
+  const minutes = Math.floor(
+    (day.now.getTime() - Date.parse(event.overtimeFrom)) / 60_000,
+  );
+  return minutes > 0 ? { overtimeMinutes: minutes } : {};
 }
 
 /**

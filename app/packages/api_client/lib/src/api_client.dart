@@ -11,6 +11,10 @@ import 'package:dio/dio.dart';
 /// `onServerError` hears of every answer the server failed (a 5xx): not a
 /// refusal, which is a 4xx it wrote on purpose, and not a dropped network,
 /// which is the device's.
+///
+/// Every request says where it came from in [viaHeader]: [via] is `app`,
+/// or `notification` for the client a reminder's button answers through,
+/// which is how the server tells the two apart in what it measures.
 /// {@endtemplate}
 class ApiClient {
   /// {@macro api_client}
@@ -19,6 +23,7 @@ class ApiClient {
     required TokenProvider tokenProvider,
     Dio? dio,
     this._onServerError,
+    this.via = 'app',
   }) : _dio =
            dio ??
            Dio(
@@ -38,8 +43,23 @@ class ApiClient {
         dio: _dio,
       ),
     );
-    _dio.interceptors.add(_loggingInterceptor());
+    _dio.interceptors
+      ..add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            options.headers[viaHeader] = via;
+            handler.next(options);
+          },
+        ),
+      )
+      ..add(_loggingInterceptor());
   }
+
+  /// The header the server reads [via] from.
+  static const viaHeader = 'X-Lunna-Via';
+
+  /// Where the requests of this client come from: `app`, or `notification`.
+  final String via;
 
   final Dio _dio;
   final void Function(DioException error)? _onServerError;

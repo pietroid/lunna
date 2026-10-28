@@ -150,7 +150,7 @@ final class EventStarted extends TimelineBlocEvent {
 /// Not yet: the block waits [minutes] more before asking again.
 final class EventSnoozed extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
-  const EventSnoozed(this.id, {this.minutes = 15});
+  const EventSnoozed(this.id, {this.minutes = stepMinutes});
 
   /// The block.
   final String id;
@@ -230,7 +230,7 @@ final class EventPauseToggled extends TimelineBlocEvent {
 /// Gives a block more time, because the estimate was wrong.
 final class EventExtended extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
-  const EventExtended(this.id, {this.minutes = 15});
+  const EventExtended(this.id, {this.minutes = stepMinutes});
 
   /// The card to extend.
   final String id;

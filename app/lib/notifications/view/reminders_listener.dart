@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -11,14 +13,18 @@ import 'package:timeline/timeline.dart';
 /// Keeps the reminder queue in step with the day, and opens what a reminder
 /// was about when it is tapped.
 ///
-/// A flexible block's reminder asks rather than announces: its hour came and
-/// it is waiting for the user. Tapping it opens the question, begin it now or
-/// in fifteen minutes, and until one is answered the block keeps sliding down
-/// the day with the clock.
+/// A tap on the reminder itself always opens the app on its card, whatever
+/// it asked. On iOS its buttons answer it without the app: Confirmar and
+/// +10 min are posted from the background (`answerReminderInBackground`),
+/// and Falar com a Lunna opens the app here, with the agent's sheet about
+/// the card.
 ///
-/// The notification is not the only way back into the app, so the question
-/// does not depend on it. Opening the app, or bringing it back, while a
-/// block is still waiting asks the same question. Once per opening: a
+/// Android draws no buttons yet (#56), so there a task's start reminder
+/// still opens the question, begin it now or in ten minutes, and until one
+/// is answered the task keeps sliding down the day with the clock. The
+/// notification is not the only way back into the app, so the question
+/// does not depend on it: opening the app, or bringing it back, while a
+/// task is still waiting asks the same question. Once per opening: a
 /// dismissed question is left to the card, which goes on saying it is
 /// waiting.
 ///
@@ -57,6 +63,11 @@ class _RemindersListenerState extends State<RemindersListener>
 
   /// The block the start question is open for, so it is never open twice.
   String? _askingStart;
+
+  /// Whether the reminders' own buttons answer them, which makes the start
+  /// question redundant: on iOS, and on Android once #56 lands.
+  bool get _buttonsAnswer =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   void initState() {
@@ -108,6 +119,8 @@ class _RemindersListenerState extends State<RemindersListener>
   /// Asks about the block in Agora still waiting to be begun, if there is
   /// one.
   void _askIfWaiting(TimelineState day) {
+    if (_buttonsAnswer) return;
+
     final waiting = day.tasks
         .where(
           (card) => card.section == TimelineSection.agora && card.awaitingStart,
@@ -122,7 +135,26 @@ class _RemindersListenerState extends State<RemindersListener>
     final eventId = tap.eventId;
     if (eventId == null) return;
 
-    if (tap.confirmStart) {
+    if (tap.action == NotificationAction.talk) {
+      unawaited(
+        showAgentSheet(
+          context,
+          about: tap.card == NotificationCard.task
+              ? AgentSubject.task(eventId)
+              : null,
+        ),
+      );
+      return;
+    }
+
+    // Confirmar and +10 min are answered in the background; one that still
+    // reaches the app is answered here, the same way.
+    if (tap.answer != null) {
+      unawaited(_answer(tap));
+      return;
+    }
+
+    if (tap.asksToStartTask && !_buttonsAnswer) {
       unawaited(
         _askToStart(eventId, tap.title ?? context.l10n.remindersNextBlock),
       );
@@ -132,7 +164,13 @@ class _RemindersListenerState extends State<RemindersListener>
     unawaited(context.push<void>('/evento/${Uri.encodeComponent(eventId)}'));
   }
 
-  /// Asks whether the waiting block starts now or in fifteen minutes.
+  Future<void> _answer(NotificationTap tap) async {
+    final timeline = context.read<TimelineBloc>();
+    await _scheduler.answer(tap);
+    timeline.add(const TimelineRequested());
+  }
+
+  /// Asks whether the waiting task starts now or in ten minutes.
   Future<void> _askToStart(String eventId, String title) async {
     // A notification tapped while the app was opening, and the opening
     // itself, both ask. One sheet is enough.
@@ -296,7 +334,7 @@ Future<bool> _explain(BuildContext context) async {
 /// What the start question was answered with.
 enum _StartAnswer { now, later }
 
-/// The question a flexible block's reminder opens.
+/// The question a task's start reminder opens, on Android (#56).
 ///
 /// One primary answer and one quiet one. Dismissing it answers nothing, and
 /// the block keeps waiting.
@@ -341,7 +379,7 @@ Future<_StartAnswer?> _startSheet(BuildContext context, String title) {
               ),
               const SizedBox(height: AppSpacing.s2),
               AppButton.text(
-                text: context.l10n.controlWait15,
+                text: context.l10n.controlWait10,
                 color: AppColors.ink2,
                 expand: true,
                 onPressed: () =>

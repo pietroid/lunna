@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 import UserNotifications
+import flutter_local_notifications
 import workmanager_apple
 
 @main
@@ -21,6 +22,11 @@ import workmanager_apple
     // A background refresh runs in an engine of its own, which needs the
     // plugins registered on it the same way the app's engine has.
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
+      GeneratedPluginRegistrant.register(with: registry)
+    }
+    // So does a reminder's button answered without opening the app
+    // (Confirmar, +10 min), which posts the answer from there.
+    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { registry in
       GeneratedPluginRegistrant.register(with: registry)
     }
     WorkmanagerPlugin.registerPeriodicTask(

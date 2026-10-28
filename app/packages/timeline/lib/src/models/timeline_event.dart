@@ -2,6 +2,11 @@ import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 import 'package:timeline/src/models/work_day.dart';
 
+/// The step of every "not yet" and "more time": the ± on a running card,
+/// the snooze of a waiting one, and the reminders' +10 min. The server's
+/// `STEP_MINUTES`.
+const stepMinutes = 10;
+
 /// Which heading a card falls under.
 ///
 /// For a card with an hour, a section is not a place anything is put. It is
@@ -90,6 +95,7 @@ class TimelineEvent extends Equatable {
     this.pausedSeconds = 0,
     int? workMinutes,
     this.awaitingStart = false,
+    this.overtimeMinutes = 0,
     this.notBefore,
     this.routine,
     this.artifactId,
@@ -118,6 +124,7 @@ class TimelineEvent extends Equatable {
       pausedSeconds: (json['pausedSeconds'] as num?)?.round() ?? 0,
       workMinutes: json['workMinutes'] as int?,
       awaitingStart: json['awaitingStart'] as bool? ?? false,
+      overtimeMinutes: (json['overtimeMinutes'] as num?)?.round() ?? 0,
       notBefore: _maybeDate(json['notBefore']),
       routine: json['routine'] as String?,
       artifactId: (json['artifact'] as Map<String, dynamic>?)?['id'] as String?,
@@ -196,6 +203,16 @@ class TimelineEvent extends Equatable {
   /// slides it down the day a minute at a time, so the card asks rather than
   /// counting down.
   final bool awaitingStart;
+
+  /// How many minutes it has run past its planned end with nobody saying it
+  /// was over, which the card says as "atrasado N min"; 0 while on time.
+  ///
+  /// The server drags its end along with the clock meanwhile, so the hours
+  /// on the card are already the late ones.
+  final int overtimeMinutes;
+
+  /// Whether it ran past its end with nobody saying it was over.
+  bool get isLate => overtimeMinutes > 0;
 
   /// The earliest the server will lay it out, when the user asked for later.
   final DateTime? notBefore;
@@ -309,6 +326,7 @@ class TimelineEvent extends Equatable {
       pausedSeconds: pausedSeconds,
       workMinutes: workMinutes,
       awaitingStart: awaitingStart ?? this.awaitingStart,
+      overtimeMinutes: overtimeMinutes,
       notBefore: notBefore,
       routine: routine,
       artifactId: artifactId,
@@ -336,6 +354,7 @@ class TimelineEvent extends Equatable {
     pausedSeconds,
     workMinutes,
     awaitingStart,
+    overtimeMinutes,
     notBefore,
     routine,
     artifactId,

@@ -13,13 +13,20 @@ class _FakeQueue implements NotificationQueue {
   final Map<int, QueuedNotification> queued = {};
   final List<int> cancelled = [];
 
-  @override
-  Future<void> initialize({
-    required void Function(String? payload) onTap,
-  }) async {}
+  void Function(String? payload, String? actionId)? onTap;
+  BackgroundAction? onBackgroundAction;
 
   @override
-  Future<String?> launchPayload() async => null;
+  Future<void> initialize({
+    required void Function(String? payload, String? actionId) onTap,
+    BackgroundAction? onBackgroundAction,
+  }) async {
+    this.onTap = onTap;
+    this.onBackgroundAction = onBackgroundAction;
+  }
+
+  @override
+  Future<({String? payload, String? actionId})?> launchResponse() async => null;
 
   @override
   Future<bool> isPermitted() async => permitted;
@@ -51,7 +58,7 @@ final _now = DateTime.utc(2026, 9, 21, 15);
 PlannedNotification _item(String id, {int minutes = 60, String? eventId}) {
   return PlannedNotification(
     id: id,
-    kind: NotificationKind.starting,
+    kind: NotificationKind.askStart,
     fireAt: _now.add(Duration(minutes: minutes)),
     title: 'Revisão de código',
     body: 'Começa agora, até 15:00',
@@ -71,6 +78,10 @@ void main() {
           NotificationPlan(timeZone: 'America/Sao_Paulo', items: items),
     );
   }
+
+  setUpAll(() {
+    registerFallbackValue(const NotificationAnswer(path: '/'));
+  });
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -161,20 +172,46 @@ void main() {
       planIs([
         PlannedNotification(
           id: 'ask',
-          kind: NotificationKind.confirmStart,
+          kind: NotificationKind.askStart,
           fireAt: _now.add(const Duration(minutes: 30)),
           title: 'Escrever',
           body: 'Está na hora. Começamos?',
           eventId: 'evt-1',
+          card: NotificationCard.task,
+          edge: NotificationEdge.start,
         ),
       ]);
 
       await scheduler.sync();
 
-      final tap = tapOf(queue.queued[queueIdOf('ask')]!.payload);
-      expect(tap.confirmStart, isTrue);
+      final queued = queue.queued[queueIdOf('ask')]!;
+      expect(queued.asks, isTrue);
+      final tap = tapOf(queued.payload);
+      expect(tap.asksToStartTask, isTrue);
       expect(tap.eventId, 'evt-1');
       expect(tap.title, 'Escrever');
+      expect(tap.edge, NotificationEdge.start);
+      // The reminder itself, tapped, writes nothing: it opens the card.
+      expect(tap.action, isNull);
+      expect(tap.answer, isNull);
+    });
+
+    test('gives buttons only to a reminder that asks about a block', () async {
+      planIs([
+        _item('a', eventId: 'evt-1'),
+        PlannedNotification(
+          id: 'morning',
+          kind: NotificationKind.morning,
+          fireAt: _now.add(const Duration(hours: 2)),
+          title: 'Bom dia',
+          body: 'Bora?',
+        ),
+      ]);
+
+      await scheduler.sync();
+
+      expect(queue.queued[queueIdOf('a')]!.asks, isFalse);
+      expect(queue.queued[queueIdOf('morning')]!.asks, isFalse);
     });
 
     test('files the morning and evening reminders apart', () async {
@@ -191,6 +228,106 @@ void main() {
       await scheduler.sync();
 
       expect(queue.queued.values.single.daily, isTrue);
+    });
+  });
+
+  group('answer', () {
+    NotificationTap tap(
+      NotificationCard card,
+      NotificationEdge edge,
+      String? actionId,
+    ) {
+      return tapOf(
+        payloadOf(
+          PlannedNotification(
+            id: 'ask',
+            kind: edge == NotificationEdge.start
+                ? NotificationKind.askStart
+                : NotificationKind.askEnd,
+            fireAt: _now,
+            title: 'Café',
+            body: 'Café começou',
+            eventId: 'id 1',
+            card: card,
+            edge: edge,
+          ),
+        ),
+        actionId,
+      );
+    }
+
+    test('maps each button on each edge of each card to its route', () {
+      String? route(NotificationCard card, NotificationEdge edge, String a) {
+        final answer = tap(card, edge, a).answer;
+        return answer == null ? null : '${answer.path} ${answer.data ?? ''}';
+      }
+
+      const task = NotificationCard.task;
+      const event = NotificationCard.event;
+      const start = NotificationEdge.start;
+      const end = NotificationEdge.end;
+
+      expect(route(task, start, 'confirm'), '/tasks/id%201/start ');
+      expect(route(task, start, 'later'), '/tasks/id%201/snooze {minutes: 10}');
+      expect(route(task, end, 'confirm'), '/tasks/id%201/done ');
+      expect(route(task, end, 'later'), '/tasks/id%201/extend {minutes: 10}');
+      expect(route(event, start, 'confirm'), '/events/id%201/start ');
+      expect(
+        route(event, start, 'later'),
+        '/events/id%201/delay {minutes: 10}',
+      );
+      expect(route(event, end, 'confirm'), '/events/id%201/done ');
+      expect(route(event, end, 'later'), '/events/id%201/extend {minutes: 10}');
+      expect(route(task, start, 'talk'), isNull);
+      expect(route(event, end, 'talk'), isNull);
+    });
+
+    test('posts the answer, then syncs, which takes off the re-asks', () async {
+      when(() => repository.answer(any())).thenAnswer((_) async {});
+      planIs([_item('ask'), _item('ask+10', minutes: 70)]);
+      await scheduler.sync();
+      planIs([]);
+
+      final wrote = await scheduler.answer(
+        tap(NotificationCard.event, NotificationEdge.start, 'confirm'),
+      );
+
+      expect(wrote, isTrue);
+      verify(
+        () => repository.answer(
+          const NotificationAnswer(path: '/events/id%201/start'),
+        ),
+      ).called(1);
+      expect(queue.queued, isEmpty);
+    });
+
+    test('writes nothing for a tap on the reminder itself', () async {
+      final wrote = await scheduler.answer(
+        tap(NotificationCard.task, NotificationEdge.end, null),
+      );
+
+      expect(wrote, isFalse);
+      verifyNever(() => repository.answer(any()));
+    });
+
+    test('hands the background handler to the queue, and the buttons that '
+        'open the app to the taps', () async {
+      void handler(NotificationResponse response) {}
+      final withHandler = NotificationScheduler(
+        repository: repository,
+        queue: queue,
+        supported: true,
+        onBackgroundAction: handler,
+      );
+
+      await withHandler.initialize();
+
+      expect(queue.onBackgroundAction, same(handler));
+      final talked = withHandler.taps.first;
+      queue.onTap!(payloadOf(_item('a', eventId: 'e')), 'talk');
+      final tapped = await talked;
+      expect(tapped.action, NotificationAction.talk);
+      expect(tapped.eventId, 'e');
     });
   });
 
@@ -282,13 +419,22 @@ void main() {
         'timeZone': 'America/Sao_Paulo',
         'items': [
           {
-            'id': 'starting:evt-1:1758470700:ab12cd34',
-            'kind': 'starting',
+            'id': 'askStart:evt-1:1758470700:ab12cd34',
+            'kind': 'askStart',
             'fireAt': '2026-09-21T13:55:00-03:00',
-            'title': 'Revisão de código',
-            'body': 'Começa agora, até 15:00',
+            'title': 'Revisão de código começou',
+            'body': 'Até 15:00',
             'timeSensitive': true,
             'eventId': 'evt-1',
+            'card': 'event',
+            'edge': 'start',
+          },
+          {
+            'id': 'old',
+            'kind': 'almostFinishing',
+            'fireAt': '2026-09-21T13:55:00-03:00',
+            'title': 't',
+            'body': 'b',
           },
           {
             'id': 'x',
@@ -303,6 +449,9 @@ void main() {
       expect(plan.items, hasLength(1));
       expect(plan.items.single.fireAt, DateTime.utc(2026, 9, 21, 16, 55));
       expect(plan.items.single.eventId, 'evt-1');
+      expect(plan.items.single.card, NotificationCard.event);
+      expect(plan.items.single.edge, NotificationEdge.start);
+      expect(plan.items.single.asks, isTrue);
     });
   });
 }

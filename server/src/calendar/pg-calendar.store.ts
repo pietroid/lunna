@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, eq, gt, lt } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, lt, or } from 'drizzle-orm';
 import { DB } from '../db/db';
 import type { Database } from '../db/db';
 import { event, EventRow, routine, RoutineRow } from '../db/schema';
@@ -43,7 +43,9 @@ export class PgCalendarStore extends CalendarStore {
           eq(event.userId, user.id),
           eq(event.cancelled, false),
           lt(event.startTime, to),
-          gt(event.endTime, from),
+          // A block that ran past its end unanswered stays in sight, however
+          // long ago that was, until catchUp settles it.
+          or(gt(event.endTime, from), isNull(event.closedAt)),
         ),
       )
       .orderBy(asc(event.startTime));
@@ -85,6 +87,8 @@ export class PgCalendarStore extends CalendarStore {
         notBefore: dateOf(input.notBefore),
         taskId: input.taskId ?? null,
         started: input.started === true,
+        confirmedAt: dateOf(input.confirmedAt),
+        closedAt: dateOf(input.closedAt),
       })
       .returning();
 
@@ -112,6 +116,9 @@ export class PgCalendarStore extends CalendarStore {
         notBefore: dateOf(next.notBefore),
         notes: next.notes,
         checklist: next.checklist ?? null,
+        confirmedAt: dateOf(next.confirmedAt),
+        closedAt: dateOf(next.closedAt),
+        overtimeFrom: dateOf(next.overtimeFrom),
       })
       .where(and(eq(event.id, next.id), eq(event.userId, user.id)))
       .returning();
@@ -154,6 +161,9 @@ export class PgCalendarStore extends CalendarStore {
         taskId: it.taskId ?? null,
         routineId: it.routineId ?? null,
         checklist: it.checklist ?? null,
+        confirmedAt: dateOf(it.confirmedAt),
+        closedAt: dateOf(it.closedAt),
+        overtimeFrom: dateOf(it.overtimeFrom),
       })
       .onConflictDoNothing();
     // A day of a routine is taken off by being marked, not deleted.
@@ -186,7 +196,7 @@ export class PgCalendarStore extends CalendarStore {
         startTime: new Date(input.startTime),
         endTime: new Date(input.endTime),
         days: input.days,
-        fixed: input.fixed ?? false,
+        fixed: input.fixed ?? true,
         checklist: input.checklist ?? [],
       })
       .returning();
@@ -267,9 +277,11 @@ export class PgCalendarStore extends CalendarStore {
     to: Date,
     zone: Zone,
   ): Promise<void> {
-    const routines = (await this.routines(user)).filter((it) => it.fixed);
+    const routines = await this.routines(user);
+    const now = Date.now();
     const rows = routines.flatMap((it) =>
       occurrencesBetween(it, from, to, zone).map((day) => ({
+        ...settledOf(day, now),
         userId: user.id,
         title: it.title,
         startTime: day.start,
@@ -315,6 +327,13 @@ function toEvent(row: EventRow, days: string | null): CalendarEvent {
     ...(row.routineId === null ? {} : { routineId: row.routineId }),
     ...(routineDays === undefined ? {} : { routine: routineDays }),
     ...(row.checklist === null ? {} : { checklist: row.checklist }),
+    ...(row.confirmedAt === null
+      ? {}
+      : { confirmedAt: row.confirmedAt.toISOString() }),
+    ...(row.closedAt === null ? {} : { closedAt: row.closedAt.toISOString() }),
+    ...(row.overtimeFrom === null
+      ? {}
+      : { overtimeFrom: row.overtimeFrom.toISOString() }),
   };
 }
 
@@ -331,6 +350,19 @@ function toRoutine(row: RoutineRow): CalendarRoutine | undefined {
     fixed: row.fixed,
     checklist: row.checklist,
   };
+}
+
+/**
+ * A day of a routine written down after it already ended is history, not a
+ * block that ran past its end: it is written closed, and asks nothing.
+ */
+function settledOf(
+  day: { start: Date; end: Date },
+  now: number,
+): { confirmedAt?: Date; closedAt?: Date } {
+  return day.end.getTime() <= now
+    ? { confirmedAt: day.start, closedAt: day.end }
+    : {};
 }
 
 function dateOf(value: string | undefined): Date | null {

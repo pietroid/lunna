@@ -80,6 +80,12 @@ export class TimelineCard {
    */
   awaitingStart: boolean;
   /**
+   * How many minutes it has run past its planned end with nobody saying it
+   * was over ("atrasado N min"), when it has. Its end is dragged along with
+   * the clock meanwhile, and the queue after it slides.
+   */
+  overtimeMinutes?: number;
+  /**
    * ISO 8601, the hour a task not yet begun is anchored at, when it is.
    *
    * An anchored task keeps that hour and the queue flows around it; it only

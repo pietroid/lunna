@@ -361,14 +361,12 @@ export const routine = pgTable(
     /** 'daily' | 'weekdays' | 'weekend'. */
     days: text('days').notNull(),
     /**
-     * Whether its hour is the point of it.
-     *
-     * A fixed routine writes its days down as [event] rows, which nothing
-     * moves. A flexible one, the default, writes them down as [task] rows
-     * anchored at the routine's hour: they keep it unless something already
-     * happening runs into them, and they wait for the user to begin them.
+     * Whether its hour is the point of it. Always true: every routine writes
+     * its days down as [event] rows, which nothing moves. Flexible routines,
+     * whose days were tasks, were dropped with the reminders' lifecycle
+     * (product/spec/notifications.md).
      */
-    fixed: boolean('fixed').notNull().default(false),
+    fixed: boolean('fixed').notNull().default(true),
     /**
      * What each day of it is made of (breakfast: the coffee, the dishes, the
      * plants), in order. Copied into each day as it is written down, where
@@ -439,6 +437,24 @@ export const event = pgTable(
     cancelled: boolean('cancelled').notNull().default(false),
     /** The day's own list, as on [task], for a day of a fixed routine. */
     checklist: jsonb('checklist').$type<{ title: string; done: boolean }[]>(),
+    /**
+     * When its start was answered: confirmed from a reminder, or begun (a
+     * task's hour always is). Null while nobody said; a fixed block starts
+     * anyway, and its start asks stop only once this is set.
+     */
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    /**
+     * When its end was answered, or settled: ticked off, or closed by
+     * [catchUp] at the next fixed block or the end of the working day. Null
+     * while it may still run on past its end.
+     */
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    /**
+     * The end it was planned to have, once it ran past it unanswered. Its
+     * end is then dragged along with the clock, and the card reads
+     * "atrasado" by the difference.
+     */
+    overtimeFrom: timestamp('overtime_from', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

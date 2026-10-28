@@ -4,6 +4,9 @@
  *
  * Keyed by method and the route as Nest declares it, without the global
  * prefix, so an id in the path never reaches an event name.
+ *
+ * Each carries `via` (`notification` or `app`), from the `X-Lunna-Via`
+ * header, when the app said where the answer came from ([viaOf]).
  */
 const EVENTS: Record<string, string> = {
   'POST /tasks': 'task_created',
@@ -23,6 +26,8 @@ const EVENTS: Record<string, string> = {
 
   'POST /events': 'event_created',
   'PATCH /events/:id': 'event_edited',
+  'POST /events/:id/start': 'event_started',
+  'POST /events/:id/delay': 'event_delayed',
   'POST /events/:id/done': 'event_done',
   'DELETE /events/:id': 'event_deleted',
   'POST /events/:id/pause': 'event_paused',
@@ -65,3 +70,24 @@ export function eventFor(
   if (!route) return undefined;
   return EVENTS[`${method.toUpperCase()} ${route}`];
 }
+
+/** The header the app names where a write came from with. */
+export const VIA_HEADER = 'x-lunna-via';
+
+/**
+ * Where a write came from, as the app said in [VIA_HEADER]: a reminder's
+ * button, or the app itself. Anything else is not recorded.
+ */
+export function viaOf(
+  raw: string | string[] | undefined,
+): 'notification' | 'app' | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value === 'notification' || value === 'app' ? value : undefined;
+}
+
+/**
+ * Captured once for each block `catchUp` closed with nobody answering:
+ * what it was and how far past its end it ran. The baseline the reminders'
+ * buttons are measured against.
+ */
+export const SILENT_CLOSE_EVENT = 'block_closed_silently';

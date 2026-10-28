@@ -329,16 +329,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get controlStartNow => 'Começar agora';
 
   @override
-  String get controlLess15 => 'Menos 15 min';
+  String get controlLess10 => 'Menos 10 min';
 
   @override
-  String get controlWait15 => 'Esperar 15 min';
+  String get controlWait10 => 'Esperar 10 min';
 
   @override
-  String get controlMore15 => 'Mais 15 min';
+  String get controlMore10 => 'Mais 10 min';
 
   @override
   String get controlDone => 'Concluir';
+
+  @override
+  String timelineLate(int minutes) {
+    return 'atrasado $minutes min';
+  }
 
   @override
   String nowPausedLeft(String left) {
@@ -511,7 +516,25 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationChannelBlocks => 'Blocos';
 
   @override
-  String get notificationChannelBlocksDescription => 'Quando um bloco começa e quando está perto de terminar.';
+  String get notificationChannelBlocksDescription => 'Quando um bloco começa e quando termina, com um botão para responder.';
+
+  @override
+  String get notificationActionConfirm => 'Confirmar';
+
+  @override
+  String get notificationActionLater => '+10 min';
+
+  @override
+  String notificationActionTalk(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Falar com a Lunna',
+        'other': 'Falar com o Focus',
+      },
+    );
+    return '$_temp0';
+  }
 
   @override
   String get notificationChannelDaily => 'Bom dia e boa noite';
@@ -526,7 +549,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get remindersAskTitle => 'Quer lembretes?';
 
   @override
-  String get remindersAskBody => 'Pergunto quando é hora de começar um bloco, aviso dez minutos antes de acabar, e mando um bom dia e um boa noite.';
+  String get remindersAskBody => 'Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.';
 
   @override
   String get remindersEnable => 'Ativar lembretes';

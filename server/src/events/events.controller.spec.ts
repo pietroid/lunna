@@ -1160,17 +1160,83 @@ describe('the day', () => {
       expect(kept.endTime).toBe(new Date(Date.now()).toISOString());
     });
 
-    it('counts a running task as done once its hour runs out', async () => {
+    it('runs a task on past its end while nobody says it is over', async () => {
+      const [running] = tasks(await add('Escrever', 30).expect(201));
+      await begin('Escrever');
+      const [, next] = tasks(await add('Depois', 30).expect(201));
+      expect(hhmm(next.startTime)).toBe('10:35');
+
+      later(31);
+      const [late, after] = (await read()).tasks;
+
+      expect(late).toMatchObject({
+        id: running.id,
+        started: true,
+        overtimeMinutes: 1,
+      });
+      expect((await taskStore.get(owner, running.id))?.doneAt).toBeUndefined();
+      // The queue after it slides along with it.
+      expect(hhmm(after.startTime)).toBe('10:37');
+    });
+
+    it('keeps the hour a late task really took once it is ticked off', async () => {
+      const [running] = tasks(await add('Relatório', 45).expect(201));
+      await begin('Relatório');
+
+      later(80);
+      await post(`/tasks/${running.id}/done`).expect(201);
+
+      const [kept] = store.all(owner);
+      expect(hhmm(kept.startTime)).toBe('10:00');
+      expect(hhmm(kept.endTime)).toBe('11:20');
+      expect(kept.closedAt).toBe(kept.endTime);
+      expect((await taskStore.get(owner, running.id))?.doneAt).toBe(
+        kept.endTime,
+      );
+    });
+
+    it('gives a late task ten minutes from the tap, and it is no longer late', async () => {
       const [running] = tasks(await add('Escrever', 30).expect(201));
       await begin('Escrever');
 
-      later(31);
+      later(35);
+      expect((await task('Escrever')).overtimeMinutes).toBe(5);
+
+      const [more] = tasks(
+        await post(`/tasks/${running.id}/extend`, { minutes: 10 }).expect(201),
+      );
+      expect(hhmm(more.endTime)).toBe('10:45');
+      expect(more.overtimeMinutes).toBeUndefined();
+    });
+
+    it('closes a late task at the end of the working day, as done there', async () => {
+      const [running] = tasks(await add('Escrever', 30).expect(201));
+      await begin('Escrever');
+
+      later(12 * 60 + 30);
       const day = await read();
 
-      expect(day.tasks).toEqual([]);
-      expect((await taskStore.get(owner, running.id))?.doneAt).toBeDefined();
+      expect(day.tasks.map((it) => it.id)).not.toContain(running.id);
+      const done = (await taskStore.get(owner, running.id))?.doneAt;
+      expect(hhmm(done!)).toBe('22:00');
       // The hour happened, and stays on the calendar as what did.
-      expect(store.all(owner).map((it) => it.title)).toEqual(['Escrever']);
+      const [kept] = store.all(owner);
+      expect(kept).toMatchObject({ endTime: done, closedAt: done });
+    });
+
+    it('closes a task at the start of the next fixed block, which starts anyway', async () => {
+      const [running] = tasks(await add('Relatório', 150).expect(201));
+      await begin('Relatório');
+      await fix('Almoço', 60, inHours(2)).expect(201);
+
+      later(125);
+      const day = await read();
+
+      const done = (await taskStore.get(owner, running.id))?.doneAt;
+      expect(hhmm(done!)).toBe('12:00');
+      const almoco = day.cards.find((it) => it.title === 'Almoço')!;
+      expect(almoco.section).toBe('agora');
+      expect(hhmm(almoco.startTime)).toBe('12:00');
     });
 
     it('deletes a task outright, and the hour it was taking', async () => {
@@ -1684,8 +1750,100 @@ describe('the day', () => {
     });
   });
 
+  describe("a fixed block's edges", () => {
+    /** Writes a fixed block down and answers with its card. */
+    async function fixed(
+      title: string,
+      minutes: number,
+      at: Date,
+    ): Promise<TimelineCard> {
+      await fix(title, minutes, at).expect(201);
+      return card(title);
+    }
+
+    it('starts in silence, and +10 moves it ten minutes from the tap', async () => {
+      const cafe = await fixed('Café', 30, new Date(NOW));
+
+      later(4);
+      const moved = cards(
+        await post(`/events/${cafe.id}/delay`, {}).expect(201),
+      ).find((it) => it.id === cafe.id)!;
+
+      expect(hhmm(moved.startTime)).toBe('10:14');
+      expect(hhmm(moved.endTime)).toBe('10:44');
+    });
+
+    it('moves from its hour on a +10 before it, never earlier', async () => {
+      const lunch = await fixed('Almoço', 60, inHours(2));
+
+      later(107);
+      const moved = cards(
+        await post(`/events/${lunch.id}/delay`, { minutes: 10 }).expect(201),
+      ).find((it) => it.id === lunch.id)!;
+
+      expect(hhmm(moved.startTime)).toBe('12:10');
+      expect(hhmm(moved.endTime)).toBe('13:10');
+    });
+
+    it('keeps its hour once its start was confirmed', async () => {
+      const cafe = await fixed('Café', 30, new Date(NOW));
+
+      await post(`/events/${cafe.id}/start`).expect(201);
+      const [stored] = store.all(owner);
+      expect(stored.confirmedAt).toBe(NOW.toISOString());
+
+      await post(`/events/${cafe.id}/delay`, {}).expect(400);
+      expect(hhmm((await card('Café')).startTime)).toBe('10:00');
+    });
+
+    it('runs on past its end while nobody says it is over', async () => {
+      const cafe = await fixed('Café', 30, new Date(NOW));
+
+      later(31);
+      const late = await card('Café');
+      expect(late.section).toBe('agora');
+      expect(late.overtimeMinutes).toBe(1);
+
+      await post(`/events/${cafe.id}/done`).expect(201);
+      const [kept] = store.all(owner);
+      expect(hhmm(kept.endTime)).toBe('10:31');
+      expect(kept.closedAt).toBe(kept.endTime);
+    });
+
+    it('stops running on at the next fixed block, not at one it overlaps', async () => {
+      await fixed('Reunião', 60, new Date(NOW));
+      await fixed('Conversa', 30, new Date(NOW.getTime() + 30 * 60_000));
+      await fixed('Almoço', 60, inHours(2));
+
+      later(150);
+      await read();
+
+      const reuniao = store.all(owner).find((it) => it.title === 'Reunião')!;
+      expect(hhmm(reuniao.endTime)).toBe('12:00');
+      expect(hhmm(reuniao.closedAt!)).toBe('12:00');
+      expect(hhmm(reuniao.overtimeFrom!)).toBe('11:00');
+    });
+  });
+
+  describe('a task waiting to be begun', () => {
+    it('is snoozed from the later of its hour and now', async () => {
+      const [first] = tasks(
+        await add('Escrever', 30, {
+          notBefore: inHours(1).toISOString(),
+        }).expect(201),
+      );
+      expect(hhmm(first.startTime)).toBe('11:00');
+
+      later(50);
+      const [snoozed] = tasks(
+        await post(`/tasks/${first.id}/snooze`, {}).expect(201),
+      );
+      expect(hhmm(snoozed.startTime)).toBe('11:10');
+    });
+  });
+
   describe('routines', () => {
-    /** A flexible lunch every day, at [at]'s hour, an hour long. */
+    /** A lunch every day, at [at]'s hour, an hour long. */
     function lunchAt(at: Date) {
       return store.insertRoutine(owner, {
         title: 'Almoço',
@@ -1695,7 +1853,7 @@ describe('the day', () => {
       });
     }
 
-    it('writes a flexible one down as a task anchored at its hour', async () => {
+    it('writes every one down as a fixed block at its hour', async () => {
       await lunchAt(inHours(2));
 
       const day = await read(3);
@@ -1707,11 +1865,12 @@ describe('the day', () => {
         '2026-03-12',
       ]);
       expect(lunches.every((it) => hhmm(it.startTime) === '12:00')).toBe(true);
-      expect(lunches[0]).toMatchObject({ kind: 'task', routine: 'daily' });
-      expect(lunches[0].notBefore).toBeDefined();
-      // Never as an event, and never on the list, where it would be the
-      // same thing over and over, once for every day ahead.
-      expect(lunches.every((it) => it.kind === 'task')).toBe(true);
+      expect(lunches[0]).toMatchObject({
+        kind: 'event',
+        fixed: true,
+        routine: 'daily',
+      });
+      // Never on the list, where it would be the same thing over and over.
       expect(titles(day.tasks)).not.toContain('Almoço');
     });
 
@@ -1727,66 +1886,36 @@ describe('the day', () => {
       expect(hhmm(long.startTime)).toBe('13:05');
     });
 
-    it('slides when something running runs into it', async () => {
+    it('is not pushed by something running into it', async () => {
       await lunchAt(inHours(2));
       await add('Longa', 150).expect(201);
       await begin('Longa');
 
-      const lunch = await card('Almoço');
-
-      expect(hhmm(lunch.startTime)).toBe('12:35');
+      expect(hhmm((await card('Almoço')).startTime)).toBe('12:00');
     });
 
-    it('waits for the user once its hour has come', async () => {
+    it('does not wait for the user once its hour has come', async () => {
       await lunchAt(inHours(2));
       await read();
 
       later(130);
-      const [lunch] = (await read()).tasks;
+      const day = await read();
+      const lunch = day.cards.find((it) => it.title === 'Almoço')!;
 
-      expect(lunch.title).toBe('Almoço');
-      expect(lunch.awaitingStart).toBe(true);
-      expect(hhmm(lunch.startTime)).toBe('12:10');
+      expect(lunch.section).toBe('agora');
+      expect(hhmm(lunch.startTime)).toBe('12:00');
+      expect(titles(day.tasks)).not.toContain('Almoço');
     });
 
-    it('is gone once its day ends without it, and tomorrow has its own', async () => {
-      await lunchAt(inHours(2));
+    it('writes a day that already ended as history, which asks nothing', async () => {
+      await lunchAt(new Date(NOW.getTime() - 150 * 60_000));
       await read();
 
-      later(13 * 60);
-      const lunches = (await read()).cards.filter(
-        (it) => it.title === 'Almoço',
-      );
-
-      expect(lunches.map((it) => it.day)).toEqual(['2026-03-11']);
-    });
-
-    it('does not bring back a flexible day that was taken off', async () => {
-      await lunchAt(inHours(2));
-      const today = await card('Almoço');
-
-      await request(app.getHttpServer())
-        .delete(`/tasks/${today.id}`)
-        .expect(200);
-
-      const lunches = (await read(2)).cards.filter(
-        (it) => it.title === 'Almoço',
-      );
-      expect(lunches.map((it) => it.day)).toEqual(['2026-03-11']);
-    });
-
-    it('gives a flexible day another hour from the detail screen', async () => {
-      await lunchAt(inHours(2));
-      const today = await card('Almoço');
-
-      const moved = cards(
-        await request(app.getHttpServer())
-          .patch(`/tasks/${today.id}`)
-          .send({ startTime: inHours(3).toISOString() })
-          .expect(200),
-      ).find((it) => it.id === today.id)!;
-
-      expect(hhmm(moved.startTime)).toBe('13:00');
+      const [past] = store
+        .all(owner)
+        .filter((it) => Date.parse(it.endTime) <= Date.now());
+      expect(past.closedAt).toBe(past.endTime);
+      expect(past.overtimeFrom).toBeUndefined();
     });
 
     it('moves one day of a routine and leaves the others where they were', async () => {
@@ -1826,18 +1955,17 @@ describe('the day', () => {
     describe('with a list', () => {
       const items = ['Passar o café', 'Meditar', 'Lavar a louça'];
 
-      function breakfastAt(at: Date, fixed = false) {
+      function breakfastAt(at: Date) {
         return store.insertRoutine(owner, {
           title: 'Café da manhã',
           startTime: at.toISOString(),
           endTime: new Date(at.getTime() + 45 * 60_000).toISOString(),
           days: 'daily',
-          fixed,
           checklist: items,
         });
       }
 
-      it('copies it into each flexible day, nothing ticked off', async () => {
+      it('copies it into each day, nothing ticked off', async () => {
         await breakfastAt(inHours(2));
 
         const days = (await read(2)).cards.filter(
@@ -1858,7 +1986,7 @@ describe('the day', () => {
 
         const after = cards(
           await request(app.getHttpServer())
-            .patch(`/tasks/${today.id}?days=2`)
+            .patch(`/events/${today.id}?days=2`)
             .send({
               checklist: items.map((title, i) => ({ title, done: i === 0 })),
             })
@@ -1873,24 +2001,6 @@ describe('the day', () => {
         expect(after[1].checklist?.every((it) => !it.done)).toBe(true);
         // Ticking an item off is not finishing the day: it keeps its hour.
         expect(after[0].startTime).toBe(today.startTime);
-      });
-
-      it('does the same for a fixed day, as an event', async () => {
-        await breakfastAt(inHours(2), true);
-        const today = await card('Café da manhã');
-        expect(today.kind).toBe('event');
-        expect(today.checklist).toHaveLength(3);
-
-        const after = cards(
-          await request(app.getHttpServer())
-            .patch(`/events/${today.id}`)
-            .send({
-              checklist: items.map((title) => ({ title, done: true })),
-            })
-            .expect(200),
-        ).find((it) => it.id === today.id)!;
-
-        expect(after.checklist?.every((it) => it.done)).toBe(true);
       });
 
       it('writes the days not begun again when the list changes', async () => {
@@ -1955,7 +2065,7 @@ describe('the day', () => {
           [{ title: 'Café', done: 'sim' }],
         ]) {
           await request(app.getHttpServer())
-            .patch(`/tasks/${today.id}`)
+            .patch(`/events/${today.id}`)
             .send({ checklist })
             .expect(400);
         }
