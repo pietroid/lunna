@@ -214,6 +214,12 @@ export const artifact = pgTable(
     deadline: date('deadline', { mode: 'string' }),
     /** Its place in the queue of deliveries, smallest first. */
     position: doublePrecision('position').notNull(),
+    /**
+     * When it was begun: dragged into Em andamento, or a task of it begun
+     * on the day. Null while it waits in Não iniciadas. Its time runs from
+     * here.
+     */
+    startedAt: timestamp('started_at', { withTimezone: true }),
     /** When it was delivered. Null while it is open. */
     doneAt: timestamp('done_at', { withTimezone: true }),
     createdAt: createdAt(),

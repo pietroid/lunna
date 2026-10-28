@@ -1,5 +1,6 @@
 import 'package:artifacts/artifacts.dart';
 import 'package:bloc_test/bloc_test.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -144,4 +145,67 @@ void main() {
       ),
     ],
   );
+
+  test('draws a delivery begun at once, with the day it was given', () async {
+    final day = DateTime(2026, 6, 20);
+    when(
+      () => repository.update(
+        'b',
+        started: true,
+        deadline: any(named: 'deadline'),
+      ),
+    ).thenAnswer((_) async => data);
+    final cubit = ArtifactsCubit(repository: repository, initial: ready);
+    final states = <ArtifactsState>[];
+    final listening = cubit.stream.listen(states.add);
+
+    await withClock(
+      Clock.fixed(DateTime(2026, 6, 5, 9)),
+      () => cubit.start('b', deadline: day),
+    );
+    await listening.cancel();
+
+    final begun = states.first.byId('b')!;
+    expect(begun.startedAt, DateTime(2026, 6, 5, 9));
+    expect(begun.deadline, day);
+  });
+
+  test('puts a refused start back as it was', () async {
+    when(
+      () => repository.update('b', started: true),
+    ).thenThrow(const ArtifactsFailure('Dê um prazo para começar a entrega.'));
+    final cubit = ArtifactsCubit(repository: repository, initial: ready);
+
+    await cubit.start('b');
+
+    expect(cubit.state.byId('b')!.startedAt, isNull);
+    expect(cubit.state.failure?.message, 'Dê um prazo para começar a entrega.');
+  });
+
+  test('draws a stopped delivery in its place among those not begun', () async {
+    final begun = ArtifactsState(
+      status: ArtifactsStatus.ready,
+      data: ArtifactsData(
+        artifacts: [
+          artifact('a'),
+          artifact('b').copyWith(startedAt: () => DateTime(2026, 6, 2)),
+          artifact('c'),
+        ],
+        schedule: schedule,
+      ),
+    );
+    when(
+      () => repository.move('b', 2, stop: true),
+    ).thenAnswer((_) async => data);
+    final cubit = ArtifactsCubit(repository: repository, initial: begun);
+    final states = <ArtifactsState>[];
+    final listening = cubit.stream.listen(states.add);
+
+    await cubit.stop('b', 2);
+    await listening.cancel();
+
+    expect(states.first.queue.map((a) => a.id), ['a', 'c', 'b']);
+    expect(states.first.byId('b')!.startedAt, isNull);
+    verify(() => repository.move('b', 2, stop: true)).called(1);
+  });
 }

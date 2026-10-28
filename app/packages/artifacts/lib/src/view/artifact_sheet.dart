@@ -11,7 +11,8 @@ import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
-/// Opens the sheet that puts a delivery in the queue.
+/// Opens the sheet that puts a delivery in the queue, or, [started],
+/// straight into Em andamento.
 ///
 /// The sheet is its own route, so it is handed the cubit it writes with.
 Future<void> showArtifactSheet(
@@ -20,6 +21,8 @@ Future<void> showArtifactSheet(
   CatalogType? initialType,
   String? initialName,
   DateTime? initialDeadline,
+  bool started = false,
+  bool top = true,
 }) {
   final cubit = context.read<ArtifactsCubit>();
   return showModalBottomSheet<void>(
@@ -34,6 +37,8 @@ Future<void> showArtifactSheet(
         initialType: initialType,
         initialName: initialName,
         initialDeadline: initialDeadline,
+        started: started,
+        top: top,
       ),
     ),
   );
@@ -57,6 +62,8 @@ class ArtifactSheet extends StatefulWidget {
     this.initialType,
     this.initialName,
     this.initialDeadline,
+    this.started = false,
+    this.top = true,
     super.key,
   });
 
@@ -71,6 +78,15 @@ class ArtifactSheet extends StatefulWidget {
 
   /// The day it starts due on.
   final DateTime? initialDeadline;
+
+  /// Whether it is begun as it is written down (Em andamento's +): its
+  /// time runs from now, so it must have a day, a week out unless picked,
+  /// and it takes no place in the queue.
+  final bool started;
+
+  /// Whether it enters the queue at the top rather than the end, until
+  /// she picks.
+  final bool top;
 
   @override
   State<ArtifactSheet> createState() => _ArtifactSheetState();
@@ -92,8 +108,15 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
   final _search = TextEditingController();
   final _value = TextEditingController();
   late bool _split = widget.initialType?.blockMinutes != null;
-  bool _top = true;
-  late DateTime? _deadline = widget.initialDeadline;
+  late bool _top = widget.top;
+  late DateTime? _deadline =
+      widget.initialDeadline ?? (widget.started ? _aWeekOut() : null);
+
+  static DateTime _aWeekOut() {
+    final now = clock.now();
+    return DateTime(now.year, now.month, now.day + 7);
+  }
+
   int _minutes = _looseMinutes;
   bool _busy = false;
 
@@ -166,6 +189,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       blockMinutes: _split ? (type?.blockMinutes ?? _defaultBlock) : null,
       deadline: _deadline,
       top: _top,
+      started: widget.started,
     );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -404,25 +428,28 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
               ),
           ],
         ),
-        const SizedBox(height: AppSpacing.s4),
-        Row(
-          children: [
-            Expanded(
-              child: Text(l10n.artifactPlace, style: AppTypography.label),
-            ),
-            AppSegmented(
-              selected: _top ? 0 : 1,
-              onSelected: (index) => setState(() => _top = index == 0),
-              segments: [
-                AppSegment(label: l10n.artifactPlaceTop),
-                AppSegment(label: l10n.artifactPlaceEnd),
-              ],
-            ),
-          ],
-        ),
+        // Begun at once, it is placed by how late it is, not in the queue.
+        if (!widget.started) ...[
+          const SizedBox(height: AppSpacing.s4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(l10n.artifactPlace, style: AppTypography.label),
+              ),
+              AppSegmented(
+                selected: _top ? 0 : 1,
+                onSelected: (index) => setState(() => _top = index == 0),
+                segments: [
+                  AppSegment(label: l10n.artifactPlaceTop),
+                  AppSegment(label: l10n.artifactPlaceEnd),
+                ],
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: AppSpacing.s5),
         AppButton(
-          text: l10n.artifactCreate,
+          text: widget.started ? l10n.artifactStart : l10n.artifactCreate,
           expand: true,
           onPressed: _name.text.trim().isEmpty || _busy
               ? null

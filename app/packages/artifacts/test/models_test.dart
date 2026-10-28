@@ -16,6 +16,7 @@ void main() {
           'blockMinutes': 60,
           'deadline': '2026-10-23',
           'createdAt': '2026-10-01T12:00:00.000Z',
+          'startedAt': '2026-10-05T12:00:00.000Z',
           'doneAt': null,
           'tasks': [
             {
@@ -97,6 +98,11 @@ void main() {
         ],
       );
       expect(a.deadline, DateTime(2026, 10, 23));
+      expect(
+        a.startedAt,
+        DateTime.parse('2026-10-05T12:00:00.000Z').toLocal(),
+      );
+      expect(data.done.single.startedAt, isNull);
       expect([a.steps, a.stepsDone], [1, 1]);
       expect(data.done.single.type, isNull);
 
@@ -112,15 +118,18 @@ void main() {
       expect(data.topTypes, [mapa]);
     });
 
-    test('fills a bar with time, from written down to the deadline', () {
-      final artifact = Artifact(
+    test('fills a bar with time, from begun to the deadline', () {
+      final waiting = Artifact(
         id: 'p',
         title: 'Site',
         minutes: 60,
-        createdAt: DateTime(2026, 6),
+        createdAt: DateTime(2026, 5),
         deadline: DateTime(2026, 6, 10),
       );
+      // Written down a month before, it has no clock until it is begun.
+      expect(waiting.progressAt(DateTime(2026, 6, 6)), isNull);
 
+      final artifact = waiting.copyWith(startedAt: () => DateTime(2026, 6));
       expect(artifact.progressAt(DateTime(2026, 6)), 0);
       expect(artifact.progressAt(DateTime(2026, 6, 6)), closeTo(0.5, 1e-9));
       expect(artifact.progressAt(DateTime(2026, 7)), 1);

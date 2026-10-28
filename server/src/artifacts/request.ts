@@ -39,6 +39,7 @@ export function requireArtifact(dto: CreateArtifactDto): {
   if (dto.at !== undefined && dto.at !== 'top' && dto.at !== 'end') {
     throw new BadRequestException('at must be top or end');
   }
+  const started = flagOf(dto.started, 'started');
 
   return {
     artifact: {
@@ -48,6 +49,7 @@ export function requireArtifact(dto: CreateArtifactDto): {
       ...(value == null ? {} : { value }),
       ...(blockMinutes === undefined ? {} : { blockMinutes }),
       ...(deadline == null ? {} : { deadline }),
+      ...(started === true ? { started } : {}),
     },
     at: dto.at ?? 'end',
   };
@@ -71,23 +73,34 @@ export function requireArtifactEdit(dto: EditArtifactDto): ArtifactEdit {
   if (value !== undefined) edit.value = value;
   const blockMinutes = amountOf(dto.blockMinutes, 'blockMinutes');
   if (blockMinutes !== undefined) edit.blockMinutes = blockMinutes;
-  if (dto.done !== undefined) {
-    if (typeof dto.done !== 'boolean') {
-      throw new BadRequestException('done must be a boolean');
-    }
-    edit.done = dto.done;
-  }
+  const done = flagOf(dto.done, 'done');
+  if (done !== undefined) edit.done = done;
+  const started = flagOf(dto.started, 'started');
+  if (started !== undefined) edit.started = started;
 
   return edit;
 }
 
-/** The place a delivery is dragged to. */
-export function requireArtifactMove(dto: MoveArtifactDto): number {
+/**
+ * The place a delivery is dragged to, and, dropped among those not begun,
+ * `started: false`. Only that one: beginning one may need a deadline, so
+ * it is the edit's (`PATCH { started: true }`).
+ */
+export function requireArtifactMove(dto: MoveArtifactDto): {
+  index: number;
+  stop: boolean;
+} {
   const index = dto.index;
   if (typeof index !== 'number' || !Number.isInteger(index) || index < 0) {
     throw new BadRequestException('index must be a whole number, 0 or more');
   }
-  return index;
+  const started = flagOf(dto.started, 'started');
+  if (started === true) {
+    throw new BadRequestException(
+      'a move only stops a delivery (started: false)',
+    );
+  }
+  return { index, stop: started === false };
 }
 
 /** A task written down in a delivery. */
@@ -165,6 +178,14 @@ export function requireGoal(dto: CreateGoalDto): {
     start,
     ...(dto.kind === 'count' ? { typeId: dto.typeId } : {}),
   };
+}
+
+function flagOf(raw: unknown, name: string): boolean | undefined {
+  if (raw === undefined) return undefined;
+  if (typeof raw !== 'boolean') {
+    throw new BadRequestException(`${name} must be a boolean`);
+  }
+  return raw;
 }
 
 function requireText(raw: unknown, name: string): string {

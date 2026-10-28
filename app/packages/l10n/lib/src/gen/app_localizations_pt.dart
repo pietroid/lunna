@@ -1367,11 +1367,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get goalCovered => 'a fila cobre o resto';
 
   @override
-  String goalSchedule(String need, String free, String date) {
-    return 'A fila pede $need · você tem $free livres até $date';
-  }
-
-  @override
   String get artifactsAll => 'Todas';
 
   @override
@@ -1644,6 +1639,48 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get artifactPaceBehind => 'atrás do ritmo';
+
+  @override
+  String get artifactUrgent => 'Urgente';
+
+  @override
+  String artifactStartTitle(String title) {
+    return 'Começar $title';
+  }
+
+  @override
+  String get artifactStartBody => 'Ela vai para Em andamento e o tempo dela passa a correr até o prazo. Até quando?';
+
+  @override
+  String artifactStartInDays(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Em $days dias',
+      one: 'Em 1 dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String artifactStartInWeeks(int weeks) {
+    String _temp0 = intl.Intl.pluralLogic(
+      weeks,
+      locale: localeName,
+      other: 'Em $weeks semanas',
+      one: 'Em 1 semana',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get artifactStartOtherDay => 'Outro dia';
+
+  @override
+  String get artifactStartOtherDayHint => 'Escolher no calendário';
+
+  @override
+  String get artifactStart => 'Começar';
 
   @override
   String get routineChecklistHint => 'Uma lista? Um item por linha';

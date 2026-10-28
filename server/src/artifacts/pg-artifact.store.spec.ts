@@ -95,12 +95,14 @@ describe('PgArtifactStore', () => {
     await artifacts.update(OWNER, {
       ...created,
       notes: 'Ideias',
+      startedAt: '2026-03-12T13:00:00.000Z',
       doneAt: '2026-03-20T12:00:00.000Z',
     });
 
     expect(await artifacts.get(OWNER, created.id)).toEqual({
       ...created,
       notes: 'Ideias',
+      startedAt: '2026-03-12T13:00:00.000Z',
       doneAt: '2026-03-20T12:00:00.000Z',
     });
     expect(await artifacts.list(OTHER)).toEqual([]);
@@ -287,6 +289,66 @@ describe('0009_artifacts and 0010_drop_projects', () => {
       "SELECT table_name AS name FROM information_schema.tables WHERE table_name = 'project'",
     );
     expect(tables.rows).toEqual([]);
+    await client.close();
+  });
+});
+
+/**
+ * The migration that wrote down when each delivery was begun, run on rows
+ * written the way the migrations before it left them.
+ */
+describe('0013_artifact_started', () => {
+  const folder = path.join(__dirname, '..', '..', 'drizzle');
+
+  async function run(client: PGlite, file: string): Promise<void> {
+    const sql = fs.readFileSync(path.join(folder, file), 'utf8');
+    for (const statement of sql.split('--> statement-breakpoint')) {
+      await client.exec(statement);
+    }
+  }
+
+  it('begins each open delivery when its first task was begun or done', async () => {
+    const client = new PGlite();
+    const files = fs
+      .readdirSync(folder)
+      .filter((it) => it.endsWith('.sql'))
+      .sort();
+    for (const file of files.filter((it) => it < '0013')) {
+      await run(client, file);
+    }
+    const id = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
+    await client.exec(`
+      INSERT INTO "user" (id, name, email) VALUES
+        ('u1', 'Owner', 'owner@example.com');
+      INSERT INTO artifact (id, user_id, title, position, done_at) VALUES
+        ('${id(1)}', 'u1', 'Começada', 0, null),
+        ('${id(2)}', 'u1', 'Só feita', 1, null),
+        ('${id(3)}', 'u1', 'Parada', 2, null),
+        ('${id(4)}', 'u1', 'Entregue', 3, '2026-03-05T12:00:00Z');
+      INSERT INTO task (id, user_id, title, minutes, position, artifact_id, done_at) VALUES
+        ('${id(5)}', 'u1', 'Rascunho', 30, 0, '${id(1)}', '2026-03-04T15:00:00Z'),
+        ('${id(6)}', 'u1', 'Revisão', 30, 1, '${id(1)}', null),
+        ('${id(7)}', 'u1', 'Feita', 30, 2, '${id(2)}', '2026-03-06T10:00:00Z'),
+        ('${id(8)}', 'u1', 'Esperando', 30, 3, '${id(3)}', null),
+        ('${id(9)}', 'u1', 'Antiga', 30, 4, '${id(4)}', '2026-03-01T10:00:00Z');
+      INSERT INTO event (user_id, title, start_time, end_time, started, task_id) VALUES
+        ('u1', 'Rascunho', '2026-03-03T13:00:00Z', '2026-03-03T13:30:00Z', true, '${id(5)}'),
+        ('u1', 'Revisão', '2026-03-08T13:00:00Z', '2026-03-08T13:30:00Z', true, '${id(6)}');
+    `);
+
+    await run(client, '0013_artifact_started.sql');
+
+    const rows = await client.query<{ title: string; started_at: Date | null }>(
+      'SELECT title, started_at FROM artifact ORDER BY position',
+    );
+    expect(
+      rows.rows.map((it) => [it.title, it.started_at?.toISOString() ?? null]),
+    ).toEqual([
+      ['Começada', '2026-03-03T13:00:00.000Z'],
+      ['Só feita', '2026-03-06T10:00:00.000Z'],
+      ['Parada', null],
+      ['Entregue', null],
+    ]);
     await client.close();
   });
 });

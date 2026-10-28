@@ -515,14 +515,21 @@ Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
 code), something owed by a day, with an optional kind from the person's
 **catalogue** (shelves and kinds, empty until they fill it), a total time,
 a value and how the day may cut it. The open ones are a queue of their
-own, drawn in two groups (`progressGroups`): **Em andamento** (some task
-done or minutes worked), fixed, the one whose time has run furthest past
-its work first (`lagOf`), and **Não iniciadas**, in the queue's order,
-which a drag sets. Each has **one bar**: the time gone in red (`paceTime`)
-under the work done in green (`paceDone`). The **goals** (money delivered,
+own, drawn in two groups (`progressGroups`): **Em andamento**, those
+begun (`started_at`: dragged there, written down there, or a task of it
+begun on the day; **never without a deadline**), the **urgent** ones
+first (past their day, or time 15 points ahead of work: a red-tinged card
+tagged Urgente), then the one whose time has run furthest past its work
+(`lagOf`); and **Não iniciadas**, in the queue's order. One list: a row
+dragged up is begun (asking its day when it has none), dragged down is
+stopped where it was let go; each group ends in **+ Adicionar**
+(`AppAddRow`). A row is its name and, begun, **one bar**: the time since
+it was begun to the end of its day in red (`paceTime`) under its minutes
+done in green (`paceDone`), keyed with the time done and the day due.
+The **goals** (money delivered,
 or a count of one kind, per week or month) are hidden by a flag
-(`ArtifactsPage(showGoals:)`, off) and a line sets the time the month's
-deliveries owe against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
+(`ArtifactsPage(showGoals:)`, off), and so is the line that set the
+month's deliveries against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
 (`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
 (Tempo's Lista kept to them, `TimelineList(only:)`) and **Feitas** (what
 was done, newest first under Hoje / Ontem / the date), under the same

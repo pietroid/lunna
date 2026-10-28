@@ -173,6 +173,7 @@ class Artifact extends Equatable {
     required this.title,
     required this.minutes,
     required this.createdAt,
+    this.startedAt,
     this.notes = '',
     this.category,
     this.type,
@@ -200,11 +201,13 @@ class Artifact extends Equatable {
     }
     final deadline = json['deadline'] as String?;
     final doneAt = json['doneAt'] as String?;
+    final startedAt = json['startedAt'] as String?;
     return Artifact(
       id: json['id'] as String,
       title: json['title'] as String,
       notes: json['notes'] as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+      startedAt: startedAt == null ? null : DateTime.parse(startedAt).toLocal(),
       category: category,
       type: type,
       minutes: (json['minutes'] as num?)?.toInt() ?? 0,
@@ -231,6 +234,10 @@ class Artifact extends Equatable {
 
   /// When it was written down, which is where its bar starts.
   final DateTime createdAt;
+
+  /// When it was begun: moved into Em andamento, or a task of it begun on
+  /// the day. Null while it waits in Não iniciadas. Its time runs from here.
+  final DateTime? startedAt;
 
   /// The shelf it came from; null for a one-off.
   final CatalogCategory? category;
@@ -275,15 +282,17 @@ class Artifact extends Equatable {
     return DateTime(day.year, day.month, day.day + 1);
   }
 
-  /// How much of its time has gone by, from 0 to 1, or null with no
-  /// deadline.
+  /// How much of its time has gone by, from 0 to 1: the time since it was
+  /// begun out of the time from then to the end of its deadline's day.
+  /// Null with no deadline or not begun, since no clock runs then.
   double? progressAt(DateTime now) {
     final due = dueAt;
-    if (due == null) return null;
+    final start = startedAt;
+    if (due == null || start == null) return null;
 
-    final total = due.difference(createdAt).inMinutes;
+    final total = due.difference(start).inMinutes;
     if (total <= 0) return 1;
-    return (now.difference(createdAt).inMinutes / total).clamp(0, 1);
+    return (now.difference(start).inMinutes / total).clamp(0, 1);
   }
 
   /// Whole days from [now]'s day to the deadline: 0 on the day itself,
@@ -303,6 +312,7 @@ class Artifact extends Equatable {
     String? title,
     DateTime? Function()? deadline,
     DateTime? Function()? doneAt,
+    DateTime? Function()? startedAt,
     String? notes,
     List<ArtifactTask>? tasks,
   }) {
@@ -311,6 +321,7 @@ class Artifact extends Equatable {
       title: title ?? this.title,
       notes: notes ?? this.notes,
       createdAt: createdAt,
+      startedAt: startedAt == null ? this.startedAt : startedAt(),
       category: category,
       type: type,
       minutes: minutes,
@@ -329,6 +340,7 @@ class Artifact extends Equatable {
     title,
     notes,
     createdAt,
+    startedAt,
     category,
     type,
     minutes,

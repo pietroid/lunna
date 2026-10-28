@@ -305,6 +305,140 @@ describe('ArtifactsController', () => {
       .expect(404);
   });
 
+  describe('begun and not begun', () => {
+    it('is written down not begun, or begun at once when it has a day', async () => {
+      const waiting = await artifactWith();
+      expect(waiting.startedAt).toBeNull();
+
+      const refused = await http()
+        .post('/artifacts')
+        .send({ title: 'Sem prazo', started: true })
+        .expect(400);
+      expect((refused.body as { message: string }).message).toBe(
+        'Dê um prazo para começar a entrega.',
+      );
+      const answer = await http()
+        .post('/artifacts')
+        .send({ title: 'Com prazo', deadline: '2026-03-20', started: true })
+        .expect(201);
+      expect(
+        artifacts(answer).find((it) => it.title === 'Com prazo')!.startedAt,
+      ).toBe(NOW.toISOString());
+    });
+
+    it('begins one with a day, asks a day of one without, and stops it', async () => {
+      const dated = await artifactWith();
+      let answer = await http()
+        .patch(`/artifacts/${dated.id}`)
+        .send({ started: true })
+        .expect(200);
+      expect(artifacts(answer)[0].startedAt).toBe(NOW.toISOString());
+
+      // Begun again, it keeps the hour it was first begun at.
+      jest.setSystemTime(new Date(NOW.getTime() + 3_600_000));
+      answer = await http()
+        .patch(`/artifacts/${dated.id}`)
+        .send({ started: true })
+        .expect(200);
+      expect(artifacts(answer)[0].startedAt).toBe(NOW.toISOString());
+
+      const loose = artifacts(
+        await http().post('/artifacts').send({ title: 'Solta' }).expect(201),
+      ).find((it) => it.title === 'Solta')!;
+      await http()
+        .patch(`/artifacts/${loose.id}`)
+        .send({ started: true })
+        .expect(400);
+      answer = await http()
+        .patch(`/artifacts/${loose.id}`)
+        .send({ started: true, deadline: '2026-03-17' })
+        .expect(200);
+      expect(
+        artifacts(answer).find((it) => it.id === loose.id)!.startedAt,
+      ).not.toBeNull();
+
+      answer = await http()
+        .patch(`/artifacts/${dated.id}`)
+        .send({ started: false })
+        .expect(200);
+      expect(
+        artifacts(answer).find((it) => it.id === dated.id)!.startedAt,
+      ).toBeNull();
+      await http()
+        .patch(`/artifacts/${dated.id}`)
+        .send({ started: 'yes' })
+        .expect(400);
+    });
+
+    it('stops one dropped among those not begun, at the place it was let go', async () => {
+      const first = await artifactWith();
+      const second = await artifactWith();
+      await http()
+        .patch(`/artifacts/${second.id}`)
+        .send({ started: true })
+        .expect(200);
+
+      const answer = await http()
+        .post(`/artifacts/${second.id}/move`)
+        .send({ index: 0, started: false })
+        .expect(201);
+      expect(artifacts(answer).map((it) => [it.id, it.startedAt])).toEqual([
+        [second.id, null],
+        [first.id, null],
+      ]);
+      await http()
+        .post(`/artifacts/${second.id}/move`)
+        .send({ index: 0, started: true })
+        .expect(400);
+    });
+
+    it('refuses to begin or stop a delivered one', async () => {
+      const artifact = await artifactWith();
+      await http()
+        .patch(`/artifacts/${artifact.id}`)
+        .send({ done: true })
+        .expect(200);
+      const refused = await http()
+        .patch(`/artifacts/${artifact.id}`)
+        .send({ started: true })
+        .expect(400);
+      expect((refused.body as { message: string }).message).toBe(
+        'Essa entrega já foi entregue.',
+      );
+    });
+
+    it('is begun when a task of it is begun on the day, and stays stopped after', async () => {
+      const artifact = await artifactWith('Textos da home', 'Fotos');
+      const [first, second] = artifact.tasks;
+      await http()
+        .post(`/tasks/${first.id}/move`)
+        .send({ index: 0, backlog: false })
+        .expect(201);
+      let answer = await http().post(`/tasks/${first.id}/start`).expect(201);
+      answer = await http().get('/artifacts').expect(200);
+      expect(artifacts(answer)[0].startedAt).toBe(NOW.toISOString());
+
+      // Put back among those not begun, it stays there while the begun
+      // task runs; only a task begun afterwards begins it again.
+      answer = await http()
+        .post(`/artifacts/${artifact.id}/move`)
+        .send({ index: 0, started: false })
+        .expect(201);
+      expect(artifacts(answer)[0].startedAt).toBeNull();
+      answer = await http().get('/artifacts').expect(200);
+      expect(artifacts(answer)[0].startedAt).toBeNull();
+
+      await http().post(`/tasks/${first.id}/done`).expect(201);
+      await http()
+        .post(`/tasks/${second.id}/move`)
+        .send({ index: 0, backlog: false })
+        .expect(201);
+      await http().post(`/tasks/${second.id}/start`).expect(201);
+      answer = await http().get('/artifacts').expect(200);
+      expect(artifacts(answer)[0].startedAt).not.toBeNull();
+    });
+  });
+
   describe('the catalogue, the goals and the schedule', () => {
     function answerOf(response: { body: unknown }): ArtifactsAnswer {
       return response.body as ArtifactsAnswer;

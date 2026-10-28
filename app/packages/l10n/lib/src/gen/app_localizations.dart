@@ -2159,12 +2159,6 @@ abstract class AppLocalizations {
   /// **'a fila cobre o resto'**
   String get goalCovered;
 
-  /// No description provided for @goalSchedule.
-  ///
-  /// In pt, this message translates to:
-  /// **'A fila pede {need} · você tem {free} livres até {date}'**
-  String goalSchedule(String need, String free, String date);
-
   /// No description provided for @artifactsAll.
   ///
   /// In pt, this message translates to:
@@ -2620,6 +2614,54 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'atrás do ritmo'**
   String get artifactPaceBehind;
+
+  /// No description provided for @artifactUrgent.
+  ///
+  /// In pt, this message translates to:
+  /// **'Urgente'**
+  String get artifactUrgent;
+
+  /// No description provided for @artifactStartTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar {title}'**
+  String artifactStartTitle(String title);
+
+  /// No description provided for @artifactStartBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ela vai para Em andamento e o tempo dela passa a correr até o prazo. Até quando?'**
+  String get artifactStartBody;
+
+  /// No description provided for @artifactStartInDays.
+  ///
+  /// In pt, this message translates to:
+  /// **'{days, plural, =1{Em 1 dia} other{Em {days} dias}}'**
+  String artifactStartInDays(int days);
+
+  /// No description provided for @artifactStartInWeeks.
+  ///
+  /// In pt, this message translates to:
+  /// **'{weeks, plural, =1{Em 1 semana} other{Em {weeks} semanas}}'**
+  String artifactStartInWeeks(int weeks);
+
+  /// No description provided for @artifactStartOtherDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Outro dia'**
+  String get artifactStartOtherDay;
+
+  /// No description provided for @artifactStartOtherDayHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Escolher no calendário'**
+  String get artifactStartOtherDayHint;
+
+  /// No description provided for @artifactStart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar'**
+  String get artifactStart;
 
   /// No description provided for @routineChecklistHint.
   ///

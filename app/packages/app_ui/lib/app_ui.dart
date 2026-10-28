@@ -12,6 +12,7 @@ export 'src/theme/app_day.dart';
 export 'src/theme/app_spacing.dart';
 export 'src/theme/app_theme.dart';
 export 'src/theme/app_typography.dart';
+export 'src/widgets/app_add_row.dart';
 export 'src/widgets/app_badge.dart';
 export 'src/widgets/app_bar_default.dart';
 export 'src/widgets/app_bottom_bar.dart';

@@ -63,7 +63,10 @@ export class ArtifactsController {
     return this._answer(user);
   }
 
-  /** Renames it, edits its notes, time or value, moves its deadline, or delivers it. */
+  /**
+   * Renames it, edits its notes, time or value, moves its deadline, begins
+   * it or stops it, or delivers it.
+   */
   @Patch('artifacts/:id')
   async edit(
     @CurrentUser() user: AuthUser,
@@ -83,14 +86,18 @@ export class ArtifactsController {
     return this._answer(user);
   }
 
-  /** Drags it to another place in the queue of deliveries. */
+  /**
+   * Drags it to another place in the queue of deliveries; dropped among
+   * those not begun (`started: false`), it is no longer begun.
+   */
   @Post('artifacts/:id/move')
   async move(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: MoveArtifactDto,
   ): Promise<ArtifactsAnswer> {
-    await this.artifacts.move(owner(user), id, requireArtifactMove(dto));
+    const { index, stop } = requireArtifactMove(dto);
+    await this.artifacts.move(owner(user), id, index, { stop });
     return this._answer(user);
   }
 
