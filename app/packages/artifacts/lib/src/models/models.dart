@@ -444,6 +444,24 @@ class Goal extends Equatable {
   /// Whether it is being measured on [now], rather than waiting to start.
   bool isActiveAt(DateTime now) => !now.isBefore(start);
 
+  /// Whether its last day has gone by at [now].
+  bool isOverAt(DateTime now) => !now.isBefore(end);
+
+  /// The day it is to be reached by: the last it counts.
+  DateTime get lastDay => DateTime(end.year, end.month, end.day - 1);
+
+  /// The share of its time gone at [now], from 0 to 1: calendar time, from
+  /// the start of its first day to the end of its last.
+  double timeAt(DateTime now) {
+    final whole = end.difference(start).inMinutes;
+    if (whole <= 0) return 1;
+    return (now.difference(start).inMinutes / whole).clamp(0, 1);
+  }
+
+  /// What it asks to have been reached by [now], were it reached evenly
+  /// over its days: the red of its bar.
+  int expectedAt(DateTime now) => (target * timeAt(now)).round();
+
   @override
   List<Object?> get props => [
     id,

@@ -106,7 +106,10 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
   bool _loose = false;
   late final _name = TextEditingController(text: widget.initialName);
   final _search = TextEditingController();
-  final _value = TextEditingController();
+  /// Its value, in whole reais: the kind's price until she changes it.
+  late final _value = TextEditingController(
+    text: widget.initialType?.price?.toString(),
+  );
   late bool _split = widget.initialType?.blockMinutes != null;
   late bool _top = widget.top;
   late DateTime? _deadline =
@@ -135,6 +138,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       _loose = false;
       _split = type.blockMinutes != null;
       _name.text = '${type.name} · ';
+      _value.text = type.price?.toString() ?? '';
     });
   }
 
@@ -174,7 +178,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     setState(() => _minutes = picked.inMinutes);
   }
 
-  int? get _looseValue => int.tryParse(_value.text.trim());
+  int? get _typedValue => int.tryParse(_value.text.trim());
 
   Future<void> _create() async {
     final title = _name.text.trim();
@@ -185,7 +189,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       title: title,
       type: type,
       minutes: type == null ? _minutes : null,
-      value: type == null ? _looseValue : null,
+      value: _typedValue,
       blockMinutes: _split ? (type?.blockMinutes ?? _defaultBlock) : null,
       deadline: _deadline,
       top: _top,
@@ -321,7 +325,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     final type = _type;
     final deadline = _deadline;
     final block = type?.blockMinutes ?? _defaultBlock;
-    final price = type == null ? _looseValue : type.price;
+    final price = _typedValue;
     final goal = _goalFor(goals, type, price, deadline ?? now);
 
     return Column(
@@ -397,21 +401,19 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
                 ],
               ),
             ),
-            if (type == null)
-              SheetRow(
-                iconData: AppIcons.value,
-                label: l10n.artifactValue,
-                trailing: MoneyField(
-                  controller: _value,
-                  onChanged: () => setState(() {}),
-                ),
-              )
-            else if (price != null)
-              SheetRow(
-                iconData: AppIcons.value,
-                label: l10n.artifactValue,
-                value: formatMoney(price),
+            // Every delivery may be worth something, a kind's price being
+            // only where it starts: money goals count it once delivered.
+            SheetRow(
+              iconData: AppIcons.value,
+              label: l10n.artifactValue,
+              note: type?.price == null
+                  ? null
+                  : l10n.artifactTimeFromType(type!.name),
+              trailing: MoneyField(
+                controller: _value,
+                onChanged: () => setState(() {}),
               ),
+            ),
             SheetRow(
               iconData: AppIcons.calendar,
               label: l10n.artifactDeadline,

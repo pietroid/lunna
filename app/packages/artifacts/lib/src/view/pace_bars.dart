@@ -62,26 +62,13 @@ class PaceBars extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
-          child: SizedBox(
-            height: 6,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                const ColoredBox(color: AppColors.line),
-                if (time != null) _Fill(value: time, color: AppColors.paceTime),
-                _Fill(value: work, color: AppColors.paceDone),
-              ],
-            ),
-          ),
-        ),
+        PaceBar(time: time, done: work),
         const SizedBox(height: AppSpacing.s2),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
-              child: _Key(
+              child: PaceKey(
                 color: AppColors.paceDone,
                 text: l10n.artifactTimeDone(
                   formatMinutes(l10n, a.doneMinutes),
@@ -92,7 +79,7 @@ class PaceBars extends StatelessWidget {
             const SizedBox(width: AppSpacing.s3),
             if (time != null && deadline != null)
               Flexible(
-                child: _Key(
+                child: PaceKey(
                   color: AppColors.paceTime,
                   text: isOverdue(a, now)
                       ? remainingLabel(l10n, a, now)!
@@ -103,6 +90,42 @@ class PaceBars extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// {@template pace_bar}
+/// The bar alone: [time] in red ([AppColors.paceTime]) and over it [done]
+/// in green ([AppColors.paceDone]), each a share from 0 to 1. A delivery
+/// reads its work against its days; a goal its money against the money
+/// its days ask for.
+/// {@endtemplate}
+class PaceBar extends StatelessWidget {
+  /// {@macro pace_bar}
+  const PaceBar({required this.done, this.time, super.key});
+
+  /// The share of the time gone; null draws no red.
+  final double? time;
+
+  /// The share done.
+  final double done;
+
+  @override
+  Widget build(BuildContext context) {
+    final time = this.time;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+      child: SizedBox(
+        height: 6,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const ColoredBox(color: AppColors.line),
+            if (time != null) _Fill(value: time, color: AppColors.paceTime),
+            _Fill(value: done, color: AppColors.paceDone),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -130,11 +153,22 @@ class _Fill extends StatelessWidget {
 }
 
 /// A dot in a bar's colour and what that bar counts.
-class _Key extends StatelessWidget {
-  const _Key({required this.color, required this.text, this.ink});
+class PaceKey extends StatelessWidget {
+  /// Creates the key.
+  const PaceKey({
+    required this.color,
+    required this.text,
+    this.ink,
+    super.key,
+  });
 
+  /// The bar's colour.
   final Color color;
+
+  /// What it counts.
   final String text;
+
+  /// The text's colour, when not the quiet one.
   final Color? ink;
 
   @override

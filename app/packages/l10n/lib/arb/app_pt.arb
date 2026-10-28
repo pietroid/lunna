@@ -1290,9 +1290,124 @@
   "checklistCount": "{done} de {total}",
   "@checklistCount": {
     "placeholders": {
-      "done": { "type": "int" },
-      "total": { "type": "int" }
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
-  "checklistAllDone": "Tudo feito"
+  "checklistAllDone": "Tudo feito",
+  "shellGoalsTab": "Objetivos",
+  "goalsNew": "Novo objetivo",
+  "goalsEmptyTitle": "Quanto você quer faturar?",
+  "goalsEmptyBody": "Um objetivo é um valor a alcançar até um dia. Ele soma o valor de cada entrega que você entrega, e a barra diz se você está no ritmo.",
+  "goalsUpcoming": "Próximos",
+  "goalsPast": "Anteriores",
+  "goalMoneyLabel": "{amount} até {date}",
+  "@goalMoneyLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "goalRevenueBy": "Até {date}",
+  "@goalRevenueBy": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "goalAchieved": "{amount} faturados",
+  "@goalAchieved": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalExpected": "{amount} até hoje",
+  "@goalExpected": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalBehind": "{amount} abaixo do ritmo",
+  "@goalBehind": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalAhead": "{amount} acima do ritmo",
+  "@goalAhead": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalOnPace": "No ritmo",
+  "goalQueuedLine": "{count, plural, =1{Na fila: {amount} em 1 entrega até {date}} other{Na fila: {amount} em {count} entregas até {date}}}",
+  "@goalQueuedLine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "amount": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReached": "Alcançado",
+  "goalSheetAmount": "Quanto faturar",
+  "goalSheetBy": "Até quando",
+  "goalByNextWeek": "Próxima semana",
+  "goalByNextMonth": "Próximo mês",
+  "goalByOther": "Outra data",
+  "goalReadbackBy": "Faturar {amount} até {date}.",
+  "@goalReadbackBy": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackFromToday": "Conta o que você entregar a partir de hoje: uns {amount} por semana.",
+  "@goalReadbackFromToday": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalReadbackFromDay": "Começa quando o atual termina, {date}: uns {amount} por semana.",
+  "@goalReadbackFromDay": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "goalCreateObjective": "Criar objetivo",
+  "goalDeleteObjectiveBody": "As entregas continuam como estão; só o objetivo deixa de ser medido.",
+  "artifactValueAdd": "Adicionar valor"
 }

@@ -391,16 +391,30 @@ class _Summary extends StatelessWidget {
               ],
             ),
           ),
-          // What it is: its kind (or a one-off), its time and its value.
+          // What it is: its kind (or a one-off) and its time.
           _Property(
             label: l10n.artifactKindLabel,
             child: Text(
               [
                 artifact.type?.name ?? l10n.artifactLoose,
                 if (artifact.minutes > 0) formatMinutes(l10n, artifact.minutes),
-                if (artifact.value != null) formatMoney(artifact.value!),
               ].join(' · '),
               style: AppTypography.labelStrong.copyWith(color: AppColors.ink),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // What it is worth, which a money goal counts once delivered.
+          // The build makes it a tap that edits it (PATCH { value }).
+          _Property(
+            label: l10n.artifactValue,
+            child: Text(
+              artifact.value == null
+                  ? l10n.artifactValueAdd
+                  : formatMoney(artifact.value!),
+              style: AppTypography.labelStrong.copyWith(
+                color: artifact.value == null ? AppColors.ink3 : AppColors.ink,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

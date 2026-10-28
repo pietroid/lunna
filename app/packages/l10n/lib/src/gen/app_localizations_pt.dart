@@ -1695,4 +1695,108 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get checklistAllDone => 'Tudo feito';
+
+  @override
+  String get shellGoalsTab => 'Objetivos';
+
+  @override
+  String get goalsNew => 'Novo objetivo';
+
+  @override
+  String get goalsEmptyTitle => 'Quanto você quer faturar?';
+
+  @override
+  String get goalsEmptyBody => 'Um objetivo é um valor a alcançar até um dia. Ele soma o valor de cada entrega que você entrega, e a barra diz se você está no ritmo.';
+
+  @override
+  String get goalsUpcoming => 'Próximos';
+
+  @override
+  String get goalsPast => 'Anteriores';
+
+  @override
+  String goalMoneyLabel(String amount, String date) {
+    return '$amount até $date';
+  }
+
+  @override
+  String goalRevenueBy(String date) {
+    return 'Até $date';
+  }
+
+  @override
+  String goalAchieved(String amount) {
+    return '$amount faturados';
+  }
+
+  @override
+  String goalExpected(String amount) {
+    return '$amount até hoje';
+  }
+
+  @override
+  String goalBehind(String amount) {
+    return '$amount abaixo do ritmo';
+  }
+
+  @override
+  String goalAhead(String amount) {
+    return '$amount acima do ritmo';
+  }
+
+  @override
+  String get goalOnPace => 'No ritmo';
+
+  @override
+  String goalQueuedLine(int count, String amount, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Na fila: $amount em $count entregas até $date',
+      one: 'Na fila: $amount em 1 entrega até $date',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get goalReached => 'Alcançado';
+
+  @override
+  String get goalSheetAmount => 'Quanto faturar';
+
+  @override
+  String get goalSheetBy => 'Até quando';
+
+  @override
+  String get goalByNextWeek => 'Próxima semana';
+
+  @override
+  String get goalByNextMonth => 'Próximo mês';
+
+  @override
+  String get goalByOther => 'Outra data';
+
+  @override
+  String goalReadbackBy(String amount, String date) {
+    return 'Faturar $amount até $date.';
+  }
+
+  @override
+  String goalReadbackFromToday(String amount) {
+    return 'Conta o que você entregar a partir de hoje: uns $amount por semana.';
+  }
+
+  @override
+  String goalReadbackFromDay(String date, String amount) {
+    return 'Começa quando o atual termina, $date: uns $amount por semana.';
+  }
+
+  @override
+  String get goalCreateObjective => 'Criar objetivo';
+
+  @override
+  String get goalDeleteObjectiveBody => 'As entregas continuam como estão; só o objetivo deixa de ser medido.';
+
+  @override
+  String get artifactValueAdd => 'Adicionar valor';
 }
