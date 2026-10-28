@@ -1,6 +1,6 @@
 # A reminder should take the answer, not open the app
 
-2026-10-28 · delivery · **plan, awaiting approval** · track: plan · issue #53
+2026-10-28 · delivery · **plan, revised after review, awaiting approval** · track: plan · issue #53
 
 ## 1. The prompt
 
@@ -24,6 +24,15 @@ step everywhere, re-asks queued for the next 24 h only, no push from the
 server, `almostFinishing` dropped, and the Live Activity started by the
 app, an intent or iOS 26 scheduling.
 
+The plan was reviewed on the issue, and the person replied:
+
+> Btw I have seen the title but actually if the user taps the notification it should go to the app anyway. You can implement everything for iOS. Leave android for later, you can create an issue just for that?
+
+So a tap on a reminder (not on one of its buttons) opens the app, on
+that card, whatever the title says; this PR builds the phone side for
+iOS only; and Android's is
+[issue #56](https://github.com/pietroid/lunna/issues/56).
+
 ## 2. The plan
 
 **Track: plan.** The first phases change rules on the server and put
@@ -41,8 +50,9 @@ its change slides.
 |---|---|---|
 | 0 | Measure: where each answer came from (`via`) and how many endings closed in silence, recorded before anything changes | yes |
 | 1 | Server: one lifecycle (all routines fixed, overtime instead of "done", start and end asks for fixed blocks, +10 from the later of hour and tap, the new plan) | yes |
-| 2 | Phone: three buttons on every block reminder, answered in the background; the overtime tag on the card; 10 min in the app's ± | yes |
-| 3 | iOS Live Activity (widget extension, App Intents) and the Android ongoing notification with a countdown | no: next PR, mockup track |
+| 2 | Phone, **iOS only**: three buttons on every block reminder, answered in the background; a tap still opens the app; the overtime tag on the card and 10 min in the app's ± (both platforms, they are Flutter) | yes |
+| 2A | Android: the same buttons, the start sheet removed, then the ongoing notification with a countdown | no: [#56](https://github.com/pietroid/lunna/issues/56) |
+| 3 | iOS Live Activity (widget extension, App Intents) | no: next PR, mockup track |
 
 ### Approach
 
@@ -89,9 +99,9 @@ its change slides.
     (`start | end`) so the phone knows which writes its buttons make. The
     copy stays on the server, in Portuguese: "Café começou", "Café
     terminou?", "Almoço em 15 minutos".
-- **Phase 2, phone.**
+- **Phase 2, phone (iOS).**
   - *Actions* (`packages/notifications`, `notification_queue.dart`): one
-    category, `ask`, on Darwin and Android, with three actions:
+    category, `ask`, in `DarwinInitializationSettings` only, with three actions:
     **Confirmar**, **+10 min** (background) and **Falar com a {appName}**
     (opens the app). The labels come from `app_pt.arb` and name the brand
     through `appName(AppBrand.id)`. A top-level
@@ -102,10 +112,18 @@ its change slides.
     re-asks.
   - *iOS* (`AppDelegate.swift`): `FlutterLocalNotificationsPlugin.setPluginRegistrantCallback`,
     as workmanager's already is, so the background engine has its plugins.
+  - *A tap opens the app.* Tapping the notification itself, not a
+    button, always brings the app forward on that card's page
+    (`eventId`), on a start ask, an end ask or a heads-up alike. The
+    buttons are a shortcut; the tap is never taken away.
   - *Falar com a Lunna*: it opens the app with `AskDock`'s sheet already
     about that card (the `about` the notes' microphone passes today).
-    `reminders_listener.dart` loses its start sheet. A plain tap on the
-    notification opens the card.
+  - *The start sheet* (`reminders_listener.dart`) goes on iOS, where the
+    buttons answer instead. On Android it stays, the only way to answer
+    a start until #56; an end ask there opens the card.
+  - *Android, until #56*: the server's new plan and copy reach it
+    unchanged (they are platform-free); its notifications carry no
+    buttons, and a tap opens the app as above.
   - *The card* (`packages/timeline`, `event_tile.dart`): an `AppTag`
     "atrasado N min" in `AppColors` danger while `overtimeMinutes > 0`.
     The ± on Agora go from 15 to 10.
@@ -145,7 +163,9 @@ its change slides.
 | 8 | Marking an answered end | `event.closed_at`, new column | the end of a fixed block has no task row to hold a `done_at` |
 | 9 | Past blocks at deploy | `closed_at = end_time` in the migration | otherwise every past block would wake up as overtime |
 | 10 | Measuring | a `via` header and a `block_closed_silently` event, nothing a person wrote | analytics' rule; costs nothing without `POSTHOG_KEY` |
-| 11 | The start sheet | removed; Falar com a Lunna replaces it | the buttons say what the sheet said |
+| 11 | The start sheet | removed on iOS; kept on Android until #56 | the buttons say what the sheet said; Android has no buttons yet |
+| 12 | A tap on the notification | always opens the app, on the card | the person's review: buttons answer, the tap still goes to the app |
+| 13 | Platforms | iOS only for the phone side; Android in [#56](https://github.com/pietroid/lunna/issues/56) | the person's review |
 
 ### How it will be proved
 
@@ -159,11 +179,13 @@ its change slides.
   within 24 h, no `almostFinishing`. The RFC's `code/plan-count.ts` re-run
   on the build should print the same 85 slots and 4.2 days.
 - `flutter test` under both brands: the background handler maps each
-  `kind` × `edge` × action to the right route (fake `ApiClient`), and the
-  tag is drawn at `overtimeMinutes > 0`.
-- On a device (iOS and Android), written up in section 3: a button
-  answered from the lock screen with the app killed reaches the server,
-  and the re-asks vanish after the sync.
+  `kind` × `edge` × action to the right route (fake `ApiClient`), a tap
+  (no action id) opens the card's page, the category is registered on
+  Darwin only, and the tag is drawn at `overtimeMinutes > 0`.
+- On an iPhone, written up in section 3: a button answered from the lock
+  screen with the app killed reaches the server, the re-asks vanish after
+  the sync, and a tap on the notification opens the app on the card.
+  Without a device on this run, it is named there as not run.
 - `.tool/preview`: Tempo with a card in overtime, both brands.
 
 ## Build brief
@@ -175,9 +197,9 @@ its change slides.
   `events/timeline.service.ts` and `calendar/` (flexible routine days
   out, `overtimeMinutes` on the card), `routines/routines.service.ts`,
   `db/schema.ts` + `drizzle/`, `common/logging.interceptor.ts`,
-  `analytics/events.ts`. App: `packages/notifications` (category,
-  actions, `edge`), `lib/notifications/` (background handler, listener
-  without the sheet), `packages/api_client` (the `via` header),
+  `analytics/events.ts`. App: `packages/notifications` (Darwin
+  category, actions, `edge`), `lib/notifications/` (background handler;
+  listener: a tap opens the card, the sheet only on Android), `packages/api_client` (the `via` header),
   `packages/timeline` (tag, ± 10, the card's `overtimeMinutes`),
   `packages/l10n` (button labels, tag), `ios/Runner/AppDelegate.swift`.
 - **Docs.** In `AGENTS.md`: "Reminders" rewritten; "Routines" loses the
@@ -187,6 +209,9 @@ its change slides.
   harness, and the test at :1163), `reminders_listener.dart`,
   `notification_scheduler.dart` (the 60-slot cap), the RFC's
   `code/plan-count.ts`.
+- **Not in this PR.** Android's buttons and countdown
+  ([#56](https://github.com/pietroid/lunna/issues/56)); the Live Activity
+  (Phase 3). Don't register the category on Android.
 - **Open questions.** None block the build. One to check on a device:
   whether iOS keeps the 64 soonest or the 64 last scheduled
   (`notification_scheduler.dart:64`). The scheduler already sends the
@@ -206,5 +231,10 @@ its change slides.
 - The past is closed at deploy (`closed_at = end_time`). The RFC does not
   say how to start.
 - The start sheet goes, since the buttons say the same thing.
+- After the review: Android keeps today's start sheet until #56, so it
+  loses no way to answer while it has no buttons. An end ask on Android
+  opens the card.
+- Issue #56 was opened without the `create` label, so the queue does not
+  start it before the person decides when.
 - No cost table: the queue measures the run and writes the figures in
   the PR.
