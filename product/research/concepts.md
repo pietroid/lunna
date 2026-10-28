@@ -12,7 +12,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
 [multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md) ·
 [neon-compute](./2026-10-23-neon-compute/README.md) ·
-[notification-lifecycle](./2026-10-28-notification-lifecycle/README.md)
+[notification-lifecycle](./2026-10-28-notification-lifecycle/README.md) ·
+[lunna-as-a-secretary](./2026-10-28-lunna-as-a-secretary/README.md)
 
 ## Tools: what the model is given
 
@@ -51,14 +52,14 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Li et al., [Retrieval augmented generation or long-context LLMs?](https://arxiv.org/abs/2407.16833) (EMNLP 2024); Liu et al., [Lost in the Middle](https://arxiv.org/abs/2307.03172): put what matters at the end.
 - **Here:** one person's two weeks fit, so no RAG; the day goes last, right before the request.
-- **Met in:** agent-reliability §4.3.
+- **Met in:** agent-reliability §4.3; lunna-as-a-secretary, slide 4 (a 300-row sheet is ~6–10k tokens: the limits are the 4,000-character message and the 12-change plan, not the context).
 
 ### Just-in-time context
 > Hand out identifiers up front; let tools fetch the details.
 
 - **Read:** Anthropic, [Effective context engineering](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents).
 - **Here:** an index of projects on the board, `read_cards` for what is inside.
-- **Met in:** agent-ui §4.6.
+- **Met in:** agent-ui §4.6; lunna-as-a-secretary, slide 10 (sources listed by name on the board, `read_source` for the content).
 
 ### Progressive disclosure
 > Always load the name; load the body only when it is relevant.
@@ -220,7 +221,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Chrome, [Timer throttling in Chrome 88](https://developer.chrome.com/blog/timer-throttling-in-chrome-88): hidden tabs' timers run once a minute; prefer push to polling.
 - **Here:** a paused block's end is `now + owed`, so `catchUp` runs before each read instead of on a clock.
-- **Met in:** neon-compute, slides 7–8; notification-lifecycle, slides 5 and 7 (overtime dragged on read; the Live Activity changes on state only).
+- **Met in:** neon-compute, slides 7–8; notification-lifecycle, slides 5 and 7 (overtime dragged on read; the Live Activity changes on state only); lunna-as-a-secretary, slide 9 (a Drive file read on ask, not synced; a WhatsApp webhook would write on every message).
 
 ### Settle on access, from absolute times
 > Store when something happened; work out the rest from now, when someone asks.
@@ -244,3 +245,26 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** Apple, [Displaying live data with Live Activities](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities): `Text(timerInterval:)`, 4 KB, start in the foreground or from a `LiveActivityIntent`.
 - **Here:** the running block's activity is updated on start, pause, ±10, done and overtime; no push server and no minute updates.
 - **Met in:** notification-lifecycle, slide 7.
+
+## Sources: what the agent reads from outside
+
+### Ask for the file, not the drive
+> Ask for the one file the person picks; a scope over everything costs an audit and their trust.
+
+- **Read:** Google, [Drive API scopes](https://developers.google.com/workspace/drive/api/guides/api-specific-auth) (`drive.file` non-sensitive, `drive.readonly` restricted) and [the Picker for desktop and mobile](https://developers.google.com/workspace/drive/picker/guides/desktop-mobile-picker) (in the system browser, `drive.file` only).
+- **Here:** she pastes a sheet's link, the picker opens on that file (`file_ids`), one tap grants it.
+- **Met in:** lunna-as-a-secretary, slides 6–7.
+
+### Rows as key: value blocks
+> A small model reads a record better as `key: value` lines than as a CSV row.
+
+- **Read:** Improving Agents, [Which table format do LLMs understand best?](https://www.improvingagents.com/blog/best-input-data-format-for-llms): 60.7% vs 44.3% on 1,000 records (GPT-4.1-nano), at 2.7× the tokens.
+- **Here:** `read_source` writes each row as `Coluna: valor`, empty cells dropped.
+- **Met in:** lunna-as-a-secretary, slide 4.
+
+### Never hold a session to their account
+> Read what the person hands over, or go through the platform's own API; an unofficial session puts their account at risk.
+
+- **Read:** [Baileys](https://github.com/WhiskeySockets/Baileys)' disclaimer ("not affiliated … authorized … by WhatsApp"); WhatsApp, [About unofficial apps](https://faq.whatsapp.com/1217634902127718/); the official road, coexistence ([360dialog](https://docs.360dialog.com/docs/hub/embedded-signup/whatsapp-coexistence)).
+- **Here:** a WhatsApp chat reaches Lunna as an export she shares; the whole inbox only through Meta's API, later.
+- **Met in:** lunna-as-a-secretary, slides 8–9.
