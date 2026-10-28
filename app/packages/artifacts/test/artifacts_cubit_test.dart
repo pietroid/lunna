@@ -103,11 +103,12 @@ void main() {
       ).thenAnswer((_) async => data);
       when(
         () => repository.addGoal(
-          kind: GoalKind.count,
-          target: 3,
-          period: GoalPeriod.week,
-          typeId: 'mapa',
+          target: 10000,
+          deadline: DateTime(2026, 11, 30),
         ),
+      ).thenAnswer((_) async => data);
+      when(
+        () => repository.updateGoal('g', target: 12000),
       ).thenAnswer((_) async => data);
       final cubit = ArtifactsCubit(repository: repository, initial: ready);
 
@@ -119,14 +120,10 @@ void main() {
         () => repository.create(title: 'Mapa · Ana', typeId: 'mapa', top: true),
       ).called(1);
       expect(
-        await cubit.addGoal(
-          kind: GoalKind.count,
-          target: 3,
-          period: GoalPeriod.week,
-          type: mapa,
-        ),
+        await cubit.addGoal(target: 10000, deadline: DateTime(2026, 11, 30)),
         isTrue,
       );
+      expect(await cubit.editGoal('g', target: 12000), isTrue);
     },
   );
 

@@ -1,8 +1,8 @@
 # Objetivos: a goals tab, money first
 
-> Draft from the design session (issue
-> [#52](https://github.com/pietroid/lunna/issues/52)), mockup track. Sections
-> 1 and 2 and the Build brief; the build replaces the brief with sections 3–5.
+> Issue [#52](https://github.com/pietroid/lunna/issues/52), mockup track.
+> Designed in two rounds on the issue, approved, then built unattended.
+> Spec: [product/spec/goals.md](../../spec/goals.md).
 
 ## 1. The prompt
 
@@ -35,6 +35,13 @@ On the design, reviewed on the issue, the person replied:
 
 So the delivery sheet no longer names a goal ("Conta para" is gone), and
 the goal's card now says where the open deliveries take it (pin K).
+
+Then, on the second round, the person replied:
+
+> Approve
+
+The three open questions of that round were left unanswered, so the build
+takes the options drawn (see "Decided unattended").
 
 ## 2. The design
 
@@ -117,101 +124,129 @@ this run.
   they are. A delivery with no deadline, or due after the goal's day, does
   not count towards it. Each delivery counts once, for the goal whose
   stretch holds its deadline (goals follow each other, so there is one).
+- **The open questions of round two, unanswered at approval**, take the
+  options drawn: goals follow each other (no cumulative ramp from the last
+  goal's target), the whole value of an open delivery counts in the
+  forecast however much of it is done, and past goals stay listed under
+  Anteriores.
+- **Build**: a goal's day may not reach the next goal's first day (so no
+  day counts twice); a goal is changed from its card (amount and day, no
+  suggestions); the agent can write and remove a goal but not change one;
+  old repeating goals become the stretch they are in when the migration
+  runs, measured in the database's day rather than the person's zone
+  (a few hours' difference around midnight, once).
 - **Wording**: *Objetivo* everywhere a person reads it ("Novo objetivo",
   "Criar objetivo"). The code keeps `Goal`.
 
-## Build brief
+## 3. What was built
 
-**Files the design session wrote or changed** (uncommitted, kept for the
-build; the preview is deleted after Phase 4):
+### Prints of the real build
 
-- `app/lib/goals_preview.dart`: the preview, scenes 1–5.
-- `app/packages/artifacts/lib/src/view/goals_page.dart` (new):
-  `GoalsPage`, the tab.
-- `.../view/goal_card.dart`: rewritten as `GoalCard` (dual bar, pace tag,
-  the forecast line), `GoalRow` (past goals), `goalQueue` (the goal finding
-  its deliveries).
-- `.../view/goal_sheet.dart`: rewritten as amount + by when, with
-  `goalStartAfter` and `goalSuggestions`. **`_save` still calls the old
-  `addGoal(period:)`**: the build posts `{ target, deadline }`.
-- `.../view/pace_bars.dart`: `PaceBar` (the bar alone) and `PaceKey` made
-  public; `PaceBars` uses them.
-- `.../view/artifact_sheet.dart`: Valor editable for every delivery,
-  filled in with the kind's price, and always sent. The *Conta para* row
-  and `_goalFor` are gone, so the sheet no longer reads the goals.
-- `.../view/artifact_page.dart`: a Valor row of its own. **It has no tap
-  yet.**
-- `.../models/models.dart`: `Goal.isOverAt`, `lastDay`, `timeAt`,
-  `expectedAt`.
-- `.../format.dart`: `shortDay`; `goalLabel` is now "R$ 10.000 até 30 nov".
-- `.../view/view.dart`: exports `goals_page.dart`.
-- `app/lib/shell/view/shell_page.dart`: the 4th tab and the FAB on it.
-- `app/packages/l10n/lib/arb/app_pt.arb` + `gen/`: the new strings
-  (`goalQueuedLine` is the forecast, `goalQueuedReaches` when it covers
-  the target; `artifactCountsFor` removed).
+Lunna, scenes 1–7: the empty tab, the new goal sheet, the tab with a
+running goal (next and past ones under it), the running goal tapped (the
+sheet that edits it), the delivery sheet with Valor from its kind, the
+delivery page's Valor row, and the value sheet it opens.
 
-**Server** (`server/src/artifacts/`, read `product/spec/artifacts.md` first):
+![Lunna](img/build-lunna.png)
 
-- `goal` gets a `deadline` day (its last day). A migration fills it for
-  existing goals from their current stretch. `period`, `starts` and
-  `type_id` stay in the table but the money goal no longer reads them.
-- `POST /goals { target, deadline }` (kind money is implied). The start is
-  the day after the latest goal's deadline when that is still ahead,
-  otherwise today. Refuse, in Portuguese, a deadline that is not after the
-  start ("Escolha um dia depois de …") or a target ≤ 0.
-- `GoalView`: `{ id, kind, target, start, end (day after deadline), done,
-  queued, queuedCount }`. `done` is the value delivered in [start, end). `queued` is the
-  value of open deliveries due by the deadline, counted by the goal: no
-  column or route ties a delivery to a goal, and none is added. Past goals are kept and
-  measured too (Anteriores needs them).
-- `PATCH /goals/:id { target?, deadline? }` so a goal can be edited (a
-  tap on the card opens the sheet filled in). `DELETE` as today.
-- `PATCH /artifacts/:id { value }` already exists. Check that `null`
-  clears it.
-- The agent's goal action (`agent/actions/`) follows the new args
-  `{ target, deadline }`. Update its schema and its eval case.
-- A row in `analytics/events.ts` for the PATCH.
+Focus, the same scenes:
 
-**App:**
+![Focus](img/build-focus.png)
 
-- The forecast reads `GoalView.queued` (and its count) from the server
-  rather than `goalQueue` over the cubit's list, so the app and the agent
-  say the same number; drop `goalQueue` then, or keep it for the landing's
-  fakes.
+### The contract
 
-- `ArtifactsRepository.addGoal({ target, deadline })` and
-  `updateGoal`; `update(id, value:)`; the cubit's `addGoal`, `editGoal`
-  and `setValue`; the fakes in tests and `lib/demo/data/demo_artifacts.dart`.
-- The delivery page's Valor row: a tap opens a money prompt (reuse
-  `MoneyField` in an `AppPromptSheet` or a small sheet) → `setValue`.
-- A tap on the running goal's card opens `GoalSheet` filled in to edit it.
-- Remove `showGoals` and the goal strip from `ArtifactsPage`. The landing
-  page's chapter (`lib/landing/widgets/chapters.dart`) still draws
-  `GoalCard(goal:, now:)`; give it the demo's queue.
-- `DemoShell` (`lib/demo/view/demo_app.dart`) gets the fourth tab like the
-  real shell, or keeps three on purpose. The landing has three chapters, so
-  **keep three** and say so.
-- Tests: `artifacts_page_test.dart` opens `showGoalSheet(kind: count)`,
-  which no longer exists. Replace it with goals-page tests: the empty state,
-  the suggestions on a fixed clock (Wed 28 Oct → dom 8 nov / seg 30 nov),
-  the start after a running goal, the pace tag at the 15 % edge, the forecast ("chega a" and
-  "alcança o objetivo", a delivery due after the goal's day left out), and
-  a delivery's value from its kind with no goal row in its sheet. Run under several `TZ`s.
-- Spec: rewrite "Goal" and the goal rules in `product/spec/artifacts.md`
-  (or a new `product/spec/goals.md`), and add the fourth tab to AGENTS.md's
-  shell paragraph.
+**A goal is an amount by a day, and goals follow each other.** It counts
+the `value` of what was delivered from its first day to its last; a new
+goal starts the day after the last one's deadline, or today. **No
+delivery names a goal**: the open deliveries due by its deadline are its
+forecast (`queued`, `queuedCount`), computed on the server so the tab and
+the agent say the same number.
 
-**Settled on the issue:** a delivery is never associated with a goal; the
-goal computes what counts and what the queue will bring.
+### Server
 
-**Open questions** (also on the issue):
+- `db/schema.ts` + `drizzle/0014_goal_deadline.sql`: `goal.deadline`
+  (not null), `period` nullable. The migration turns each old repeating
+  goal into the stretch it is in on the day it runs (its Monday or 1st to
+  its Sunday or last day, or its first stretch if still ahead). Checked on
+  PGlite with four goals (month, week, past, future): each got the stretch
+  expected.
+- `artifacts/`: `Goal { starts, deadline }`, `GoalEdit`, `GoalView` gains
+  `queuedCount` and loses `period`; `ArtifactsService.addGoal({ target,
+  deadline })` (the start is worked out), `editGoal`, and `measure` by the
+  goal's own days; `ArtifactStore.updateGoal` in both stores;
+  `requireGoal`/`requireGoalEdit`; the week/month helpers of `stretch.ts`
+  are gone.
+- Routes: `POST /goals { target, deadline }`, **new** `PATCH /goals/:id {
+  target?, deadline? }`, `DELETE /goals/:id`. Refusals in Portuguese:
+  *"Escolha um dia depois de 01/05."*, *"O próximo objetivo começa em 01/04:
+  escolha um dia antes."*. `PATCH /artifacts/:id { value: null }` clears a
+  value (it already did; now tested).
+- Analytics: `PATCH /goals/:id` → `goal_edited`.
+- Agent: `new_goal { target, deadline }` (asks when the day is missing,
+  offering next week and next month); the board's goal line reads
+  `g1 · money · R$ 4.000 from 10/03 to 30/04 · delivered R$ 0, open
+  deliveries due by then R$ 1.500 (1)`; the prompt, the plan's `goal: {
+  kind, target, deadline }` and the eval case (`goal-said`: "quero faturar 4
+  mil até o fim do mês que vem" → 30/11) follow.
 
-1. Is "considering the last goal we have" meant as above (each goal starts
-   where the last ended), or should the red line be a **cumulative** ramp
-   from the last goal's target (e.g. R$ 8.000 at 30 set → R$ 10.000 at
-   30 nov)?
-2. Should the goals that have already passed stay listed (Anteriores), or
-   should only the running and next ones show?
+### App
 
-**Cost of the design session:** not measured here. The queue measures each
-run and writes the figures in the PR.
+- `GoalsPage` (the 4th tab), `GoalCard` (reads `goal.queued` and
+  `queuedCount` from the server; `goalQueue` is gone), `GoalRow`,
+  `GoalSheet` (posts `{ target, deadline }`; with `goal:` it edits, without
+  the three suggestions, from the goal's first day), **new** `ValueSheet`
+  (the delivery page's Valor row → `setValue`, with *Tirar valor*).
+- `ArtifactsRepository.addGoal/updateGoal`, `update(value:)`;
+  `ArtifactsCubit.addGoal/editGoal/setValue`; `Goal` loses `period` and
+  gains `queuedCount`; `Artifact.copyWith(value:)`.
+- `ArtifactsPage(showGoals:)` and the goal strip are gone from Entregas.
+- Agent package: a plan's goal reads "novo objetivo · R$ 8.000 até 30/11";
+  a plan kept from before still reads "por mês / por semana".
+- 30 strings of the old goal UI removed from `app_pt.arb`; four added
+  (`goalEditTitle`, `goalReadbackSince`, `artifactValueClear`,
+  `artifactValueHint`); the agent's
+  "nova meta" / "apagar a meta" now say *objetivo*.
+- The demo's goal carries its forecast; the landing's chapter draws it as
+  before. **The demo shell keeps three tabs**, since the landing has three
+  chapters.
+
+### Tests
+
+- Server: `artifacts.controller.spec.ts` (goals one after the other, a past
+  one, the forecast leaving out a delivery due after the goal, one with no
+  value, one with no deadline, and counting an overdue one; the refusals;
+  editing; clearing a value), `pg-artifact.store.spec.ts` (`updateGoal`, by
+  owner), `agent.controller.spec.ts` (a goal by a day applied and undone,
+  read back on the board; the agent asked for the day). `npm test` on
+  artifacts + agent: 91 passed.
+- App: **new** `goals_page_test.dart` (9: the suggestions on Wed 28 Oct →
+  dom 8 nov / seg 30 nov, the start after a running goal, empty state,
+  writing, sections, the pace tag at exactly 15 % and one real past it, the
+  forecast's two lines, editing); `artifact_page_test.dart` (the value
+  sheet: save, take away); `artifacts_page_test.dart` (a kind's price sent
+  as the value, no goal row); cubit, models and pace tests updated.
+  Artifacts: 57 passed under Focus and under Lunna; the goal and model
+  tests also under `TZ` UTC, America/Sao_Paulo, Pacific/Auckland and
+  America/Los_Angeles. Agent package: 69 passed.
+- `.tool/check`: every step passed (flutter analyze, every package's tests under Focus and Lunna, server eslint, tsc and the whole `npm test`). The first run caught prettier and two untyped `body.message` reads in my server specs, fixed before the second.
+
+### Where the build differs from the mockup
+
+- **Tapping a goal edits it** (the brief asked for it; the mockup had no
+  pin). The edit sheet hides the three suggestions: a goal's day is
+  changed on the wheel, from its own first day.
+- **The forecast is the server's** (`queued`), not worked out on the
+  phone, so the agent reads the same number.
+- **The "by when" segments shrink on a narrow phone** (`FittedBox`), and
+  the pace tag ellipsises before the day does: the test font showed both
+  overflowing at 390 px.
+- **The value sheet** is new (the mockup only showed the row).
+
+## 4. How to turn it on
+
+Nothing to set. The migration runs on the server's boot; existing goals
+become the stretch they are in that day. No new env var.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

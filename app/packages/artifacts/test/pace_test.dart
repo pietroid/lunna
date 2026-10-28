@@ -280,7 +280,6 @@ void main() {
 
     Future<void> pumpAt(
       WidgetTester tester, {
-      bool showGoals = false,
       List<Artifact>? artifacts,
     }) {
       tester.view.physicalSize = const Size(390, 1400);
@@ -293,7 +292,6 @@ void main() {
           Goal(
             id: 'g',
             kind: GoalKind.money,
-            period: GoalPeriod.month,
             target: 8000,
             start: DateTime(2026, 10),
             end: DateTime(2026, 11),
@@ -313,7 +311,7 @@ void main() {
             locale: const Locale('pt', 'BR'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
-            home: Scaffold(body: ArtifactsPage(showGoals: showGoals)),
+            home: const Scaffold(body: ArtifactsPage()),
           ),
         ),
       );
@@ -323,11 +321,10 @@ void main() {
     // from the test's Wednesday, not from the machine's.
     Future<void> pumpPage(
       WidgetTester tester, {
-      bool showGoals = false,
       List<Artifact>? artifacts,
     }) => withClock(
       Clock.fixed(now),
-      () => pumpAt(tester, showGoals: showGoals, artifacts: artifacts),
+      () => pumpAt(tester, artifacts: artifacts),
     );
 
     /// Holds [title]'s row and lets it go [by] below where it was.
@@ -344,13 +341,9 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('hides the goals unless asked to', (tester) async {
+    testWidgets('draws no goal: they have their own tab', (tester) async {
       await pumpPage(tester);
-      expect(find.text(l10n.goalsSection), findsNothing);
-      expect(find.text(l10n.goalNew), findsNothing);
-
-      await pumpPage(tester, showGoals: true);
-      expect(find.text(l10n.goalsSection), findsOneWidget);
+      expect(find.byType(GoalCard), findsNothing);
     });
 
     testWidgets('heads what was begun above what was not', (tester) async {

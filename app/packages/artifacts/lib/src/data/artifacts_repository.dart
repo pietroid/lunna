@@ -72,13 +72,14 @@ class ArtifactsRepository {
     ),
   );
 
-  /// Changes a delivery's name, deadline, notes or doneness, or begins it
-  /// ([started], which needs a deadline). A [deadline] function that
-  /// answers null takes the deadline away.
+  /// Changes a delivery's name, deadline, value, notes or doneness, or
+  /// begins it ([started], which needs a deadline). A [deadline] or
+  /// [value] function that answers null takes it away.
   Future<ArtifactsData> update(
     String id, {
     String? title,
     DateTime? Function()? deadline,
+    int? Function()? value,
     String? notes,
     bool? done,
     bool? started,
@@ -91,6 +92,7 @@ class ArtifactsRepository {
         'done': ?done,
         'started': ?started,
         if (deadline != null) 'deadline': _day(deadline()),
+        if (value != null) 'value': value(),
       },
     ),
   );
@@ -133,23 +135,27 @@ class ArtifactsRepository {
     ),
   );
 
-  /// Writes a goal down, from this stretch or from the next.
+  /// Writes a goal down: [target] reais by [deadline], its last day. The
+  /// server starts it where the last goal ends, or today.
   Future<ArtifactsData> addGoal({
-    required GoalKind kind,
     required int target,
-    required GoalPeriod period,
-    String? typeId,
-    bool next = false,
+    required DateTime deadline,
   }) => _data(
     () => apiClient.post<Map<String, dynamic>>(
       '/goals',
-      data: {
-        'kind': kind.name,
-        'target': target,
-        'period': period.name,
-        'typeId': ?typeId,
-        'start': next ? 'next' : 'now',
-      },
+      data: {'target': target, 'deadline': _day(deadline)},
+    ),
+  );
+
+  /// Gives a goal another amount, another last day, or both.
+  Future<ArtifactsData> updateGoal(
+    String id, {
+    int? target,
+    DateTime? deadline,
+  }) => _data(
+    () => apiClient.patch<Map<String, dynamic>>(
+      '/goals/$id',
+      data: {'target': ?target, 'deadline': ?_day(deadline)},
     ),
   );
 

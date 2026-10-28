@@ -13,11 +13,6 @@ class _MockRepository extends Mock implements ArtifactsRepository {}
 class _MockVoiceCubit extends MockCubit<VoiceState> implements VoiceCubit {}
 
 void main() {
-  setUpAll(() {
-    registerFallbackValue(GoalKind.money);
-    registerFallbackValue(GoalPeriod.month);
-  });
-
   /// Wednesday 21 October 2026, ten in the morning, wherever this runs.
   final now = DateTime(2026, 10, 21, 10);
   final l10n = lookupAppLocalizations(const Locale('pt'));
@@ -88,7 +83,6 @@ void main() {
       Goal(
         id: 'g',
         kind: GoalKind.money,
-        period: GoalPeriod.month,
         target: 8000,
         done: 4900,
         queued: 1230,
@@ -162,15 +156,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testAt('draws the goals and five of the queue', (
+  testAt('draws five of the queue, and no goal: they have their own tab', (
     tester,
   ) async {
-    await pump(tester, full, home: const ArtifactsPage(showGoals: true));
+    await pump(tester, full);
 
-    expect(
-      find.text(l10n.goalInMonth(l10n.goalRevenue, 'outubro')),
-      findsOneWidget,
-    );
+    expect(find.byType(GoalCard), findsNothing);
     // The agenda against the queue is not drawn any more.
     expect(find.textContaining('A fila pede'), findsNothing);
     expect(find.byType(ArtifactRow), findsNWidgets(5));
@@ -198,12 +189,9 @@ void main() {
     expect(find.text('Post 2'), findsNothing);
   });
 
-  testAt('starts empty, saying what a goal and the queue are for', (
-    tester,
-  ) async {
-    await pump(tester, empty, home: const ArtifactsPage(showGoals: true));
+  testAt('starts empty, saying what the queue is for', (tester) async {
+    await pump(tester, empty);
 
-    expect(find.text(l10n.goalsEmpty), findsOneWidget);
     expect(find.text(l10n.artifactsEmpty), findsOneWidget);
     expect(find.byType(ShelfFilter), findsNothing);
   });
@@ -242,13 +230,17 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'Mapa · Ana');
     await tester.pump();
     expect(find.text(l10n.artifactTimeFromType('Mapa astral')), findsOneWidget);
+    expect(find.textContaining('Conta para'), findsNothing);
     await tester.tap(find.text(l10n.artifactCreate));
     await tester.pumpAndSettle();
 
+    // The kind's price fills in the value, which is sent; no goal is
+    // named: a goal finds its deliveries by their day.
     verify(
       () => repository.create(
         title: 'Mapa · Ana',
         typeId: 'mapa',
+        value: 350,
         blockMinutes: 60,
         top: true,
       ),
@@ -322,39 +314,5 @@ void main() {
       ),
     ).called(1);
     expect(find.byType(TypeSheet), findsNothing);
-  });
-
-  testAt('writes a goal of a kind, read back as a sentence', (tester) async {
-    when(
-      () => repository.addGoal(
-        kind: any(named: 'kind'),
-        target: any(named: 'target'),
-        period: any(named: 'period'),
-        typeId: any(named: 'typeId'),
-        next: any(named: 'next'),
-      ),
-    ).thenAnswer((_) async => full);
-    await open(
-      tester,
-      full,
-      (context) => showGoalSheet(context, kind: GoalKind.count),
-    );
-
-    await tester.tap(find.text('Post'));
-    await tester.enterText(find.byType(TextField), '3');
-    await tester.tap(find.text(l10n.goalPerWeek));
-    await tester.pump();
-    expect(find.text(l10n.goalReadbackCountWeek('Post', '3')), findsOneWidget);
-    await tester.tap(find.text(l10n.goalCreate));
-    await tester.pumpAndSettle();
-
-    verify(
-      () => repository.addGoal(
-        kind: GoalKind.count,
-        target: 3,
-        period: GoalPeriod.week,
-        typeId: 'post',
-      ),
-    ).called(1);
   });
 }

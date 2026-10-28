@@ -8,6 +8,7 @@ import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_format.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
 import 'package:artifacts/src/view/pace_bars.dart';
+import 'package:artifacts/src/view/value_sheet.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
@@ -404,19 +405,31 @@ class _Summary extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          // What it is worth, which a money goal counts once delivered.
-          // The build makes it a tap that edits it (PATCH { value }).
+          // What it is worth, which a money goal counts once delivered; a
+          // tap changes it.
           _Property(
             label: l10n.artifactValue,
-            child: Text(
-              artifact.value == null
-                  ? l10n.artifactValueAdd
-                  : formatMoney(artifact.value!),
-              style: AppTypography.labelStrong.copyWith(
-                color: artifact.value == null ? AppColors.ink3 : AppColors.ink,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: () => unawaited(showValueSheet(context, artifact)),
+                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.s1),
+                  child: Text(
+                    artifact.value == null
+                        ? l10n.artifactValueAdd
+                        : formatMoney(artifact.value!),
+                    style: AppTypography.labelStrong.copyWith(
+                      color: artifact.value == null
+                          ? AppColors.accent
+                          : AppColors.ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
           // The bar Entregas draws, work over time, whose key already says

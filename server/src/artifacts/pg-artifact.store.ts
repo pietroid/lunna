@@ -19,6 +19,7 @@ import {
   CatalogCategory,
   CatalogType,
   Goal,
+  GoalEdit,
   ArtifactRecord,
   NewCatalogType,
   NewGoal,
@@ -176,12 +177,25 @@ export class PgArtifactStore extends ArtifactStore {
         kind: input.kind,
         typeId: input.typeId ?? null,
         target: input.target,
-        period: input.period,
         starts: input.starts,
+        deadline: input.deadline,
       })
       .returning();
 
     return toGoal(row);
+  }
+
+  async updateGoal(
+    user: CalendarUser,
+    id: string,
+    edit: GoalEdit,
+  ): Promise<void> {
+    if (!isUuid(id)) return;
+
+    await this._db
+      .update(goal)
+      .set(edit)
+      .where(and(eq(goal.id, id), eq(goal.userId, user.id)));
   }
 
   async removeGoal(user: CalendarUser, id: string): Promise<void> {
@@ -269,8 +283,8 @@ export class PgArtifactStore extends ArtifactStore {
             kind: row.kind,
             typeId: row.typeId ?? null,
             target: row.target,
-            period: row.period,
             starts: row.starts,
+            deadline: row.deadline,
             createdAt: new Date(row.createdAt),
           })
           .onConflictDoNothing();
@@ -320,8 +334,8 @@ function toGoal(row: GoalRow): Goal {
     id: row.id,
     kind: row.kind,
     target: row.target,
-    period: row.period,
     starts: row.starts,
+    deadline: row.deadline,
     createdAt: row.createdAt.toISOString(),
     ...(row.typeId === null ? {} : { typeId: row.typeId }),
   };

@@ -362,6 +362,61 @@ void main() {
     );
   });
 
+  testAt('gives it a value from its row, and takes it away', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final priced = Artifact(
+      id: 'p',
+      title: 'Site do estúdio',
+      minutes: 90,
+      createdAt: DateTime(2026, 6),
+      value: 400,
+    );
+    when(
+      () => repository.update(any(), value: any(named: 'value')),
+    ).thenAnswer((invocation) async {
+      final value = invocation.namedArguments[#value] as int? Function();
+      return data([
+        if (value() == null) artifact else priced,
+      ]);
+    });
+    await pump(tester);
+
+    await tester.tap(find.text(l10n.artifactValueAdd));
+    await tester.pumpAndSettle();
+    expect(find.byType(ValueSheet), findsOneWidget);
+    // Nothing typed, nothing to save, and nothing to take away.
+    expect(find.text(l10n.artifactValueClear), findsNothing);
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(ValueSheet),
+        matching: find.byType(TextField),
+      ),
+      '400',
+    );
+    await tester.pump();
+    await tester.tap(find.text(l10n.commonSave));
+    await tester.pumpAndSettle();
+    final saved =
+        verify(
+              () => repository.update('p', value: captureAny(named: 'value')),
+            ).captured.single
+            as int? Function();
+    expect(saved(), 400);
+    expect(find.text(r'R$ 400'), findsOneWidget);
+
+    await tester.tap(find.text(r'R$ 400'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.artifactValueClear));
+    await tester.pumpAndSettle();
+    final cleared =
+        verify(
+              () => repository.update('p', value: captureAny(named: 'value')),
+            ).captured.single
+            as int? Function();
+    expect(cleared(), isNull);
+    expect(find.text(l10n.artifactValueAdd), findsOneWidget);
+  });
+
   testAt('reads the artifact again when the day changes', (tester) async {
     SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
     whenListen(

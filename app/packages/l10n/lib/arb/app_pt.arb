@@ -917,8 +917,8 @@
     }
   },
   "agentChangeNewKind": "novo tipo",
-  "agentChangeNewGoal": "nova meta",
-  "agentChangeRemoveGoal": "apagar a meta",
+  "agentChangeNewGoal": "novo objetivo",
+  "agentChangeRemoveGoal": "apagar o objetivo",
   "agentGoalPerWeek": "{amount} por semana",
   "@agentGoalPerWeek": {
     "placeholders": {
@@ -976,28 +976,6 @@
   "monthsLong": "janeiro,fevereiro,março,abril,maio,junho,julho,agosto,setembro,outubro,novembro,dezembro",
   "artifactsSearch": "Buscar entregas",
   "artifactsSearchHint": "Buscar por nome, cliente ou tipo",
-  "goalsSection": "Metas",
-  "goalNew": "Nova meta",
-  "goalRevenue": "Faturamento",
-  "goalInMonth": "{label} · {month}",
-  "@goalInMonth": {
-    "placeholders": {
-      "label": {
-        "type": "String"
-      },
-      "month": {
-        "type": "String"
-      }
-    }
-  },
-  "goalThisWeek": "{label} · esta semana",
-  "@goalThisWeek": {
-    "placeholders": {
-      "label": {
-        "type": "String"
-      }
-    }
-  },
   "goalOf": "de {target}",
   "@goalOf": {
     "placeholders": {
@@ -1022,24 +1000,6 @@
       }
     }
   },
-  "goalDone": "feito",
-  "goalQueued": "na fila {value}",
-  "@goalQueued": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
-  "goalMissing": "faltam {value}",
-  "@goalMissing": {
-    "placeholders": {
-      "value": {
-        "type": "String"
-      }
-    }
-  },
-  "goalCovered": "a fila cobre o resto",
   "artifactsAll": "Todas",
   "artifactsSeeAll": "Ver todas as {count}",
   "@artifactsSeeAll": {
@@ -1144,43 +1104,6 @@
   "artifactPlaceTop": "No topo",
   "artifactPlaceEnd": "No fim",
   "artifactCreate": "Pôr na fila",
-  "goalSheetKind": "Medir",
-  "goalKindMoney": "Faturamento",
-  "goalKindCount": "Quantidade",
-  "goalAmount": "Quanto",
-  "goalPer": "Por",
-  "goalPerWeek": "Semana",
-  "goalPerMonth": "Mês",
-  "goalWhen": "Quando",
-  "goalNow": "Agora",
-  "goalNextMonth": "Em {month}",
-  "@goalNextMonth": {
-    "placeholders": {
-      "month": {
-        "type": "String"
-      }
-    }
-  },
-  "goalReadbackMoney": "Faturar {amount} em {month}.",
-  "@goalReadbackMoney": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      },
-      "month": {
-        "type": "String"
-      }
-    }
-  },
-  "goalReadbackFuture": "Fica guardada e passa a valer em 1º de {month}.",
-  "@goalReadbackFuture": {
-    "placeholders": {
-      "month": {
-        "type": "String"
-      }
-    }
-  },
-  "goalCreate": "Criar meta",
   "catalogAddType": "Novo tipo",
   "typeNameHint": "Nome do tipo, como Mapa astral",
   "typeCategory": "Categoria",
@@ -1189,46 +1112,8 @@
   "typeCreate": "Guardar no catálogo",
   "valueOptional": "opcional",
   "artifactKindLabel": "Tipo",
-  "goalsEmpty": "Uma meta diz quanto você quer faturar, ou quantas entregas de um tipo fazer, por semana ou por mês.",
-  "goalDeleteBody": "As entregas continuam na fila; só a meta deixa de ser medida.",
   "artifactsEmpty": "Nada na fila ainda. O + põe uma entrega nela.",
   "artifactsNoneHere": "Nada na fila com esse filtro.",
-  "goalCountNeedsType": "Crie um tipo no catálogo para contar as entregas dele.",
-  "goalNextWeek": "Semana que vem",
-  "goalReadbackMoneyWeek": "Faturar {amount} por semana.",
-  "@goalReadbackMoneyWeek": {
-    "placeholders": {
-      "amount": {
-        "type": "String"
-      }
-    }
-  },
-  "goalReadbackCountMonth": "{type}: {count} em {month}.",
-  "@goalReadbackCountMonth": {
-    "placeholders": {
-      "type": {
-        "type": "String"
-      },
-      "count": {
-        "type": "String"
-      },
-      "month": {
-        "type": "String"
-      }
-    }
-  },
-  "goalReadbackCountWeek": "{type}: {count} por semana.",
-  "@goalReadbackCountWeek": {
-    "placeholders": {
-      "type": {
-        "type": "String"
-      },
-      "count": {
-        "type": "String"
-      }
-    }
-  },
-  "goalReadbackFutureWeek": "Fica guardada e passa a valer na segunda-feira.",
   "stageAhead": "{count, plural, =1{Mais 1 tarefa adiante} other{Mais {count} tarefas adiante}}",
   "@stageAhead": {
     "placeholders": {
@@ -1419,5 +1304,29 @@
   },
   "goalCreateObjective": "Criar objetivo",
   "goalDeleteObjectiveBody": "As entregas continuam como estão; só o objetivo deixa de ser medido.",
-  "artifactValueAdd": "Adicionar valor"
+  "artifactValueAdd": "Adicionar valor",
+  "goalEditTitle": "Editar objetivo",
+  "@goalEditTitle": {
+    "description": "Title of the goal sheet opened on a goal, to change its amount or its day."
+  },
+  "artifactValueClear": "Tirar valor",
+  "@artifactValueClear": {
+    "description": "Button of the value sheet that takes a delivery's value away."
+  },
+  "artifactValueHint": "Quanto vale esta entrega. Conta para os objetivos quando ela for entregue.",
+  "@artifactValueHint": {
+    "description": "Line under the value field on a delivery's page."
+  },
+  "goalReadbackSince": "Conta desde {date}: uns {amount} por semana.",
+  "@goalReadbackSince": {
+    "description": "Readback on the goal sheet opened on a goal that already began: the day it began and what it asks per week.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }

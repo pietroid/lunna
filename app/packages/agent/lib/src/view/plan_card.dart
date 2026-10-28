@@ -645,9 +645,12 @@ String _reais(int reais) {
   return 'R\$ ${reais < 0 ? '-' : ''}$grouped';
 }
 
+/// "R$ 10.000 até 30/11"; in a plan kept from before goals had a day,
 /// "R$ 8.000 por mês", "3 por semana".
 String _goal(AppLocalizations l10n, PlanGoal goal) {
   final amount = goal.money ? _reais(goal.target) : '${goal.target}';
+  final deadline = goal.deadline;
+  if (deadline != null) return '$amount ${l10n.artifactUntil(_ddmm(deadline))}';
   return goal.monthly
       ? l10n.agentGoalPerMonth(amount)
       : l10n.agentGoalPerWeek(amount);

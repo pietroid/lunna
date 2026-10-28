@@ -11,10 +11,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
-/// Opens the sheet that writes a goal down.
+/// Opens the sheet that writes a goal down, or changes [goal].
 ///
 /// The sheet is its own route, so it is handed the cubit it writes with.
-Future<void> showGoalSheet(BuildContext context, {int? amount}) {
+Future<void> showGoalSheet(BuildContext context, {int? amount, Goal? goal}) {
   final cubit = context.read<ArtifactsCubit>();
   return showModalBottomSheet<void>(
     context: context,
@@ -23,7 +23,7 @@ Future<void> showGoalSheet(BuildContext context, {int? amount}) {
     barrierColor: AppColors.bg.withValues(alpha: 0.72),
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: GoalSheet(initialAmount: amount),
+      child: GoalSheet(initialAmount: amount ?? goal?.target, goal: goal),
     ),
   );
 }
@@ -52,13 +52,19 @@ DateTime goalStartAfter(List<Goal> goals, DateTime now) {
 /// of next month (picked when it opens), and any other day on the wheel.
 /// A goal begins where the last one ends, or today, so the line at the foot
 /// reads it back with the day it begins and what it asks per week.
+///
+/// Opened on a [goal], it changes that one: its amount and its day, on
+/// the wheel, from the day it began.
 /// {@endtemplate}
 class GoalSheet extends StatefulWidget {
   /// {@macro goal_sheet}
-  const GoalSheet({this.initialAmount, super.key});
+  const GoalSheet({this.initialAmount, this.goal, super.key});
 
   /// How much it asks for when it opens.
   final int? initialAmount;
+
+  /// The goal it changes; null writes a new one.
+  final Goal? goal;
 
   @override
   State<GoalSheet> createState() => _GoalSheetState();
@@ -66,8 +72,8 @@ class GoalSheet extends StatefulWidget {
 
 class _GoalSheetState extends State<GoalSheet> {
   /// Which day: next week, next month, or [_other].
-  int _by = 1;
-  DateTime? _other;
+  late int _by = widget.goal == null ? 1 : 2;
+  late DateTime? _other = widget.goal?.lastDay;
   late final _amount = TextEditingController(
     text: widget.initialAmount?.toString(),
   );
@@ -83,7 +89,8 @@ class _GoalSheetState extends State<GoalSheet> {
     final picked = await AppWheelPicker.dayAndTime(
       context,
       initial: initial,
-      earliest: from,
+      // Its last day comes after its first.
+      earliest: DateTime(from.year, from.month, from.day + 1),
     );
     if (picked == null || !mounted) return;
     setState(() {
@@ -92,15 +99,17 @@ class _GoalSheetState extends State<GoalSheet> {
     });
   }
 
-  Future<void> _save(int target) async {
+  Future<void> _save(int target, DateTime by) async {
     final cubit = context.read<ArtifactsCubit>();
+    final goal = widget.goal;
     setState(() => _busy = true);
-    // The build posts { target, deadline }; the period goes.
-    final made = await cubit.addGoal(
-      kind: GoalKind.money,
-      target: target,
-      period: GoalPeriod.month,
-    );
+    final made = goal == null
+        ? await cubit.addGoal(target: target, deadline: by)
+        : await cubit.editGoal(
+            goal.id,
+            target: target == goal.target ? null : target,
+            deadline: by == goal.lastDay ? null : by,
+          );
     if (!mounted) return;
     setState(() => _busy = false);
     if (made) unawaited(Navigator.of(context).maybePop());
@@ -111,7 +120,8 @@ class _GoalSheetState extends State<GoalSheet> {
     final l10n = context.l10n;
     final now = clock.now();
     final goals = context.watch<ArtifactsCubit>().state.data?.goals ?? [];
-    final from = goalStartAfter(goals, now);
+    final editing = widget.goal;
+    final from = editing?.start ?? goalStartAfter(goals, now);
     final offered = goalSuggestions(from);
     final by = switch (_by) {
       0 => offered.week,
@@ -125,7 +135,7 @@ class _GoalSheetState extends State<GoalSheet> {
     final ready = target > 0 && !_busy;
 
     return SheetFrame(
-      title: l10n.goalsNew,
+      title: editing == null ? l10n.goalsNew : l10n.goalEditTitle,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,18 +167,26 @@ class _GoalSheetState extends State<GoalSheet> {
           const SizedBox(height: AppSpacing.s3),
           Text(l10n.goalSheetBy, style: AppTypography.label),
           const SizedBox(height: AppSpacing.s2),
-          AppSegmented(
-            selected: _by,
-            onSelected: (i) => i == 2
-                ? unawaited(_pickOther(from, _other ?? by))
-                : setState(() => _by = i),
-            segments: [
-              AppSegment(label: l10n.goalByNextWeek),
-              AppSegment(label: l10n.goalByNextMonth),
-              AppSegment(label: l10n.goalByOther),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s3),
+          if (editing == null) ...[
+            // Three choices on one line, shrunk rather than cut on a
+            // narrow phone.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: AppSegmented(
+                selected: _by,
+                onSelected: (i) => i == 2
+                    ? unawaited(_pickOther(from, _other ?? by))
+                    : setState(() => _by = i),
+                segments: [
+                  AppSegment(label: l10n.goalByNextWeek),
+                  AppSegment(label: l10n.goalByNextMonth),
+                  AppSegment(label: l10n.goalByOther),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.s3),
+          ],
           SheetGroup(
             children: [
               SheetRow(
@@ -205,7 +223,12 @@ class _GoalSheetState extends State<GoalSheet> {
                         style: AppTypography.bodyStrong,
                       ),
                       Text(
-                        from == today
+                        editing != null
+                            ? l10n.goalReadbackSince(
+                                dayName(l10n, from, now),
+                                formatMoney(perWeek),
+                              )
+                            : from == today
                             ? l10n.goalReadbackFromToday(formatMoney(perWeek))
                             : l10n.goalReadbackFromDay(
                                 dayName(l10n, from, now),
@@ -221,9 +244,9 @@ class _GoalSheetState extends State<GoalSheet> {
           ],
           const SizedBox(height: AppSpacing.s5),
           AppButton(
-            text: l10n.goalCreateObjective,
+            text: editing == null ? l10n.goalCreateObjective : l10n.commonSave,
             expand: true,
-            onPressed: ready ? () => unawaited(_save(target)) : null,
+            onPressed: ready ? () => unawaited(_save(target, by)) : null,
           ),
         ],
       ),

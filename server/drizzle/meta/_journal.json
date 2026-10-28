@@ -99,6 +99,13 @@
       "when": 1793136407988,
       "tag": "0013_artifact_started",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793218139595,
+      "tag": "0014_goal_deadline",
+      "breakpoints": true
     }
   ]
 }

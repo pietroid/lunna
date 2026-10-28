@@ -27,13 +27,8 @@ export interface World {
     minutes: number,
     price?: number,
   ): Promise<string>;
-  /** A goal, from this stretch on. */
-  goal(
-    kind: 'money' | 'count',
-    target: number,
-    period: 'week' | 'month',
-    typeId?: string,
-  ): Promise<void>;
+  /** A money goal, by its last day (`YYYY-MM-DD`). */
+  goal(target: number, deadline: string): Promise<void>;
   /** A fixed block at "YYYY-MM-DD HH:mm". */
   event(title: string, at: string, minutes?: number): Promise<void>;
 }
@@ -68,7 +63,7 @@ export interface State {
   artifacts: SeenArtifact[];
   /** The catalogue's kinds, by name. */
   kinds: string[];
-  goals: { kind: 'money' | 'count'; target: number; period: string }[];
+  goals: { kind: 'money' | 'count'; target: number; deadline: string }[];
   /** The tasks with an hour, in the list's order. */
   queue: string[];
   /** Every card titled like [title], any case or accent. */
@@ -531,18 +526,20 @@ export const CASES: Case[] = [
   {
     id: 'goal-amount-unsaid',
     why: 'new_goal: an amount nobody said',
-    said: 'cria uma meta de faturamento mensal',
+    said: 'cria uma meta de faturamento',
     expect: 'ask',
   },
   {
     id: 'goal-said',
-    why: 'new_goal: money per month, as said',
-    said: 'quero faturar 4 mil por mês',
+    why: 'new_goal: money by a day, as said',
+    said: 'quero faturar 4 mil até o fim do mês que vem',
     expect: 'plan',
     check: (s) =>
       s.goals.some(
         (it) =>
-          it.kind === 'money' && it.target === 4000 && it.period === 'month',
+          it.kind === 'money' &&
+          it.target === 4000 &&
+          it.deadline === '2026-11-30',
       )
         ? true
         : `goals: ${JSON.stringify(s.goals)}`,

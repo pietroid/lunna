@@ -205,7 +205,11 @@ void main() {
             'kind': 'add_goal',
             'title': 'Faturamento',
             'minutes': 0,
-            'goal': {'kind': 'money', 'period': 'month', 'target': 8000},
+            'goal': {
+              'kind': 'money',
+              'target': 8000,
+              'deadline': '2026-11-30',
+            },
           },
         ],
       });
@@ -227,8 +231,9 @@ void main() {
         r'entregue · R$ 4.900 · 1 tarefa ainda aberta',
         'na fila, antes de Mapa da Ana',
         r'novo tipo · Atendimentos · 3h · R$ 350',
-        r'nova meta · R$ 8.000 por mês',
-        'apagar a meta · 3 por semana',
+        r'novo objetivo · R$ 8.000 até 30/11',
+        // A plan kept from before goals had a day.
+        'apagar o objetivo · 3 por semana',
       ]) {
         expect(find.textContaining(detail, findRichText: true), findsOneWidget);
       }

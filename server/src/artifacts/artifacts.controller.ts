@@ -20,6 +20,7 @@ import {
   CreateArtifactTaskDto,
   CreateCatalogTypeDto,
   CreateGoalDto,
+  EditGoalDto,
   EditArtifactDto,
   MoveArtifactDto,
 } from './dto/artifact.dto';
@@ -32,6 +33,7 @@ import {
   requireArtifactTask,
   requireCatalogType,
   requireGoal,
+  requireGoalEdit,
 } from './request';
 
 /**
@@ -133,6 +135,16 @@ export class ArtifactsController {
     @Body() dto: CreateGoalDto,
   ): Promise<ArtifactsAnswer> {
     await this.artifacts.addGoal(owner(user), requireGoal(dto));
+    return this._answer(user);
+  }
+
+  @Patch('goals/:id')
+  async editGoal(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: EditGoalDto,
+  ): Promise<ArtifactsAnswer> {
+    await this.artifacts.editGoal(owner(user), id, requireGoalEdit(dto));
     return this._answer(user);
   }
 

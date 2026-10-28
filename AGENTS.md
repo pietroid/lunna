@@ -87,7 +87,7 @@ app/
     auth/               Better Auth client: Google sign-in, token store
     l10n/               every user-facing string (pt-BR)
     notifications/      local reminder queue + background refresh
-    artifacts/          Entregas: goals, queue, catalogue, sheets, the delivery's page
+    artifacts/          Entregas and Objetivos: queue, catalogue, goals, sheets, the delivery's page
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
   src/
@@ -485,14 +485,16 @@ nothing; the app draws `GuardSheet` and posts the answer to
 
 ### The app shell
 
-Three tabs: **Tempo** (the timeline), **Entregas** (see below) and
-**Menu**, which opens Rotina and **Feitas** and sets when the day starts
-and ends. The `AppFab` (a `+`) writes down whatever the tab in front is
-about: on Entregas a delivery, anywhere else something on the day Tempo is
-showing (from Menu it brings Tempo forward). It sits in the same spot on
+Four tabs: **Tempo** (the timeline), **Entregas** (see below),
+**Objetivos** (the goals, below) and **Menu**, which opens Rotina and
+**Feitas** and sets when the day starts and ends. The `AppFab` (a `+`)
+writes down whatever the tab in front is about: on Entregas a delivery,
+on Objetivos a goal, anywhere else something on the day Tempo is showing
+(from Menu it brings Tempo forward). The landing's demo shell keeps
+three tabs, as the landing has three chapters. It sits in the same spot on
 every tab and never animates between them (`noAnimation`).
 **The agent's bar is on every screen, in the same place**: one `AskDock`
-for the three tabs and one per page, floated at `AskDock.location` with
+for the tabs and one per page, floated at `AskDock.location` with
 `AskDock.animator`, a `DockHero` held still while pages slide under it,
 with the screen's own round button beside it (the `AppFab` on the tabs,
 Nova rotina on Rotina, a task on Feitas, the microphone on notes). A new
@@ -526,10 +528,8 @@ stopped where it was let go; each group ends in **+ Adicionar**
 (`AppAddRow`). A row is its name and, begun, **one bar**: the time since
 it was begun to the end of its day in red (`paceTime`) under its minutes
 done in green (`paceDone`), keyed with the time done and the day due.
-The **goals** (money delivered,
-or a count of one kind, per week or month) are hidden by a flag
-(`ArtifactsPage(showGoals:)`, off), and so is the line that set the
-month's deliveries against the agenda's free hours. A delivery's tasks are ordinary tasks on the day
+The line that set the month's deliveries against the agenda's free
+hours is not drawn. A delivery's tasks are ordinary tasks on the day
 (`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
 (Tempo's Lista kept to them, `TimelineList(only:)`) and **Feitas** (what
 was done, newest first under Hoje / Ontem / the date), under the same
@@ -537,6 +537,19 @@ was done, newest first under Hoje / Ontem / the date), under the same
 delivered** (`done_at`). The routes and the rules are in
 [product/spec/artifacts.md](./product/spec/artifacts.md): read it before
 touching `server/src/artifacts/` or `app/packages/artifacts/`.
+
+### Objetivos (goals)
+
+A goal is **an amount of money to bill by a day** (R$ 10.000 by 30 Nov),
+on a tab of its own. **Goals follow each other**: a new one starts the day
+after the last one's deadline, or today, so no day counts twice. **No
+delivery names a goal**: a goal counts the `value` of what was delivered
+from its first day to its last, and the open deliveries due by then
+(`queued`) are where it is heading. Its bar is a delivery's: green what is
+in, red what its days ask by now, 15 % slack. Every delivery has an
+editable **Valor**. Routes and rules in
+[product/spec/goals.md](./product/spec/goals.md): read it before touching
+goals on either side.
 
 ### Reminders
 

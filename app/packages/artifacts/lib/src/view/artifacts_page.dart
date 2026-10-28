@@ -2,28 +2,24 @@ import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/src/bloc/artifacts_cubit.dart';
-import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/all_artifacts_page.dart';
 import 'package:artifacts/src/view/artifact_page.dart';
 import 'package:artifacts/src/view/artifact_row.dart';
 import 'package:artifacts/src/view/artifact_sheet.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
-import 'package:artifacts/src/view/goal_card.dart';
-import 'package:artifacts/src/view/goal_sheet.dart';
 import 'package:artifacts/src/view/pace_bars.dart';
 import 'package:artifacts/src/view/shelf_filter.dart';
 import 'package:artifacts/src/view/start_sheet.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
-import 'package:timeline/timeline.dart';
 
 /// {@template artifacts_page}
 /// The Entregas tab: the deliveries under way, then the ones not begun.
 ///
-/// The goals say what the month asks for (hidden for now); the deliveries
-/// are what it is spent on. Those under way (Em andamento) are fixed, the
+/// The goals have a tab of their own (Objetivos); here are the deliveries.
+/// Those under way (Em andamento) are fixed, the
 /// one whose time has run furthest past its work on top; those not begun
 /// (Não iniciadas) are the queue, in order of priority, and held, a row is
 /// dragged to another place in it. One line of the kinds she uses most
@@ -35,14 +31,8 @@ class ArtifactsPage extends StatefulWidget {
   const ArtifactsPage({
     this.shown = 5,
     this.initialShelf = const Shelf(),
-    this.showGoals = false,
     super.key,
   });
-
-  /// Whether the goals are drawn. Off for now: the deliveries and their
-  /// days say enough, and the goals' cards pushed them below the fold.
-  /// Everything behind them (routes, the agent's verbs) still works.
-  final bool showGoals;
 
   /// How many of the queue are drawn before "Ver todas".
   final int shown;
@@ -59,19 +49,6 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
   late Shelf _shelf = widget.initialShelf;
 
   bool get _unfiltered => _shelf.category == null && _shelf.type == null;
-
-  Future<void> _deleteGoal(Goal goal) async {
-    final cubit = context.read<ArtifactsCubit>();
-    final l10n = context.l10n;
-    if (!await confirmDelete(
-      context,
-      goalLabel(l10n, goal),
-      body: l10n.goalDeleteBody,
-    )) {
-      return;
-    }
-    await cubit.deleteGoal(goal.id);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -134,42 +111,6 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
                       ],
                     ),
                     const SizedBox(height: AppSpacing.s4),
-                    if (widget.showGoals) ...[
-                      _Heading(
-                        title: l10n.goalsSection,
-                        trailing: AppPillButton(
-                          iconData: AppIcons.plus,
-                          label: l10n.goalNew,
-                          onPressed: () => unawaited(showGoalSheet(context)),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.s3),
-                      if (data.goals.isEmpty)
-                        _Quiet(text: l10n.goalsEmpty)
-                      else
-                        SizedBox(
-                          height: 140,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            clipBehavior: Clip.none,
-                            itemCount: data.goals.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: AppSpacing.s2),
-                            itemBuilder: (context, index) {
-                              final goal = data.goals[index];
-                              return SizedBox(
-                                width: 300,
-                                child: GestureDetector(
-                                  onLongPress: () =>
-                                      unawaited(_deleteGoal(goal)),
-                                  child: GoalCard(goal: goal, now: now),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      const SizedBox(height: AppSpacing.s3),
-                    ],
                     if (data.catalog.isNotEmpty) ...[
                       ShelfFilter(
                         categories: data.catalog,
@@ -333,27 +274,6 @@ Widget _sectionHeading(String title) => SliverPadding(
   ),
   sliver: SliverToBoxAdapter(child: Text(title, style: AppTypography.title)),
 );
-
-/// A section's title, with what acts on it at the end of the line.
-class _Heading extends StatelessWidget {
-  const _Heading({required this.title, required this.trailing});
-
-  final String title;
-  final Widget trailing;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: AppSpacing.s1),
-      child: Row(
-        children: [
-          Expanded(child: Text(title, style: AppTypography.title)),
-          trailing,
-        ],
-      ),
-    );
-  }
-}
 
 /// The line between the two groups: Em andamento's + and the heading of
 /// Não iniciadas. A row is dropped either side of it, never moved itself.

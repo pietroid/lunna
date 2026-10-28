@@ -1,4 +1,4 @@
-import { GoalKind, GoalPeriod } from '../../artifacts/artifact.types';
+import { GoalKind } from '../../artifacts/artifact.types';
 import { BoardArtifact, sameTitle } from '../board';
 import { PlanChange } from '../plan';
 import { Action, as, Draft, Refusal, Resolving } from './action';
@@ -361,73 +361,44 @@ export const ARTIFACTS: Action[] = [
   {
     name: 'new_goal',
     domain: 'artifact',
-    does: 'A goal: reais delivered, or deliveries of one kind, per week or month.',
+    does: 'A goal: reais to bill by a day. It starts where the last goal ends (or today) and counts the deliveries delivered until then.',
     args: {
-      measure: true,
-      target: true,
-      period: true,
-      kind: true,
-      start: true,
+      target: 'Whole reais, as the person said.',
+      deadline:
+        'Its last day: a day word or YYYY-MM-DD (the end of next month when they said "by next month").',
     },
-    required: ['measure', 'target', 'period'],
+    required: ['target', 'deadline'],
     resolve(r, item) {
-      const measure = item.measure as GoalKind;
-      const period = item.period as GoalPeriod;
       const target = intOf(item.target, 1);
-      if (!['money', 'count'].includes(measure)) {
-        throw new Refusal('new_goal needs measure: money or count.');
-      }
-      if (!['week', 'month'].includes(period)) {
-        throw new Refusal('new_goal needs period: week or month.');
-      }
       if (target === undefined) {
         throw new Refusal(
           'new_goal needs target, the number the person said. Ask them.',
         );
       }
-      const kind =
-        measure === 'count'
-          ? kindOf(r, item.kind)
-          : { ids: {}, name: undefined };
-      if (measure === 'count' && kind.name === undefined) {
+      const deadline = deadlineOf(r, item.deadline);
+      if (deadline == null) {
         throw new Refusal(
-          'A count goal counts one kind: give kind (k1), or ask the person which.',
+          'new_goal needs deadline, the day it is to be reached by. Ask the person, offering the end of next week and of next month.',
         );
       }
-      const start = item.start === 'next' ? 'next' : 'now';
       return {
-        gesture: {
-          do: 'new_goal',
-          kind: measure,
-          target,
-          period,
-          ...kind.ids,
-          start,
-        },
+        gesture: { do: 'new_goal', target, deadline },
         facts: r.facts,
         assumed: r.assumed,
         duplicate: true,
         view: {
           kind: 'add_goal',
-          title: goalTitle(measure, kind.name),
+          title: goalTitle('money', undefined),
           minutes: 0,
-          goal: { kind: measure, period, target },
+          goal: { kind: 'money', target, deadline },
         },
       };
     },
-    async make(hands, user, gesture, made, _trace, now) {
+    async make(hands, user, gesture, _made, _trace, now) {
       const g = as(gesture, 'new_goal');
-      const typeId =
-        g.typeId ?? (g.typeAs === undefined ? undefined : made.get(g.typeAs));
       return hands.deliveries.addGoal(
         user,
-        {
-          kind: g.kind,
-          target: g.target,
-          period: g.period,
-          ...(typeId === undefined ? {} : { typeId }),
-          start: g.start,
-        },
+        { target: g.target, deadline: g.deadline },
         now,
       );
     },
@@ -459,8 +430,8 @@ export const ARTIFACTS: Action[] = [
           minutes: 0,
           goal: {
             kind: it.goal.kind,
-            period: it.goal.period,
             target: it.goal.target,
+            deadline: it.goal.deadline,
           },
         },
       };

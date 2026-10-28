@@ -1,5 +1,3 @@
-import { GoalPeriod } from './artifact.types';
-
 /**
  * Calendar days as the API writes them (`YYYY-MM-DD`), counted as days and
  * never as instants: which day it is in the person's zone is worked out
@@ -34,23 +32,4 @@ export function daysBetween(from: string, to: string): number {
 export function endOfMonth(day: string): string {
   const [year, month] = parts(day);
   return format(new Date(Date.UTC(year, month, 0)));
-}
-
-/** The first day of the stretch [day] is in: its Monday, or its 1st. */
-export function stretchStart(day: string, period: GoalPeriod): string {
-  const [year, month, date] = parts(day);
-  if (period === 'month') return format(new Date(Date.UTC(year, month - 1, 1)));
-
-  // Sunday is 0 to `Date`; a Brazilian week starts on Monday.
-  const weekday =
-    (new Date(Date.UTC(year, month - 1, date)).getUTCDay() + 6) % 7;
-  return addDays(day, -weekday);
-}
-
-/** The first day of the stretch after the one starting on [start]. */
-export function nextStretch(start: string, period: GoalPeriod): string {
-  if (period === 'week') return addDays(start, 7);
-
-  const [year, month] = parts(start);
-  return format(new Date(Date.UTC(year, month, 1)));
 }

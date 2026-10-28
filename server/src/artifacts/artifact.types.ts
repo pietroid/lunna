@@ -85,10 +85,10 @@ export interface NewCatalogType {
 /** What a goal counts: money delivered, or deliveries of one kind. */
 export type GoalKind = 'money' | 'count';
 
-/** The stretch a goal repeats over: Monday to Sunday, or a month. */
-export type GoalPeriod = 'week' | 'month';
-
-/** A number to reach in a stretch, stretch after stretch. */
+/**
+ * An amount to reach by a day. Goals follow each other: each counts from
+ * its [starts] to its [deadline], both included.
+ */
 export interface Goal {
   id: string;
   kind: GoalKind;
@@ -96,9 +96,10 @@ export interface Goal {
   typeId?: string;
   /** Whole reais, or deliveries. */
   target: number;
-  period: GoalPeriod;
-  /** `YYYY-MM-DD`, the first day of its first stretch. */
+  /** `YYYY-MM-DD`, the first day it counts. */
   starts: string;
+  /** `YYYY-MM-DD`, the last day it counts: the day it is to be reached by. */
+  deadline: string;
   createdAt: string;
 }
 
@@ -107,12 +108,15 @@ export interface NewGoal {
   kind: GoalKind;
   typeId?: string;
   target: number;
-  period: GoalPeriod;
   starts: string;
+  deadline: string;
 }
 
-/** Whether a new goal counts from this stretch, or waits for the next. */
-export type GoalStart = 'now' | 'next';
+/** A change to a goal. Only what is given changes. */
+export interface GoalEdit {
+  target?: number;
+  deadline?: string;
+}
 
 /** Where a delivery's task is, as far as the day is concerned. */
 export type TaskPlace = 'backlog' | 'queue' | 'scheduled' | 'done';
@@ -174,21 +178,25 @@ export interface CatalogCategoryView {
   types: CatalogTypeView[];
 }
 
-/** A goal, measured over the stretch it is in now (or its first, ahead). */
+/** A goal, measured from its first day to its last. */
 export interface GoalView {
   id: string;
   kind: GoalKind;
   typeId: string | null;
   target: number;
-  period: GoalPeriod;
-  /** `YYYY-MM-DD`, the first day of the stretch measured. */
+  /** `YYYY-MM-DD`, its first day. */
   start: string;
-  /** `YYYY-MM-DD`, the day after its last. */
+  /** `YYYY-MM-DD`, the day after its last (its deadline). */
   end: string;
-  /** What was delivered in the stretch: reais, or deliveries. */
+  /** What was delivered from its start to its end: reais, or deliveries. */
   done: number;
-  /** What the queue holds, due by the stretch's end, that would count. */
+  /**
+   * What the open deliveries due by its last day would add, delivered in
+   * time: none tied to it, the goal finds them by their deadlines.
+   */
   queued: number;
+  /** How many open deliveries [queued] adds up. */
+  queuedCount: number;
 }
 
 /**

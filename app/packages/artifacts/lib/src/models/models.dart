@@ -313,6 +313,7 @@ class Artifact extends Equatable {
     DateTime? Function()? deadline,
     DateTime? Function()? doneAt,
     DateTime? Function()? startedAt,
+    int? Function()? value,
     String? notes,
     List<ArtifactTask>? tasks,
   }) {
@@ -326,7 +327,7 @@ class Artifact extends Equatable {
       type: type,
       minutes: minutes,
       doneMinutes: doneMinutes,
-      value: value,
+      value: value == null ? this.value : value(),
       blockMinutes: blockMinutes,
       deadline: deadline == null ? this.deadline : deadline(),
       doneAt: doneAt == null ? this.doneAt : doneAt(),
@@ -362,33 +363,24 @@ enum GoalKind {
   count,
 }
 
-/// The stretch a goal is measured over.
-enum GoalPeriod {
-  /// A week, Monday to Sunday.
-  week,
-
-  /// A calendar month.
-  month,
-}
-
 /// {@template goal}
-/// A number to reach in a stretch of time: R$ 8.000 in October, three posts
-/// a week.
+/// An amount to reach by a day: R\$ 10.000 billed by 30 November.
 ///
-/// What counts towards it is what was delivered; what is in the queue is
-/// what could still count.
+/// Goals follow each other: each counts what was delivered from its
+/// [start] to its last day. What the open deliveries due by then would
+/// add is [queued]: no delivery names a goal, the server finds them.
 /// {@endtemplate}
 class Goal extends Equatable {
   /// {@macro goal}
   const Goal({
     required this.id,
     required this.kind,
-    required this.period,
     required this.target,
     required this.start,
     required this.end,
     this.done = 0,
     this.queued = 0,
+    this.queuedCount = 0,
     this.type,
   });
 
@@ -401,12 +393,12 @@ class Goal extends Equatable {
     return Goal(
       id: json['id'] as String,
       kind: GoalKind.values.byName(json['kind'] as String),
-      period: GoalPeriod.values.byName(json['period'] as String),
       target: (json['target'] as num).toInt(),
       start: _day(json['start'] as String),
       end: _day(json['end'] as String),
       done: (json['done'] as num?)?.toInt() ?? 0,
       queued: (json['queued'] as num?)?.toInt() ?? 0,
+      queuedCount: (json['queuedCount'] as num?)?.toInt() ?? 0,
       type: catalog
           .expand((c) => c.types)
           .where((t) => t.id == typeId)
@@ -420,13 +412,10 @@ class Goal extends Equatable {
   /// What it counts.
   final GoalKind kind;
 
-  /// The stretch it repeats over.
-  final GoalPeriod period;
-
   /// The number to reach: reais, or deliveries.
   final int target;
 
-  /// The first day of the stretch being measured.
+  /// Its first day.
   final DateTime start;
 
   /// The day after its last.
@@ -435,8 +424,12 @@ class Goal extends Equatable {
   /// What has been reached so far.
   final int done;
 
-  /// What the queue holds that would count, were it delivered in time.
+  /// What the open deliveries due by its last day would add, were they
+  /// delivered in time.
   final int queued;
+
+  /// How many open deliveries [queued] adds up.
+  final int queuedCount;
 
   /// The kind counted, for a [GoalKind.count] goal.
   final CatalogType? type;
@@ -466,12 +459,12 @@ class Goal extends Equatable {
   List<Object?> get props => [
     id,
     kind,
-    period,
     target,
     start,
     end,
     done,
     queued,
+    queuedCount,
     type,
   ];
 }

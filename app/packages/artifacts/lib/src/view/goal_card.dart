@@ -10,25 +10,6 @@ import 'package:l10n/l10n.dart';
 /// behind: the same slack a delivery's bar has ([paceSlack]).
 const double goalSlack = paceSlack;
 
-/// What the queue holds towards a goal: the value of the open deliveries
-/// due by its last day, and how many they are.
-typedef GoalQueue = ({int value, int count});
-
-/// [queue] (the open deliveries) as far as it can count towards [goal]:
-/// those worth something, due by its last day.
-GoalQueue goalQueue(Goal goal, List<Artifact> queue) {
-  final counted = queue.where(
-    (a) =>
-        (a.value ?? 0) > 0 &&
-        a.deadline != null &&
-        !a.deadline!.isAfter(goal.lastDay),
-  );
-  return (
-    value: counted.fold(0, (sum, a) => sum + a.value!),
-    count: counted.length,
-  );
-}
-
 /// {@template goal_card}
 /// The goal being measured, as Objetivos draws it on top: what it asks and
 /// by when, how much is in, and one bar holding two, as a delivery's does.
@@ -39,7 +20,7 @@ GoalQueue goalQueue(Goal goal, List<Artifact> queue) {
 /// is on pace; red showing past it is behind, by as much as shows, and a
 /// tag says by how much. Under the bar a line says where the open
 /// deliveries due by its day would take it: no delivery names a goal, the
-/// goal finds them by their day and their value ([goalQueue]). A goal
+/// server finds them by their day and their value ([Goal.queued]). A goal
 /// that has not begun is drawn quiet, with the day it begins and no bar.
 /// {@endtemplate}
 class GoalCard extends StatelessWidget {
@@ -47,7 +28,6 @@ class GoalCard extends StatelessWidget {
   const GoalCard({
     required this.goal,
     required this.now,
-    this.queue,
     this.onTap,
     this.onLongPress,
     super.key,
@@ -58,9 +38,6 @@ class GoalCard extends StatelessWidget {
 
   /// The moment it is drawn at.
   final DateTime now;
-
-  /// What the queue holds towards it; null draws no line for it.
-  final GoalQueue? queue;
 
   /// Opens it.
   final VoidCallback? onTap;
@@ -78,7 +55,6 @@ class GoalCard extends StatelessWidget {
     final target = math.max(1, goal.target);
     final gap = expected - goal.done;
     final behind = gap > target * goalSlack;
-    final queue = this.queue;
 
     return GestureDetector(
       onTap: onTap,
@@ -102,6 +78,7 @@ class GoalCard extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.s2),
                 Expanded(
+                  flex: 2,
                   child: Text(
                     [
                       l10n.goalRevenueBy(shortDay(l10n, goal.lastDay)),
@@ -115,20 +92,26 @@ class GoalCard extends StatelessWidget {
                 ),
                 if (active) ...[
                   const SizedBox(width: AppSpacing.s2),
-                  if (behind)
-                    AppTag(
-                      text: l10n.goalBehind(formatMoney(gap)),
-                      iconData: AppIcons.warning,
-                      fill: AppColors.danger,
-                      ink: AppColors.dangerInk,
-                    )
-                  else
-                    AppTag(
-                      text: gap < 0
-                          ? l10n.goalAhead(formatMoney(-gap))
-                          : l10n.goalOnPace,
-                      iconData: AppIcons.check,
+                  // The tag gives way, ellipsised, before the day does.
+                  Flexible(
+                    flex: 3,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: behind
+                          ? AppTag(
+                              text: l10n.goalBehind(formatMoney(gap)),
+                              iconData: AppIcons.warning,
+                              fill: AppColors.danger,
+                              ink: AppColors.dangerInk,
+                            )
+                          : AppTag(
+                              text: gap < 0
+                                  ? l10n.goalAhead(formatMoney(-gap))
+                                  : l10n.goalOnPace,
+                              iconData: AppIcons.check,
+                            ),
                     ),
+                  ),
                 ],
               ],
             ),
@@ -188,7 +171,7 @@ class GoalCard extends StatelessWidget {
                 ],
               ),
             ],
-            if (queue != null && queue.count > 0) ...[
+            if (active && goal.queuedCount > 0) ...[
               const SizedBox(height: AppSpacing.s3),
               Container(height: 1, color: AppColors.line),
               const SizedBox(height: AppSpacing.s3),
@@ -203,16 +186,16 @@ class GoalCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.s2),
                   Expanded(
                     child: Text(
-                      goal.done + queue.value >= goal.target
+                      goal.done + goal.queued >= goal.target
                           ? l10n.goalQueuedReaches(
-                              queue.count,
+                              goal.queuedCount,
                               shortDay(l10n, goal.lastDay),
                             )
                           : l10n.goalQueuedLine(
-                              queue.count,
+                              goal.queuedCount,
                               // Kept on one line with its R\$.
                               formatMoney(
-                                goal.done + queue.value,
+                                goal.done + goal.queued,
                               ).replaceFirst(' ', '\u00a0'),
                               shortDay(l10n, goal.lastDay),
                             ),

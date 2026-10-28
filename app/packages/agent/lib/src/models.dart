@@ -261,26 +261,35 @@ class PlanGoal extends Equatable {
   /// {@macro plan_goal}
   const PlanGoal({
     required this.money,
-    required this.monthly,
     required this.target,
+    this.monthly = false,
+    this.deadline,
   });
 
-  factory PlanGoal.fromJson(Map<String, dynamic> json) => PlanGoal(
-    money: json['kind'] == 'money',
-    monthly: json['period'] == 'month',
-    target: (json['target'] as num?)?.toInt() ?? 0,
-  );
+  factory PlanGoal.fromJson(Map<String, dynamic> json) {
+    final deadline = json['deadline'] as String?;
+    return PlanGoal(
+      money: json['kind'] == 'money',
+      monthly: json['period'] == 'month',
+      target: (json['target'] as num?)?.toInt() ?? 0,
+      deadline: deadline == null ? null : DateTime.parse(deadline),
+    );
+  }
 
   /// Reais delivered, rather than a count of one kind.
   final bool money;
 
-  /// Per month, rather than per week.
+  /// Per month, rather than per week, in a plan kept from before goals
+  /// had a day.
   final bool monthly;
 
   final int target;
 
+  /// The day it is to be reached by. Null in a plan kept from before.
+  final DateTime? deadline;
+
   @override
-  List<Object?> get props => [money, monthly, target];
+  List<Object?> get props => [money, monthly, target, deadline];
 }
 
 /// {@template plan_place}

@@ -5,13 +5,12 @@ import {
   CreateCatalogTypeDto,
   CreateGoalDto,
   EditArtifactDto,
+  EditGoalDto,
   MoveArtifactDto,
 } from './dto/artifact.dto';
 import {
   ArtifactEdit,
-  GoalKind,
-  GoalPeriod,
-  GoalStart,
+  GoalEdit,
   NewArtifact,
   QueueEnd,
 } from './artifact.types';
@@ -147,36 +146,33 @@ export function requireCatalogType(dto: CreateCatalogTypeDto): {
   };
 }
 
-/** A new goal. */
+/** A new money goal: an amount by a day. */
 export function requireGoal(dto: CreateGoalDto): {
-  kind: GoalKind;
   target: number;
-  period: GoalPeriod;
-  typeId?: string;
-  start: GoalStart;
+  deadline: string;
 } {
-  if (dto.kind !== 'money' && dto.kind !== 'count') {
-    throw new BadRequestException('kind must be money or count');
-  }
-  if (dto.period !== 'week' && dto.period !== 'month') {
-    throw new BadRequestException('period must be week or month');
-  }
-  const start = dto.start ?? 'now';
-  if (start !== 'now' && start !== 'next') {
-    throw new BadRequestException('start must be now or next');
-  }
   const target = amountOf(dto.target, 'target');
   if (target == null) throw new BadRequestException('target must be positive');
-  if (dto.kind === 'count' && typeof dto.typeId !== 'string') {
-    throw new BadRequestException('Uma meta de quantidade conta um tipo.');
-  }
+  const deadline = deadlineOf(dto.deadline);
+  if (deadline == null) throw new BadRequestException('deadline is required');
 
+  return { target, deadline };
+}
+
+/** A change to a goal: its amount, its last day, or both. */
+export function requireGoalEdit(dto: EditGoalDto): GoalEdit {
+  const target = amountOf(dto.target, 'target');
+  if (target === null) throw new BadRequestException('target must be positive');
+  const deadline = deadlineOf(dto.deadline);
+  if (deadline === null) {
+    throw new BadRequestException('deadline must be a YYYY-MM-DD day');
+  }
+  if (target === undefined && deadline === undefined) {
+    throw new BadRequestException('Nothing to change');
+  }
   return {
-    kind: dto.kind,
-    target,
-    period: dto.period,
-    start,
-    ...(dto.kind === 'count' ? { typeId: dto.typeId } : {}),
+    ...(target === undefined ? {} : { target }),
+    ...(deadline === undefined ? {} : { deadline }),
   };
 }
 

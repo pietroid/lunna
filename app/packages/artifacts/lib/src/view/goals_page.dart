@@ -17,8 +17,9 @@ import 'package:timeline/timeline.dart';
 ///
 /// On top the goal being measured, drawn whole ([GoalCard]); then the ones
 /// written down to follow it (Próximos), quiet; then the ones whose day has
-/// gone by (Anteriores), newest first, each with what it reached. With no
-/// goal at all, a line says what one is and the + writes the first.
+/// gone by (Anteriores), newest first, each with what it reached. A tap on
+/// one not gone by opens it to be changed, a long press removes any. With
+/// no goal at all, a line says what one is and the + writes the first.
 /// {@endtemplate}
 class GoalsPage extends StatelessWidget {
   /// {@macro goals_page}
@@ -86,7 +87,7 @@ class GoalsPage extends StatelessWidget {
                 GoalCard(
                   goal: goal,
                   now: now,
-                  queue: goalQueue(goal, data.queue),
+                  onTap: () => unawaited(showGoalSheet(context, goal: goal)),
                   onLongPress: () => unawaited(_delete(context, goal)),
                 ),
                 const SizedBox(height: AppSpacing.s3),
@@ -97,6 +98,7 @@ class GoalsPage extends StatelessWidget {
                   GoalCard(
                     goal: goal,
                     now: now,
+                    onTap: () => unawaited(showGoalSheet(context, goal: goal)),
                     onLongPress: () => unawaited(_delete(context, goal)),
                   ),
                   const SizedBox(height: AppSpacing.s2),

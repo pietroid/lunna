@@ -128,8 +128,8 @@ describe('undo in Postgres', () => {
       kind: 'count',
       typeId: type.id,
       target: 3,
-      period: 'week',
       starts: '2026-03-09',
+      deadline: '2026-03-15',
     });
     const task = await tasks.insert(OWNER, {
       title: 'Revisão',

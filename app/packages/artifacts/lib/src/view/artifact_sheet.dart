@@ -106,6 +106,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
   bool _loose = false;
   late final _name = TextEditingController(text: widget.initialName);
   final _search = TextEditingController();
+
   /// Its value, in whole reais: the kind's price until she changes it.
   late final _value = TextEditingController(
     text: widget.initialType?.price?.toString(),
@@ -208,9 +209,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     return SheetFrame(
       title: l10n.artifactsNew,
       tall: picking,
-      child: picking
-          ? _catalog(l10n, state.catalog)
-          : _details(l10n),
+      child: picking ? _catalog(l10n, state.catalog) : _details(l10n),
     );
   }
 
