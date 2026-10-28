@@ -39,9 +39,11 @@ function contextFor(
   url: string,
   status = 200,
   userId: string | null = 'user-1',
+  headers: Record<string, string> = {},
 ): ExecutionContext {
   const req = {
     method,
+    headers,
     originalUrl: url,
     url,
     query: {},
@@ -89,6 +91,31 @@ describe('analytics', () => {
       },
     ]);
     expect(analytics.exceptions).toEqual([]);
+  });
+
+  it('says where an answer came from when the app says so, and nothing else', async () => {
+    for (const via of ['notification', 'app', 'somewhere']) {
+      await lastValueFrom(
+        interceptor.intercept(
+          contextFor(
+            'POST',
+            '/api/events/:id/delay',
+            '/api/events/e-1/delay',
+            201,
+            'user-1',
+            { 'x-lunna-via': via },
+          ),
+          answering({}),
+        ),
+      );
+    }
+
+    expect(analytics.events.map((it) => it.properties)).toEqual([
+      { route: '/events/:id/delay', status: 201, via: 'notification' },
+      { route: '/events/:id/delay', status: 201, via: 'app' },
+      { route: '/events/:id/delay', status: 201 },
+    ]);
+    expect(analytics.events[0].event).toBe('event_delayed');
   });
 
   it('sends nothing the person wrote', async () => {

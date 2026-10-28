@@ -57,7 +57,9 @@ class ChecklistLine extends StatelessWidget {
         children: [
           SizedBox(
             width: AppSpacing.s4,
-            child: Center(child: ChecklistMark(done: item.done, quiet: quiet)),
+            child: Center(
+              child: ChecklistMark(done: item.done, quiet: quiet),
+            ),
           ),
           const SizedBox(width: AppSpacing.s2),
           Expanded(

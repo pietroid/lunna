@@ -1,6 +1,6 @@
 # A reminder should take the answer, not open the app
 
-2026-10-28 · delivery · **plan, revised after review, awaiting approval** · track: plan · issue #53
+2026-10-28 · delivery · **built** · track: plan · issue #53
 
 ## 1. The prompt
 
@@ -188,34 +188,139 @@ its change slides.
   Without a device on this run, it is named there as not run.
 - `.tool/preview`: Tempo with a card in overtime, both brands.
 
-## Build brief
+## 3. What was built
 
-- **Files to touch.** Server: `notifications/` (service, copy, DTO,
-  spec), `events/event-layout.service.ts` (`catchUp`, `_extend`,
-  `snoozeTask`, `doneEvent`, new `startEvent`/`delayEvent`),
-  `events/events.controller.ts`, `events/request.ts`,
-  `events/timeline.service.ts` and `calendar/` (flexible routine days
-  out, `overtimeMinutes` on the card), `routines/routines.service.ts`,
-  `db/schema.ts` + `drizzle/`, `common/logging.interceptor.ts`,
-  `analytics/events.ts`. App: `packages/notifications` (Darwin
-  category, actions, `edge`), `lib/notifications/` (background handler;
-  listener: a tap opens the card, the sheet only on Android), `packages/api_client` (the `via` header),
-  `packages/timeline` (tag, ± 10, the card's `overtimeMinutes`),
-  `packages/l10n` (button labels, tag), `ios/Runner/AppDelegate.swift`.
-- **Docs.** In `AGENTS.md`: "Reminders" rewritten; "Routines" loses the
-  flexible kind; "A task does not start because its hour came" gains
-  overtime. In `product/spec/`, a new `notifications.md`.
-- **Not in context, to read first.** `events.controller.spec.ts` (the
-  harness, and the test at :1163), `reminders_listener.dart`,
-  `notification_scheduler.dart` (the 60-slot cap), the RFC's
-  `code/plan-count.ts`.
-- **Not in this PR.** Android's buttons and countdown
-  ([#56](https://github.com/pietroid/lunna/issues/56)); the Live Activity
-  (Phase 3). Don't register the category on Android.
-- **Open questions.** None block the build. One to check on a device:
-  whether iOS keeps the 64 soonest or the 64 last scheduled
-  (`notification_scheduler.dart:64`). The scheduler already sends the
-  soonest first, so either way the next day is covered.
+Phases 0, 1 and 2 (iOS), as planned. The one thing to see is the running
+card in overtime, drawn by the real `EventTile` (on time, then 12 minutes
+late), Lunna then Focus:
+
+![Lunna: the running card on time, then late](img/build-lunna.png)
+
+![Focus: the same](img/build-focus.png)
+
+### The contract
+
+**Nothing ends in silence, and every reminder takes an answer.** A begun
+block past its end with nobody closing it runs on, its end dragged with
+the clock, until the next fixed block or the end of the working day, and
+is written down as done there. A fixed block starts at its hour whether
+or not anyone confirms it. Every ask comes at its hour and twice more ten
+minutes apart, and on iOS its buttons post the same route the card's
+button does. The whole of it is in
+[product/spec/notifications.md](../../spec/notifications.md).
+
+### Server
+
+- `db/schema.ts` + `drizzle/0014_notification_lifecycle.sql`:
+  `event.confirmed_at`, `event.closed_at`, `event.overtime_from`;
+  `routine.fixed` defaults to true; every routine set fixed, the flexible
+  days nobody began deleted, and the past closed (`confirmed_at` and
+  `closed_at` on what already started or ended).
+- `events/event-layout.service.ts`: `catchUp` drags overtime and closes at
+  the cap (`limitOf`), and answers what it closed in silence;
+  `startEvent`, `delayEvent`; `snoozeTask` and `_extend` count from the
+  later of the hour and now; `done` sets `closed_at`.
+- Routes `POST /events/:id/start` and `POST /events/:id/delay`
+  (`events.controller.ts`), with their rows in `analytics/events.ts`.
+  `STEP_MINUTES = 10` (`request.ts`) is the default of snooze and delay.
+- `notifications/`: the kinds `askStart`, `askEnd`, `headsUp`,
+  `morning`, `evening`; three asks per edge, re-asks within 24 h, a
+  heads-up only when something runs right up to a fixed block; `card` and
+  `edge` on each ask; the copy in Portuguese.
+- Routines: the flexible path is gone (`routineDays`, `isMissed`, the
+  task store's routine writes); `routines.service.ts` writes every routine
+  fixed.
+- Measuring: `X-Lunna-Via` becomes `via` on each write event
+  (`logging.interceptor.ts`; allowed in the dev CORS in `main.ts`), and
+  `CatchUpInterceptor` captures `block_closed_silently { kind,
+  overMinutes }`.
+
+### App
+
+- `packages/notifications`: `NotificationAction`, `NotificationAnswer`
+  (each button × edge × card to its route), the Darwin category `ask` with
+  Confirmar, +10 min and Falar com a {appName}, `NotificationScheduler.answer`
+  (post, then sync, which takes off the re-asks).
+- `lib/notifications/reminder_answers.dart`: `answerReminderInBackground`,
+  the background engine's handler, posting with `via: notification`;
+  `ios/Runner/AppDelegate.swift` registers the plugins for that engine.
+- `RemindersListener`: a tap on the reminder opens the card's page; Falar
+  com a Lunna opens the agent's sheet (about the task, when it is one); the
+  start sheet stays on Android only.
+- `packages/api_client`: the `via` on every request.
+- `packages/timeline`: `overtimeMinutes` on the card, the "atrasado N
+  min" tag on Agora, `stepMinutes = 10` for the ± and the snooze.
+- Rotina: the Flexível / Fixo switch is gone from the routine sheet.
+
+### Tests
+
+- Server: **355 tests, 24 suites**, all passing (`npm test`). New in
+  `events.controller.spec.ts`: overtime (runs on, ticked off keeps its
+  hour, +10 from the tap, closed at the day's end, closed at the next fixed
+  block), a fixed block's edges (starts in silence, +10 from the tap or
+  from its hour, confirmed keeps its hour, runs on, stops at the next
+  block but not at one it overlaps), snooze from the later of hour and now,
+  routines all fixed. `notifications.service.spec.ts`: three asks per
+  edge, re-asks in 24 h, heads-up only when something runs up to it, no
+  `almostFinishing`, paused blocks not asked. `analytics.spec.ts`: `via`.
+- App: `notifications` 24 tests (every button × edge × card to its route,
+  post then sync, a tap writes nothing, the handler reaches the queue, the
+  wire's `card`/`edge`); `timeline` 168 tests, `overtime_test.dart` new
+  (the tag, the model, ±10); `api_client` (the header). All under both
+  brands through `.tool/check`.
+- The RFC's `code/plan-count.ts`, re-run on the build (its CSV left as
+  the RFC had it). The `today` columns are now the built plan:
+
+  | blocks/day | items (built) | reach, days (built) | RFC's estimate, trimmed |
+  |---|---|---|---|
+  | 2 | 53 | 7.00 | 60 · 7.00 |
+  | 3 | 71 | 5.50 | 85 · 4.23 |
+  | 4 | 96 | 3.53 | 112 · 2.98 |
+
+  The built plan is smaller than the RFC estimated and reaches further.
+  The difference was not traced item by item; the likeliest part is the
+  heads-up, which the build plans only when something runs right up to a
+  fixed block, where the RFC counted one per block.
+
+### Not run
+
+- **No iPhone on this run.** The lock-screen buttons with the app killed,
+  the re-asks vanishing after the sync, and a tap opening the card were
+  not tried on a device. What is proved is the Dart side (the mapping, the
+  post-then-sync, the tap), the plugin's iOS source (an action without
+  `foreground` always goes to the background engine, even with the app
+  open), and that the app builds for the web. The iOS build itself was
+  not run here.
+- Android: no buttons, by design ([#56](https://github.com/pietroid/lunna/issues/56)).
+
+### Where the build differs from the plan
+
+- `event.overtime_from` is a third column: the end a late block was
+  planned to have, so the end asks keep their hours while the end itself
+  moves, and `overMinutes` can be measured.
+- A late card's end is a minute ahead of now, so its progress line says
+  "Faltam 2 min" under the "atrasado" tag. True to how the server keeps
+  it; a later change could hide the countdown while late.
+- A button that opens the app is only Falar com a Lunna. If a Confirmar or
+  +10 min ever reaches the running app, the listener answers it there the
+  same way.
+- The routine sheet's Flexível / Fixo switch was removed, which the plan
+  did not name: the server ignores it now.
+- The dev CORS allows `X-Lunna-Via`, or the web app on another port would
+  fail its preflight.
+
+## 4. How to turn it on
+
+Nothing to set. The migration runs on the server's boot
+(`migrateDatabase`) and rewrites every routine as fixed. The buttons need
+an iOS build of this branch; the measuring needs `POSTHOG_KEY`, as before,
+and sends nothing without it. Older apps keep working: they ignore `card`
+and `edge`, and read the new kinds as unknown, so they drop the asks until
+updated.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.
 
 ## Decided unattended
 
@@ -238,3 +343,10 @@ its change slides.
   start it before the person decides when.
 - No cost table: the queue measures the run and writes the figures in
   the PR.
+- In the build: the routine sheet's Flexível / Fixo switch was removed,
+  since every routine is fixed and the server ignores it.
+- In the build: a button that opens the app is only Falar com a Lunna; a
+  tap on the reminder opens the card even on a start ask, on iOS, where the
+  start sheet is gone.
+- In the build: the iOS build and a device run were not possible on this
+  run; they are named under "Not run".

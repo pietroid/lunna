@@ -113,7 +113,7 @@ class TimelineRepository {
   /// Not yet: the task waits [minutes] more before asking again.
   Future<Timeline> snoozeTask(
     String id, {
-    int minutes = 15,
+    int minutes = stepMinutes,
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(

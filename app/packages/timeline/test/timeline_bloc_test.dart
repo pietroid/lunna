@@ -564,7 +564,7 @@ void main() {
     );
 
     blocTest<TimelineBloc, TimelineState>(
-      'gives fifteen more minutes and draws the day that comes back',
+      'gives ten more minutes and draws the day that comes back',
       build: () {
         when(
           () =>
@@ -582,7 +582,7 @@ void main() {
           () => repository.extend(
             CardKind.task,
             'a',
-            15,
+            10,
             days: TimelineState.initialDays,
           ),
         ).called(1);

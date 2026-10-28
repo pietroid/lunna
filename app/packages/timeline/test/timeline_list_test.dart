@@ -141,36 +141,36 @@ void main() {
     verify(() => bloc.add(const EventPauseToggled('a'))).called(1);
     expect(tapped, isEmpty);
 
-    await tester.tap(find.text('+15'));
+    await tester.tap(find.text('+10'));
     await settle(tester);
     expect(tapped, isEmpty);
     // Changing the length moves the rest of the day, so it asks first.
     verifyNever(() => bloc.add(const EventExtended('a')));
-    expect(find.text('Mais 15 minutos?'), findsOneWidget);
+    expect(find.text('Mais 10 minutos?'), findsOneWidget);
 
     await tester.tap(find.text('Adicionar'));
     await settle(tester);
     verify(() => bloc.add(const EventExtended('a'))).called(1);
   });
 
-  testAt('takes fifteen minutes off only once it is confirmed', (
+  testAt('takes ten minutes off only once it is confirmed', (
     tester,
   ) async {
     final (bloc, _) = await pump(tester, [running, later]);
 
-    await tester.tap(find.text('−15'));
+    await tester.tap(find.text('−10'));
     await settle(tester);
-    expect(find.text('Menos 15 minutos?'), findsOneWidget);
+    expect(find.text('Menos 10 minutos?'), findsOneWidget);
 
     await tester.tap(find.text('Cancelar'));
     await settle(tester);
     verifyNever(() => bloc.add(any()));
 
-    await tester.tap(find.text('−15'));
+    await tester.tap(find.text('−10'));
     await settle(tester);
     await tester.tap(find.text('Tirar'));
     await settle(tester);
-    verify(() => bloc.add(const EventExtended('a', minutes: -15))).called(1);
+    verify(() => bloc.add(const EventExtended('a', minutes: -10))).called(1);
   });
 
   testAt('a tap on the card itself still opens it', (tester) async {
@@ -257,11 +257,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     verify(() => bloc.add(const EventStarted('w'))).called(1);
 
-    // Fifteen more minutes before it asks, not fifteen more minutes of work.
-    await tester.tap(find.text('+15'));
+    // Ten more minutes before it asks, not ten more minutes of work.
+    await tester.tap(find.text('+10'));
     await tester.pump(const Duration(milliseconds: 400));
     verify(() => bloc.add(const EventSnoozed('w'))).called(1);
-    expect(find.text('Mais 15 minutos?'), findsNothing);
+    expect(find.text('Mais 10 minutos?'), findsNothing);
     expect(tapped, isEmpty);
   });
 

@@ -91,6 +91,23 @@ export interface CalendarEvent {
   routine?: RoutineDays;
   /** The day's own list, for a day of a routine that has one. */
   checklist?: ChecklistItem[];
+  /**
+   * ISO 8601, when its start was answered: confirmed from a reminder, or
+   * begun. Absent while nobody said; a fixed block starts anyway, and the
+   * reminders keep asking until this is set.
+   */
+  confirmedAt?: string;
+  /**
+   * ISO 8601, when its end was settled: ticked off, or closed by catchUp at
+   * the next fixed block or the end of the working day. Absent while it may
+   * still run on past its end.
+   */
+  closedAt?: string;
+  /**
+   * ISO 8601, the end it was planned to have, once it ran past it with
+   * nobody answering. Its end is dragged along with the clock from then on.
+   */
+  overtimeFrom?: string;
 }
 
 /**
@@ -137,10 +154,7 @@ export interface CalendarRoutine {
   startTime: string;
   endTime: string;
   days: RoutineDays;
-  /**
-   * Whether its hour is the point of it. A fixed routine's days are events;
-   * a flexible one's are tasks anchored at its hour.
-   */
+  /** Always true: every routine's days are events. Kept for old rows. */
   fixed: boolean;
   /** What each day of it is made of, in order; empty when it is one thing. */
   checklist: string[];

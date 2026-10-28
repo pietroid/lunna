@@ -10,7 +10,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
 import { NoAnalytics } from '../analytics/analytics';
 import type { Analytics } from '../analytics/analytics';
-import { eventFor, routeOf } from '../analytics/events';
+import { eventFor, routeOf, VIA_HEADER, viaOf } from '../analytics/events';
 
 interface RequestWithUser extends Request {
   user?: { id?: string };
@@ -62,7 +62,12 @@ export class LoggingInterceptor implements NestInterceptor {
         );
         const event = eventFor(method, route);
         if (event && req.user?.id) {
-          this.analytics.capture(req.user.id, event, { route, status });
+          const via = viaOf(req.headers?.[VIA_HEADER]);
+          this.analytics.capture(req.user.id, event, {
+            route,
+            status,
+            ...(via === undefined ? {} : { via }),
+          });
         }
       }),
       catchError((error: unknown) => {

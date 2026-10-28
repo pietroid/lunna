@@ -21,9 +21,10 @@ import {
   floorToMinute,
   Interval,
   roundUpToFiveMinutes,
+  WorkDay,
   workWindowFor,
 } from '../time/work-hours';
-import { atMinuteIn } from '../time/zone';
+import { atMinuteIn, Zone } from '../time/zone';
 import {
   EventEdit,
   EventRequest,
@@ -37,7 +38,6 @@ import {
   inList,
   intervalOfTask,
   isAnchored,
-  isMissed,
   TimelineService,
   workSecondsOf,
 } from './timeline.service';
@@ -88,13 +88,17 @@ export class EventLayoutService {
     user: CalendarUser,
     request: EventRequest,
     trace: Trace,
+    now = new Date(),
   ): Promise<string> {
     const start = roundUpToFiveMinutes(new Date(request.startTime));
+    const end = addMinutes(start, request.durationMinutes);
     const created = await this._calendar.create(user, {
       title: request.title,
       startTime: start.toISOString(),
-      endTime: addMinutes(start, request.durationMinutes).toISOString(),
+      endTime: end.toISOString(),
       fixed: true,
+      // Written down after it ended, it is history and asks nothing.
+      ...(end <= now ? { closedAt: end.toISOString() } : {}),
     });
 
     trace.log('event.create', {
@@ -175,6 +179,70 @@ export class EventLayoutService {
       const cut = isRunning(now, interval);
       await this._pullSnapped(user, day, event.id, interval, cut, trace, now);
     }
+  }
+
+  /**
+   * The person said a fixed block began, from its reminder or its heads-up.
+   *
+   * Its hour does not move: a fixed block starts at it anyway. What changes
+   * is that its start is answered, so the reminders stop asking.
+   */
+  async startEvent(
+    user: CalendarUser,
+    eventId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const event = await this._event(user, eventId);
+    if (event.confirmedAt !== undefined) return;
+
+    trace.log('event.confirm', { eventId });
+    await this._revise(user, event, { confirmedAt: now.toISOString() }, trace);
+  }
+
+  /**
+   * Not yet: a fixed block starts [minutes] after the later of its hour and
+   * now, and keeps its length.
+   *
+   * From the later of the two, so +10 on the heads-up a quarter before
+   * lunch moves lunch later, never earlier, and +10 a few minutes into
+   * breakfast moves it ten minutes from the tap. Only a start nobody
+   * answered moves: one the person confirmed is a fact.
+   */
+  async delayEvent(
+    user: CalendarUser,
+    eventId: string,
+    minutes: number,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<void> {
+    const event = await this._event(user, eventId);
+    if (event.confirmedAt !== undefined || event.closedAt !== undefined) {
+      throw new BadRequestException(
+        'Já começou. Para mudar quanto dura, estenda o bloco.',
+      );
+    }
+
+    const start = addMinutes(
+      floorToMinute(laterOf(new Date(event.startTime), now)),
+      minutes,
+    );
+    const work = Math.round(workSecondsOf(event) / 60);
+
+    trace.log('event.delay', { eventId, start: start.toISOString() });
+    await this._revise(
+      user,
+      event,
+      {
+        startTime: start.toISOString(),
+        endTime: addMinutes(start, work).toISOString(),
+        pausedAt: undefined,
+        remainingSeconds: undefined,
+        pausedSeconds: undefined,
+        overtimeFrom: undefined,
+      },
+      trace,
+    );
   }
 
   /** Takes a block off the calendar entirely, as if it had never been. */
@@ -557,10 +625,13 @@ export class EventLayoutService {
   }
 
   /**
-   * Not yet: the task waits [minutes] more before asking again.
+   * Not yet: the task waits until [minutes] after the later of its hour and
+   * now before asking again.
    *
-   * Written as a floor rather than as an hour, so the rest of the day keeps
-   * flowing around it. One that was already running stops.
+   * From the later of the two, so a snooze on a reminder that came early
+   * (a heads-up) never brings the task forward. Written as a floor rather
+   * than as an hour, so the rest of the day keeps flowing around it. One
+   * that was already running stops.
    */
   async snoozeTask(
     user: CalendarUser,
@@ -574,7 +645,8 @@ export class EventLayoutService {
     const live = day.live.get(taskId);
     if (live !== undefined) await this._calendar.remove(user, live);
 
-    const floor = floorToMinute(addMinutes(now, minutes));
+    const hour = live === undefined ? day.placed.get(taskId)?.start : undefined;
+    const floor = floorToMinute(addMinutes(laterOf(hour ?? now, now), minutes));
     trace.log('task.snooze', { taskId, until: floor.toISOString() });
 
     await this._tasks.update(user, { ...task, notBefore: floor.toISOString() });
@@ -914,73 +986,108 @@ export class EventLayoutService {
   /**
    * Keeps the calendar true as the minutes pass.
    *
-   * Drags every paused block's end along with the clock, and writes down as
-   * done every task whose hour ran out. Run before every route that reads
-   * the day ([CatchUpInterceptor]), never on a timer, and safe to run any
-   * number of times: the end of a paused block is always now plus what is
-   * still owed, so a second call in the same minute changes nothing and a
-   * call after nobody looked for an hour catches the whole hour up at once.
-   * A block is judged over by the end it has once caught up, so a task
-   * paused for longer than it had left is still paused, not done.
+   * Drags every paused block's end along with the clock, and the end of
+   * every block that ran past it with nobody saying it was over: that is
+   * overtime, not done. Overtime runs until the next fixed block starts or
+   * the working day ends, and the block is closed there, its task written
+   * down as done at that hour. A fixed block that starts closes a task still
+   * running into it at its own start, so two blocks never run at once.
+   *
+   * Run before every route that reads the day ([CatchUpInterceptor]), never
+   * on a timer, and safe to run any number of times: a dragged end is
+   * always worked out from now, so a second call in the same minute changes
+   * nothing and a call after nobody looked for an hour catches the whole
+   * hour up at once. Answers with every block it closed in silence, for the
+   * measuring.
    */
   async catchUp(
     user: CalendarUser,
     trace: Trace,
     now = new Date(),
-  ): Promise<void> {
-    const events: CalendarEvent[] = [];
-    for (const event of await this._calendar.events(user, undefined, now)) {
-      const end =
-        event.managed && event.pausedAt !== undefined
-          ? pausedEnd(event, now)
-          : undefined;
-      events.push(
-        end === undefined || end.getTime() === Date.parse(event.endTime)
-          ? event
-          : await this._revise(
-              user,
-              event,
-              { endTime: end.toISOString() },
-              trace,
-            ),
-      );
-    }
-
-    const over = events.filter(
-      (event) =>
-        event.taskId !== undefined &&
-        Date.parse(event.endTime) <= now.getTime(),
-    );
-    const begun = new Set(
-      events.flatMap((event) =>
-        event.taskId !== undefined && Date.parse(event.endTime) > now.getTime()
-          ? [event.taskId]
-          : [],
-      ),
-    );
-
+  ): Promise<SilentClose[]> {
+    const zone = this._timeline.zone(user);
+    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
+    const events = await this._calendar.events(user, undefined, now);
     const pending = new Map(
       (await this._tasks.pending(user)).map((task) => [task.id, task]),
     );
-    for (const event of over) {
-      const task = pending.get(event.taskId!);
-      if (task === undefined) continue;
+    const closed: SilentClose[] = [];
 
-      trace.log('task.over', { taskId: task.id });
-      await this._tasks.update(user, { ...task, doneAt: event.endTime });
-      pending.delete(task.id);
+    for (const event of events) {
+      if (!event.managed) continue;
+
+      if (event.pausedAt !== undefined) {
+        const end = pausedEnd(event, now);
+        if (end.getTime() !== Date.parse(event.endTime)) {
+          await this._revise(
+            user,
+            event,
+            { endTime: end.toISOString() },
+            trace,
+          );
+        }
+        continue;
+      }
+      if (event.closedAt !== undefined) continue;
+
+      const start = Date.parse(event.startTime);
+      if (start > now.getTime()) continue;
+
+      const due = new Date(event.overtimeFrom ?? event.endTime);
+      const limit = limitOf(event, due, events, zone, workDay);
+      const task =
+        event.taskId === undefined ? undefined : pending.get(event.taskId);
+
+      if (limit <= now) {
+        trace.log('event.close', {
+          eventId: event.id,
+          at: limit.toISOString(),
+        });
+        await this._revise(
+          user,
+          event,
+          {
+            endTime: limit.toISOString(),
+            closedAt: limit.toISOString(),
+            overtimeFrom: limit > due ? due.toISOString() : undefined,
+          },
+          trace,
+        );
+        if (task !== undefined) {
+          trace.log('task.over', { taskId: task.id });
+          await this._tasks.update(user, {
+            ...task,
+            doneAt: limit.toISOString(),
+          });
+          pending.delete(task.id);
+        }
+        closed.push({
+          kind: event.taskId === undefined ? 'event' : 'task',
+          overMinutes: Math.max(
+            0,
+            Math.round((limit.getTime() - due.getTime()) / 60_000),
+          ),
+        });
+        continue;
+      }
+
+      if (Date.parse(event.endTime) > now.getTime()) continue;
+
+      // Over, and nobody said so: it runs on into the next minute.
+      const end = addMinutes(floorToMinute(now), 1);
+      trace.log('event.overtime', { eventId: event.id });
+      await this._revise(
+        user,
+        event,
+        {
+          endTime: (end < limit ? end : limit).toISOString(),
+          overtimeFrom: due.toISOString(),
+        },
+        trace,
+      );
     }
 
-    // A day of a routine nobody began before its day ended is gone, as the
-    // hour of a fixed one would be.
-    const zone = this._timeline.zone(user);
-    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
-    for (const task of pending.values()) {
-      if (begun.has(task.id) || !isMissed(task, now, zone, workDay)) continue;
-
-      trace.log('task.missed', { taskId: task.id });
-      await this._tasks.update(user, { ...task, cancelled: true });
-    }
+    return closed;
   }
 
   // -------------------------------------------------------------------------
@@ -1022,6 +1129,7 @@ export class EventLayoutService {
       endTime: addMinutes(start, task.minutes).toISOString(),
       fixed: false,
       started: true,
+      confirmedAt: start.toISOString(),
       taskId: task.id,
     });
     trace.log('task.begin', { taskId: task.id, eventId: event.id });
@@ -1153,6 +1261,7 @@ export class EventLayoutService {
           endTime: now.toISOString(),
           pausedAt: undefined,
           remainingSeconds: undefined,
+          closedAt: now.toISOString(),
         },
         trace,
       );
@@ -1228,7 +1337,9 @@ export class EventLayoutService {
    *
    * The estimate was wrong, which is the whole of it: the end moves, and the
    * tasks after it follow on the next read. A paused block owes the extra
-   * minutes too.
+   * minutes too. More time counts from the later of the end and now, so a
+   * block in overtime gets [minutes] from the tap, and is no longer late:
+   * the extra time is planned now, and its end will be asked about again.
    */
   private async _extend(
     user: CalendarUser,
@@ -1237,7 +1348,13 @@ export class EventLayoutService {
     trace: Trace,
     now: Date,
   ): Promise<CalendarEvent> {
-    const end = addMinutes(new Date(event.endTime), minutes);
+    const from =
+      event.overtimeFrom !== undefined
+        ? floorToMinute(now)
+        : minutes > 0
+          ? laterOf(new Date(event.endTime), floorToMinute(now))
+          : new Date(event.endTime);
+    const end = addMinutes(from, minutes);
 
     if (end <= now || end.getTime() <= Date.parse(event.startTime)) {
       throw new BadRequestException('Essa duração já passou.');
@@ -1249,6 +1366,7 @@ export class EventLayoutService {
       event,
       {
         endTime: end.toISOString(),
+        overtimeFrom: undefined,
         ...(event.pausedAt === undefined
           ? {}
           : {
@@ -1494,6 +1612,46 @@ function pausedEnd(event: CalendarEvent, now: Date): Date {
   }
 
   return end;
+}
+
+/**
+ * The latest [event] may run on to with nobody answering: the start of the
+ * next fixed block, or the end of the working day it was [due] on.
+ *
+ * A begun task gives way to any fixed block that starts after it began,
+ * even one it was planned to run into: the fixed block starts anyway, and
+ * two blocks never run at once. A fixed block gives way only to one that
+ * starts after its own end, since two the person booked to overlap do so on
+ * purpose. Never earlier than [due]'s day allows: a block planned past the
+ * end of the working day ends where it was planned.
+ */
+function limitOf(
+  event: CalendarEvent,
+  due: Date,
+  events: readonly CalendarEvent[],
+  zone: Zone,
+  workDay: WorkDay,
+): Date {
+  let limit = laterOf(due, atMinuteIn(due, workDay.end, zone));
+  const start = Date.parse(event.startTime);
+
+  for (const other of events) {
+    if (other.id === event.id || !other.fixed || other.taskId !== undefined) {
+      continue;
+    }
+    const at = Date.parse(other.startTime);
+    const after = event.taskId === undefined ? at >= due.getTime() : at > start;
+    if (after && at < limit.getTime()) limit = new Date(at);
+  }
+
+  return limit;
+}
+
+/** A block [EventLayoutService.catchUp] closed with nobody answering. */
+export interface SilentClose {
+  kind: 'task' | 'event';
+  /** How long it ran past its planned end before it was closed. */
+  overMinutes: number;
 }
 
 /** Whichever of [a] and [b] comes later. */
