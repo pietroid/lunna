@@ -146,6 +146,10 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
   Future<void> setDeadline(String id, DateTime? deadline) =>
       _run(() => _repository.update(id, deadline: () => deadline));
 
+  /// Gives a delivery a value, in whole reais, or takes it away with null.
+  Future<void> setValue(String id, int? value) =>
+      _run(() => _repository.update(id, value: () => value));
+
   /// Marks a delivery delivered, or open again.
   Future<void> setDone(String id, {required bool done}) =>
       _run(() => _repository.update(id, done: done));
@@ -242,21 +246,13 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
     ),
   );
 
-  /// Writes a goal down.
-  Future<bool> addGoal({
-    required GoalKind kind,
-    required int target,
-    required GoalPeriod period,
-    CatalogType? type,
-    bool next = false,
-  }) => _run(
-    () => _repository.addGoal(
-      kind: kind,
-      target: target,
-      period: period,
-      typeId: type?.id,
-      next: next,
-    ),
+  /// Writes a goal down: [target] reais by [deadline].
+  Future<bool> addGoal({required int target, required DateTime deadline}) =>
+      _run(() => _repository.addGoal(target: target, deadline: deadline));
+
+  /// Gives a goal another amount or another last day.
+  Future<bool> editGoal(String id, {int? target, DateTime? deadline}) => _run(
+    () => _repository.updateGoal(id, target: target, deadline: deadline),
   );
 
   /// Removes a goal.

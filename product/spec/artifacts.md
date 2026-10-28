@@ -5,10 +5,10 @@
 > Delivered in [product/delivery/2026-10-21-artifacts](../delivery/2026-10-21-artifacts/README.md);
 > it replaced Projetos.
 
-The person reads **Entregas** (one *entrega*); code says `Artifact`. Three
-forces share the tab: the **goals** (*Metas*, what the market asks), the
-**schedule** (the free working time the agenda has left) and the **queue**
-of deliveries both are spent on.
+The person reads **Entregas** (one *entrega*); code says `Artifact`. The
+tab is the **queue** of deliveries; the **schedule** (the free working
+time the agenda has left) is still answered but not drawn. The **goals**
+have a tab of their own, Objetivos: see [goals.md](./goals.md).
 
 ## The model
 
@@ -50,20 +50,14 @@ of deliveries both are spent on.
   calendar, opens its page on Pendentes (`TimelineList(onDeliveryTap:)`).
   A drag, a nudge, a swap and the seam still take that line's task, and
   the running card's buttons act on the running task.
-- **Goal** (`goal`): `kind` money (the `value` of deliveries delivered in the
-  stretch) or count (deliveries of one `type_id`), a `target`, a `period`
-  (week Monday–Sunday, or month), and `starts`, the first day of its first
-  stretch (this one or the next, chosen when written down). A goal whose
-  stretch has not come is a **future** goal, drawn quiet.
+- **Goal** (`goal`): an amount to bill by a day, from `starts` to
+  `deadline`; see [goals.md](./goals.md).
 
 ## The rules
 
-- **Money counts on delivery**: a delivery counts towards the stretch its
-  `done_at` falls in, in the person's zone. No paid date.
-- A goal's **done** is what was delivered in the stretch; its **queued** is
-  what is still open with a deadline before the stretch ends: overdue ones
-  included while the stretch is being measured, only those inside it for a
-  future goal.
+- **Money counts on delivery**: a delivery counts towards the goal its
+  `done_at` falls in, in the person's zone. No paid date. How goals measure
+  it is in [goals.md](./goals.md).
 - **Schedule**: `needMinutes` is the time still owed (`minutes − doneMinutes`)
   by open deliveries due by the end of this month; `freeMinutes` is the
   working time from now to the end of the month not taken by any event or
@@ -128,9 +122,7 @@ of deliveries both are spent on.
   ("1h de 3h") and the day it is due ("até qua, 28 out", or "atrasada 2
   dias" once past), the latter in the danger ink when urgent. No deadline,
   or not begun, no red.
-- **The goals are hidden** (`ArtifactsPage(showGoals: false)`, the
-  default): no goal cards and no "Nova meta". The model, the routes and the
-  agent's goal verbs are untouched.
+- **No goals here**: they are on Objetivos.
 - **No schedule line**: the line that set what the queue owes this month
   against the agenda's free hours (*A fila pede … · você tem … livres
   até …*) is not drawn. `schedule` is still in `GET /artifacts`.
@@ -139,7 +131,7 @@ of deliveries both are spent on.
 
 Every route answers the whole `ArtifactsAnswer`:
 `{ artifacts (open in order, then delivered newest first; each with tasks),
-catalog: [{ id, name, types }], goals: [{ …, start, end, done, queued }],
+catalog: [{ id, name, types }], goals: [{ …, start, end, done, queued, queuedCount }],
 schedule: { needMinutes, freeMinutes, until }, topTypes: [typeId] }`.
 
 | Route | What it does |
@@ -151,12 +143,11 @@ schedule: { needMinutes, freeMinutes, until }, topTypes: [typeId] }`.
 | `POST /artifacts/:id/move` | `{ index, started?: false }` in the queue; `started: false` stops it (one call for a drop into Não iniciadas) |
 | `POST /artifacts/:id/tasks` | `{ title, minutes }`, at the end of the backlog |
 | `POST /catalog/types` | `{ name, minutes, price?, blockMinutes?, categoryId \| category }` |
-| `POST /goals` | `{ kind, target, period, typeId? (count), start: now\|next }` |
-| `DELETE /goals/:id` | the deliveries stay |
+| `POST /goals`, `PATCH /goals/:id`, `DELETE /goals/:id` | see [goals.md](./goals.md) |
 | `POST /tasks` | the day's write, with `artifactId` |
 
 Refusals a person can cause are in Portuguese ("Esse tipo não existe mais.",
-"Essa entrega já foi entregue.", "Uma meta de quantidade conta um tipo.",
+"Essa entrega já foi entregue.",
 "Dê um prazo para começar a entrega.").
 
 ## The app
@@ -167,8 +158,8 @@ refusal);
 `ArtifactsPage` (the tab), `AllArtifactsPage` (search by name, kind or
 shelf, the same filter line), `ArtifactSheet` (catalogue → details; a
 one-off is timed and priced by hand), `TypeSheet` (the least that fills the
-catalogue), `GoalSheet`, `ArtifactPage`. A long press on a goal card removes
-the goal. Entregas reads itself again whenever it comes to the front, and
+catalogue), `ArtifactPage` (whose Valor row opens `ValueSheet`). The
+goals' widgets are in [goals.md](./goals.md). Entregas reads itself again whenever it comes to the front, and
 the delivery page whenever the day's tasks change.
 
 ## Not yet

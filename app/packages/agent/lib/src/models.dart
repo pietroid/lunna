@@ -75,6 +75,9 @@ enum PlanChangeKind {
   /// A new goal.
   addGoal,
 
+  /// A goal given another amount or another last day.
+  editGoal,
+
   /// A goal deleted.
   removeGoal;
 
@@ -95,6 +98,7 @@ enum PlanChangeKind {
     'move_artifact' => moveArtifact,
     'add_kind' => addKind,
     'add_goal' => addGoal,
+    'edit_goal' => editGoal,
     'remove_goal' => removeGoal,
     _ => moveTask,
   };
@@ -140,6 +144,7 @@ class PlanChange extends Equatable {
     this.value,
     this.shelf,
     this.goal,
+    this.wasGoal,
   });
 
   factory PlanChange.fromJson(Map<String, dynamic> json) {
@@ -149,6 +154,7 @@ class PlanChange extends Equatable {
     final deadline = json['deadline'] as String?;
     final wasDeadline = json['wasDeadline'] as String?;
     final goal = json['goal'] as Map<String, dynamic>?;
+    final wasGoal = json['wasGoal'] as Map<String, dynamic>?;
 
     return PlanChange(
       kind: PlanChangeKind.fromWire(json['kind'] as String?),
@@ -172,6 +178,7 @@ class PlanChange extends Equatable {
       value: (json['value'] as num?)?.toInt(),
       shelf: json['shelf'] as String?,
       goal: goal == null ? null : PlanGoal.fromJson(goal),
+      wasGoal: wasGoal == null ? null : PlanGoal.fromJson(wasGoal),
     );
   }
 
@@ -225,8 +232,12 @@ class PlanChange extends Equatable {
   /// The catalogue shelf a new kind goes on.
   final String? shelf;
 
-  /// What a goal counts, for a goal added or deleted.
+  /// What a goal counts, for a goal added, changed or deleted: as the
+  /// change leaves it.
   final PlanGoal? goal;
+
+  /// What a goal changed counted before.
+  final PlanGoal? wasGoal;
 
   DateTime? get end => at?.add(Duration(minutes: minutes));
 
@@ -250,6 +261,7 @@ class PlanChange extends Equatable {
     value,
     shelf,
     goal,
+    wasGoal,
   ];
 }
 
@@ -261,26 +273,35 @@ class PlanGoal extends Equatable {
   /// {@macro plan_goal}
   const PlanGoal({
     required this.money,
-    required this.monthly,
     required this.target,
+    this.monthly = false,
+    this.deadline,
   });
 
-  factory PlanGoal.fromJson(Map<String, dynamic> json) => PlanGoal(
-    money: json['kind'] == 'money',
-    monthly: json['period'] == 'month',
-    target: (json['target'] as num?)?.toInt() ?? 0,
-  );
+  factory PlanGoal.fromJson(Map<String, dynamic> json) {
+    final deadline = json['deadline'] as String?;
+    return PlanGoal(
+      money: json['kind'] == 'money',
+      monthly: json['period'] == 'month',
+      target: (json['target'] as num?)?.toInt() ?? 0,
+      deadline: deadline == null ? null : DateTime.parse(deadline),
+    );
+  }
 
   /// Reais delivered, rather than a count of one kind.
   final bool money;
 
-  /// Per month, rather than per week.
+  /// Per month, rather than per week, in a plan kept from before goals
+  /// had a day.
   final bool monthly;
 
   final int target;
 
+  /// The day it is to be reached by. Null in a plan kept from before.
+  final DateTime? deadline;
+
   @override
-  List<Object?> get props => [money, monthly, target];
+  List<Object?> get props => [money, monthly, target, deadline];
 }
 
 /// {@template plan_place}

@@ -46,6 +46,7 @@ const EVENTS: Record<string, string> = {
   'POST /artifacts/:id/tasks': 'artifact_task_created',
   'POST /catalog/types': 'catalog_type_created',
   'POST /goals': 'goal_created',
+  'PATCH /goals/:id': 'goal_edited',
   'DELETE /goals/:id': 'goal_deleted',
 
   'POST /agent/turn': 'agent_turn',

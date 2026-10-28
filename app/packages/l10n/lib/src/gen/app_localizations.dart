@@ -2030,13 +2030,19 @@ abstract class AppLocalizations {
   /// No description provided for @agentChangeNewGoal.
   ///
   /// In pt, this message translates to:
-  /// **'nova meta'**
+  /// **'novo objetivo'**
   String get agentChangeNewGoal;
+
+  /// No description provided for @agentChangeEditGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'objetivo'**
+  String get agentChangeEditGoal;
 
   /// No description provided for @agentChangeRemoveGoal.
   ///
   /// In pt, this message translates to:
-  /// **'apagar a meta'**
+  /// **'apagar o objetivo'**
   String get agentChangeRemoveGoal;
 
   /// No description provided for @agentGoalPerWeek.
@@ -2111,36 +2117,6 @@ abstract class AppLocalizations {
   /// **'Buscar por nome, cliente ou tipo'**
   String get artifactsSearchHint;
 
-  /// No description provided for @goalsSection.
-  ///
-  /// In pt, this message translates to:
-  /// **'Metas'**
-  String get goalsSection;
-
-  /// No description provided for @goalNew.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nova meta'**
-  String get goalNew;
-
-  /// No description provided for @goalRevenue.
-  ///
-  /// In pt, this message translates to:
-  /// **'Faturamento'**
-  String get goalRevenue;
-
-  /// No description provided for @goalInMonth.
-  ///
-  /// In pt, this message translates to:
-  /// **'{label} · {month}'**
-  String goalInMonth(String label, String month);
-
-  /// No description provided for @goalThisWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'{label} · esta semana'**
-  String goalThisWeek(String label);
-
   /// No description provided for @goalOf.
   ///
   /// In pt, this message translates to:
@@ -2158,30 +2134,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'começa {date}'**
   String goalStartsOn(String date);
-
-  /// No description provided for @goalDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'feito'**
-  String get goalDone;
-
-  /// No description provided for @goalQueued.
-  ///
-  /// In pt, this message translates to:
-  /// **'na fila {value}'**
-  String goalQueued(String value);
-
-  /// No description provided for @goalMissing.
-  ///
-  /// In pt, this message translates to:
-  /// **'faltam {value}'**
-  String goalMissing(String value);
-
-  /// No description provided for @goalCovered.
-  ///
-  /// In pt, this message translates to:
-  /// **'a fila cobre o resto'**
-  String get goalCovered;
 
   /// No description provided for @artifactsAll.
   ///
@@ -2369,12 +2321,6 @@ abstract class AppLocalizations {
   /// **'Prazo'**
   String get artifactDeadline;
 
-  /// No description provided for @artifactCountsFor.
-  ///
-  /// In pt, this message translates to:
-  /// **'Conta para'**
-  String get artifactCountsFor;
-
   /// No description provided for @artifactPlace.
   ///
   /// In pt, this message translates to:
@@ -2398,84 +2344,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Pôr na fila'**
   String get artifactCreate;
-
-  /// No description provided for @goalSheetKind.
-  ///
-  /// In pt, this message translates to:
-  /// **'Medir'**
-  String get goalSheetKind;
-
-  /// No description provided for @goalKindMoney.
-  ///
-  /// In pt, this message translates to:
-  /// **'Faturamento'**
-  String get goalKindMoney;
-
-  /// No description provided for @goalKindCount.
-  ///
-  /// In pt, this message translates to:
-  /// **'Quantidade'**
-  String get goalKindCount;
-
-  /// No description provided for @goalAmount.
-  ///
-  /// In pt, this message translates to:
-  /// **'Quanto'**
-  String get goalAmount;
-
-  /// No description provided for @goalPer.
-  ///
-  /// In pt, this message translates to:
-  /// **'Por'**
-  String get goalPer;
-
-  /// No description provided for @goalPerWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'Semana'**
-  String get goalPerWeek;
-
-  /// No description provided for @goalPerMonth.
-  ///
-  /// In pt, this message translates to:
-  /// **'Mês'**
-  String get goalPerMonth;
-
-  /// No description provided for @goalWhen.
-  ///
-  /// In pt, this message translates to:
-  /// **'Quando'**
-  String get goalWhen;
-
-  /// No description provided for @goalNow.
-  ///
-  /// In pt, this message translates to:
-  /// **'Agora'**
-  String get goalNow;
-
-  /// No description provided for @goalNextMonth.
-  ///
-  /// In pt, this message translates to:
-  /// **'Em {month}'**
-  String goalNextMonth(String month);
-
-  /// No description provided for @goalReadbackMoney.
-  ///
-  /// In pt, this message translates to:
-  /// **'Faturar {amount} em {month}.'**
-  String goalReadbackMoney(String amount, String month);
-
-  /// No description provided for @goalReadbackFuture.
-  ///
-  /// In pt, this message translates to:
-  /// **'Fica guardada e passa a valer em 1º de {month}.'**
-  String goalReadbackFuture(String month);
-
-  /// No description provided for @goalCreate.
-  ///
-  /// In pt, this message translates to:
-  /// **'Criar meta'**
-  String get goalCreate;
 
   /// No description provided for @catalogAddType.
   ///
@@ -2525,18 +2393,6 @@ abstract class AppLocalizations {
   /// **'Tipo'**
   String get artifactKindLabel;
 
-  /// No description provided for @goalsEmpty.
-  ///
-  /// In pt, this message translates to:
-  /// **'Uma meta diz quanto você quer faturar, ou quantas entregas de um tipo fazer, por semana ou por mês.'**
-  String get goalsEmpty;
-
-  /// No description provided for @goalDeleteBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'As entregas continuam na fila; só a meta deixa de ser medida.'**
-  String get goalDeleteBody;
-
   /// No description provided for @artifactsEmpty.
   ///
   /// In pt, this message translates to:
@@ -2548,42 +2404,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Nada na fila com esse filtro.'**
   String get artifactsNoneHere;
-
-  /// No description provided for @goalCountNeedsType.
-  ///
-  /// In pt, this message translates to:
-  /// **'Crie um tipo no catálogo para contar as entregas dele.'**
-  String get goalCountNeedsType;
-
-  /// No description provided for @goalNextWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'Semana que vem'**
-  String get goalNextWeek;
-
-  /// No description provided for @goalReadbackMoneyWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'Faturar {amount} por semana.'**
-  String goalReadbackMoneyWeek(String amount);
-
-  /// No description provided for @goalReadbackCountMonth.
-  ///
-  /// In pt, this message translates to:
-  /// **'{type}: {count} em {month}.'**
-  String goalReadbackCountMonth(String type, String count, String month);
-
-  /// No description provided for @goalReadbackCountWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'{type}: {count} por semana.'**
-  String goalReadbackCountWeek(String type, String count);
-
-  /// No description provided for @goalReadbackFutureWeek.
-  ///
-  /// In pt, this message translates to:
-  /// **'Fica guardada e passa a valer na segunda-feira.'**
-  String get goalReadbackFutureWeek;
 
   /// No description provided for @stageAhead.
   ///
@@ -2710,6 +2530,192 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Tudo feito'**
   String get checklistAllDone;
+
+  /// No description provided for @shellGoalsTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivos'**
+  String get shellGoalsTab;
+
+  /// No description provided for @goalsNew.
+  ///
+  /// In pt, this message translates to:
+  /// **'Novo objetivo'**
+  String get goalsNew;
+
+  /// No description provided for @goalsEmptyTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto você quer faturar?'**
+  String get goalsEmptyTitle;
+
+  /// No description provided for @goalsEmptyBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Um objetivo é um valor a alcançar até um dia. Ele soma o valor de cada entrega que você entrega, e a barra diz se você está no ritmo.'**
+  String get goalsEmptyBody;
+
+  /// No description provided for @goalsUpcoming.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximos'**
+  String get goalsUpcoming;
+
+  /// No description provided for @goalsPast.
+  ///
+  /// In pt, this message translates to:
+  /// **'Anteriores'**
+  String get goalsPast;
+
+  /// No description provided for @goalMoneyLabel.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} até {date}'**
+  String goalMoneyLabel(String amount, String date);
+
+  /// No description provided for @goalRevenueBy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Até {date}'**
+  String goalRevenueBy(String date);
+
+  /// No description provided for @goalAchieved.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} faturados'**
+  String goalAchieved(String amount);
+
+  /// No description provided for @goalExpected.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} até hoje'**
+  String goalExpected(String amount);
+
+  /// No description provided for @goalBehind.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} abaixo do ritmo'**
+  String goalBehind(String amount);
+
+  /// No description provided for @goalAhead.
+  ///
+  /// In pt, this message translates to:
+  /// **'{amount} acima do ritmo'**
+  String goalAhead(String amount);
+
+  /// No description provided for @goalOnPace.
+  ///
+  /// In pt, this message translates to:
+  /// **'No ritmo'**
+  String get goalOnPace;
+
+  /// No description provided for @goalQueuedLine.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{Com 1 entrega até {date}, chega a {amount}} other{Com {count} entregas até {date}, chega a {amount}}}'**
+  String goalQueuedLine(int count, String amount, String date);
+
+  /// No description provided for @goalQueuedReaches.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{Com 1 entrega até {date}, alcança o objetivo} other{Com {count} entregas até {date}, alcança o objetivo}}'**
+  String goalQueuedReaches(int count, String date);
+
+  /// No description provided for @goalReached.
+  ///
+  /// In pt, this message translates to:
+  /// **'Alcançado'**
+  String get goalReached;
+
+  /// No description provided for @goalSheetAmount.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto faturar'**
+  String get goalSheetAmount;
+
+  /// No description provided for @goalSheetBy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Até quando'**
+  String get goalSheetBy;
+
+  /// No description provided for @goalByNextWeek.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próxima semana'**
+  String get goalByNextWeek;
+
+  /// No description provided for @goalByNextMonth.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximo mês'**
+  String get goalByNextMonth;
+
+  /// No description provided for @goalByOther.
+  ///
+  /// In pt, this message translates to:
+  /// **'Outra data'**
+  String get goalByOther;
+
+  /// No description provided for @goalReadbackBy.
+  ///
+  /// In pt, this message translates to:
+  /// **'Faturar {amount} até {date}.'**
+  String goalReadbackBy(String amount, String date);
+
+  /// No description provided for @goalReadbackFromToday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conta o que você entregar a partir de hoje: uns {amount} por semana.'**
+  String goalReadbackFromToday(String amount);
+
+  /// No description provided for @goalReadbackFromDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começa quando o atual termina, {date}: uns {amount} por semana.'**
+  String goalReadbackFromDay(String date, String amount);
+
+  /// No description provided for @goalCreateObjective.
+  ///
+  /// In pt, this message translates to:
+  /// **'Criar objetivo'**
+  String get goalCreateObjective;
+
+  /// No description provided for @goalDeleteObjectiveBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'As entregas continuam como estão; só o objetivo deixa de ser medido.'**
+  String get goalDeleteObjectiveBody;
+
+  /// No description provided for @artifactValueAdd.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adicionar valor'**
+  String get artifactValueAdd;
+
+  /// Title of the goal sheet opened on a goal, to change its amount or its day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Editar objetivo'**
+  String get goalEditTitle;
+
+  /// Button of the value sheet that takes a delivery's value away.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tirar valor'**
+  String get artifactValueClear;
+
+  /// Line under the value field on a delivery's page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto vale esta entrega. Conta para os objetivos quando ela for entregue.'**
+  String get artifactValueHint;
+
+  /// Readback on the goal sheet opened on a goal that already began: the day it began and what it asks per week.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conta desde {date}: uns {amount} por semana.'**
+  String goalReadbackSince(String date, String amount);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

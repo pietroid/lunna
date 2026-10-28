@@ -1461,78 +1461,78 @@ describe('the agent', () => {
       expect((bruno.body as AgentReply).plan).toBeUndefined();
     });
 
-    it('writes a kind and a goal that counts it, and takes both back', async () => {
+    it('writes a goal by a day, and takes it back', async () => {
+      await delivery('Tese', [], { value: 1500, deadline: '2026-03-20' });
+      await delivery('Curso', [], { value: 900, deadline: '2026-05-02' });
       model.steps = [
-        (messages) => {
-          expect(messages.at(-1)!.content).not.toContain('Catalogue');
-          return propose({
-            data: { what: 'tipo post e meta de 3 por semana' },
-            changes: [
-              {
-                do: 'new_kind',
-                as: 'n1',
-                name: 'Post',
-                shelf: 'Conteúdo',
-                minutes: 45,
-              },
-              {
-                do: 'new_goal',
-                measure: 'count',
-                kind: 'n1',
-                target: 3,
-                period: 'week',
-              },
-            ],
-          });
-        },
+        () =>
+          propose({
+            data: { what: 'meta de 4 mil até o fim de abril' },
+            changes: [{ do: 'new_goal', target: 4000, deadline: '2026-04-30' }],
+          }),
       ];
 
-      const asked = await ask('Quero 3 posts por semana');
+      const asked = await ask('Quero faturar 4 mil até o fim de abril');
       expect(asked.status).toBe(201);
       const plan = (asked.body as AgentReply).plan!;
-      expect(plan.changes.map((it) => it.kind)).toEqual([
-        'add_kind',
-        'add_goal',
-      ]);
-      expect(plan.changes[1]).toMatchObject({
-        title: 'Post',
-        goal: { kind: 'count', period: 'week', target: 3 },
+      expect(plan.changes[0]).toMatchObject({
+        kind: 'add_goal',
+        title: 'Faturamento',
+        goal: { kind: 'money', target: 4000, deadline: '2026-04-30' },
       });
 
       await applyAndUndo(plan.id, async () => {
-        const artifacts = app.get(ArtifactStore);
-        const [post_] = await artifacts.types(USER);
-        expect(post_).toMatchObject({ name: 'Post', minutes: 45 });
-        expect(await artifacts.goals(USER)).toMatchObject([
-          { kind: 'count', typeId: post_.id, target: 3, period: 'week' },
+        expect(await app.get(ArtifactStore).goals(USER)).toMatchObject([
+          {
+            kind: 'money',
+            target: 4000,
+            starts: '2026-03-10',
+            deadline: '2026-04-30',
+          },
         ]);
       });
 
-      // Read on the next turn's board, by ref.
+      // Read on the next turn's board, by ref: the goal finds the Tese,
+      // due by its day, and leaves the Curso, due after it.
       await post(`/agent/plans/${plan.id}/apply?days=3`);
       model.steps = [say('Certo.')];
       expect((await ask('E as metas?')).status).toBe(201);
       const context = model.seen.at(-1)!.at(-1)!.content;
       expect(context).toContain(
-        'Catalogue (kinds):\n  k1 · Post · Conteúdo · 45 min',
+        'Goals:\n  g1 · money · R$ 4.000 from 10/03 to 30/04 · delivered R$ 0, open deliveries due by then R$ 1.500 (1)',
       );
-      expect(context).toContain(
-        'Goals:\n  g1 · count of Post · 3 per week · delivered 0, queued 0',
-      );
+    });
+
+    it('asks for the day a goal is to be reached by', async () => {
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'meta de 4 mil' },
+            changes: [{ do: 'new_goal', target: 4000 }],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toContain('new_goal needs deadline');
+          return say('Até quando?')(messages);
+        },
+      ];
+
+      const asked = await ask('Quero faturar 4 mil');
+      expect(asked.status).toBe(201);
+      expect((asked.body as AgentReply).plan).toBeUndefined();
     });
 
     it('removes a goal, and the deliveries stay', async () => {
       await app.get(ArtifactStore).insertGoal(USER, {
         kind: 'money',
         target: 4000,
-        period: 'month',
         starts: '2026-03-01',
+        deadline: '2026-03-31',
       });
       await delivery('Tese', [], { value: 1500, deadline: '2026-03-20' });
       model.steps = [
         (messages) => {
           expect(messages.at(-1)!.content).toContain(
-            'g1 · money · R$ 4.000 per month · delivered R$ 0, queued R$ 1.500',
+            'g1 · money · R$ 4.000 from 01/03 to 31/03 · delivered R$ 0, open deliveries due by then R$ 1.500 (1)',
           );
           return propose({
             data: { what: 'tirar a meta' },
@@ -1547,12 +1547,92 @@ describe('the agent', () => {
       expect(plan.changes[0]).toMatchObject({
         kind: 'remove_goal',
         title: 'Faturamento',
-        goal: { kind: 'money', period: 'month', target: 4000 },
+        goal: { kind: 'money', target: 4000, deadline: '2026-03-31' },
       });
       await applyAndUndo(plan.id, async () => {
         expect(await app.get(ArtifactStore).goals(USER)).toEqual([]);
         expect(await app.get(ArtifactStore).list(USER)).toHaveLength(1);
       });
+    });
+
+    it('gives a goal another amount and day, and takes it back', async () => {
+      const goals = app.get(ArtifactStore);
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 4000,
+        starts: '2026-03-01',
+        deadline: '2026-03-31',
+      });
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 5000,
+        starts: '2026-04-01',
+        deadline: '2026-04-30',
+      });
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'meta de 6 mil até o dia 25' },
+            changes: [
+              {
+                do: 'edit_goal',
+                ref: 'g1',
+                target: 6000,
+                deadline: '2026-03-25',
+              },
+            ],
+          }),
+      ];
+
+      const asked = await ask('Muda a meta pra 6 mil até o dia 25');
+      expect(asked.status).toBe(201);
+      const plan = (asked.body as AgentReply).plan!;
+      expect(plan.changes[0]).toMatchObject({
+        kind: 'edit_goal',
+        title: 'Faturamento',
+        goal: { kind: 'money', target: 6000, deadline: '2026-03-25' },
+        wasGoal: { kind: 'money', target: 4000, deadline: '2026-03-31' },
+      });
+      await applyAndUndo(plan.id, async () => {
+        expect(await goals.goals(USER)).toMatchObject([
+          { target: 6000, starts: '2026-03-01', deadline: '2026-03-25' },
+          { target: 5000, starts: '2026-04-01', deadline: '2026-04-30' },
+        ]);
+      });
+    });
+
+    it("refuses a goal's day that reaches the next goal", async () => {
+      const goals = app.get(ArtifactStore);
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 4000,
+        starts: '2026-03-01',
+        deadline: '2026-03-31',
+      });
+      await goals.insertGoal(USER, {
+        kind: 'money',
+        target: 5000,
+        starts: '2026-04-01',
+        deadline: '2026-04-30',
+      });
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'meta até 10/04' },
+            changes: [{ do: 'edit_goal', ref: 'g1', deadline: '2026-04-10' }],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toContain(
+            'O próximo objetivo começa em 01/04',
+          );
+          return say('O próximo objetivo começa em 01/04.')(messages);
+        },
+      ];
+
+      const asked = await ask('Estica a meta até 10/04');
+      expect(asked.status).toBe(201);
+      expect((asked.body as AgentReply).plan).toBeUndefined();
+      expect((await goals.goals(USER))[0].deadline).toBe('2026-03-31');
     });
 
     it('moves a delivery in its queue and gives another a new deadline', async () => {

@@ -21,21 +21,13 @@ import {
   CatalogCategoryView,
   CatalogType,
   Goal,
-  GoalKind,
-  GoalPeriod,
-  GoalStart,
+  GoalEdit,
   GoalView,
   NewArtifact,
   QueueEnd,
   TaskPlace,
 } from './artifact.types';
-import {
-  addDays,
-  daysBetween,
-  endOfMonth,
-  nextStretch,
-  stretchStart,
-} from './stretch';
+import { addDays, daysBetween, endOfMonth } from './stretch';
 
 /** What beginning a delivery with no day is refused with. */
 const NEEDS_DEADLINE = 'Dê um prazo para começar a entrega.';
@@ -352,35 +344,58 @@ export class ArtifactsService {
   }
 
   /**
-   * Writes a goal down, counting from the stretch [now] is in or from the
-   * next one. Answers its id.
+   * Writes a money goal down: [input.target] reais by [input.deadline]. It
+   * starts where the last goal ends, the day after its deadline, or today
+   * when no goal reaches today. Answers its id.
    */
   async addGoal(
     user: CalendarUser,
-    input: {
-      kind: GoalKind;
-      target: number;
-      period: GoalPeriod;
-      typeId?: string;
-      start: GoalStart;
-    },
+    input: { target: number; deadline: string },
     now = new Date(),
   ): Promise<string> {
-    if (input.kind === 'count') await this._type(user, input.typeId!);
+    const today = isoDayIn(now, this._timeline.zone(user));
+    const last = (await this._artifacts.goals(user))
+      .map((it) => it.deadline)
+      .sort()
+      .at(-1);
+    const starts =
+      last !== undefined && last >= today ? addDays(last, 1) : today;
+    refuseDeadline(input.deadline, starts);
 
-    const current = stretchStart(
-      isoDayIn(now, this._timeline.zone(user)),
-      input.period,
-    );
     const goal = await this._artifacts.insertGoal(user, {
-      kind: input.kind,
+      kind: 'money',
       target: input.target,
-      period: input.period,
-      ...(input.kind === 'count' ? { typeId: input.typeId } : {}),
-      starts:
-        input.start === 'now' ? current : nextStretch(current, input.period),
+      starts,
+      deadline: input.deadline,
     });
     return goal.id;
+  }
+
+  /**
+   * Gives a goal another amount or another last day, which stays after its
+   * first and before the next goal's first, so two never count the same day.
+   */
+  async editGoal(
+    user: CalendarUser,
+    id: string,
+    edit: GoalEdit,
+  ): Promise<void> {
+    const goals = await this._artifacts.goals(user);
+    const goal = goals.find((it) => it.id === id);
+    if (goal === undefined) throw new NotFoundException(`No goal "${id}"`);
+    if (edit.deadline !== undefined) {
+      refuseDeadline(edit.deadline, goal.starts);
+      const next = goals
+        .filter((it) => it.starts > goal.starts)
+        .map((it) => it.starts)
+        .sort()[0];
+      if (next !== undefined && edit.deadline >= next) {
+        throw new BadRequestException(
+          `O próximo objetivo começa em ${ddmm(next)}: escolha um dia antes.`,
+        );
+      }
+    }
+    await this._artifacts.updateGoal(user, id, edit);
   }
 
   async removeGoal(user: CalendarUser, id: string): Promise<void> {
@@ -467,14 +482,15 @@ export function measureGoals(
 }
 
 /**
- * [goal] over the stretch [today] is in, or over its first one while that
- * has not come.
+ * [goal] from its first day to its last.
  *
- * What counts as done is what was delivered inside the stretch (by the day
- * it was delivered on, in her zone): its value, or one for each of the
- * kind. What counts as queued is what is still open and due before the
- * stretch ends: in the stretch being measured, also what is overdue, since
- * delivering it now counts now; in one still ahead, only what falls in it.
+ * What counts as done is what was delivered between them (by the day it
+ * was delivered on, in her zone): its value, or one for each of the kind.
+ * What counts as queued is what is still open and due by its last day,
+ * found by its deadline and tied to no goal: in the goal running today,
+ * also what is overdue, since delivering it now counts now; in one still
+ * ahead, only what falls in it; in one gone by, nothing. Goals follow each
+ * other, so each open delivery is queued for one goal at most.
  */
 function measure(
   goal: Goal,
@@ -483,20 +499,29 @@ function measure(
   done: ArtifactView[],
   doneDay: Map<string, string>,
 ): GoalView {
-  const future = goal.starts > today;
-  const start = future ? goal.starts : stretchStart(today, goal.period);
-  const end = nextStretch(start, goal.period);
+  const start = goal.starts;
+  const end = addDays(goal.deadline, 1);
+  const running = start <= today;
   const counts = (it: ArtifactView) =>
     goal.kind === 'money' ? (it.value ?? 0) : it.typeId === goal.typeId ? 1 : 0;
   const sum = (list: ArtifactView[]) =>
     list.reduce((total, it) => total + counts(it), 0);
+  const queued =
+    end <= today
+      ? []
+      : open.filter(
+          (it) =>
+            it.deadline !== null &&
+            it.deadline < end &&
+            (running || it.deadline >= start) &&
+            counts(it) > 0,
+        );
 
   return {
     id: goal.id,
     kind: goal.kind,
     typeId: goal.typeId ?? null,
     target: goal.target,
-    period: goal.period,
     start,
     end,
     done: sum(
@@ -505,15 +530,21 @@ function measure(
         return on >= start && on < end;
       }),
     ),
-    queued: sum(
-      open.filter(
-        (it) =>
-          it.deadline !== null &&
-          it.deadline < end &&
-          (!future || it.deadline >= start),
-      ),
-    ),
+    queued: sum(queued),
+    queuedCount: queued.length,
   };
+}
+
+/** A goal's last day, refused unless it comes after its first. */
+function refuseDeadline(deadline: string, starts: string): void {
+  if (deadline <= starts) {
+    throw new BadRequestException(`Escolha um dia depois de ${ddmm(starts)}.`);
+  }
+}
+
+/** `2026-11-30` as a person reads it: 30/11. */
+function ddmm(day: string): string {
+  return `${day.slice(8, 10)}/${day.slice(5, 7)}`;
 }
 
 /**

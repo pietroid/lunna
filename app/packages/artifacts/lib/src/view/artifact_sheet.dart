@@ -52,8 +52,8 @@ Future<void> showArtifactSheet(
 /// and how the day may cut it, and leaves only the name and the day to
 /// write. A one-off delivery, with no kind, is the last line of the
 /// catalogue, and is timed and priced by hand. The second step reads it all
-/// back as rows, each one changed in place, and says which goal it will
-/// count towards.
+/// back as rows, each one changed in place. It names no goal: a goal finds
+/// the deliveries that count towards it by itself.
 /// {@endtemplate}
 class ArtifactSheet extends StatefulWidget {
   /// {@macro artifact_sheet}
@@ -106,7 +106,11 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
   bool _loose = false;
   late final _name = TextEditingController(text: widget.initialName);
   final _search = TextEditingController();
-  final _value = TextEditingController();
+
+  /// Its value, in whole reais: the kind's price until she changes it.
+  late final _value = TextEditingController(
+    text: widget.initialType?.price?.toString(),
+  );
   late bool _split = widget.initialType?.blockMinutes != null;
   late bool _top = widget.top;
   late DateTime? _deadline =
@@ -135,6 +139,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       _loose = false;
       _split = type.blockMinutes != null;
       _name.text = '${type.name} · ';
+      _value.text = type.price?.toString() ?? '';
     });
   }
 
@@ -174,7 +179,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     setState(() => _minutes = picked.inMinutes);
   }
 
-  int? get _looseValue => int.tryParse(_value.text.trim());
+  int? get _typedValue => int.tryParse(_value.text.trim());
 
   Future<void> _create() async {
     final title = _name.text.trim();
@@ -185,7 +190,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
       title: title,
       type: type,
       minutes: type == null ? _minutes : null,
-      value: type == null ? _looseValue : null,
+      value: _typedValue,
       blockMinutes: _split ? (type?.blockMinutes ?? _defaultBlock) : null,
       deadline: _deadline,
       top: _top,
@@ -204,9 +209,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     return SheetFrame(
       title: l10n.artifactsNew,
       tall: picking,
-      child: picking
-          ? _catalog(l10n, state.catalog)
-          : _details(l10n, state.goals),
+      child: picking ? _catalog(l10n, state.catalog) : _details(l10n),
     );
   }
 
@@ -316,13 +319,11 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
     );
   }
 
-  Widget _details(AppLocalizations l10n, List<Goal> goals) {
+  Widget _details(AppLocalizations l10n) {
     final now = clock.now();
     final type = _type;
     final deadline = _deadline;
     final block = type?.blockMinutes ?? _defaultBlock;
-    final price = type == null ? _looseValue : type.price;
-    final goal = _goalFor(goals, type, price, deadline ?? now);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -397,21 +398,19 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
                 ],
               ),
             ),
-            if (type == null)
-              SheetRow(
-                iconData: AppIcons.value,
-                label: l10n.artifactValue,
-                trailing: MoneyField(
-                  controller: _value,
-                  onChanged: () => setState(() {}),
-                ),
-              )
-            else if (price != null)
-              SheetRow(
-                iconData: AppIcons.value,
-                label: l10n.artifactValue,
-                value: formatMoney(price),
+            // Every delivery may be worth something, a kind's price being
+            // only where it starts: money goals count it once delivered.
+            SheetRow(
+              iconData: AppIcons.value,
+              label: l10n.artifactValue,
+              note: type?.price == null
+                  ? null
+                  : l10n.artifactTimeFromType(type!.name),
+              trailing: MoneyField(
+                controller: _value,
+                onChanged: () => setState(() {}),
               ),
+            ),
             SheetRow(
               iconData: AppIcons.calendar,
               label: l10n.artifactDeadline,
@@ -420,12 +419,6 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
                   : dayName(l10n, deadline, now),
               onTap: () => unawaited(_pickDeadline()),
             ),
-            if (goal != null)
-              SheetRow(
-                iconData: AppIcons.goal,
-                label: l10n.artifactCountsFor,
-                value: goalLabel(l10n, goal),
-              ),
           ],
         ),
         // Begun at once, it is placed by how late it is, not in the queue.
@@ -457,27 +450,6 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
         ),
       ],
     );
-  }
-
-  /// The goal a delivery due on [day] counts towards: the money goal of
-  /// that stretch when it is worth something, or the count goal of its kind.
-  Goal? _goalFor(
-    List<Goal> goals,
-    CatalogType? type,
-    int? value,
-    DateTime day,
-  ) {
-    for (final goal in goals) {
-      final inStretch = !day.isBefore(goal.start) && day.isBefore(goal.end);
-      if (!inStretch) continue;
-      if (goal.kind == GoalKind.money && (value ?? 0) > 0) return goal;
-      if (goal.kind == GoalKind.count &&
-          type != null &&
-          goal.type?.id == type.id) {
-        return goal;
-      }
-    }
-    return null;
   }
 }
 

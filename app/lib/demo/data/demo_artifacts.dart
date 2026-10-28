@@ -67,6 +67,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
     String id, {
     String? title,
     DateTime? Function()? deadline,
+    int? Function()? value,
     String? notes,
     bool? done,
     bool? started,
@@ -76,6 +77,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
         it.copyWith(
           title: title,
           deadline: deadline,
+          value: value,
           notes: notes,
           doneAt: done == null ? null : () => done ? clock.now() : null,
           startedAt: started == null
@@ -190,10 +192,10 @@ ArtifactsData demoArtifacts(AppLocalizations l10n) {
       Goal(
         id: 'mes',
         kind: GoalKind.money,
-        period: GoalPeriod.month,
         target: 6000,
         done: 3850,
         queued: 1050,
+        queuedCount: 3,
         start: month,
         end: DateTime(now.year, now.month + 1),
       ),

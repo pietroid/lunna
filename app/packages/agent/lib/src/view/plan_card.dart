@@ -301,6 +301,23 @@ class _ChangeRow extends StatelessWidget {
             ].join(' · '),
           ),
         );
+      case PlanChangeKind.editGoal:
+        final goal = change.goal;
+        final wasGoal = change.wasGoal;
+        return AnswerRow(
+          mark: const AnswerMark(icon: AppIcons.goal),
+          title: change.title,
+          detail: TextSpan(
+            children: [
+              TextSpan(text: '${l10n.agentChangeEditGoal} · '),
+              if (wasGoal != null) ...[
+                TextSpan(text: _goal(l10n, wasGoal), style: struck),
+                const TextSpan(text: ' → '),
+              ],
+              if (goal != null) TextSpan(text: _goal(l10n, goal)),
+            ],
+          ),
+        );
       case PlanChangeKind.removeGoal:
         return AnswerRow(
           mark: const AnswerMark(
@@ -645,9 +662,12 @@ String _reais(int reais) {
   return 'R\$ ${reais < 0 ? '-' : ''}$grouped';
 }
 
+/// "R$ 10.000 até 30/11"; in a plan kept from before goals had a day,
 /// "R$ 8.000 por mês", "3 por semana".
 String _goal(AppLocalizations l10n, PlanGoal goal) {
   final amount = goal.money ? _reais(goal.target) : '${goal.target}';
+  final deadline = goal.deadline;
+  if (deadline != null) return '$amount ${l10n.artifactUntil(_ddmm(deadline))}';
   return goal.monthly
       ? l10n.agentGoalPerMonth(amount)
       : l10n.agentGoalPerWeek(amount);

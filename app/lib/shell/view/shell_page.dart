@@ -12,7 +12,7 @@ import 'package:lunna/notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template shell_page}
-/// The app's three destinations, and the button that writes something down.
+/// The app's four destinations, and the button that writes something down.
 ///
 /// The destinations are kept alive behind an [IndexedStack] rather than
 /// rebuilt on every tap: moving between them is not navigation, it is looking
@@ -20,10 +20,10 @@ import 'package:timeline/timeline.dart';
 ///
 /// Every tab has the agent's bar at its foot ([AskDock]), in the same
 /// place, and the + beside it. The + writes down whatever the tab in front is
-/// about. On Entregas
-/// that is a delivery. Anywhere else it is something on the timeline, on the
-/// day Tempo is showing: at the first free hour in sight on the calendar, at
-/// the end of the day at the top of the list; from Menu it brings Tempo
+/// about. On Entregas that is a delivery; on Objetivos, a goal. Anywhere
+/// else it is something on the timeline, on the day Tempo is showing: at
+/// the first free hour in sight on the calendar, at the end of the day at
+/// the top of the list; from Menu it brings Tempo
 /// forward first, so the new block is on screen when the sheet closes.
 ///
 /// Entregas is read again each time it comes to the front, since the hours
@@ -44,8 +44,11 @@ class _ShellPageState extends State<ShellPage> {
   /// Entregas.
   static const _artifactsIndex = 1;
 
+  /// Objetivos, the goals.
+  static const _goalsIndex = 2;
+
   /// Menu, where the working day's hours are set.
-  static const _menuIndex = 2;
+  static const _menuIndex = 3;
 
   int _index = _timelineIndex;
 
@@ -57,7 +60,7 @@ class _ShellPageState extends State<ShellPage> {
 
   /// The name each tab is reported under: they are one route, so the
   /// router never sees them change.
-  static const _screens = ['Tempo', 'Entregas', 'Menu'];
+  static const _screens = ['Tempo', 'Entregas', 'Objetivos', 'Menu'];
 
   @override
   void initState() {
@@ -67,7 +70,7 @@ class _ShellPageState extends State<ShellPage> {
   }
 
   void _onSelected(int index) {
-    if (index == _artifactsIndex) {
+    if (index == _artifactsIndex || index == _goalsIndex) {
       unawaited(context.read<ArtifactsCubit>().load());
     }
     if (index != _index) {
@@ -79,6 +82,10 @@ class _ShellPageState extends State<ShellPage> {
   Future<void> _onFabPressed() async {
     if (_index == _artifactsIndex) {
       await showArtifactSheet(context);
+      return;
+    }
+    if (_index == _goalsIndex) {
+      await showGoalSheet(context);
       return;
     }
 
@@ -108,7 +115,12 @@ class _ShellPageState extends State<ShellPage> {
           extendBody: true,
           body: IndexedStack(
             index: _index,
-            children: const [HomePage(), ArtifactsPage(), MenuPage()],
+            children: const [
+              HomePage(),
+              ArtifactsPage(),
+              GoalsPage(),
+              MenuPage(),
+            ],
           ),
           // One dock for the three tabs: the bar and a recording on it stay
           // as they are when the tab changes, and only the + beside it
@@ -117,9 +129,11 @@ class _ShellPageState extends State<ShellPage> {
             // The conversation is about the day Tempo is showing.
             day: () => _aim.value?.at,
             fab: AppFab(
-              tooltip: _index == _artifactsIndex
-                  ? l10n.artifactsNew
-                  : l10n.shellWriteDown,
+              tooltip: switch (_index) {
+                _artifactsIndex => l10n.artifactsNew,
+                _goalsIndex => l10n.goalsNew,
+                _ => l10n.shellWriteDown,
+              },
               onPressed: () => unawaited(_onFabPressed()),
             ),
           ),
@@ -136,6 +150,10 @@ class _ShellPageState extends State<ShellPage> {
               AppBottomBarItem(
                 iconData: AppIcons.artifacts,
                 label: l10n.shellArtifactsTab,
+              ),
+              AppBottomBarItem(
+                iconData: AppIcons.goal,
+                label: l10n.shellGoalsTab,
               ),
               AppBottomBarItem(
                 iconData: AppIcons.menu,

@@ -167,7 +167,7 @@ void main() {
       expect(adjusted, isTrue);
     });
 
-    testWidgets('draws Entregas’ changes: deliver, move, kind and goals', (
+    testWidgets('draws Entregas’ changes: deliver, move, kind and goals (new, changed, gone)', (
       tester,
     ) async {
       final plan = AgentPlan.fromJson(const {
@@ -205,7 +205,27 @@ void main() {
             'kind': 'add_goal',
             'title': 'Faturamento',
             'minutes': 0,
-            'goal': {'kind': 'money', 'period': 'month', 'target': 8000},
+            'goal': {
+              'kind': 'money',
+              'target': 8000,
+              'deadline': '2026-11-30',
+            },
+          },
+          {
+            'kind': 'edit_goal',
+            'id': 'g2',
+            'title': 'Faturamento',
+            'minutes': 0,
+            'goal': {
+              'kind': 'money',
+              'target': 9000,
+              'deadline': '2026-12-31',
+            },
+            'wasGoal': {
+              'kind': 'money',
+              'target': 6000,
+              'deadline': '2026-12-31',
+            },
           },
         ],
       });
@@ -227,8 +247,10 @@ void main() {
         r'entregue · R$ 4.900 · 1 tarefa ainda aberta',
         'na fila, antes de Mapa da Ana',
         r'novo tipo · Atendimentos · 3h · R$ 350',
-        r'nova meta · R$ 8.000 por mês',
-        'apagar a meta · 3 por semana',
+        r'novo objetivo · R$ 8.000 até 30/11',
+        r'objetivo · R$ 6.000 até 31/12 → R$ 9.000 até 31/12',
+        // A plan kept from before goals had a day.
+        'apagar o objetivo · 3 por semana',
       ]) {
         expect(find.textContaining(detail, findRichText: true), findsOneWidget);
       }

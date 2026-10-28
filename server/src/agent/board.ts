@@ -303,7 +303,7 @@ export class Board {
       this.ref(ref)?.title ??
       this.artifact(ref)?.artifact.title ??
       this.kind(ref)?.type.name ??
-      (this.goal(ref) === undefined ? undefined : 'a meta')
+      (this.goal(ref) === undefined ? undefined : 'o objetivo')
     );
   }
 
@@ -686,8 +686,8 @@ export class Board {
     return [
       it.ref,
       money ? 'money' : `count of ${kind?.type.name ?? 'a kind'}`,
-      `${amount(view.target)} per ${view.period}${view.start > this.today ? ` from ${ddmm(view.start)}` : ''}`,
-      `delivered ${amount(view.done)}, queued ${amount(view.queued)}`,
+      `${amount(view.target)} from ${ddmm(view.start)} to ${ddmm(it.goal.deadline)}${view.end <= this.today ? ' (over)' : view.start > this.today ? ' (to come)' : ''}`,
+      `delivered ${amount(view.done)}, open deliveries due by then ${amount(view.queued)} (${view.queuedCount})`,
     ].join(' · ');
   }
 

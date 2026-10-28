@@ -5,19 +5,16 @@ import 'package:artifacts/src/bloc/artifacts_cubit.dart';
 import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/sheet_frame.dart';
+import 'package:artifacts/src/view/sheet_rows.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
-/// Opens the sheet that writes a goal down.
+/// Opens the sheet that writes a goal down, or changes [goal].
 ///
 /// The sheet is its own route, so it is handed the cubit it writes with.
-Future<void> showGoalSheet(
-  BuildContext context, {
-  GoalKind kind = GoalKind.money,
-  int? amount,
-}) {
+Future<void> showGoalSheet(BuildContext context, {int? amount, Goal? goal}) {
   final cubit = context.read<ArtifactsCubit>();
   return showModalBottomSheet<void>(
     context: context,
@@ -26,43 +23,57 @@ Future<void> showGoalSheet(
     barrierColor: AppColors.bg.withValues(alpha: 0.72),
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: GoalSheet(initialKind: kind, initialAmount: amount),
+      child: GoalSheet(initialAmount: amount ?? goal?.target, goal: goal),
     ),
   );
 }
 
+/// The day a new goal begins counting at [now], after [goals]: the day
+/// after the last one's day when that is still ahead, otherwise today.
+/// Goals follow each other, so money is never counted twice.
+DateTime goalStartAfter(List<Goal> goals, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  final ends = goals.map((g) => g.end).where((end) => end.isAfter(today));
+  if (ends.isEmpty) return today;
+  return ends.reduce((a, b) => a.isAfter(b) ? a : b);
+}
+
+/// The two days a goal is offered, counted from [from]: the Sunday of the
+/// week after its own, and the last day of the month after its own.
+({DateTime week, DateTime month}) goalSuggestions(DateTime from) => (
+  week: DateTime(from.year, from.month, from.day + 7 - from.weekday + 7),
+  month: DateTime(from.year, from.month + 2, 0),
+);
+
 /// {@template goal_sheet}
-/// A goal in four choices: what it measures, how much, over what stretch,
-/// and from when.
+/// A goal in two choices: how much to bill, and by when.
 ///
-/// The smallest goal that says something: an amount of money, or a count
-/// of one kind of delivery, per week or per month. One that starts with the
-/// next stretch waits, drawn quiet among the goals, and begins counting on
-/// its first day. A line at the foot reads it back as a sentence.
+/// The day is offered rather than asked: the end of next week, or the end
+/// of next month (picked when it opens), and any other day on the wheel.
+/// A goal begins where the last one ends, or today, so the line at the foot
+/// reads it back with the day it begins and what it asks per week.
+///
+/// Opened on a [goal], it changes that one: its amount and its day, on
+/// the wheel, from the day it began.
 /// {@endtemplate}
 class GoalSheet extends StatefulWidget {
   /// {@macro goal_sheet}
-  const GoalSheet({
-    this.initialKind = GoalKind.money,
-    this.initialAmount,
-    super.key,
-  });
-
-  /// What it measures when it opens.
-  final GoalKind initialKind;
+  const GoalSheet({this.initialAmount, this.goal, super.key});
 
   /// How much it asks for when it opens.
   final int? initialAmount;
+
+  /// The goal it changes; null writes a new one.
+  final Goal? goal;
 
   @override
   State<GoalSheet> createState() => _GoalSheetState();
 }
 
 class _GoalSheetState extends State<GoalSheet> {
-  late GoalKind _kind = widget.initialKind;
-  GoalPeriod _period = GoalPeriod.month;
-  bool _next = false;
-  String? _typeId;
+  /// Which day: next week, next month, or [_other].
+  late int _by = widget.goal == null ? 1 : 2;
+  late DateTime? _other = widget.goal?.lastDay;
   late final _amount = TextEditingController(
     text: widget.initialAmount?.toString(),
   );
@@ -74,16 +85,31 @@ class _GoalSheetState extends State<GoalSheet> {
     super.dispose();
   }
 
-  Future<void> _save(CatalogType? type, int target) async {
-    final cubit = context.read<ArtifactsCubit>();
-    setState(() => _busy = true);
-    final made = await cubit.addGoal(
-      kind: _kind,
-      target: target,
-      period: _period,
-      type: type,
-      next: _next,
+  Future<void> _pickOther(DateTime from, DateTime initial) async {
+    final picked = await AppWheelPicker.dayAndTime(
+      context,
+      initial: initial,
+      // Its last day comes after its first.
+      earliest: DateTime(from.year, from.month, from.day + 1),
     );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _by = 2;
+      _other = DateTime(picked.year, picked.month, picked.day);
+    });
+  }
+
+  Future<void> _save(int target, DateTime by) async {
+    final cubit = context.read<ArtifactsCubit>();
+    final goal = widget.goal;
+    setState(() => _busy = true);
+    final made = goal == null
+        ? await cubit.addGoal(target: target, deadline: by)
+        : await cubit.editGoal(
+            goal.id,
+            target: target == goal.target ? null : target,
+            deadline: by == goal.lastDay ? null : by,
+          );
     if (!mounted) return;
     setState(() => _busy = false);
     if (made) unawaited(Navigator.of(context).maybePop());
@@ -93,122 +119,83 @@ class _GoalSheetState extends State<GoalSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final now = clock.now();
-    final types = context
-        .watch<ArtifactsCubit>()
-        .state
-        .catalog
-        .expand((c) => c.types)
-        .toList();
-    final money = _kind == GoalKind.money;
-    final type =
-        types.where((t) => t.id == _typeId).firstOrNull ?? types.firstOrNull;
-    final month = monthName(
-      l10n,
-      _next ? DateTime(now.year, now.month + 1) : now,
-    );
+    final goals = context.watch<ArtifactsCubit>().state.data?.goals ?? [];
+    final editing = widget.goal;
+    final from = editing?.start ?? goalStartAfter(goals, now);
+    final offered = goalSuggestions(from);
+    final by = switch (_by) {
+      0 => offered.week,
+      1 => offered.month,
+      _ => _other ?? offered.month,
+    };
     final target = int.tryParse(_amount.text.trim()) ?? 0;
-    final amount = money ? formatMoney(target) : '$target';
-    final weekly = _period == GoalPeriod.week;
-    final ready = target > 0 && (money || type != null) && !_busy;
+    final weeks = (by.difference(from).inDays + 1) / 7;
+    final perWeek = weeks <= 0 ? target : (target / weeks).round();
+    final today = DateTime(now.year, now.month, now.day);
+    final ready = target > 0 && !_busy;
 
     return SheetFrame(
-      title: l10n.goalNew,
+      title: editing == null ? l10n.goalsNew : l10n.goalEditTitle,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Line(
-            label: l10n.goalSheetKind,
-            child: AppSegmented(
-              selected: _kind.index,
-              onSelected: (i) => setState(() => _kind = GoalKind.values[i]),
-              segments: [
-                AppSegment(label: l10n.goalKindMoney),
-                AppSegment(label: l10n.goalKindCount),
-              ],
-            ),
-          ),
-          if (!money)
-            if (types.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
-                child: Text(
-                  l10n.goalCountNeedsType,
-                  style: AppTypography.label.copyWith(color: AppColors.ink2),
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  child: AppSegmented(
-                    selected: types.indexOf(type!),
-                    onSelected: (i) => setState(() => _typeId = types[i].id),
-                    segments: [
-                      for (final it in types) AppSegment(label: it.name),
-                    ],
-                  ),
-                ),
-              ),
-          _Line(
-            label: l10n.goalAmount,
-            child: Container(
-              width: 150,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.s4,
-                vertical: AppSpacing.s2,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.fill,
-                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-              ),
-              child: TextField(
-                controller: _amount,
-                autofocus: widget.initialAmount == null,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                textAlign: TextAlign.end,
-                style: AppTypography.title,
-                cursorColor: AppColors.ink,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration.collapsed(
-                  hintText: money ? '8000' : '3',
-                  hintStyle: AppTypography.title.copyWith(
-                    color: AppColors.ink3,
-                  ),
-                ).copyWith(prefixText: money ? r'R$ ' : null),
+          Text(l10n.goalSheetAmount, style: AppTypography.label),
+          TextField(
+            controller: _amount,
+            autofocus: widget.initialAmount == null,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            style: AppTypography.headline,
+            cursorColor: AppColors.ink,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: '10000',
+              hintStyle: AppTypography.headline.copyWith(color: AppColors.ink3),
+              prefixText: r'R$ ',
+              prefixStyle: AppTypography.headline,
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.s3,
               ),
             ),
           ),
-          _Line(
-            label: l10n.goalPer,
-            child: AppSegmented(
-              selected: _period.index,
-              onSelected: (i) => setState(() => _period = GoalPeriod.values[i]),
-              segments: [
-                AppSegment(label: l10n.goalPerWeek),
-                AppSegment(label: l10n.goalPerMonth),
-              ],
+          const SizedBox(height: AppSpacing.s3),
+          Text(l10n.goalSheetBy, style: AppTypography.label),
+          const SizedBox(height: AppSpacing.s2),
+          if (editing == null) ...[
+            // Three choices on one line, shrunk rather than cut on a
+            // narrow phone.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: AppSegmented(
+                selected: _by,
+                onSelected: (i) => i == 2
+                    ? unawaited(_pickOther(from, _other ?? by))
+                    : setState(() => _by = i),
+                segments: [
+                  AppSegment(label: l10n.goalByNextWeek),
+                  AppSegment(label: l10n.goalByNextMonth),
+                  AppSegment(label: l10n.goalByOther),
+                ],
+              ),
             ),
-          ),
-          _Line(
-            label: l10n.goalWhen,
-            child: AppSegmented(
-              selected: _next ? 1 : 0,
-              onSelected: (i) => setState(() => _next = i == 1),
-              segments: [
-                AppSegment(label: l10n.goalNow),
-                AppSegment(
-                  label: weekly
-                      ? l10n.goalNextWeek
-                      : l10n.goalNextMonth(
-                          monthName(l10n, DateTime(now.year, now.month + 1)),
-                        ),
-                ),
-              ],
-            ),
+            const SizedBox(height: AppSpacing.s3),
+          ],
+          SheetGroup(
+            children: [
+              SheetRow(
+                iconData: AppIcons.calendar,
+                label: l10n.artifactDeadline,
+                value: dayName(l10n, by, now),
+                onTap: () => unawaited(_pickOther(from, by)),
+              ),
+            ],
           ),
           if (target > 0) ...[
             const SizedBox(height: AppSpacing.s5),
@@ -229,29 +216,26 @@ class _GoalSheetState extends State<GoalSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        money
-                            ? weekly
-                                  ? l10n.goalReadbackMoneyWeek(amount)
-                                  : l10n.goalReadbackMoney(amount, month)
-                            : weekly
-                            ? l10n.goalReadbackCountWeek(
-                                type?.name ?? '',
-                                amount,
-                              )
-                            : l10n.goalReadbackCountMonth(
-                                type?.name ?? '',
-                                amount,
-                                month,
-                              ),
+                        l10n.goalReadbackBy(
+                          formatMoney(target),
+                          shortDay(l10n, by),
+                        ),
                         style: AppTypography.bodyStrong,
                       ),
-                      if (_next)
-                        Text(
-                          weekly
-                              ? l10n.goalReadbackFutureWeek
-                              : l10n.goalReadbackFuture(month),
-                          style: AppTypography.label,
-                        ),
+                      Text(
+                        editing != null
+                            ? l10n.goalReadbackSince(
+                                dayName(l10n, from, now),
+                                formatMoney(perWeek),
+                              )
+                            : from == today
+                            ? l10n.goalReadbackFromToday(formatMoney(perWeek))
+                            : l10n.goalReadbackFromDay(
+                                dayName(l10n, from, now),
+                                formatMoney(perWeek),
+                              ),
+                        style: AppTypography.label,
+                      ),
                     ],
                   ),
                 ),
@@ -260,33 +244,10 @@ class _GoalSheetState extends State<GoalSheet> {
           ],
           const SizedBox(height: AppSpacing.s5),
           AppButton(
-            text: l10n.goalCreate,
+            text: editing == null ? l10n.goalCreateObjective : l10n.commonSave,
             expand: true,
-            onPressed: ready
-                ? () => unawaited(_save(money ? null : type, target))
-                : null,
+            onPressed: ready ? () => unawaited(_save(target, by)) : null,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One choice of the goal: its name, and the control that makes it.
-class _Line extends StatelessWidget {
-  const _Line({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.s2),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: AppTypography.label)),
-          child,
         ],
       ),
     );

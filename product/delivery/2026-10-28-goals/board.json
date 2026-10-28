@@ -1,0 +1,145 @@
+{
+  "title": "Objetivos: a goals tab, money first",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Objetivos, empty",
+      "why": "A fourth tab, the goals out of Entregas, saying what a goal is.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 240,
+          "y": 770,
+          "label": "Tab",
+          "text": "Objetivos between Entregas and Menu, the target icon (AppIcons.goal, Phosphor) the goals already had."
+        },
+        {
+          "id": "B",
+          "x": 40,
+          "y": 246,
+          "label": "First goal",
+          "text": "One line on what a goal is and a + Novo objetivo; the FAB does the same on this tab."
+        },
+        {
+          "id": "C",
+          "x": 345,
+          "y": 690,
+          "label": "FAB",
+          "text": "The + writes a goal on Objetivos, as it writes a delivery on Entregas."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Novo objetivo",
+      "why": "Two choices: how much, and by when. The day is offered, not asked.",
+      "pins": [
+        {
+          "id": "D",
+          "x": 160,
+          "y": 530,
+          "label": "Amount",
+          "text": "Money only, whole reais, big and focused on open. No kind, no period."
+        },
+        {
+          "id": "E",
+          "x": 195,
+          "y": 590,
+          "label": "By when",
+          "text": "Próxima semana (its Sunday) · Próximo mês (its last day, picked on open) · Outra data (the wheel)."
+        },
+        {
+          "id": "F",
+          "x": 372,
+          "y": 670,
+          "label": "The day",
+          "text": "The chosen day, always shown; a tap opens the wheel to change it by hand."
+        },
+        {
+          "id": "G",
+          "x": 30,
+          "y": 726,
+          "label": "Readback",
+          "text": "Read back with where it starts (today, or the day after the last goal) and the pace per week."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · A goal under way",
+      "why": "The two bars of a delivery, for money: billed against what the days ask by now.",
+      "pins": [
+        {
+          "id": "H",
+          "x": 20,
+          "y": 165,
+          "label": "Dual bar",
+          "text": "Green: money delivered since it began / target. Red: what its days ask by today, target × time gone."
+        },
+        {
+          "id": "I",
+          "x": 215,
+          "y": 184,
+          "label": "Key",
+          "text": "R$ billed in green, R$ asked by today in red (danger ink when behind)."
+        },
+        {
+          "id": "J",
+          "x": 150,
+          "y": 94,
+          "label": "Pace tag",
+          "text": "Abaixo do ritmo by R$ when the red leads by more than 15 % of the target, else No ritmo / acima."
+        },
+        {
+          "id": "K",
+          "x": 40,
+          "y": 226,
+          "label": "Forecast",
+          "text": "The goal finds the open deliveries worth something and due by its day, and says where they take it: chega a R$ X, or alcança o objetivo."
+        },
+        {
+          "id": "L",
+          "x": 330,
+          "y": 346,
+          "label": "Próximos",
+          "text": "A goal written while one runs starts the day after it: quiet, no bar."
+        },
+        {
+          "id": "M",
+          "x": 225,
+          "y": 483,
+          "label": "Anteriores",
+          "text": "Past goals, newest first: Alcançado, or what was reached. Long press removes."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Money on a delivery",
+      "why": "Every delivery can carry a value. It names no goal: the goals count it on their own.",
+      "pins": [
+        {
+          "id": "N",
+          "x": 225,
+          "y": 643,
+          "label": "Valor",
+          "text": "Always editable now; a kind's price only fills it in (do tipo …). No \"Conta para\" row: a delivery is not tied to a goal."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · The delivery's page",
+      "why": "Its value on a line of its own, editable later.",
+      "pins": [
+        {
+          "id": "P",
+          "x": 180,
+          "y": 154,
+          "label": "Valor",
+          "text": "Its own row under Tipo; a tap edits it (PATCH { value }); none reads Adicionar valor."
+        }
+      ]
+    }
+  ]
+}

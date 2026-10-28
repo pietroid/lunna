@@ -64,8 +64,8 @@ describe('PgArtifactStore', () => {
       kind: 'count',
       typeId: type.id,
       target: 3,
-      period: 'week',
       starts: '2026-03-09',
+      deadline: '2026-03-15',
     });
 
     expect(await artifacts.categories(OWNER)).toEqual([shelf]);
@@ -79,6 +79,11 @@ describe('PgArtifactStore', () => {
       position: 0,
     });
     expect(await artifacts.goals(OWNER)).toEqual([goal]);
+    await artifacts.updateGoal(OTHER, goal.id, { target: 9 });
+    await artifacts.updateGoal(OWNER, goal.id, { deadline: '2026-03-31' });
+    expect(await artifacts.goals(OWNER)).toEqual([
+      { ...goal, deadline: '2026-03-31' },
+    ]);
     expect(await artifacts.types(OTHER)).toEqual([]);
 
     await artifacts.removeGoal(OTHER, goal.id);

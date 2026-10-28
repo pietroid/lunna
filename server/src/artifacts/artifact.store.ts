@@ -5,6 +5,7 @@ import {
   CatalogCategory,
   CatalogType,
   Goal,
+  GoalEdit,
   ArtifactRecord,
   NewCatalogType,
   NewGoal,
@@ -62,6 +63,13 @@ export abstract class ArtifactStore {
   abstract goals(user: CalendarUser): Promise<Goal[]>;
 
   abstract insertGoal(user: CalendarUser, goal: NewGoal): Promise<Goal>;
+
+  /** Changes what [edit] gives of a goal. */
+  abstract updateGoal(
+    user: CalendarUser,
+    id: string,
+    edit: GoalEdit,
+  ): Promise<void>;
 
   abstract removeGoal(user: CalendarUser, id: string): Promise<void>;
 
@@ -191,6 +199,12 @@ export class MemoryArtifactStore extends ArtifactStore {
     };
     this._goals.set(stored.id, stored);
     return Promise.resolve(unowned(stored));
+  }
+
+  updateGoal(user: CalendarUser, id: string, edit: GoalEdit): Promise<void> {
+    const it = this._goals.get(id);
+    if (it?.userId === user.id) this._goals.set(id, { ...it, ...edit });
+    return Promise.resolve();
   }
 
   removeGoal(user: CalendarUser, id: string): Promise<void> {

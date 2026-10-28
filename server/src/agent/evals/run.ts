@@ -207,12 +207,8 @@ async function runCase(
         ...(price === undefined ? {} : { price }),
       });
     },
-    async goal(kind, target, period, typeId) {
-      await deliveries.addGoal(
-        USER,
-        { kind, target, period, typeId, start: 'now' },
-        now,
-      );
+    async goal(target, deadline) {
+      await deliveries.addGoal(USER, { target, deadline }, now);
     },
     async event(title, at, minutes = 60) {
       await layout.createEvent(
@@ -417,7 +413,7 @@ async function stateOf(
     goals: goals.map((it) => ({
       kind: it.kind,
       target: it.target,
-      period: it.period,
+      deadline: it.deadline,
     })),
     queue: view.tasks.map((it) => it.title),
     named: (title) => cards.filter((card) => sameStem(card.title, title)),

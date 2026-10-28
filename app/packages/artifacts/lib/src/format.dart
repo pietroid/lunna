@@ -30,15 +30,16 @@ String monthName(AppLocalizations l10n, DateTime day) =>
 String dayName(AppLocalizations l10n, DateTime day, DateTime now) =>
     AppWheelPicker.dayLabel(l10n, day, now: now).toLowerCase();
 
-/// What a goal is called on its card: `Faturamento · outubro`.
-String goalLabel(AppLocalizations l10n, Goal goal) {
-  final what = goal.kind == GoalKind.money
-      ? l10n.goalRevenue
-      : goal.type?.name ?? l10n.artifactLoose;
-  return goal.period == GoalPeriod.month
-      ? l10n.goalInMonth(what, monthName(l10n, goal.start))
-      : l10n.goalThisWeek(what);
-}
+/// The day and month alone: `30 nov`.
+String shortDay(AppLocalizations l10n, DateTime day) =>
+    '${day.day} ${l10n.monthsShort.split(',')[day.month - 1]}';
+
+/// What a goal is called wherever it is named: `Faturar R$ 10.000 até 30
+/// nov`.
+String goalLabel(AppLocalizations l10n, Goal goal) => l10n.goalMoneyLabel(
+  formatMoney(goal.target),
+  shortDay(l10n, goal.lastDay),
+);
 
 /// A goal's number: reais for money, a plain count otherwise.
 String goalAmount(Goal goal, int amount) =>

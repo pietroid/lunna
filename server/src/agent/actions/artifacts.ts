@@ -1,5 +1,5 @@
-import { GoalKind, GoalPeriod } from '../../artifacts/artifact.types';
-import { BoardArtifact, sameTitle } from '../board';
+import { GoalKind } from '../../artifacts/artifact.types';
+import { BoardArtifact, BoardGoal, sameTitle } from '../board';
 import { PlanChange } from '../plan';
 import { Action, as, Draft, Refusal, Resolving } from './action';
 
@@ -361,75 +361,106 @@ export const ARTIFACTS: Action[] = [
   {
     name: 'new_goal',
     domain: 'artifact',
-    does: 'A goal: reais delivered, or deliveries of one kind, per week or month.',
+    does: 'A goal: reais to bill by a day. It starts where the last goal ends (or today) and counts the deliveries delivered until then.',
     args: {
-      measure: true,
-      target: true,
-      period: true,
-      kind: true,
-      start: true,
+      target: 'Whole reais, as the person said.',
+      deadline:
+        'Its last day: a day word or YYYY-MM-DD (the end of next month when they said "by next month").',
     },
-    required: ['measure', 'target', 'period'],
+    required: ['target', 'deadline'],
     resolve(r, item) {
-      const measure = item.measure as GoalKind;
-      const period = item.period as GoalPeriod;
       const target = intOf(item.target, 1);
-      if (!['money', 'count'].includes(measure)) {
-        throw new Refusal('new_goal needs measure: money or count.');
-      }
-      if (!['week', 'month'].includes(period)) {
-        throw new Refusal('new_goal needs period: week or month.');
-      }
       if (target === undefined) {
         throw new Refusal(
           'new_goal needs target, the number the person said. Ask them.',
         );
       }
-      const kind =
-        measure === 'count'
-          ? kindOf(r, item.kind)
-          : { ids: {}, name: undefined };
-      if (measure === 'count' && kind.name === undefined) {
+      const deadline = deadlineOf(r, item.deadline);
+      if (deadline == null) {
         throw new Refusal(
-          'A count goal counts one kind: give kind (k1), or ask the person which.',
+          'new_goal needs deadline, the day it is to be reached by. Ask the person, offering the end of next week and of next month.',
         );
       }
-      const start = item.start === 'next' ? 'next' : 'now';
       return {
-        gesture: {
-          do: 'new_goal',
-          kind: measure,
-          target,
-          period,
-          ...kind.ids,
-          start,
-        },
+        gesture: { do: 'new_goal', target, deadline },
         facts: r.facts,
         assumed: r.assumed,
         duplicate: true,
         view: {
           kind: 'add_goal',
-          title: goalTitle(measure, kind.name),
+          title: goalTitle('money', undefined),
           minutes: 0,
-          goal: { kind: measure, period, target },
+          goal: { kind: 'money', target, deadline },
         },
       };
     },
-    async make(hands, user, gesture, made, _trace, now) {
+    async make(hands, user, gesture, _made, _trace, now) {
       const g = as(gesture, 'new_goal');
-      const typeId =
-        g.typeId ?? (g.typeAs === undefined ? undefined : made.get(g.typeAs));
       return hands.deliveries.addGoal(
         user,
-        {
-          kind: g.kind,
-          target: g.target,
-          period: g.period,
-          ...(typeId === undefined ? {} : { typeId }),
-          start: g.start,
-        },
+        { target: g.target, deadline: g.deadline },
         now,
       );
+    },
+    line: (_drawing, draft, id) => lineOf(draft, id),
+  },
+  {
+    name: 'edit_goal',
+    domain: 'artifact',
+    does: "A goal given another amount or another last day, as its card's sheet does. Its first day stays; the day may not reach the next goal's first.",
+    args: {
+      ref: 'The goal (g1).',
+      target: 'The new amount: whole reais, as the person said.',
+      deadline: 'Its new last day: a day word or YYYY-MM-DD.',
+    },
+    required: ['ref'],
+    resolve(r, item) {
+      const it = goalOf(r, item.ref);
+      const { goal } = it;
+      if (goal.deadline < r.board.today) {
+        throw new Refusal(
+          `${it.ref} ended on ${goal.deadline}: a goal gone by is not changed.`,
+        );
+      }
+      const target = intOf(item.target, 1);
+      const deadline = deadlineOf(r, item.deadline);
+      if (deadline === null) {
+        throw new Refusal('A goal always has a last day. Ask the person.');
+      }
+      const edit = {
+        ...(target === undefined || target === goal.target ? {} : { target }),
+        ...(deadline === undefined || deadline === goal.deadline
+          ? {}
+          : { deadline }),
+      };
+      if (Object.keys(edit).length === 0) {
+        throw new Refusal(
+          'edit_goal needs what changes: target or deadline, different from what it is.',
+        );
+      }
+      const was = {
+        kind: goal.kind,
+        target: goal.target,
+        deadline: goal.deadline,
+      };
+      return {
+        gesture: { do: 'edit_goal', id: goal.id, edit },
+        facts: r.facts,
+        assumed: r.assumed,
+        duplicate: true,
+        view: {
+          kind: 'edit_goal',
+          title: goalTitle(goal.kind, undefined),
+          minutes: 0,
+          goal: { ...was, ...edit },
+          wasGoal: was,
+        },
+      };
+    },
+    async make(hands, user, gesture) {
+      const g = as(gesture, 'edit_goal');
+      await hands.deliveries.editGoal(user, g.id, g.edit);
+      return g.id;
     },
     line: (_drawing, draft, id) => lineOf(draft, id),
   },
@@ -440,13 +471,7 @@ export const ARTIFACTS: Action[] = [
     args: { ref: 'The goal (g1).' },
     required: ['ref'],
     resolve(r, item) {
-      const said = text(item.ref);
-      const it = r.board.goal(said);
-      if (it === undefined) {
-        throw new Refusal(
-          `No goal ${JSON.stringify(item.ref)}. Use a goal ref from the board (g1).`,
-        );
-      }
+      const it = goalOf(r, item.ref);
       const kind = r.board.kinds.find((k) => k.type.id === it.goal.typeId);
       return {
         gesture: { do: 'remove_goal', id: it.goal.id },
@@ -459,8 +484,8 @@ export const ARTIFACTS: Action[] = [
           minutes: 0,
           goal: {
             kind: it.goal.kind,
-            period: it.goal.period,
             target: it.goal.target,
+            deadline: it.goal.deadline,
           },
         },
       };
@@ -580,6 +605,17 @@ function open(it: BoardArtifact): BoardArtifact {
   if (it.artifact.doneAt !== undefined) {
     throw new Refusal(
       `${it.ref} "${it.artifact.title}" was already delivered.`,
+    );
+  }
+  return it;
+}
+
+/** The goal under the ref [said], refused when the board has none. */
+function goalOf(r: Resolving, said: unknown): BoardGoal {
+  const it = r.board.goal(text(said));
+  if (it === undefined) {
+    throw new Refusal(
+      `No goal ${JSON.stringify(said)}. Use a goal ref from the board (g1).`,
     );
   }
   return it;

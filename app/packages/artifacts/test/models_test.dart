@@ -64,11 +64,11 @@ void main() {
           'kind': 'count',
           'typeId': 'mapa',
           'target': 3,
-          'period': 'week',
           'start': '2026-10-19',
           'end': '2026-10-26',
           'done': 1,
           'queued': 1,
+          'queuedCount': 1,
         },
       ],
       'schedule': {
@@ -112,6 +112,9 @@ void main() {
       expect(goal.start, DateTime(2026, 10, 19));
       expect(goal.isActiveAt(DateTime(2026, 10, 21)), isTrue);
       expect(goal.isActiveAt(DateTime(2026, 10, 18)), isFalse);
+      expect(goal.lastDay, DateTime(2026, 10, 25));
+      expect(goal.isOverAt(DateTime(2026, 10, 26)), isTrue);
+      expect([goal.queued, goal.queuedCount], [1, 1]);
 
       expect(data.schedule.until, DateTime(2026, 10, 31));
       // A kind no longer in the catalogue is left out.

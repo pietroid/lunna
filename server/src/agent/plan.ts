@@ -1,10 +1,5 @@
 import { randomUUID } from 'crypto';
-import {
-  GoalKind,
-  GoalPeriod,
-  GoalStart,
-  StoredRow,
-} from '../artifacts/artifact.types';
+import { GoalKind, StoredRow } from '../artifacts/artifact.types';
 import { CalendarEvent } from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
 
@@ -25,6 +20,7 @@ export type ChangeKind =
   | 'move_artifact'
   | 'add_kind'
   | 'add_goal'
+  | 'edit_goal'
   | 'remove_goal';
 
 /** One line of a plan, as the app draws it. */
@@ -64,8 +60,10 @@ export interface PlanChange {
   takes?: string[];
   /** For a kind: the catalogue shelf it goes on. */
   shelf?: string;
-  /** For a goal: what it counts, and over which stretch. */
-  goal?: { kind: GoalKind; period: GoalPeriod; target: number };
+  /** For a goal: what it counts, how much, and by which day (`YYYY-MM-DD`). */
+  goal?: { kind: GoalKind; target: number; deadline: string };
+  /** For a goal changed: how much and by which day it was before. */
+  wasGoal?: { kind: GoalKind; target: number; deadline: string };
 }
 
 /** Something new a gesture writes down. */
@@ -142,12 +140,14 @@ export type Gesture =
     }
   | {
       do: 'new_goal';
-      kind: GoalKind;
       target: number;
-      period: GoalPeriod;
-      typeId?: string;
-      typeAs?: string;
-      start: GoalStart;
+      /** `YYYY-MM-DD`, its last day. */
+      deadline: string;
+    }
+  | {
+      do: 'edit_goal';
+      id: string;
+      edit: { target?: number; deadline?: string };
     }
   | { do: 'remove_goal'; id: string };
 

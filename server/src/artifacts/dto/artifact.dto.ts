@@ -55,12 +55,15 @@ export class CreateCatalogTypeDto {
   category?: string;
 }
 
-/** What the Nova meta sheet posts. */
+/** What the Novo objetivo sheet posts: an amount, by a day. */
 export class CreateGoalDto {
-  kind?: string;
   target?: number;
-  period?: string;
-  typeId?: string;
-  /** `now` or `next`. */
-  start?: string;
+  /** `YYYY-MM-DD`, its last day. */
+  deadline?: string;
+}
+
+/** What editing a goal posts. */
+export class EditGoalDto {
+  target?: number;
+  deadline?: string;
 }

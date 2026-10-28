@@ -229,13 +229,14 @@ export const artifact = pgTable(
 );
 
 /**
- * A number to reach in a stretch of time, repeated stretch after stretch:
- * R$ 8.000 a month, three Reels a week.
+ * An amount to reach by a day: R$ 10.000 billed by 30 November.
  *
- * `kind` is `money` (the value of what was delivered in the stretch) or
- * `count` (how many of `type_id` were). `period` is `week` (Monday to
- * Sunday) or `month`. `starts` is the first day of its first stretch: a
- * goal whose stretch has not come yet is a future one.
+ * `kind` is `money` (the value of what was delivered from `starts` to
+ * `deadline`, both included) or `count` (how many of `type_id` were; kept,
+ * unused by the app). Goals follow each other: a new one starts the day
+ * after the last one's deadline, or on the day it is written down.
+ * `period` is what the goals written before were repeated over (`week`,
+ * `month`); nothing reads it any more.
  */
 export const goal = pgTable(
   'goal',
@@ -251,9 +252,11 @@ export const goal = pgTable(
     }),
     /** Whole reais, or deliveries. */
     target: integer('target').notNull(),
-    period: text('period').$type<'week' | 'month'>().notNull(),
-    /** `YYYY-MM-DD`, the first day of its first stretch. */
+    period: text('period').$type<'week' | 'month'>(),
+    /** `YYYY-MM-DD`, the first day it counts. */
     starts: date('starts', { mode: 'string' }).notNull(),
+    /** `YYYY-MM-DD`, the last day it counts: the day it is to be reached by. */
+    deadline: date('deadline', { mode: 'string' }).notNull(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

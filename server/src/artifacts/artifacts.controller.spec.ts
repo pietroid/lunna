@@ -589,9 +589,18 @@ describe('ArtifactsController', () => {
         .expect(400);
     });
 
-    it('measures goals over this month and this week, and waits with one ahead', async () => {
+    it('measures goals one after the other, each finding the deliveries due by its day', async () => {
       const mapa = await kind('Mapa astral', 'Atendimentos', { price: 350 });
-      // Tuesday 10 March: the week began on Monday the 9th.
+      // Tuesday 10 March. A goal gone by, which nothing counts towards now.
+      await app.get(ArtifactStore).insertGoal(
+        { id: 'test-user', timeZone: ZONE },
+        {
+          kind: 'money',
+          target: 5000,
+          starts: '2026-02-01',
+          deadline: '2026-02-28',
+        },
+      );
       await deliver({
         title: 'Mapa · Ana',
         typeId: mapa,
@@ -602,6 +611,9 @@ describe('ArtifactsController', () => {
         typeId: mapa,
         deadline: '2026-04-05',
       });
+      await deliver({ title: 'Atrasada', value: 200, deadline: '2026-03-05' });
+      await deliver({ title: 'Sem prazo', value: 500 });
+      await deliver({ title: 'Sem valor', deadline: '2026-03-20' });
       const curso = await deliver({
         title: 'Curso',
         value: 1000,
@@ -614,42 +626,82 @@ describe('ArtifactsController', () => {
 
       await http()
         .post('/goals')
-        .send({ kind: 'money', target: 8000, period: 'month' })
-        .expect(201);
-      await http()
-        .post('/goals')
-        .send({ kind: 'count', typeId: mapa, target: 2, period: 'week' })
+        .send({ target: 8000, deadline: '2026-03-31' })
         .expect(201);
       const answer = answerOf(
         await http()
           .post('/goals')
-          .send({ kind: 'money', target: 9000, period: 'month', start: 'next' })
+          .send({ target: 9000, deadline: '2026-04-30' })
           .expect(201),
       );
 
+      // The first starts today, as none reached it; the next where it ends.
       expect(
         answer.goals.map((it) => [
-          it.kind,
           it.target,
           it.start,
           it.end,
           it.done,
           it.queued,
+          it.queuedCount,
         ]),
       ).toEqual([
-        ['money', 8000, '2026-03-01', '2026-04-01', 1000, 350],
-        ['count', 2, '2026-03-09', '2026-03-16', 0, 1],
-        ['money', 9000, '2026-04-01', '2026-05-01', 0, 350],
+        [5000, '2026-02-01', '2026-03-01', 0, 0, 0],
+        [8000, '2026-03-10', '2026-04-01', 1000, 550, 2],
+        [9000, '2026-04-01', '2026-05-01', 0, 350, 1],
       ]);
 
+      // A last day that is not after the first, an amount of nothing.
+      const late = await http()
+        .post('/goals')
+        .send({ target: 100, deadline: '2026-05-01' })
+        .expect(400);
+      expect((late.body as { message: string }).message).toBe(
+        'Escolha um dia depois de 01/05.',
+      );
       await http()
         .post('/goals')
-        .send({ kind: 'count', target: 2, period: 'week' })
+        .send({ target: 0, deadline: '2026-06-30' })
         .expect(400);
-      const gone = answerOf(
-        await http().delete(`/goals/${answer.goals[1].id}`).expect(200),
+      await http().post('/goals').send({ target: 100 }).expect(400);
+
+      // Edited: another amount; a day reaching into the next one refused.
+      const march = answer.goals[1].id;
+      const into = await http()
+        .patch(`/goals/${march}`)
+        .send({ deadline: '2026-04-02' })
+        .expect(400);
+      expect((into.body as { message: string }).message).toBe(
+        'O próximo objetivo começa em 01/04: escolha um dia antes.',
       );
-      expect(gone.goals.map((it) => it.kind)).toEqual(['money', 'money']);
+      const edited = answerOf(
+        await http()
+          .patch(`/goals/${march}`)
+          .send({ target: 7000, deadline: '2026-03-20' })
+          .expect(200),
+      );
+      expect(edited.goals[1]).toMatchObject({
+        target: 7000,
+        end: '2026-03-21',
+        queued: 550,
+      });
+      await http().patch(`/goals/${march}`).send({}).expect(400);
+
+      const gone = answerOf(
+        await http().delete(`/goals/${answer.goals[2].id}`).expect(200),
+      );
+      expect(gone.goals.map((it) => it.target)).toEqual([5000, 7000]);
+    });
+
+    it("clears a delivery's value", async () => {
+      const id = await deliver({ title: 'Mapa', value: 350 });
+      const answer = answerOf(
+        await http()
+          .patch(`/artifacts/${id}`)
+          .send({ value: null })
+          .expect(200),
+      );
+      expect(answer.artifacts[0].value).toBeNull();
     });
 
     it('sets the time the month owes against the free hours left on the agenda', async () => {
