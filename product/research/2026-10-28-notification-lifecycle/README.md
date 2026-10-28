@@ -1,6 +1,6 @@
 # A reminder should take the answer, not open the app
 
-2026-10-28 · RFC · proposed (deep-research pass not run) · server, app (iOS, Android) · issue #50
+2026-10-28 · RFC · approved 2026-10-28 (deep-research pass not run) · server, app (iOS, Android) · issue #50
 
 ## Every block gets two asks with three buttons, and silence is safe
 
@@ -212,8 +212,12 @@ flowchart TD
 | `almostFinishing` | drop · keep | **drop** | a fourth reminder a block, while the countdown is on screen |
 | End asks for meetings | every fixed block · routines only | **every fixed block** (as asked) | two rules for "fixed" |
 
+> **Decision (2026-10-28):** Approved as written: every recommended option above, including the PR's two open questions. Unanswered overtime ends at the next fixed block or the working day's end, written down as done there; meetings and every other fixed block get the three end asks, not only routines.
+
 ## Decided unattended
 
+- After approval: took "I liked everything" as every *(recommended)* option and both PR questions answered as recommended. No option was dropped, so no slide changed beyond the status and the decision note.
+- Phase 4 was not asked for, so it was not run. The three unverified claims below are for the build to check on a device before it relies on them.
 - Wrote Phases 1–3 only. The deep-research pass (Phase 4) waits until asked.
 - Read "even those that are recurring are all fixed" as: every routine becomes fixed, and flexible routines go.
 - +10 on the 15-minute heads-up counts from the block's hour, not from the tap, so a tap can never move lunch earlier. The general rule is "later of the hour and the tap, + 10".
