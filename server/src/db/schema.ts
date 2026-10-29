@@ -537,6 +537,34 @@ export const agentPlan = pgTable(
 );
 
 /**
+ * The one thing the agent offers each person without being asked, kept so
+ * that opening the app does not make another: it holds until
+ * [validUntil], until what it was made from changes ([basis]), or until
+ * it is taken. One row per person; a new one replaces it.
+ */
+export const agentSuggestion = pgTable('agent_suggestion', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id')
+    .notNull()
+    .unique()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  /** `goal`, `delivery` or `routine`: what it is about. */
+  focus: text('focus').notNull(),
+  text: text('text').notNull(),
+  /** The action's button, and its plan (`agent_plan`), when it has one. */
+  actionLabel: text('action_label'),
+  planId: uuid('plan_id'),
+  /** The agent's first message in a conversation opened from it. */
+  opening: jsonb('opening').$type<unknown>().notNull(),
+  /** A hash of the goals, deliveries, routines and queue it read. */
+  basis: text('basis').notNull(),
+  validUntil: timestamp('valid_until', { withTimezone: true }).notNull(),
+  /** Its action made, or its plan applied from the conversation. */
+  takenAt: timestamp('taken_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+/**
  * What a link says about itself: its page's title, its site and its
  * picture, read once and kept for everyone, since a link's preview is the
  * same for all who paste it.
@@ -567,6 +595,7 @@ export const schema = {
   event,
   agentMessage,
   agentPlan,
+  agentSuggestion,
   linkPreview,
 };
 
@@ -578,6 +607,7 @@ export type CatalogCategoryRow = typeof catalogCategory.$inferSelect;
 export type CatalogTypeRow = typeof catalogType.$inferSelect;
 export type ArtifactRow = typeof artifact.$inferSelect;
 export type GoalRow = typeof goal.$inferSelect;
+export type AgentSuggestionRow = typeof agentSuggestion.$inferSelect;
 export type AgentMessageRow = typeof agentMessage.$inferSelect;
 export type AgentPlanRow = typeof agentPlan.$inferSelect;
 export type LinkPreviewRow = typeof linkPreview.$inferSelect;

@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeline/timeline.dart';
 
 /// A recognizer the test speaks through.
@@ -70,6 +71,8 @@ void _onFakeTime(void Function(FakeAsync async) body) {
 }
 
 void main() {
+  _suggestionCardTests();
+
   group('VoiceCubit', () {
     test('shows the words as they come and settles them', () {
       _onFakeTime((async) {
@@ -354,9 +357,7 @@ void main() {
       expect(field(tester).focusNode!.hasFocus, isTrue);
     });
 
-    testWidgets('stop puts the words in the field, selected; send sends', (
-      tester,
-    ) async {
+    testWidgets('stopping sends what was said, at once', (tester) async {
       final (recognizer, agent, _) = await pumpSheet(tester);
 
       await tester.tap(find.bySemanticsLabel('Falar'));
@@ -370,28 +371,16 @@ void main() {
       await tester.pump();
       expect(find.textContaining('O que tenho amanhã?'), findsOneWidget);
 
-      await tester.tap(find.bySemanticsLabel('Parar e revisar'));
-      await tester.pump();
-      await tester.pump();
-
-      // Stopping never sends.
-      expect(agent.state.entries, isEmpty);
-      expect(recognizer.stops, 1);
-      final controller = field(tester).controller!;
-      expect(controller.text, 'O que tenho amanhã?');
-      expect(
-        controller.selection,
-        const TextSelection(baseOffset: 0, extentOffset: 19),
-      );
-      expect(field(tester).focusNode!.hasFocus, isTrue);
-
+      // The recorder's stop is the composer's send: one tap, not two.
       await tester.tap(find.bySemanticsLabel('Enviar'));
       await tester.pumpAndSettle();
 
+      expect(recognizer.stops, 1);
       final said = agent.state.entries.first as UserEntry;
       expect(said.text, 'O que tenho amanhã?');
       expect(said.voice, isNotNull);
       expect(find.text('por voz · 0:00'), findsOneWidget);
+      expect(field(tester).controller!.text, isEmpty);
     });
 
     testWidgets('held, letting go sends what was said', (tester) async {
@@ -977,6 +966,101 @@ void main() {
           about: const AgentSubject.task('t1'),
         ),
       ).called(1);
+    });
+  });
+}
+
+void _suggestionCardTests() {
+  group('SuggestionCard', () {
+    setUpAll(() {
+      registerFallbackValue(<AgentEntry>[]);
+      registerFallbackValue(const TimelineRequested());
+    });
+
+    const plan = AgentPlan(
+      id: 'p1',
+      changes: [
+        PlanChange(
+          kind: PlanChangeKind.moveTask,
+          title: 'Escrever a leitura',
+          minutes: 120,
+        ),
+      ],
+    );
+
+    Future<void> pumpCard(WidgetTester tester, AgentSuggestion offered) async {
+      final repository = _answering();
+      when(repository.suggestion).thenAnswer((_) async => offered);
+      final timeline = _MockTimelineBloc();
+      when(() => timeline.state).thenReturn(const TimelineState());
+      final suggestions = SuggestionCubit(repository: repository);
+      await suggestions.load();
+
+      await tester.pumpWidget(
+        RepositoryProvider<AgentRepository>.value(
+          value: repository,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => AgentCubit(repository: repository)),
+              BlocProvider<TimelineBloc>.value(value: timeline),
+              BlocProvider(
+                create: (_) => VoiceCubit(recognizer: _FakeRecognizer()),
+              ),
+              BlocProvider.value(value: suggestions),
+            ],
+            child: _app(const Scaffold(body: SuggestionCard())),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    testWidgets('about the goal, it only talks', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpCard(
+        tester,
+        AgentSuggestion(
+          id: 's1',
+          text: 'Você ainda não tem um objetivo.',
+          focus: SuggestionFocus.goal,
+          validUntil: DateTime(2100),
+        ),
+      );
+
+      expect(find.text('Objetivo'), findsOneWidget);
+      expect(find.text('Conversar'), findsOneWidget);
+      expect(find.byType(AppButton), findsOneWidget);
+    });
+
+    testWidgets('with an action, Conversar opens the page on its opening, '
+        'plan and all', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await pumpCard(
+        tester,
+        AgentSuggestion(
+          id: 's1',
+          text: 'Encaixo hoje às 14:00?',
+          focus: SuggestionFocus.delivery,
+          validUntil: DateTime(2100),
+          action: const SuggestionAction(
+            label: 'Encaixar às 14:00',
+            plan: plan,
+          ),
+          opening: const AgentReply(
+            text: 'Faltam R\$ 2.400.',
+            plan: plan,
+            blocks: [CaptionBlock('Faltam R\$ 2.400.'), PlanBlock()],
+          ),
+        ),
+      );
+
+      expect(find.text('Encaixar às 14:00'), findsOneWidget);
+      await tester.tap(find.text('Conversar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AgentSheet), findsOneWidget);
+      expect(find.text('Faltam R\$ 2.400.'), findsOneWidget);
+      expect(find.text('Escrever a leitura'), findsWidgets);
     });
   });
 }

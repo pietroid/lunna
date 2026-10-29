@@ -95,13 +95,15 @@ class AgentRepository {
     String? conversationId,
     DateTime? day,
     AgentSubject? about,
+    String? suggestionId,
   }) => _guard(() async {
     final response = await apiClient.post<Map<String, dynamic>>(
       '/agent/turn',
       data: {
         'conversationId': ?conversationId,
         'messages': [
-          for (final entry in history)
+          // An opening drawn only by its surface has no words to send.
+          for (final entry in history.where(_hasWords))
             switch (entry) {
               UserEntry(:final text, :final voice) => {
                 'role': 'user',
@@ -116,6 +118,7 @@ class AgentRepository {
         ],
         if (day != null) 'day': _isoDay(day),
         if (about != null) 'about': about.toJson(),
+        'suggestionId': ?suggestionId,
       },
     );
 
@@ -126,6 +129,11 @@ class AgentRepository {
       reply: AgentReply.fromJson(data),
     );
   });
+
+  static bool _hasWords(AgentEntry entry) => switch (entry) {
+    UserEntry() => true,
+    ReplyEntry(:final reply) => reply.text.isNotEmpty,
+  };
 
   /// Up to [limit] conversations that started before [before], the most
   /// recent first.

@@ -61,6 +61,7 @@ export class AgentController {
       messages?: unknown;
       day?: unknown;
       about?: unknown;
+      suggestionId?: unknown;
     },
   ): Promise<AgentReply> {
     const trace = Trace.start(user.id, 'agent');
@@ -82,6 +83,8 @@ export class AgentController {
         typeof dto.day === 'string' ? dto.day : undefined,
         optionalSubject(dto.about),
         trace,
+        undefined,
+        optionalUuid(dto.suggestionId, 'suggestionId'),
       );
       return reply;
     } catch (error) {
@@ -198,9 +201,14 @@ export function requireMessages(raw: unknown): AgentMessage[] {
 
 /** The conversation a turn carries on, or none for the first turn. */
 export function optionalConversation(raw: unknown): string | undefined {
+  return optionalUuid(raw, 'conversationId');
+}
+
+/** [raw] as an id named [name], or none. */
+function optionalUuid(raw: unknown, name: string): string | undefined {
   if (raw === undefined || raw === null) return undefined;
   if (typeof raw !== 'string' || !UUID.test(raw)) {
-    throw new BadRequestException('conversationId must be a UUID');
+    throw new BadRequestException(`${name} must be a UUID`);
   }
 
   return raw.toLowerCase();

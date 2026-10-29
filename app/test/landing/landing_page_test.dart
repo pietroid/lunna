@@ -101,6 +101,8 @@ void main() {
       tester,
     ) async {
       await settle(tester);
+      await tester.ensureVisible(find.text(l10n.landingChapterTimeTitle).first);
+      await tester.pump();
       await tester.tap(find.text(l10n.landingChapterTimeTitle).first);
       await settle(tester);
 
@@ -113,6 +115,10 @@ void main() {
       tester,
     ) async {
       await settle(tester);
+      await tester.ensureVisible(
+        find.text(l10n.landingChapterDeliveriesTitle).first,
+      );
+      await tester.pump();
       await tester.tap(find.text(l10n.landingChapterDeliveriesTitle).first);
       await settle(tester);
 
@@ -126,6 +132,10 @@ void main() {
       tester,
     ) async {
       await settle(tester);
+      await tester.ensureVisible(
+        find.text(l10n.landingChapterDeliveriesTitle).first,
+      );
+      await tester.pump();
       await tester.tap(find.text(l10n.landingChapterDeliveriesTitle).first);
       await settle(tester);
       // Entregas has the agent's bar too.
@@ -137,6 +147,8 @@ void main() {
           .shift(-tester.getTopLeft(find.byType(AppBottomBar)));
       final before = place();
 
+      await tester.ensureVisible(inBar(l10n.shellTimelineTab));
+      await tester.pump();
       await tester.tap(inBar(l10n.shellTimelineTab));
       await settle(tester);
 

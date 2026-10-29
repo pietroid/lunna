@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import {
   HttpException,
   HttpStatus,
@@ -7,17 +7,19 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CalendarService } from '../calendar/calendar.service';
-import { CalendarUser } from '../calendar/calendar.types';
+import { CalendarRoutine, CalendarUser } from '../calendar/calendar.types';
+import { Timeline } from '../events/entities/event.entity';
+import { Goal } from '../artifacts/artifact.types';
 import { Trace } from '../common/trace';
 import { EventLayoutService } from '../events/event-layout.service';
 import { TimelineService } from '../events/timeline.service';
 import { ArtifactStore } from '../artifacts/artifact.store';
 import { ArtifactsService } from '../artifacts/artifacts.service';
+import { addDays, daysBetween, endOfMonth } from '../artifacts/stretch';
 import { TaskStore } from '../tasks/task.store';
 import {
   addMinutes,
   DEFAULT_WORK_DAY,
-  Interval,
   nextFreeSlot,
   roundUpToFiveMinutes,
 } from '../time/work-hours';
@@ -54,7 +56,7 @@ import {
   Subject,
 } from './actions';
 import { SYSTEM_PROMPT, toolsFor } from './agent.prompt';
-import { Board, BoardCard, HORIZON_DAYS, noonOf } from './board';
+import { Board, BoardArtifact, BoardCard, HORIZON_DAYS, noonOf } from './board';
 import { ConversationStore, PlanStatus } from './conversation.store';
 import {
   Hands,
@@ -79,13 +81,22 @@ import {
   Assumption,
   Gesture,
   MemoryPlanStore,
+  NewPlan,
   newOf,
   Plan,
+  PLAN_TTL_MS,
   PlanChange,
   PlanStore,
   Pushed,
 } from './plan';
 import { ToolDefinition } from './openrouter.client';
+import {
+  MemorySuggestionStore,
+  Opening,
+  StoredSuggestion,
+  SuggestionFocus,
+  SuggestionStore,
+} from './suggestion.store';
 
 export type { Subject } from './actions';
 
@@ -144,10 +155,30 @@ export interface TurnResult extends AgentReply {
   raw: string[];
 }
 
-/** A proposal the agent makes without being asked. */
+/** The one thing the agent offers without being asked, as the app reads it. */
 export interface Suggestion {
+  id: string;
+  focus: SuggestionFocus;
   text: string;
-  plan: PlanView;
+  /** ISO 8601: when another is made, unless what it read changes first. */
+  validUntil: string;
+  /** Made from the card, with no conversation. */
+  action?: { label: string; plan: PlanView };
+  /** The agent's first message in a conversation opened from it. */
+  opening: Opening;
+}
+
+/** What `_offer` works out, before anything is filed. */
+interface Offer {
+  focus: SuggestionFocus;
+  /** What the card says. */
+  text: string;
+  /** What the conversation opens on. */
+  opening: string;
+  /** The delivery it is about, drawn in the opening. */
+  artifact?: BoardArtifact;
+  action?: { label: string; at: string; plan: NewPlan };
+  choices: Choice[];
 }
 
 /** Everything one turn works from. */
@@ -218,8 +249,7 @@ const MAX_SILENT_CASCADE = 3;
 @Injectable()
 export class AgentService {
   private readonly _plans: PlanStore;
-  /** The suggestion last offered to each person, so it is offered once. */
-  private readonly _suggested = new Map<string, Plan>();
+  private readonly _suggestions: SuggestionStore;
   /** The tools, a plan's changes in the shape `AGENT_SCHEMA` names. */
   private readonly _tools: ToolDefinition[];
   private readonly _deliveries: ArtifactsService;
@@ -241,8 +271,10 @@ export class AgentService {
     private readonly _conversations: ConversationStore,
     @Optional() plans?: PlanStore,
     @Optional() config?: ConfigService,
+    @Optional() suggestions?: SuggestionStore,
   ) {
     this._plans = plans ?? new MemoryPlanStore();
+    this._suggestions = suggestions ?? new MemorySuggestionStore();
     this._tools = toolsFor(schemaShapeOf(config?.get<string>('AGENT_SCHEMA')));
     this._deliveries = handsOver(
       _calendar,
@@ -283,8 +315,23 @@ export class AgentService {
     about: Subject | undefined,
     trace: Trace,
     now = new Date(),
+    suggestionId?: string,
   ): Promise<TurnResult> {
     const conversation = conversationId ?? randomUUID();
+    // Opened from a suggestion: its opening is the agent's first message,
+    // as the server wrote it, not as the app sent it back.
+    const held =
+      suggestionId === undefined
+        ? undefined
+        : await this._suggestions.current(user.id);
+    const opening = held?.id === suggestionId ? held?.opening : undefined;
+    if (opening !== undefined) {
+      const first = history.findIndex((it) => it.role === 'user');
+      history = [
+        { role: 'assistant', text: opening.reply },
+        ...history.slice(first),
+      ];
+    }
     const asked = this._asked.get(conversation);
     if (asked !== undefined) {
       this._asked.delete(conversation);
@@ -308,6 +355,18 @@ export class AgentService {
     );
     const said = history[history.length - 1];
     await this._conversations.append(user, conversation, [
+      ...(opening === undefined || conversationId !== undefined
+        ? []
+        : [
+            {
+              role: 'assistant' as const,
+              text: opening.reply,
+              steps: [],
+              plan: opening.plan,
+              // Before the question.
+              at: new Date(now.getTime() - 1),
+            },
+          ]),
       {
         role: 'user',
         text: said.text,
@@ -688,6 +747,8 @@ export class AgentService {
     };
     await this._plans.save(plan);
     await this._mark(user, plan.group ?? planId, 'applied', trace);
+    // From the card or from the conversation, the suggestion is taken.
+    await this._suggestions.takeByPlan(user.id, planId, now);
     trace.log('agent.applied', {
       planId,
       changes: plan.gestures.length,
@@ -737,71 +798,299 @@ export class AgentService {
   }
 
   /**
-   * One thing worth offering without being asked: the first task in the
-   * backlog that fits in the room left today.
+   * The one thing worth offering without being asked, kept until it runs
+   * out: the same one while it is valid, nothing it read has changed and
+   * it was not taken; otherwise a new one, which replaces it.
    *
-   * No model: a suggestion is drawn every time Tempo opens, and this one
-   * needs only arithmetic. It is the same plan a turn would make, so the
-   * app applies and undoes it the same way.
+   * No model: Tempo asks every time it opens, and the thin layer here is
+   * arithmetic. It looks at the goal first, then the deliveries that reach
+   * it, then the day (`offerOf`). Its action, when it has one, is the same
+   * plan a turn would make, so the app applies and undoes it the same way.
    */
   async suggestion(
     user: CalendarUser,
     now = new Date(),
   ): Promise<Suggestion | undefined> {
-    const zone = this._timeline.zone(user);
-    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
-    const view = this._timeline.view(await this._timeline.day(user, 1, now));
-    const busy: Interval[] = view.cards.map((card) => ({
-      start: new Date(card.startTime),
-      end: new Date(card.endTime),
-    }));
-    const from = roundUpToFiveMinutes(now);
+    const [day, artifacts, artifactTasks, types, goals, routines] =
+      await Promise.all([
+        this._timeline.day(user, HORIZON_DAYS, now),
+        this._artifacts.list(user),
+        this._tasks.ofArtifacts(user),
+        this._artifacts.types(user),
+        this._artifacts.goals(user),
+        this._calendar.routines(user),
+      ]);
+    const view = this._timeline.view(day);
+    const board = new Board(day, view, {
+      artifacts,
+      artifactTasks,
+      types,
+      goals,
+    });
+    const basis = basisOf(board, view, routines);
 
-    for (const task of view.backlog.slice(0, 3)) {
-      const slot = nextFreeSlot(
-        from,
-        task.durationMinutes,
-        busy,
-        zone,
-        workDay,
-      );
-      if (!sameDayIn(slot.start, now, zone)) continue;
-
-      const at = slot.start.toISOString();
-      const kept = this._suggested.get(user.id);
-      const last =
-        kept === undefined
+    const held = await this._suggestions.current(user.id);
+    if (
+      held !== undefined &&
+      held.takenAt === undefined &&
+      held.basis === basis &&
+      now < held.validUntil
+    ) {
+      const plan =
+        held.action === undefined
           ? undefined
-          : await this._plans.get(user.id, kept.id);
-      const offered =
-        last !== undefined &&
-        last.applied === undefined &&
-        last.changes[0]?.id === task.id &&
-        last.changes[0]?.at === at
-          ? last
-          : await this._plans.put(user.id, {
-              gestures: [{ do: 'at_hour', id: task.id, at }],
-              changes: [
-                {
-                  kind: 'move_task',
-                  id: task.id,
-                  title: task.title,
-                  minutes: task.durationMinutes,
-                  at,
-                  routine: task.routine !== undefined,
-                },
-              ],
-              pushed: [],
-              assumed: [],
-            });
-      this._suggested.set(user.id, offered);
+          : await this._plans.get(user.id, held.action.planId);
+      // Its plan expired or was applied some other way: it is spent.
+      if (held.action === undefined || (plan && plan.applied === undefined)) {
+        return suggestionView(held, plan);
+      }
+    }
 
+    const offer = this._offer(user, board, view, now);
+    if (offer === undefined) return undefined;
+
+    const plan =
+      offer.action === undefined
+        ? undefined
+        : await this._plans.put(user.id, offer.action.plan);
+    const blocks: Block[] = [
+      { kind: 'caption', text: offer.opening },
+      ...(offer.artifact === undefined
+        ? []
+        : [
+            {
+              kind: 'artifact' as const,
+              artifact: peekArtifact(board, offer.artifact),
+            },
+          ]),
+      ...(plan === undefined
+        ? []
+        : [{ kind: 'plan' as const, plan: planView(plan) }]),
+      ...(offer.choices.length === 0
+        ? []
+        : [{ kind: 'choices' as const, options: offer.choices }]),
+    ];
+    const kept = await this._suggestions.put(
+      user.id,
+      {
+        focus: offer.focus,
+        text: offer.text,
+        ...(plan === undefined || offer.action === undefined
+          ? {}
+          : { action: { label: offer.action.label, planId: plan.id } }),
+        opening: {
+          ui: toA2ui(`suggestion-${randomUUID().slice(0, 8)}`, blocks),
+          reply: summary(board, blocks),
+          steps: [],
+          ...(plan === undefined ? {} : { plan: planView(plan) }),
+          options: [],
+        },
+        basis,
+        // An offer of 14:00 is stale at 14:00 (one of now lasts five
+        // minutes), and its plan lives two hours.
+        validUntil:
+          offer.action === undefined
+            ? addDaysIn(startOfDayIn(now, board.zone), 1, board.zone)
+            : new Date(
+                Math.min(
+                  Math.max(
+                    new Date(offer.action.at).getTime(),
+                    now.getTime() + 5 * 60_000,
+                  ),
+                  now.getTime() + PLAN_TTL_MS,
+                ),
+              ),
+      },
+      now,
+    );
+
+    return suggestionView(kept, plan);
+  }
+
+  /** What to offer now, in the order the agent looks. */
+  private _offer(
+    user: CalendarUser,
+    board: Board,
+    view: Timeline,
+    now: Date,
+  ): Offer | undefined {
+    const zone = board.zone;
+    const today = board.today;
+    const free = (minutes: number) => {
+      const slot = nextFreeSlot(
+        roundUpToFiveMinutes(now),
+        minutes,
+        view.cards.map((card) => ({
+          start: new Date(card.startTime),
+          end: new Date(card.endTime),
+        })),
+        zone,
+        user.workDay ?? DEFAULT_WORK_DAY,
+      );
+      return sameDayIn(slot.start, now, zone) ? slot.start : undefined;
+    };
+    const placing = (
+      task: { id: string; title: string; minutes: number; routine: boolean },
+      at: Date,
+    ): Offer['action'] => ({
+      label: `Encaixar às ${formatTimeIn(at, zone)}`,
+      at: at.toISOString(),
+      plan: {
+        gestures: [{ do: 'at_hour', id: task.id, at: at.toISOString() }],
+        changes: [
+          {
+            kind: 'move_task',
+            id: task.id,
+            title: task.title,
+            minutes: task.minutes,
+            at: at.toISOString(),
+            routine: task.routine,
+          },
+        ],
+        pushed: [],
+        assumed: [],
+      },
+    });
+
+    // 1. The goal: none running, or nothing open that counts towards it.
+    const goal = board.goals.find(
+      (it) => it.goal.starts <= today && today <= it.goal.deadline,
+    );
+    if (goal === undefined) {
+      const last = [...board.goals].sort((a, b) =>
+        b.goal.deadline.localeCompare(a.goal.deadline),
+      )[0];
+      const by = goalDeadline(today);
+      const amounts =
+        last === undefined
+          ? [5000, 10000]
+          : [last.goal.target, roundTo(last.goal.target * 1.2, 500)];
       return {
+        focus: 'goal',
+        text:
+          `Você ainda não tem um objetivo. Quanto quer faturar até ${ddmm(by)}? ` +
+          'Com esse número eu sei o que adiantar a cada dia.',
+        opening:
+          `Quanto você quer faturar até ${ddmm(by)}? Me diz um valor e eu ` +
+          'monto o objetivo, com as entregas que já estão abertas.',
+        choices: [...new Set(amounts)].map((amount) => ({
+          label: reais(amount),
+          say: `Quero faturar ${reais(amount)} até ${ddmm(by)}.`,
+        })),
+      };
+    }
+
+    const { target, done } = goal.view;
+    if (done < target && goal.view.queuedCount === 0) {
+      const kinds = board.kinds
+        .filter((it) => (it.type.price ?? 0) > 0)
+        .slice(0, 2);
+      return {
+        focus: 'goal',
+        text:
+          `Faltam ${reais(target - done)} para o objetivo de ` +
+          `${ddmm(goal.goal.deadline)}, e nenhuma entrega aberta vence até ` +
+          'lá. Qual é a próxima?',
+        opening:
+          `Nenhuma entrega aberta conta para os ${reais(target)} até ` +
+          `${ddmm(goal.goal.deadline)}. O que você vai entregar até lá?`,
+        choices:
+          kinds.length === 0
+            ? [
+                {
+                  label: 'Criar uma entrega',
+                  say: 'Quero criar uma entrega para esse objetivo.',
+                },
+                { label: 'Mudar o objetivo', say: 'Quero mudar o objetivo.' },
+              ]
+            : kinds.map((it) => ({
+                label: it.type.name,
+                say: `Quero criar uma entrega de ${it.type.name} até ${ddmm(goal.goal.deadline)}.`,
+              })),
+      };
+    }
+
+    // 2. A delivery: the goal is behind what its days ask by now.
+    const asked = target * goalTimeAt(goal.goal, now, zone);
+    if (done < target && done < asked) {
+      const short = reais(target - done);
+      const counted = board.artifacts
+        .filter(
+          (it) =>
+            it.artifact.doneAt === undefined &&
+            it.artifact.deadline !== undefined &&
+            it.artifact.deadline <= goal.goal.deadline &&
+            (it.artifact.value ?? 0) > 0,
+        )
+        .sort(
+          (a, b) =>
+            a.artifact.deadline!.localeCompare(b.artifact.deadline!) ||
+            (b.artifact.value ?? 0) - (a.artifact.value ?? 0),
+        );
+      for (const it of counted) {
+        const due = ddmm(it.artifact.deadline!);
+        const open = it.tasks
+          .filter((task) => task.doneAt === undefined)
+          .map((task) => board.reach(task));
+        if (open.length === 0) {
+          return {
+            focus: 'delivery',
+            text:
+              `Faltam ${short} para o objetivo, e “${it.artifact.title}” ` +
+              `vence ${due} sem nenhuma tarefa. Vamos dividir em partes?`,
+            opening: `“${it.artifact.title}” vence ${due} e ainda não tem tarefas. Por onde começa?`,
+            artifact: it,
+            choices: [],
+          };
+        }
+        if (open.some((card) => card.day === today)) continue;
+
+        const next = [
+          ...open
+            .filter((card) => card.start !== undefined && !card.started)
+            .sort((a, b) => a.start!.getTime() - b.start!.getTime()),
+          ...open.filter((card) => card.start === undefined),
+        ][0];
+        if (next === undefined) continue;
+        const at = free(next.minutes);
+        if (at === undefined) continue;
+        const hour = formatTimeIn(at, zone);
+        return {
+          focus: 'delivery',
+          text:
+            `Faltam ${short} para o objetivo, e “${it.artifact.title}” ` +
+            `vence ${due}. Encaixo “${next.title}” hoje às ${hour}?`,
+          opening:
+            `Faltam ${short} para os ${reais(target)}. “${it.artifact.title}” ` +
+            `vence ${due} e é o que mais adianta: encaixo “${next.title}” hoje às ${hour}.`,
+          artifact: it,
+          action: placing(next, at),
+          choices: [],
+        };
+      }
+    }
+
+    // 3. The day: what waits in Para depois and fits in what is left.
+    for (const task of view.backlog.slice(0, 3)) {
+      const at = free(task.durationMinutes);
+      if (at === undefined) continue;
+      const hour = formatTimeIn(at, zone);
+      return {
+        focus: 'routine',
         text:
           `"${task.title}" está esperando no Para depois. ` +
-          `Hoje às ${formatTimeIn(slot.start, zone)} tem espaço para ela. ` +
-          'Quer encaixar?',
-        plan: planView(offered),
+          `Hoje às ${hour} tem espaço para ela. Quer encaixar?`,
+        opening: `"${task.title}" cabe hoje às ${hour}. Encaixo?`,
+        action: placing(
+          {
+            id: task.id,
+            title: task.title,
+            minutes: task.durationMinutes,
+            routine: task.routine !== undefined,
+          },
+          at,
+        ),
+        choices: [],
       };
     }
 
@@ -1676,4 +1965,98 @@ function schemaShapeOf(value: string | undefined): SchemaShape {
   return SCHEMA_SHAPES.includes(value as SchemaShape)
     ? (value as SchemaShape)
     : DEFAULT_SHAPE;
+}
+
+/** [held] as the app reads it, its action's plan as filed. */
+function suggestionView(
+  held: StoredSuggestion,
+  plan: Plan | undefined,
+): Suggestion {
+  return {
+    id: held.id,
+    focus: held.focus,
+    text: held.text,
+    validUntil: held.validUntil.toISOString(),
+    ...(held.action === undefined || plan === undefined
+      ? {}
+      : { action: { label: held.action.label, plan: planView(plan) } }),
+    opening: held.opening,
+  };
+}
+
+/**
+ * What a suggestion is made from, hashed: the goals, the open deliveries
+ * with their deadlines, values and tasks, the routines, and where the
+ * tasks are today. A change to any of them makes another.
+ */
+function basisOf(
+  board: Board,
+  view: Timeline,
+  routines: CalendarRoutine[],
+): string {
+  const read = {
+    today: board.today,
+    goals: board.goals.map(({ goal }) => [
+      goal.id,
+      goal.target,
+      goal.starts,
+      goal.deadline,
+    ]),
+    deliveries: board.artifacts
+      .filter((it) => it.artifact.doneAt === undefined)
+      .map((it) => [
+        it.artifact.id,
+        it.artifact.deadline,
+        it.artifact.value,
+        it.tasks.filter((task) => task.doneAt === undefined).length,
+      ]),
+    routines: routines.map((it) => [it.id, it.title, it.startTime, it.days]),
+    backlog: view.backlog.map((it) => it.id),
+    onToday: view.tasks
+      .filter((it) => it.day === board.today)
+      .map((it) => it.id),
+  };
+
+  return createHash('sha256').update(JSON.stringify(read)).digest('hex');
+}
+
+/**
+ * The day a new goal would be asked to reach by: the end of this month, or
+ * of the next when this one has less than a week left.
+ */
+function goalDeadline(today: string): string {
+  const end = endOfMonth(today);
+  return daysBetween(today, end) < 7 ? endOfMonth(addDays(end, 1)) : end;
+}
+
+/**
+ * The share of [goal]'s days gone at [now], from the start of its first
+ * day to the end of its last: the red of its bar (`Goal.timeAt`).
+ */
+function goalTimeAt(goal: Goal, now: Date, zone: Zone): number {
+  const start = startOfDayIn(noonOf(goal.starts, zone), zone).getTime();
+  const end = startOfDayIn(
+    noonOf(addDays(goal.deadline, 1), zone),
+    zone,
+  ).getTime();
+  if (end <= start) return 1;
+
+  return Math.min(1, Math.max(0, (now.getTime() - start) / (end - start)));
+}
+
+/** [value] rounded to the nearest [step]. */
+function roundTo(value: number, step: number): number {
+  return Math.round(value / step) * step;
+}
+
+/** Whole reais as a person reads them: R$ 10.000. */
+function reais(value: number): string {
+  return `R$ ${Math.round(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+}
+
+/** `2026-11-30` as a person reads it: 30/11. */
+function ddmm(day: string): string {
+  return `${day.slice(8, 10)}/${day.slice(5, 7)}`;
 }
