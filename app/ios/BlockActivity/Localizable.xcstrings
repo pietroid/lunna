@@ -1,0 +1,38 @@
+{
+  "sourceLanguage": "pt-BR",
+  "strings": {
+    "até %@": {
+      "comment": "The block's end on the Lock Screen: até 14:30.",
+      "extractionState": "manual"
+    },
+    "Pausado": {
+      "comment": "Status of a paused block.",
+      "extractionState": "manual"
+    },
+    "Atrasado": {
+      "comment": "Status of a block past its end with nobody answering.",
+      "extractionState": "manual"
+    },
+    "Terminei": {
+      "comment": "The done button on the Lock Screen.",
+      "extractionState": "manual"
+    },
+    "Responder ao bloco": {
+      "comment": "The intent behind the activity's buttons (never shown in Shortcuts).",
+      "extractionState": "manual"
+    },
+    "Bloco": {
+      "comment": "Intent parameter: the card's id.",
+      "extractionState": "manual"
+    },
+    "Tipo": {
+      "comment": "Intent parameter: task or event.",
+      "extractionState": "manual"
+    },
+    "Resposta": {
+      "comment": "Intent parameter: which button.",
+      "extractionState": "manual"
+    }
+  },
+  "version": "1.0"
+}

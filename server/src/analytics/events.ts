@@ -5,8 +5,8 @@
  * Keyed by method and the route as Nest declares it, without the global
  * prefix, so an id in the path never reaches an event name.
  *
- * Each carries `via` (`notification` or `app`), from the `X-Lunna-Via`
- * header, when the app said where the answer came from ([viaOf]).
+ * Each carries `via` (`notification`, `live_activity` or `app`), from the
+ * `X-Lunna-Via` header, when the app said where the answer came from ([viaOf]).
  */
 const EVENTS: Record<string, string> = {
   'POST /tasks': 'task_created',
@@ -74,15 +74,19 @@ export function eventFor(
 /** The header the app names where a write came from with. */
 export const VIA_HEADER = 'x-lunna-via';
 
+/** Where a write can say it came from. */
+const VIAS = ['notification', 'live_activity', 'app'] as const;
+
 /**
  * Where a write came from, as the app said in [VIA_HEADER]: a reminder's
- * button, or the app itself. Anything else is not recorded.
+ * button, a button on the Lock Screen's activity, or the app itself.
+ * Anything else is not recorded.
  */
 export function viaOf(
   raw: string | string[] | undefined,
-): 'notification' | 'app' | undefined {
+): (typeof VIAS)[number] | undefined {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  return value === 'notification' || value === 'app' ? value : undefined;
+  return VIAS.find((via) => via === value);
 }
 
 /**

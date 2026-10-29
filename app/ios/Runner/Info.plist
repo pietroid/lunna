@@ -86,6 +86,14 @@
 					<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
 				</array>
 			</dict>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>Live Activity</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>lunna-activity</string>
+				</array>
+			</dict>
 		</array>
 		<key>BGTaskSchedulerPermittedIdentifiers</key>
 		<array>
@@ -95,6 +103,8 @@
 		<array>
 			<string>fetch</string>
 		</array>
+		<key>NSSupportsLiveActivities</key>
+		<true/>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Para escrever o que você pedir por voz. O microfone só fica ligado enquanto você grava.</string>
 		<key>NSSpeechRecognitionUsageDescription</key>

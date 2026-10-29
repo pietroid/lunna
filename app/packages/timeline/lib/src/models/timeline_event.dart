@@ -96,6 +96,7 @@ class TimelineEvent extends Equatable {
     int? workMinutes,
     this.awaitingStart = false,
     this.overtimeMinutes = 0,
+    this.overtimeFrom,
     this.notBefore,
     this.routine,
     this.artifactId,
@@ -125,6 +126,7 @@ class TimelineEvent extends Equatable {
       workMinutes: json['workMinutes'] as int?,
       awaitingStart: json['awaitingStart'] as bool? ?? false,
       overtimeMinutes: (json['overtimeMinutes'] as num?)?.round() ?? 0,
+      overtimeFrom: _maybeDate(json['overtimeFrom']),
       notBefore: _maybeDate(json['notBefore']),
       routine: json['routine'] as String?,
       artifactId: (json['artifact'] as Map<String, dynamic>?)?['id'] as String?,
@@ -213,6 +215,10 @@ class TimelineEvent extends Equatable {
 
   /// Whether it ran past its end with nobody saying it was over.
   bool get isLate => overtimeMinutes > 0;
+
+  /// The planned end it ran past, while [isLate]: what the Lock Screen's
+  /// activity counts up from.
+  final DateTime? overtimeFrom;
 
   /// The earliest the server will lay it out, when the user asked for later.
   final DateTime? notBefore;
@@ -327,6 +333,7 @@ class TimelineEvent extends Equatable {
       workMinutes: workMinutes,
       awaitingStart: awaitingStart ?? this.awaitingStart,
       overtimeMinutes: overtimeMinutes,
+      overtimeFrom: overtimeFrom,
       notBefore: notBefore,
       routine: routine,
       artifactId: artifactId,
@@ -355,6 +362,7 @@ class TimelineEvent extends Equatable {
     workMinutes,
     awaitingStart,
     overtimeMinutes,
+    overtimeFrom,
     notBefore,
     routine,
     artifactId,
