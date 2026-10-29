@@ -1,0 +1,151 @@
+{
+  "screens": [
+    {
+      "png": "shot-1.png",
+      "title": "1 · Rodando, na tela de bloqueio",
+      "why": "Aparece quando o bloco começa (Confirmar, ou ▶ no app) e mostra o que a tela Agora mostra.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 38,
+          "y": 592,
+          "label": "Marca e entrega",
+          "text": "A marca da Lunna e o nome da entrega da tarefa; sem entrega, a hora em que começou."
+        },
+        {
+          "id": "B",
+          "x": 262,
+          "y": 628,
+          "label": "Contagem",
+          "text": "Text(timerInterval:) conta sozinho, em destaque. A atividade muda só com o estado, nunca a cada minuto."
+        },
+        {
+          "id": "C",
+          "x": 100,
+          "y": 657,
+          "label": "Barra",
+          "text": "O quanto do bloco já passou, como a linha de progresso do card."
+        },
+        {
+          "id": "D",
+          "x": 58,
+          "y": 692,
+          "label": "⏯",
+          "text": "Pausa ou retoma (…/pause, …/resume) por um App Intent, sem abrir o app."
+        },
+        {
+          "id": "E",
+          "x": 158,
+          "y": 692,
+          "label": "−10 · +10",
+          "text": "…/extend { minutes: ±10 }, as rotas do card; +10 conta do mais tarde entre o fim e agora."
+        },
+        {
+          "id": "F",
+          "x": 362,
+          "y": 672,
+          "label": "Terminei",
+          "text": "A ação em destaque: …/done, e a atividade some. Tocar fora dos botões abre o app no card."
+        }
+      ]
+    },
+    {
+      "png": "shot-2.png",
+      "title": "2 · Pausado",
+      "why": "Pausado, o bloco deve o que falta: o tempo para e o fim anda com o relógio no servidor.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 290,
+          "y": 592,
+          "label": "Pausado",
+          "text": "No lugar de \"até 14:45\", que já não vale: o fim é empurrado enquanto está parado."
+        },
+        {
+          "id": "B",
+          "x": 262,
+          "y": 628,
+          "label": "Tempo congelado",
+          "text": "O que faltava na pausa, em ink3, sem contar; a barra também fica cinza."
+        },
+        {
+          "id": "C",
+          "x": 58,
+          "y": 692,
+          "label": "▶",
+          "text": "O mesmo botão vira retomar. −10 e +10 continuam, pois mudam o que falta."
+        }
+      ]
+    },
+    {
+      "png": "shot-3.png",
+      "title": "3 · Atrasado",
+      "why": "Ninguém disse que acabou: o bloco segue em hora extra, como o card diz \"atrasado N min\".",
+      "pins": [
+        {
+          "id": "A",
+          "x": 290,
+          "y": 592,
+          "label": "Atrasado",
+          "text": "Sem o app: a staleDate da atividade é o fim do bloco, e o iOS a redesenha nessa hora."
+        },
+        {
+          "id": "B",
+          "x": 258,
+          "y": 628,
+          "label": "+6:12",
+          "text": "Conta para cima a partir do fim, na cor warning, e a barra fica cheia."
+        },
+        {
+          "id": "C",
+          "x": 125,
+          "y": 692,
+          "label": "Sem −10",
+          "text": "O fim já passou, então −10 sai; ficam ⏯, +10 e Terminei, as respostas da pergunta \"terminou?\"."
+        }
+      ]
+    },
+    {
+      "png": "shot-4.png",
+      "title": "4 · Ilha, compacta",
+      "why": "Fora da tela de bloqueio, no iPhone com Dynamic Island.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 118,
+          "y": 52,
+          "label": "Lua",
+          "text": "Na ilha preta só a lua aparece: o ✓ da marca é preto e some. Não é o ícone do agente, é a mesma imagem."
+        },
+        {
+          "id": "B",
+          "x": 272,
+          "y": 52,
+          "label": "Tempo",
+          "text": "O mesmo contador; minimal (com outro app na ilha) mostra só a lua."
+        }
+      ]
+    },
+    {
+      "png": "shot-5.png",
+      "title": "5 · Ilha, aberta",
+      "why": "Um toque longo na ilha abre o mesmo card com os mesmos botões.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 100,
+          "y": 112,
+          "label": "Título e entrega",
+          "text": "Em duas linhas, nas cores da marca escura; o destaque da Lunna clareia para ler sobre preto."
+        },
+        {
+          "id": "B",
+          "x": 68,
+          "y": 162,
+          "label": "Quatro botões",
+          "text": "Dividem a largura por igual; ✓ é só o ícone, sem \"Terminei\"."
+        }
+      ]
+    }
+  ]
+}
