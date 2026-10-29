@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/notifications/live_activity.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
@@ -33,6 +34,10 @@ import 'package:timeline/timeline.dart';
 /// off, whoever did it: the sheet, a drag, or a conversation that booked
 /// something.
 ///
+/// It keeps the Lock Screen's activity on the block that runs too
+/// ([LiveActivity]), opens the card it is tapped on, and reads the day
+/// again when one of its buttons changed it.
+///
 /// It is also where permission is asked, and only once: the first time a
 /// block appears on a day the app had already loaded, which is the first
 /// moment a reminder would be for something.
@@ -52,6 +57,9 @@ class _RemindersListenerState extends State<RemindersListener>
     with WidgetsBindingObserver {
   late final NotificationScheduler _scheduler;
   late final StreamSubscription<NotificationTap> _taps;
+  late final LiveActivity _live;
+  late final StreamSubscription<String> _activityTaps;
+  late final StreamSubscription<void> _activityChanges;
 
   /// The day as it was last loaded, so a change can be told from a reload.
   late TimelineState _last;
@@ -76,13 +84,24 @@ class _RemindersListenerState extends State<RemindersListener>
     _last = context.read<TimelineBloc>().state;
     WidgetsBinding.instance.addObserver(this);
     _taps = _scheduler.taps.listen(_open);
+    _live = context.read<LiveActivity>();
+    _activityTaps = _live.opened.listen(_openCard);
+    final timeline = context.read<TimelineBloc>();
+    _activityChanges = _live.changes.listen(
+      (_) => timeline.add(const TimelineRequested()),
+    );
     unawaited(_openLaunchTap());
+    if (_last.status == TimelineStatus.success) {
+      unawaited(_live.sync(_last.cards));
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_taps.cancel());
+    unawaited(_activityTaps.cancel());
+    unawaited(_activityChanges.cancel());
     super.dispose();
   }
 
@@ -100,6 +119,13 @@ class _RemindersListenerState extends State<RemindersListener>
   /// Opens what the notification that launched the app was about, or looks
   /// for a waiting block when it was not launched from one.
   Future<void> _openLaunchTap() async {
+    final card = await _live.launchCard();
+    if (!mounted) return;
+    if (card != null) {
+      _openCard(card);
+      return;
+    }
+
     final tap = await _scheduler.launchTap();
     if (!mounted) return;
 
@@ -161,7 +187,12 @@ class _RemindersListenerState extends State<RemindersListener>
       return;
     }
 
-    unawaited(context.push<void>('/evento/${Uri.encodeComponent(eventId)}'));
+    _openCard(eventId);
+  }
+
+  void _openCard(String id) {
+    if (!mounted) return;
+    unawaited(context.push<void>('/evento/${Uri.encodeComponent(id)}'));
   }
 
   Future<void> _answer(NotificationTap tap) async {
@@ -209,6 +240,9 @@ class _RemindersListenerState extends State<RemindersListener>
       _lookForWaiting = false;
       _askIfWaiting(current);
     }
+
+    // Sent only when the block it shows changed; the timers count alone.
+    unawaited(_live.sync(current.cards));
 
     final previous = _last;
     _last = current;

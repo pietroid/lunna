@@ -51,7 +51,9 @@ They share one backend and one database.
 Everything the user reads is in **Brazilian Portuguese**. On the app, every
 such string lives in `app/packages/l10n/lib/arb/app_pt.arb` and is read
 through `context.l10n` (or `lookupAppLocalizations` where there is no
-context). A hardcoded user-facing string in Dart is a bug. The server still
+context). A hardcoded user-facing string in Dart is a bug. The iOS Live
+Activity's copy, which Swift draws, is in
+`app/ios/BlockActivity/Localizable.xcstrings`. The server still
 writes its own refusals and reminder copy in Portuguese, and the app shows
 them as written.
 
@@ -74,6 +76,8 @@ Code, comments, commits and this file stay in English.
 app/
   brands/               per-brand icons, splash and web assets (+ README)
   env/                  <brand>.<env>.json defines (examples committed)
+  ios/BlockActivity/    the running block's Live Activity (Widget Extension,
+                        iOS 17): SwiftUI views, intents, the shared state
   tool/brand_web.sh     stamps a brand on a web build
   lib/                  shell, home (Tempo), routines page, landing + demo
                         (the signed-out page, the app on fakes),
@@ -567,6 +571,13 @@ the app (a background engine posts the same route the card's button does,
 `X-Lunna-Via: notification`), and **Falar com a Lunna** opens the agent
 about the card. **A tap on the reminder itself always opens the app on the
 card.** Android has no buttons yet (#56) and keeps the start sheet.
+
+**While a block runs, iOS 17+ shows it as a Live Activity** on the Lock
+Screen and in the Dynamic Island, with ⏯ −10 +10 Terminei: the card's own
+routes, posted by the app from the Lock Screen
+(`X-Lunna-Via: live_activity`). It changes only on state; past the end iOS
+redraws it as late by itself (`staleDate`). See
+[product/spec/live-activity.md](./product/spec/live-activity.md).
 
 **Nothing ends in silence.** A begun block whose end passes with no answer
 (`event.closed_at` unset) is in **overtime**: `catchUp` drags its end along

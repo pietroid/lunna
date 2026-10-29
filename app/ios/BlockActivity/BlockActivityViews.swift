@@ -9,30 +9,8 @@ import SwiftUI
 // themselves, and the end is past when the clock says so (the activity's
 // stale date is the block's end).
 
-/// What the activity carries: about 200 bytes of the 4 KB allowed.
-struct BlockState: Codable, Hashable {
-  /// The card's id on the server, which the buttons answer about.
-  var id: String
-  /// `task` or `event`: which routes the buttons post to.
-  var kind: String
-  var title: String
-  /// The delivery the task belongs to, if any.
-  var delivery: String?
-  var start: Date
-  var end: Date
-  /// Seconds left when it was paused; nil while it runs.
-  var pausedLeft: TimeInterval?
-
-  var paused: Bool { pausedLeft != nil }
-
-  /// Past its end with nobody saying so: overtime, counted up from [end].
-  func over(at now: Date) -> Bool { !paused && now >= end }
-}
-
-/// The four answers, each a route the app's card already posts.
-enum BlockControl: String, Codable, CaseIterable {
-  case pause, resume, less, more, done
-}
+// `BlockState` and `BlockControl` are in BlockAttributes.swift, shared with
+// the app.
 
 /// The brand's colours, the same values as `AppColors` in `app_ui`.
 struct BlockPalette {
@@ -157,7 +135,8 @@ struct BlockProgress: View {
   }
 
   private var fraction: CGFloat {
-    let whole = state.end.timeIntervalSince(state.start)
+    // Measured against the work alone, so time spent paused is not done.
+    let whole = state.work
     guard whole > 0 else { return 1 }
     let left = state.pausedLeft ?? state.end.timeIntervalSince(now)
     return CGFloat(min(1, max(0, 1 - left / whole)))

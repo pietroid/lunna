@@ -23,11 +23,13 @@ import workmanager_apple
     // plugins registered on it the same way the app's engine has.
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
       GeneratedPluginRegistrant.register(with: registry)
+      AppDelegate.registerOwnPlugins(with: registry)
     }
     // So does a reminder's button answered without opening the app
     // (Confirmar, +10 min), which posts the answer from there.
     FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { registry in
       GeneratedPluginRegistrant.register(with: registry)
+      AppDelegate.registerOwnPlugins(with: registry)
     }
     WorkmanagerPlugin.registerPeriodicTask(
       withIdentifier: AppDelegate.notificationsRefreshTask,
@@ -39,5 +41,14 @@ import workmanager_apple
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    AppDelegate.registerOwnPlugins(with: engineBridge.pluginRegistry)
+  }
+
+  /// The app's own plugins, on every engine it runs: today the running
+  /// block's Live Activity.
+  static func registerOwnPlugins(with registry: FlutterPluginRegistry) {
+    if let registrar = registry.registrar(forPlugin: "LiveActivityPlugin") {
+      LiveActivityPlugin.register(with: registrar)
+    }
   }
 }

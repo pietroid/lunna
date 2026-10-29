@@ -95,6 +95,8 @@
 		<array>
 			<string>fetch</string>
 		</array>
+		<key>NSSupportsLiveActivities</key>
+		<true/>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Para escrever o que você pedir por voz. O microfone só fica ligado enquanto você grava.</string>
 		<key>NSSpeechRecognitionUsageDescription</key>

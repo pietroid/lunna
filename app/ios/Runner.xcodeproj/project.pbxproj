@@ -10,15 +10,28 @@
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		3C96B13B0C06B649581A3433 /* BlockAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42CC346910F6F9A49932247C /* BlockAttributes.swift */; };
+		4DAEA8DEAC778C84A7523020 /* BlockActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01B7A0FC14B6AC46FAD735D /* BlockActivityWidget.swift */; };
 		5032D7D8DF611C4C3EDE57EC /* LaunchScreenFocus.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 7380674547540388D65C61A8 /* LaunchScreenFocus.storyboard */; };
+		59BA0473A7A4FAF81EFAB07A /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 565A6595201BFF48D5AB330C /* Localizable.xcstrings */; };
+		5F19E70940278F036EA10F70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5CC1565173369F1AD67F16AD /* Assets.xcassets */; };
+		66AAC2A76F94BD3CD5D1BC55 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00C5B97F802F849686AB4783 /* Foundation.framework */; };
+		6E491D95F6A13287A419A046 /* BlockMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86ABA791E4B0D0D5654BFE5F /* BlockMark.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		7EF39AF0018304A53EA6D409 /* BlockActivities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 052227CC8CF4A5F2C896773C /* BlockActivities.swift */; };
+		8665C6C7E6282927E006661F /* Onest.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 470C649551684BD153BBAFEA /* Onest.ttf */; };
 		92A76E471BDCEBBA5187278F /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8575A755E35130C2ABFAFD8 /* Pods_Runner.framework */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147101CF9000F007C117D /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C147111CF9000F007C117D /* SceneDelegate.swift */; };
+		AAF243D9F95D914DF5A58EA4 /* BlockAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42CC346910F6F9A49932247C /* BlockAttributes.swift */; };
+		B475FCFBCA2B762A3FE5956E /* BlockActivityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A4A9CA538501F94D71C08B6 /* BlockActivityViews.swift */; };
 		BF3CB2EA2D5BB45DCD0AFBAC /* LaunchScreenLunna.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9C8F5EC8A680492DAC0A6C37 /* LaunchScreenLunna.storyboard */; };
 		C3BFE7FD1DD4D689B9257B6A /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1E4A31E1370BD35CAD2F2F92 /* Pods_RunnerTests.framework */; };
+		EA1AE9A8A6723264B63FB354 /* LiveActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495EF1A6265EBBD6D5523A24 /* LiveActivityPlugin.swift */; };
+		EB9BA35A72B3E4022D99E95E /* BlockActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51B275A20FA2060E539CF7F1 /* BlockActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F043BCD1996000B38A4F3946 /* BlockActivities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 052227CC8CF4A5F2C896773C /* BlockActivities.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,9 +42,27 @@
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
 		};
+		7AFFD166B8F12F7AACF77E61 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5771A85C1B656A6A0DBAAA65;
+			remoteInfo = BlockActivity;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		2A3B9E1A6A2EFAD67C09FAE2 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EB9BA35A72B3E4022D99E95E /* BlockActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -45,8 +76,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		00C5B97F802F849686AB4783 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		034C3668AA8F74237852E4BC /* Pods-Runner.release-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-focusdev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-focusdev.xcconfig"; sourceTree = "<group>"; };
 		03AA1350A5DABE064B2081BD /* Base */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreenFocus.storyboard; sourceTree = "<group>"; };
+		052227CC8CF4A5F2C896773C /* BlockActivities.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockActivities.swift; sourceTree = "<group>"; };
 		0654BBAB5FB5991F9B6310DB /* Pods-Runner.release-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-focusproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		0AA85638CD8E604AEE5D05BE /* Pods-Runner.debug-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-focusproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		0B21EA82E4BD8CCB32C2E80C /* Pods-RunnerTests.release-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
@@ -54,6 +87,7 @@
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		15623D8B655D0EB3B4C18D6F /* Pods-RunnerTests.release-production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-production.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-production.xcconfig"; sourceTree = "<group>"; };
+		1A4A9CA538501F94D71C08B6 /* BlockActivityViews.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockActivityViews.swift; sourceTree = "<group>"; };
 		1CE1C9626F2326535A8FF042 /* Pods-Runner.release-production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-production.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-production.xcconfig"; sourceTree = "<group>"; };
 		1E0180AC2127C884BACA74F3 /* Pods-Runner.profile-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-focusproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		1E4A31E1370BD35CAD2F2F92 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -64,21 +98,30 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3E1A8F58070CE9C50ED795AE /* Pods-Runner.profile-production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-production.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-production.xcconfig"; sourceTree = "<group>"; };
+		42CC346910F6F9A49932247C /* BlockAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockAttributes.swift; sourceTree = "<group>"; };
+		470C649551684BD153BBAFEA /* Onest.ttf */ = {isa = PBXFileReference; includeInIndex = 1; path = Onest.ttf; sourceTree = "<group>"; };
+		495EF1A6265EBBD6D5523A24 /* LiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveActivityPlugin.swift; sourceTree = "<group>"; };
 		4AC9B7CF9E1B42F766242E1A /* Pods-Runner.debug-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
 		4ACFAE501D9341E7BAAA4D81 /* Pods-Runner.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-dev.xcconfig"; sourceTree = "<group>"; };
 		4C39C0DAF371F671018AC3C0 /* Pods-Runner.profile-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-dev.xcconfig"; sourceTree = "<group>"; };
+		51B275A20FA2060E539CF7F1 /* BlockActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlockActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		543EA8CF3B30D1595907683A /* Pods-RunnerTests.debug-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-focusdev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-focusdev.xcconfig"; sourceTree = "<group>"; };
+		565A6595201BFF48D5AB330C /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		5CC1565173369F1AD67F16AD /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6E457E76ACFE0D83222C4C33 /* Pods-RunnerTests.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-dev.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		767F390C4871457075FEF3D1 /* Pods-RunnerTests.release-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-focusproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7A647803FA85381806AA8B24 /* Base */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreenLunna.storyboard; sourceTree = "<group>"; };
+		7ACB7E625D2B0AC2751EE037 /* OFL.txt */ = {isa = PBXFileReference; includeInIndex = 1; path = OFL.txt; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		861914800F5C0F3200F4C4FB /* Pods-RunnerTests.profile-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-focusdev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-focusdev.xcconfig"; sourceTree = "<group>"; };
+		86ABA791E4B0D0D5654BFE5F /* BlockMark.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockMark.swift; sourceTree = "<group>"; };
 		8D597ACDFDD1EEABA621A7C3 /* Pods-RunnerTests.debug-production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-production.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-production.xcconfig"; sourceTree = "<group>"; };
 		8E6F6F6BBFA94A5772A559B4 /* Pods-RunnerTests.release-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-focusdev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-focusdev.xcconfig"; sourceTree = "<group>"; };
 		916503AB76561DA369D67BBB /* Pods-RunnerTests.profile-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
+		93BDBD40461988809F16FB4F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9440355AC401316CE4F1D090 /* Pods-Runner.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-dev.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -91,12 +134,14 @@
 		A7089BCDF6F5EB575C61C598 /* Pods-RunnerTests.profile-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-focusproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		A767DFEF2FC5F07FBA293DB8 /* Pods-RunnerTests.release-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-lunnadev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-lunnadev.xcconfig"; sourceTree = "<group>"; };
 		AC464468D5A9B9ABA5EC389A /* Pods-Runner.release-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
+		B01B7A0FC14B6AC46FAD735D /* BlockActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockActivityWidget.swift; sourceTree = "<group>"; };
 		B62AFA93B6C062DCC1FB26FC /* Pods-RunnerTests.debug-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-lunnadev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-lunnadev.xcconfig"; sourceTree = "<group>"; };
 		BC96240CD53AE402C616D888 /* Pods-RunnerTests.profile-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-lunnadev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-lunnadev.xcconfig"; sourceTree = "<group>"; };
 		C8575A755E35130C2ABFAFD8 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D498015C843854CC8DDAFB72 /* Pods-RunnerTests.debug-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
 		D5D085381B7970BA94A9C6A3 /* Pods-Runner.profile-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-focusdev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-focusdev.xcconfig"; sourceTree = "<group>"; };
 		DCD12D1A9A6A1A6F6F2534BF /* Pods-Runner.profile-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-lunnadev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-lunnadev.xcconfig"; sourceTree = "<group>"; };
+		EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = BlockActivity.xcconfig; sourceTree = "<group>"; };
 		EBAF59DDA4775F30FA39CD8D /* Pods-RunnerTests.debug-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-focusproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		EC359384345915A316678A87 /* Pods-RunnerTests.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-dev.xcconfig"; sourceTree = "<group>"; };
 		EC5C6EE1DAB869783BA8A602 /* Pods-RunnerTests.profile-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-dev.xcconfig"; sourceTree = "<group>"; };
@@ -104,6 +149,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		01661B9C557D383A53DF4FE2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				66AAC2A76F94BD3CD5D1BC55 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EB1CF9000F007C117D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -129,6 +182,7 @@
 			children = (
 				C8575A755E35130C2ABFAFD8 /* Pods_Runner.framework */,
 				1E4A31E1370BD35CAD2F2F92 /* Pods_RunnerTests.framework */,
+				632A9707FB8BC175C793625E /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -184,6 +238,32 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+		632A9707FB8BC175C793625E /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				00C5B97F802F849686AB4783 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		69C73977AEE8F4840F3B6E92 /* BlockActivity */ = {
+			isa = PBXGroup;
+			children = (
+				EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */,
+				42CC346910F6F9A49932247C /* BlockAttributes.swift */,
+				052227CC8CF4A5F2C896773C /* BlockActivities.swift */,
+				1A4A9CA538501F94D71C08B6 /* BlockActivityViews.swift */,
+				86ABA791E4B0D0D5654BFE5F /* BlockMark.swift */,
+				B01B7A0FC14B6AC46FAD735D /* BlockActivityWidget.swift */,
+				5CC1565173369F1AD67F16AD /* Assets.xcassets */,
+				565A6595201BFF48D5AB330C /* Localizable.xcstrings */,
+				CB5910155EDC4B3E6EC47C90 /* Fonts */,
+				93BDBD40461988809F16FB4F /* Info.plist */,
+			);
+			name = BlockActivity;
+			path = BlockActivity;
+			sourceTree = "<group>";
+		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
@@ -205,6 +285,7 @@
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				388E3855EC946046353EB799 /* Pods */,
 				091F760A442A68F406E83019 /* Frameworks */,
+				69C73977AEE8F4840F3B6E92 /* BlockActivity */,
 			);
 			sourceTree = "<group>";
 		};
@@ -213,6 +294,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				51B275A20FA2060E539CF7F1 /* BlockActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -230,8 +312,19 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				7380674547540388D65C61A8 /* LaunchScreenFocus.storyboard */,
 				9C8F5EC8A680492DAC0A6C37 /* LaunchScreenLunna.storyboard */,
+				495EF1A6265EBBD6D5523A24 /* LiveActivityPlugin.swift */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		CB5910155EDC4B3E6EC47C90 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				470C649551684BD153BBAFEA /* Onest.ttf */,
+				7ACB7E625D2B0AC2751EE037 /* OFL.txt */,
+			);
+			name = Fonts;
+			path = Fonts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -256,6 +349,23 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		5771A85C1B656A6A0DBAAA65 /* BlockActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 79408FF7BD505B12AF0333DA /* Build configuration list for PBXNativeTarget "BlockActivity" */;
+			buildPhases = (
+				69AF672EFD9E5945DAAF7A5A /* Sources */,
+				01661B9C557D383A53DF4FE2 /* Frameworks */,
+				08FC4ECEECB7DEAB102A7B8D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BlockActivity;
+			productName = BlockActivity;
+			productReference = 51B275A20FA2060E539CF7F1 /* BlockActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -266,12 +376,14 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				2A3B9E1A6A2EFAD67C09FAE2 /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				180DC556DA727A11413F7B08 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C32ABD68E65DB4A3C212D8C6 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -295,6 +407,9 @@
 						CreatedOnToolsVersion = 14.0;
 						TestTargetID = 97C146ED1CF9000F007C117D;
 					};
+					5771A85C1B656A6A0DBAAA65 = {
+						CreatedOnToolsVersion = 26.0;
+					};
 					97C146ED1CF9000F007C117D = {
 						CreatedOnToolsVersion = 7.3.1;
 						LastSwiftMigration = 1100;
@@ -308,6 +423,7 @@
 			knownRegions = (
 				en,
 				Base,
+				"pt-BR",
 			);
 			mainGroup = 97C146E51CF9000F007C117D;
 			packageReferences = (
@@ -319,11 +435,22 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				5771A85C1B656A6A0DBAAA65 /* BlockActivity */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		08FC4ECEECB7DEAB102A7B8D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F19E70940278F036EA10F70 /* Assets.xcassets in Resources */,
+				59BA0473A7A4FAF81EFAB07A /* Localizable.xcstrings in Resources */,
+				8665C6C7E6282927E006661F /* Onest.ttf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807F294A63A400263BE5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -449,6 +576,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		69AF672EFD9E5945DAAF7A5A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3C96B13B0C06B649581A3433 /* BlockAttributes.swift in Sources */,
+				7EF39AF0018304A53EA6D409 /* BlockActivities.swift in Sources */,
+				B475FCFBCA2B762A3FE5956E /* BlockActivityViews.swift in Sources */,
+				6E491D95F6A13287A419A046 /* BlockMark.swift in Sources */,
+				4DAEA8DEAC778C84A7523020 /* BlockActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		97C146EA1CF9000F007C117D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -456,6 +595,9 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				97C147101CF9000F007C117D /* SceneDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				AAF243D9F95D914DF5A58EA4 /* BlockAttributes.swift in Sources */,
+				F043BCD1996000B38A4F3946 /* BlockActivities.swift in Sources */,
+				EA1AE9A8A6723264B63FB354 /* LiveActivityPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -466,6 +608,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		C32ABD68E65DB4A3C212D8C6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BlockActivity;
+			target = 5771A85C1B656A6A0DBAAA65 /* BlockActivity */;
+			targetProxy = 7AFFD166B8F12F7AACF77E61 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -538,6 +686,37 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = "Release-lunnaDev";
+		};
+		0F947273A19343DB1FD88677 /* Profile-lunnaDev */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = lunna;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = "[DEV] Lunna";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.lunna.dev.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Profile-lunnaDev";
 		};
 		1730FE34D926A4C050AF8A3F /* Debug-focusDev */ = {
 			isa = XCBuildConfiguration;
@@ -670,6 +849,39 @@
 			};
 			name = "Release-focusDev";
 		};
+		3C979E5F499631B1FF80F790 /* Debug-focusDev */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = focus;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = "[DEV] Focus";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.focus.dev.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Debug-focusDev";
+		};
 		3E24F9BFA00E3F1DF3AAE804 /* Profile-focusProduction */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A7089BCDF6F5EB575C61C598 /* Pods-RunnerTests.profile-focusproduction.xcconfig */;
@@ -701,6 +913,37 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = "Profile-focusDev";
+		};
+		40E016BF1FE1D3A5D3D37F2D /* Release-focusProduction */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = focus;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = Focus;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.focus.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Release-focusProduction";
 		};
 		4B66D54545EC48B2E68C505B /* Release-focusProduction */ = {
 			isa = XCBuildConfiguration;
@@ -1114,6 +1357,134 @@
 			};
 			name = "Release-lunnaProduction";
 		};
+		8EC3A387AB25D389A8A8B21E /* Debug-focusProduction */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = focus;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = Focus;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.focus.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Debug-focusProduction";
+		};
+		91F9AAC3C57044E27E3E8630 /* Release-lunnaDev */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = lunna;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = "[DEV] Lunna";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.lunna.dev.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Release-lunnaDev";
+		};
+		978CFF414B8AB105966533C9 /* Profile-lunnaProduction */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = lunna;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = Lunna;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.lunna.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Profile-lunnaProduction";
+		};
+		9DCB7C2F7D1BD7CA03E435A3 /* Debug-lunnaDev */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = lunna;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = "[DEV] Lunna";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.lunna.dev.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Debug-lunnaDev";
+		};
 		A74B22151FC82C9241E7876A /* Debug-focusDev */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 543EA8CF3B30D1595907683A /* Pods-RunnerTests.debug-focusdev.xcconfig */;
@@ -1174,6 +1545,39 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = "Profile-lunnaDev";
+		};
+		B12777F1A22A5E9523AE1DCF /* Debug-lunnaProduction */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = lunna;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = Lunna;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.lunna.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Debug-lunnaProduction";
 		};
 		B2FB222039C989EBB99609C2 /* Release-lunnaDev */ = {
 			isa = XCBuildConfiguration;
@@ -1252,6 +1656,37 @@
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = "Release-lunnaDev";
+		};
+		B7965AD1C8C1A4252F2C5D66 /* Profile-focusProduction */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = focus;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = Focus;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.focus.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Profile-focusProduction";
 		};
 		BE22189123C719799C5ADEF9 /* Debug-lunnaProduction */ = {
 			isa = XCBuildConfiguration;
@@ -1457,6 +1892,68 @@
 			};
 			name = "Debug-lunnaDev";
 		};
+		D8984A227BF90ACF4914BD8C /* Profile-focusDev */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = focus;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = "[DEV] Focus";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.focus.dev.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Profile-focusDev";
+		};
+		DAF4405A2272259790EC9533 /* Release-lunnaProduction */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = lunna;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = Lunna;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.lunna.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Release-lunnaProduction";
+		};
 		DCC66CDE86F0C7F0CA7759DF /* Release-lunnaProduction */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
@@ -1565,6 +2062,37 @@
 			};
 			name = "Debug-focusDev";
 		};
+		F02E97B67A5B21BE781F043C /* Release-focusDev */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = "";
+				BRAND_ID = focus;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				DEVELOPMENT_TEAM = K3U55XXNRM;
+				FLAVOR_APP_NAME = "[DEV] Focus";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BlockActivity/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.pietroid.focus.dev.BlockActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = "Release-focusDev";
+		};
 		FBDFB02A6A077825470DC3E2 /* Release-focusProduction */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
@@ -1659,6 +2187,25 @@
 				B07B8540608319764D29DF69 /* Profile-lunnaDev */,
 				3E24F9BFA00E3F1DF3AAE804 /* Profile-focusProduction */,
 				611DC628C67F05EA75E7614F /* Profile-lunnaProduction */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = "Release-lunnaProduction";
+		};
+		79408FF7BD505B12AF0333DA /* Build configuration list for PBXNativeTarget "BlockActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3C979E5F499631B1FF80F790 /* Debug-focusDev */,
+				9DCB7C2F7D1BD7CA03E435A3 /* Debug-lunnaDev */,
+				8EC3A387AB25D389A8A8B21E /* Debug-focusProduction */,
+				B12777F1A22A5E9523AE1DCF /* Debug-lunnaProduction */,
+				F02E97B67A5B21BE781F043C /* Release-focusDev */,
+				91F9AAC3C57044E27E3E8630 /* Release-lunnaDev */,
+				40E016BF1FE1D3A5D3D37F2D /* Release-focusProduction */,
+				DAF4405A2272259790EC9533 /* Release-lunnaProduction */,
+				D8984A227BF90ACF4914BD8C /* Profile-focusDev */,
+				0F947273A19343DB1FD88677 /* Profile-lunnaDev */,
+				B7965AD1C8C1A4252F2C5D66 /* Profile-focusProduction */,
+				978CFF414B8AB105966533C9 /* Profile-lunnaProduction */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = "Release-lunnaProduction";

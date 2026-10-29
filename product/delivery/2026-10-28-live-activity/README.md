@@ -1,6 +1,6 @@
 # The running block on the Lock Screen (Live Activity, iOS)
 
-2026-10-28 · delivery · **draft, design** · track: mockup · issue #61
+2026-10-28 · delivery · **delivered** · track: mockup · issue #61
 
 ## 1. The prompt
 
@@ -38,6 +38,12 @@ So: the activity needs **iOS 17** (every phone that gets it has the
 buttons), it shows **only while a block runs** (nothing for the next one
 waiting to be begun), and the type now follows the app's scale.
 
+### The build, started by the queue
+
+> build live-activity
+>
+> The design was approved on the issue. Do Phases 3 and 4 unattended.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -50,8 +56,8 @@ pins in [img/board.json](img/board.json).
 extension, which the Flutter preview cannot draw. So the board is drawn by
 the SwiftUI views the extension will ship
 ([`app/ios/BlockActivity/BlockActivityViews.swift`](../../../app/ios/BlockActivity/BlockActivityViews.swift)),
-rendered on the Mac with `ImageRenderer`
-([`Preview/shoot.sh`](../../../app/ios/BlockActivity/Preview/shoot.sh)),
+rendered on the Mac with `ImageRenderer` (a harness in
+`app/ios/BlockActivity/Preview/`, deleted after the build's prints),
 in Onest and the brand's `AppColors` values. Only the wallpaper, the
 clock, the island's black shape and the home screen icons are the
 harness's stand-ins for iOS.
@@ -94,69 +100,7 @@ buttons, and −10 / +10 as text. Phosphor would need its glyphs exported
 into the extension's asset catalogue for three icons iOS draws natively;
 the brand mark is the existing `lunna.png` / `focus.png`.
 
-## Build brief
-
-*(Phase 3 starts here; Phase 4 replaces this section.)*
-
-### Files the design wrote (kept for the build)
-
-- `app/ios/BlockActivity/BlockActivityViews.swift`: `BlockState` (the
-  activity's content state), `BlockControl`, `BlockPalette` (both brands),
-  and the views: `BlockLockScreen`, `BlockIslandExpanded`,
-  `BlockIslandCompact`, `BlockTimer`, `BlockProgress`, `ControlFace`.
-  The views take a `wrap` closure so the extension wraps each face in
-  `Button(intent:)`.
-- `app/ios/BlockActivity/BlockMark.swift`: the mark from the asset
-  catalogue.
-- `app/ios/BlockActivity/Preview/` (`main.swift`, `shoot.sh`): the render
-  harness. Phase 4 shoots both brands with it (add Focus scenes), then
-  deletes it.
-
-### What the build does
-
-- **iOS, extension.** A Widget Extension target `BlockActivity`
-  (deployment target **iOS 17**, the first with buttons in an activity;
-  the app starts it behind `#available(iOS 17, *)`) with an
-  `ActivityConfiguration(for: BlockAttributes.self)` over the views above:
-  `activityBackgroundTint(palette.surface)`, `staleDate = end` on every
-  update, dynamic island regions from `BlockIslandExpanded` /
-  `BlockIslandCompact`, `widgetURL` to the card. Brand per flavor: an
-  Info.plist key (`LunnaBrand`) set by the flavor's xcconfig picks
-  `BlockPalette` and the mark asset; Onest bundled through `UIAppFonts`.
-  `NSSupportsLiveActivities` on Runner. App Group not needed if the
-  intents run in the app's process.
-- **iOS, intents.** One `LiveActivityIntent` per control (or one with a
-  `BlockControl` parameter) that posts `pause`, `resume`, `extend ±10`
-  or `done` for `/api/tasks|events/:id`, with the bearer token the app
-  keeps in the Keychain and `X-Lunna-Via: live_activity`, then updates
-  or ends the activity from the timeline it gets back. A refusal (e.g. a
-  pause the server rejects) leaves the activity as it was.
-- **App ↔ native.** A method channel `lunna/live_activity` in
-  `AppDelegate` with `sync(BlockState?)`: start, update or end. The app
-  calls it from the timeline whenever the running card changes (in
-  `packages/notifications`, beside the reminder sync, so both the app and
-  the notification buttons' background isolate keep it right). Running
-  card = Agora's begun task or event; nothing running ends it.
-- **iOS 26.** When the next block is a fixed one, request its activity
-  scheduled at its start (`request(…start:)`), as the reminders are
-  queued. Behind `#available(iOS 26, *)`; skip if it proves unreliable.
-- **Server.** No new route. Add `live_activity` as a `via` value in
-  `analytics/events.ts` / `logging.interceptor.ts`, so its answers are
-  counted apart from the notification's.
-- **Type.** Keep the `onest(size, weight)` modifier and the weights in
-  the views (300/400/500 only, `AppTypography`'s tracking); register the
-  variable `Onest` in the extension so the weights resolve.
-- **Strings.** The extension's copy ("até", "Pausado", "Atrasado",
-  "Terminei") goes in its own `Localizable.xcstrings`, pt-BR, since Swift
-  cannot read `app_pt.arb`. Name it in `AGENTS.md` under Language.
-- **Docs.** `product/spec/notifications.md` gets the activity; the
-  Reminders section of `AGENTS.md` a line.
-- **Proof.** No simulator test reaches a Live Activity's buttons; verify
-  on a device: start a task, lock, ⏸, +10, ✓, and the overtime redraw at
-  the end. `.tool/check` for the Dart and server parts; an `xcodebuild`
-  of both flavors for the extension.
-
-### Decided unattended
+### Decided unattended (design)
 
 - Track: mockup, with the board drawn by the extension's own SwiftUI
   views on the Mac instead of the Flutter preview, which cannot draw a
@@ -182,10 +126,167 @@ the brand mark is the existing `lunna.png` / `focus.png`.
 - Only while a block runs; the next block waiting to be begun gets none.
 - The type follows the app's (lighter) scale.
 
-### Open questions
+## 3. What was built
 
-None: both were answered on review (above).
+### The prints
 
-### Cost
+Drawn by the extension's own views as built (`BlockActivityViews.swift`,
+the final `BlockState`), through the design's render harness, in both
+brands: running, paused, late, the compact island, the expanded island.
+
+Lunna:
+
+![Lunna, the five states](img/build-lunna.png)
+
+Focus:
+
+![Focus, the five states](img/build-focus.png)
+
+These are the views rendered on the Mac, not a phone's screen: nothing
+here reaches a real Lock Screen without a signed-in phone with a block
+running (see "Not tested" below).
+
+### The contract
+
+**The activity shows the block that runs, and nothing else; it changes
+only when the block's state does; its buttons are the card's buttons.**
+
+- Running is Agora's begun task or its fixed block, paused or late
+  included; never a task waiting to be begun. One rule, written twice:
+  `blockOf` in Dart (what the app sends) and `BlockState.running(in:)` in
+  Swift (what a button's answer redraws).
+- No update per minute: the time is the system's timer, and the
+  activity's `staleDate` is the block's end, so iOS redraws it as
+  **Atrasado** by itself.
+- ⏸/▶, −10/+10 and ✓ post `pause`, `resume`, `extend ±10` and `done` on
+  `/api/tasks|events/:id` from the app's process (a `LiveActivityIntent`),
+  with the Keychain's session token and `X-Lunna-Via: live_activity`, then
+  redraw or end the activity from the day the server answers with. A
+  refusal leaves it as it was.
+
+### Server
+
+No new route. `server/src/events/timeline.service.ts` adds `overtimeFrom`
+to a late card (the end it ran past, from its first second, before
+`overtimeMinutes` appears), declared in `entities/event.entity.ts`; the
+activity counts up from it. `analytics/events.ts` accepts `live_activity`
+as a `via`.
+
+### App (Dart)
+
+- `TimelineEvent.overtimeFrom` (`packages/timeline`).
+- `lib/notifications/live_activity.dart`: `LiveActivity` over the
+  `lunna/live_activity` channel (`sync`, `launchCard`, `opened`,
+  `changes`), and `blockOf`. It sends only when the block changed, and
+  does nothing off iOS.
+- `RemindersListener` syncs it on every loaded day, opens the card a tap on
+  the activity came from, and reloads the day when a button changed it;
+  `App` ends it on sign-out; `answerReminderInBackground` syncs it after a
+  reminder's answer (update or end only: iOS starts activities from the
+  foreground). Provided in `main.dart`.
+
+### iOS
+
+- **`BlockActivity`**, a Widget Extension target (iOS 17), embedded in
+  Runner before Flutter's *Thin Binary* phase, one build configuration per
+  flavor, bundle id `<app's>.BlockActivity`, `BRAND_ID` per flavor read
+  back as `LunnaBrand` in its Info.plist, its version from
+  `Flutter/Generated.xcconfig` (through `BlockActivity.xcconfig`) so it
+  always matches the app's.
+- In both targets: `BlockAttributes.swift` (`BlockState` now with `work`,
+  its length without pauses, which the line is measured against;
+  `BlockControl` and its routes; `BlockLink`; the `ActivityAttributes`)
+  and `BlockActivities.swift` (start/update/end, the `BlockIntent`, the
+  Keychain read of `lunna.session_token`).
+- Extension only: `BlockActivityViews.swift` (the design's views),
+  `BlockMark.swift` (brand and mark), `BlockActivityWidget.swift` (the
+  `ActivityConfiguration`, the island's regions, `widgetURL`), the two
+  marks (96 px), Onest (variable, with its OFL) and
+  `Localizable.xcstrings` (pt-BR).
+- Runner: `LiveActivityPlugin.swift` (the channel on every engine, and the
+  tap's link through Flutter's scene life cycle, `addSceneDelegate`),
+  `AppDelegate.registerOwnPlugins`, `NSSupportsLiveActivities`.
+
+### Tests and checks
+
+- `app/test/notifications/live_activity_test.dart`, 10 tests: which block
+  runs (begun task, fixed block, not a waiting task, not later), paused
+  (what was left, not the dragged end), late (counts from the end it ran
+  past), sends once and again only on change, ends on the first empty
+  sync, resends after a button, the launch card, nothing off iOS.
+- Server: the late-task spec now checks `overtimeFrom` and that `extend`
+  clears it; the analytics spec accepts `live_activity`.
+- `.tool/check` passes: `app-analyze`, `test-timeline` under Focus and
+  Lunna, the server's eslint, tsc and tests. The new app test, which
+  `.tool/check` does not run (it covers packages), passes under both
+  brands (`flutter test test/notifications`, with and without
+  `--dart-define=BRAND=lunna`).
+- Builds (Xcode 26.6, iOS 26.5 SDK), each with the extension embedded and
+  its Info.plist checked: `flutter build ios --simulator --debug` for
+  `lunnaDev` (`com.pietroid.lunna.dev.BlockActivity`, `LunnaBrand =
+  lunna`) and `focusDev` (`…focus.dev.BlockActivity`, `focus`), and
+  `flutter build ios --release --no-codesign` for `lunnaProduction` and
+  `focusProduction` (`com.pietroid.{lunna,focus}.BlockActivity`, version
+  1.0.0 like the app's). See the Pods note in section 4.
+
+### Where the build differs from the design
+
+- **No scheduled start on iOS 26** for the next fixed block. The brief
+  allowed skipping it; it would also fire its own alert beside the start
+  reminder, and could not be tried here. An activity is started when the
+  app is opened with a block running.
+- The progress line is measured against the work (`work`), not end minus
+  start, so time spent paused is not counted as done, as on the card.
+- The compact island is drawn by `compactLeading` (the mark) and
+  `compactTrailing` (the time), which is how iOS splits it;
+  `BlockIslandCompact` stays as the print's whole.
+
+### Not tested
+
+- **Nothing ran on a phone.** No simulator test reaches a Live Activity's
+  buttons, and starting one needs a signed-in app with a block running.
+  On a device: begin a task, lock, ⏸, ▶, +10, −10, ✓, a tap on the
+  activity (it opens the card), and a block left to run past its end
+  (Atrasado, counting up).
+- The tap's link on a cold launch relies on Flutter handing the scene's
+  connection options to a plugin registered after the scene connected.
+- The signing of the new bundle ids (`com.pietroid.{lunna,focus}[.dev].BlockActivity`)
+  was not run: the builds here are unsigned.
+
+### Decided unattended (build)
+
+- iOS 26's scheduled start left out (above).
+- `overtimeFrom` added to the card rather than computing the end on the
+  phone: the card's own end moves with the clock while it is late.
+- The channel is a plugin registered on every engine (the app's and the
+  background ones), so a reminder's answer from the Lock Screen also moves
+  the activity.
+- The tap opens the app with `lunna-activity://card/<id>` read through
+  Flutter's scene life cycle, not Flutter's deep linking, which would also
+  route Google sign-in's URLs.
+- The render harness (`Preview/`) was deleted after the prints, as the
+  brief said.
+
+## 4. How to turn it on
+
+Nothing to set: it ships with the iOS app of either brand, on iOS 17 and
+later, and needs no env var or server change beyond this deploy.
+
+- Signing: the extension's bundle ids are new; Xcode's automatic signing
+  (team `K3U55XXNRM`) creates them on the first signed build or archive.
+- The person can turn Live Activities off per app in Settings; then
+  nothing starts, and the reminders work as before.
+- Without iOS 17 (or on Android and the web) nothing changes.
+
+**A build snag that predates this work:** in this worktree
+`flutter build ios --flavor lunnaDev` fails with *Unable to load contents
+of file list: '/Target Support Files/Pods-Runner/…'*, with or without
+this change (proved by building `HEAD`'s project file: the same error).
+`Flutter/Debug.xcconfig` and `Release.xcconfig` include
+`Pods-Runner.debug.xcconfig`, but CocoaPods writes one per flavor
+(`Pods-Runner.debug-lunnadev.xcconfig`). The builds above pointed the
+include at the flavor's file for the build only; the files are unchanged.
+
+## 5. Cost and time
 
 Measured by the queue: see the pull request.

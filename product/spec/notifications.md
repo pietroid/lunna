@@ -92,12 +92,14 @@ A reminder's button posts exactly what the card's button would:
   always. Falar com a Lunna opens the agent's sheet, about the task when the
   card is one. The start sheet ("Começar agora" / "Esperar 10 min") is
   Android's only, until #56.
+- The running block's Live Activity (iOS 17+, its own buttons) is in
+  [live-activity.md](./live-activity.md).
 - `EventTile`: "atrasado N min" (`AppTag`, `danger`) on Agora while
   `overtimeMinutes > 0`; the ± step is `stepMinutes`.
 
 ## Measuring
 
-`X-Lunna-Via: notification | app` on every request becomes `via` on the
+`X-Lunna-Via: notification | live_activity | app` on every request becomes `via` on the
 write event `LoggingInterceptor` sends. `catchUp` captures
 `block_closed_silently { kind, overMinutes }` for each block it closes at
 the cap. Nothing a person wrote is sent.

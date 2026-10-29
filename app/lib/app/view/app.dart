@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/app/app.dart';
 import 'package:lunna/landing/landing.dart';
+import 'package:lunna/notifications/live_activity.dart';
 import 'package:lunna/routines/routines.dart';
 import 'package:lunna/shell/shell.dart';
 import 'package:notifications/notifications.dart';
@@ -112,6 +113,8 @@ class App extends StatelessWidget {
           current.status == AppStatus.unauthenticated,
       listener: (context, state) {
         if (state.status == AppStatus.unauthenticated) {
+          // Nobody's block runs on a signed-out phone.
+          unawaited(context.read<LiveActivity>().sync());
           _router.go('/auth');
         } else {
           // The day is per user, so it is fetched once the user is known
