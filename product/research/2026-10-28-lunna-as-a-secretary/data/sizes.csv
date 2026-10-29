@@ -1,0 +1,8 @@
+what,count,csv_chars,csv_tokens,kv_chars,kv_tokens,fits_one_message
+sheet rows,10,836,209,1348,337,yes
+sheet rows,30,2337,584,3961,990,yes
+sheet rows,100,7750,1938,13304,3326,no
+sheet rows,300,23213,5803,40159,10040,no
+inbox chats x5 msgs,10,3141,785,,,yes
+inbox chats x10 msgs,30,17648,4412,,,no
+inbox chats x10 msgs,80,47060,11765,,,no
