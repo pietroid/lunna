@@ -67,8 +67,13 @@ class DemoTimelineRepository implements TimelineRepository {
   /// {@macro demo_timeline_repository}
   ///
   /// [resting] leaves out the task that would be running, so the day starts
-  /// on the break between two blocks instead.
-  DemoTimelineRepository(AppLocalizations l10n, {bool resting = false}) {
+  /// on the break between two blocks instead. [late] has the running one
+  /// past its end by that many minutes, with nobody having said so.
+  DemoTimelineRepository(
+    AppLocalizations l10n, {
+    bool resting = false,
+    int late = 0,
+  }) : _late = late {
     final now = clock.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1, 9);
 
@@ -78,7 +83,7 @@ class DemoTimelineRepository implements TimelineRepository {
           'lunna',
           l10n.demoBuilding(AppBrand.id),
           45,
-          startedAt: now.subtract(const Duration(minutes: 12)),
+          startedAt: now.subtract(Duration(minutes: late > 0 ? 45 + late : 12)),
         ),
       _Task('mercado', l10n.demoGroceries, 30),
       _Task('fotos', l10n.demoBacklog, 60, backlog: true),
@@ -94,6 +99,7 @@ class DemoTimelineRepository implements TimelineRepository {
     ]);
   }
 
+  final int _late;
   final _tasks = <_Task>[];
   final _events = <TimelineEvent>[];
   var _next = 0;
@@ -371,6 +377,7 @@ class DemoTimelineRepository implements TimelineRepository {
       final start =
           task.startedAt ??
           TimelinePlan.nextFreeStart(busy, duration, now: from);
+      final late = task.startedAt != null && _late > 0;
       final card = TimelineEvent(
         id: task.id,
         title: task.title,
@@ -378,9 +385,13 @@ class DemoTimelineRepository implements TimelineRepository {
             ? TimelineSection.dia
             : TimelineSection.agora,
         startTime: start,
-        endTime: start.add(duration),
+        // Overtime drags a late end along with the clock.
+        endTime: late
+            ? now.add(const Duration(minutes: 1))
+            : start.add(duration),
         durationMinutes: task.minutes,
         started: task.startedAt != null,
+        overtimeMinutes: late ? _late : 0,
         awaitingStart: task.startedAt == null && !start.isAfter(now),
         notes: task.notes,
         pausedAt: task.pausedAt,

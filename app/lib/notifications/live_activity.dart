@@ -5,6 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:timeline/timeline.dart';
 
+/// Whether the running block is shown on the Lock Screen at all.
+///
+/// Off for now (#65): it said the same as the card, and the reminders, and
+/// people found three voices for one block confusing. Everything else here
+/// stays, so turning it back on is this line.
+const kLiveActivity = false;
+
 /// {@template live_activity}
 /// The running block on the Lock Screen and in the Dynamic Island (iOS 17
 /// and later): the `BlockActivity` extension in `ios/`, started, updated and
@@ -25,8 +32,12 @@ class LiveActivity {
     required this.apiBaseUrl,
     MethodChannel? channel,
     bool? supported,
+    this.enabled = kLiveActivity,
   }) : _channel = channel ?? const MethodChannel(channelName),
        _supported = supported ?? _onIos;
+
+  /// Whether it shows the running block; [kLiveActivity] but in tests.
+  final bool enabled;
 
   static bool get _onIos =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
@@ -78,7 +89,9 @@ class LiveActivity {
   Future<void> sync([List<TimelineEvent> cards = const []]) async {
     if (!_supported) return;
 
-    final block = blockOf(cards);
+    // Switched off, every sync ends the activity: the one left running
+    // from before goes at launch, and no other starts.
+    final block = enabled ? blockOf(cards) : null;
     if (_synced && mapEquals(block, _sent)) return;
 
     try {

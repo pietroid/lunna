@@ -28,17 +28,14 @@ import {
   NotificationPlan,
 } from './dto/notification-plan.dto';
 import {
-  CONFIRM_START_BODY,
-  ENDED_BODY,
-  endedTitle,
+  ENDING_BODY,
   EVENING_MESSAGES,
   EVENING_TITLE,
   headsUpBody,
-  headsUpTitle,
+  lateBody,
   MORNING_MESSAGES,
   MORNING_TITLE,
-  startedBody,
-  startedTitle,
+  STARTING_BODY,
 } from './notification-copy';
 
 /** How many days ahead a plan reaches when the app does not say. */
@@ -49,10 +46,10 @@ export const MAX_HORIZON_DAYS = 14;
 
 /**
  * How many times an edge nobody answered is asked about: at the hour, then
- * again [STEP_MINUTES] later, and once more. Then it is quiet: an ignored
- * reminder means busy, not broken.
+ * once more [STEP_MINUTES] later. Then it is quiet: an ignored reminder
+ * means busy, not broken, and a pile of them on the Lock Screen helps no one.
  */
-export const ASKS_PER_EDGE = 3;
+export const ASKS_PER_EDGE = 2;
 
 /**
  * How far ahead the re-asks are queued. The phone holds 64 reminders at
@@ -147,7 +144,7 @@ function nextTaskItems(day: Day): Planned[] {
     at: dueOf(day, next, slot),
     zone: day.zone,
     title: next.title,
-    body: CONFIRM_START_BODY,
+    body: STARTING_BODY,
     eventId: next.id,
   });
 }
@@ -199,8 +196,8 @@ function blockItems(day: Day, event: CalendarEvent): Planned[] {
         source: event.id,
         at: interval.start,
         zone,
-        title: startedTitle(event.title),
-        body: startedBody(formatTimeIn(interval.end, zone)),
+        title: event.title,
+        body: STARTING_BODY,
         eventId,
       }),
     );
@@ -213,10 +210,10 @@ function blockItems(day: Day, event: CalendarEvent): Planned[] {
           source: event.id,
           at: addMinutes(interval.start, -HEADS_UP_MINUTES),
           zone,
-          title: headsUpTitle(event.title, HEADS_UP_MINUTES),
+          title: event.title,
           body: headsUpBody(
+            HEADS_UP_MINUTES,
             formatTimeIn(interval.start, zone),
-            formatTimeIn(interval.end, zone),
           ),
           eventId,
         }),
@@ -237,8 +234,9 @@ function blockItems(day: Day, event: CalendarEvent): Planned[] {
         source: event.id,
         at: new Date(event.overtimeFrom ?? interval.end),
         zone,
-        title: endedTitle(event.title),
-        body: ENDED_BODY,
+        title: event.title,
+        body: ENDING_BODY,
+        late: lateBody,
         eventId,
       }),
     );
@@ -267,10 +265,19 @@ function runsUpTo(day: Day, fixed: CalendarEvent, start: Date): boolean {
 /**
  * The asks of one edge: at [spec.at], then again every [STEP_MINUTES], as
  * many as [ASKS_PER_EDGE]. Each repeat is its own reminder, with its own id.
+ * An end asked again says how late it is ([late], given the minutes).
  */
-function asks(spec: Parameters<typeof itemOf>[0]): Planned[] {
+function asks(
+  spec: Parameters<typeof itemOf>[0] & { late?: (minutes: number) => string },
+): Planned[] {
+  const { late, ...item } = spec;
+
   return Array.from({ length: ASKS_PER_EDGE }, (_, i) => ({
-    ...itemOf({ ...spec, at: addMinutes(spec.at, i * STEP_MINUTES) }),
+    ...itemOf({
+      ...item,
+      at: addMinutes(spec.at, i * STEP_MINUTES),
+      body: i > 0 && late !== undefined ? late(i * STEP_MINUTES) : spec.body,
+    }),
     ...(i === 0 ? {} : { repeat: true }),
   }));
 }

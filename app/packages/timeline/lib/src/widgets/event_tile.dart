@@ -250,19 +250,17 @@ class EventTile extends StatelessWidget {
             else
               ChecklistLine.next(context, card, quiet: _quiet),
           ],
+          // Late, the bar has nothing left to measure: what is left is
+          // how late it is, and the answer to it.
           if (_isNow && card.isLate) ...[
             const SizedBox(height: AppSpacing.s2),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: AppTag(
-                text: context.l10n.timelineLate(card.overtimeMinutes),
-                iconData: AppIcons.warning,
-                fill: AppColors.danger,
-                ink: AppColors.dangerInk,
-              ),
+            NowLate(
+              key: actionsKey,
+              card: card,
+              onDone: card.isInteractive ? onDone : null,
+              onAdjusted: card.isInteractive ? onAdjusted : null,
             ),
-          ],
-          if (_isNow) ...[
+          ] else if (_isNow) ...[
             const SizedBox(height: AppSpacing.s2),
             NowProgress(card: card, trailing: _actions()),
           ],

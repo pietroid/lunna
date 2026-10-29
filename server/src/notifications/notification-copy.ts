@@ -39,38 +39,23 @@ export const EVENING_MESSAGES: readonly string[] = [
   'O mundo continua amanhã. Pode ir dormir.',
 ];
 
-/** The title of a fixed block's start: it starts anyway ("Café começou"). */
-export function startedTitle(title: string): string {
-  return `${title} começou`;
-}
-
-/** The body under it: "Até 08:30". */
-export function startedBody(endTime: string): string {
-  return `Até ${endTime}`;
-}
-
-/**
- * The body of a task's start, under its title.
- *
- * It asks rather than announces: a task waits for the person, and the
- * buttons are where they say whether it starts now or in ten minutes.
+/*
+ * A reminder about a block is titled with the block itself ("Café") and
+ * asks one plain thing under it.
  */
-export const CONFIRM_START_BODY = 'Está na hora. Começamos?';
 
-/** The title of a block's end: "Café terminou?". */
-export function endedTitle(title: string): string {
-  return `${title} terminou?`;
+/** The body of a start, a task's or a fixed block's. */
+export const STARTING_BODY = 'Começando agora, certo?';
+
+/** The body of an end, the first time it is asked. */
+export const ENDING_BODY = 'Terminando agora, certo?';
+
+/** The body of an end asked again: "Atraso no término · 10 minutos". */
+export function lateBody(minutes: number): string {
+  return `Atraso no término · ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
 }
 
-/** The body under it. */
-export const ENDED_BODY = 'Se ainda não, ganhe mais 10 minutos.';
-
-/** The title of the heads-up before a fixed block: "Almoço em 15 minutos". */
-export function headsUpTitle(title: string, minutes: number): string {
-  return `${title} em ${minutes} minutos`;
-}
-
-/** The body under it: "Das 12:00 às 13:00". */
-export function headsUpBody(startTime: string, endTime: string): string {
-  return `Das ${startTime} às ${endTime}`;
+/** The body of the heads-up before a fixed block: "Começa em 15 minutos, às 12:00". */
+export function headsUpBody(minutes: number, startTime: string): string {
+  return `Começa em ${minutes} minutos, às ${startTime}`;
 }

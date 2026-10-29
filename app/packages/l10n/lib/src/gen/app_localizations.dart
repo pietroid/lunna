@@ -653,12 +653,6 @@ abstract class AppLocalizations {
   /// **'Concluir'**
   String get controlDone;
 
-  /// On a running card whose end passed with nobody saying it was over.
-  ///
-  /// In pt, this message translates to:
-  /// **'atrasado {minutes} min'**
-  String timelineLate(int minutes);
-
   /// No description provided for @nowPausedLeft.
   ///
   /// In pt, this message translates to:
@@ -989,12 +983,6 @@ abstract class AppLocalizations {
   /// **'Um recado no começo e no fim do dia.'**
   String get notificationChannelDailyDescription;
 
-  /// No description provided for @remindersNextBlock.
-  ///
-  /// In pt, this message translates to:
-  /// **'Próximo bloco'**
-  String get remindersNextBlock;
-
   /// No description provided for @remindersAskTitle.
   ///
   /// In pt, this message translates to:
@@ -1004,7 +992,7 @@ abstract class AppLocalizations {
   /// No description provided for @remindersAskBody.
   ///
   /// In pt, this message translates to:
-  /// **'Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.'**
+  /// **'Pergunto quando um bloco começa e quando termina, e um toque no lembrete abre a pergunta aqui. E mando um bom dia e um boa noite.'**
   String get remindersAskBody;
 
   /// No description provided for @remindersEnable.
@@ -1019,17 +1007,41 @@ abstract class AppLocalizations {
   /// **'Agora não'**
   String get commonNotNow;
 
-  /// No description provided for @remindersStartTitle.
+  /// No description provided for @reminderStarting.
   ///
   /// In pt, this message translates to:
-  /// **'Começar “{title}”?'**
-  String remindersStartTitle(String title);
+  /// **'Começando agora, certo?'**
+  String get reminderStarting;
 
-  /// No description provided for @remindersStartBody.
+  /// No description provided for @reminderEnding.
   ///
   /// In pt, this message translates to:
-  /// **'Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.'**
-  String get remindersStartBody;
+  /// **'Terminando agora, certo?'**
+  String get reminderEnding;
+
+  /// No description provided for @reminderHours.
+  ///
+  /// In pt, this message translates to:
+  /// **'{start}–{end}'**
+  String reminderHours(String start, String end);
+
+  /// No description provided for @lateEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'Atraso no término · {minutes, plural, =1{1 minuto} other{{minutes} minutos}}'**
+  String lateEnd(int minutes);
+
+  /// No description provided for @reminderFinished.
+  ///
+  /// In pt, this message translates to:
+  /// **'Terminei'**
+  String get reminderFinished;
+
+  /// No description provided for @reminderDelay10.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adiar 10 min'**
+  String get reminderDelay10;
 
   /// No description provided for @routinesHelp.
   ///
