@@ -100,6 +100,8 @@ class AppButton extends StatelessWidget {
 
     final label = Text(
       text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: AppTypography.bodyStrong.copyWith(color: foreground),
     );
 
@@ -114,7 +116,8 @@ class AppButton extends StatelessWidget {
                 child: icon!,
               ),
               const SizedBox(width: AppSpacing.s2),
-              label,
+              // A narrow button cuts its label rather than overflowing.
+              Flexible(child: label),
             ],
           );
 

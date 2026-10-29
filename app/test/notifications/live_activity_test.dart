@@ -113,10 +113,12 @@ void main() {
           .setMockMethodCallHandler(channel, null);
     });
 
-    LiveActivity live({bool supported = true}) => LiveActivity(
-      apiBaseUrl: 'https://lunna.example/api',
-      supported: supported,
-    );
+    LiveActivity live({bool supported = true, bool enabled = true}) =>
+        LiveActivity(
+          apiBaseUrl: 'https://lunna.example/api',
+          supported: supported,
+          enabled: enabled,
+        );
 
     test('sends the block once, and again only when it changes', () async {
       final activity = live();
@@ -156,6 +158,19 @@ void main() {
 
       expect(changes, hasLength(1));
       expect(calls.where((it) => it.method == 'sync'), hasLength(2));
+    });
+
+    test('switched off, ends the one showing and never starts one', () async {
+      final activity = live(enabled: false);
+      await activity.sync([card()]);
+      await activity.sync([card(pausedAt: start, remainingSeconds: 600)]);
+
+      expect(calls, hasLength(1));
+      expect(
+        (calls.single.arguments as Map<Object?, Object?>)['block'],
+        isNull,
+      );
+      expect(kLiveActivity, isFalse);
     });
 
     test('hands over the card a tap launched the app on', () async {

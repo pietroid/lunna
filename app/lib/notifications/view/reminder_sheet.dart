@@ -1,6 +1,7 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:l10n/l10n.dart';
 import 'package:notifications/notifications.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template reminder_ask}
 /// What a tapped reminder asked, read again from the day when it opens: the
@@ -15,6 +16,55 @@ class ReminderAsk {
     required this.hours,
     this.lateMinutes = 0,
   });
+
+  /// What [tap] asks now, read from [day] at [now], or null when there is
+  /// nothing left to ask: the card is gone, or the edge was answered (the
+  /// task begun or put off, the block given more time or closed) or has
+  /// not come yet.
+  static ReminderAsk? of(
+    NotificationTap tap,
+    TimelineState day,
+    DateTime now,
+    AppLocalizations l10n,
+  ) {
+    final id = tap.eventId;
+    final card = tap.card;
+    final edge = tap.edge;
+    if (!tap.asks || id == null || card == null || edge == null) return null;
+
+    final shown = [
+      ...day.tasks,
+      ...day.cards,
+    ].where((it) => it.id == id).firstOrNull;
+    if (shown == null || shown.isPaused) return null;
+
+    final begun = !shown.startTime.isAfter(now);
+    final open = switch ((card, edge)) {
+      (NotificationCard.task, NotificationEdge.start) => shown.awaitingStart,
+      // A fixed block starts anyway; its start is open while it runs, and
+      // put off once delayed.
+      (NotificationCard.event, NotificationEdge.start) =>
+        begun && shown.endTime.isAfter(now),
+      // An end is open from its hour on, and answered by more time.
+      (_, NotificationEdge.end) =>
+        (card == NotificationCard.event || shown.started) &&
+            begun &&
+            (shown.isLate ||
+                !shown.endTime.isAfter(now.add(const Duration(minutes: 1)))),
+    };
+    if (!open) return null;
+
+    return ReminderAsk(
+      title: shown.title,
+      card: card,
+      edge: edge,
+      hours: l10n.reminderHours(
+        hhmm(shown.startTime),
+        hhmm(shown.overtimeFrom ?? shown.endTime),
+      ),
+      lateMinutes: edge == NotificationEdge.end ? shown.overtimeMinutes : 0,
+    );
+  }
 
   /// The card's title, which is also the reminder's.
   final String title;

@@ -341,11 +341,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get controlDone => 'Concluir';
 
   @override
-  String timelineLate(int minutes) {
-    return 'atrasado $minutes min';
-  }
-
-  @override
   String nowPausedLeft(String left) {
     return 'Pausado · faltam $left';
   }
@@ -543,27 +538,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationChannelDailyDescription => 'Um recado no começo e no fim do dia.';
 
   @override
-  String get remindersNextBlock => 'Próximo bloco';
-
-  @override
   String get remindersAskTitle => 'Quer lembretes?';
 
   @override
-  String get remindersAskBody => 'Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.';
+  String get remindersAskBody => 'Pergunto quando um bloco começa e quando termina, e um toque no lembrete abre a pergunta aqui. E mando um bom dia e um boa noite.';
 
   @override
   String get remindersEnable => 'Ativar lembretes';
 
   @override
   String get commonNotNow => 'Agora não';
-
-  @override
-  String remindersStartTitle(String title) {
-    return 'Começar “$title”?';
-  }
-
-  @override
-  String get remindersStartBody => 'Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.';
 
   @override
   String get reminderStarting => 'Começando agora, certo?';

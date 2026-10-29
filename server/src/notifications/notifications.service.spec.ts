@@ -98,24 +98,24 @@ function times(items: NotificationItem[]): string[] {
 }
 
 describe('the next task', () => {
-  it('is asked to be begun at its hour, and twice more ten minutes apart', async () => {
+  it('is asked to be begun at its hour, and once more ten minutes later', async () => {
     const items = await itemsFor([], 1, [queued('t1')]);
     const asks = ofKind(items, 'askStart');
 
     expect(times(asks)).toEqual([
       '2026-09-21T14:00:00-03:00',
       '2026-09-21T14:10:00-03:00',
-      '2026-09-21T14:20:00-03:00',
     ]);
     expect(asks[0]).toMatchObject({
       title: 'Escrever relatório',
-      body: 'Está na hora. Começamos?',
+      body: 'Começando agora, certo?',
       timeSensitive: true,
       eventId: 't1',
       card: 'task',
       edge: 'start',
     });
-    expect(new Set(asks.map((item) => item.id)).size).toBe(3);
+    expect(asks[1].body).toBe('Começando agora, certo?');
+    expect(new Set(asks.map((item) => item.id)).size).toBe(2);
   });
 
   it('is the only task asked about', async () => {
@@ -131,8 +131,8 @@ describe('the next task', () => {
 
   it('keeps its re-asks from the hour it came due while it waits', async () => {
     // Anchored at 12:00 and still waiting at 12:04: the queue puts it at
-    // this minute, but it was asked at noon, so it is asked at 12:10 and
-    // 12:20, not ten minutes after every sync.
+    // this minute, but it was asked at noon, so it is asked again at
+    // 12:10, not ten minutes after every sync.
     const items = await itemsFor([], 1, [
       queued(
         't1',
@@ -143,7 +143,6 @@ describe('the next task', () => {
 
     expect(times(ofKind(items, 'askStart'))).toEqual([
       '2026-09-21T12:10:00-03:00',
-      '2026-09-21T12:20:00-03:00',
     ]);
   });
 
@@ -169,18 +168,17 @@ describe('the next task', () => {
 });
 
 describe('a fixed block', () => {
-  it('says it started, three times, until the start is answered', async () => {
+  it('asks whether it started, twice, until the start is answered', async () => {
     const items = await itemsFor([block()]);
     const asks = ofKind(items, 'askStart');
 
     expect(times(asks)).toEqual([
       '2026-09-21T14:00:00-03:00',
       '2026-09-21T14:10:00-03:00',
-      '2026-09-21T14:20:00-03:00',
     ]);
     expect(asks[0]).toMatchObject({
-      title: 'Revisão de código começou',
-      body: 'Até 15:00',
+      title: 'Revisão de código',
+      body: 'Começando agora, certo?',
       timeSensitive: true,
       eventId: 'evt-1',
       card: 'event',
@@ -191,19 +189,23 @@ describe('a fixed block', () => {
     expect(ofKind(await itemsFor([confirmed]), 'askStart')).toHaveLength(0);
   });
 
-  it('asks whether it ended, three times, until it is closed', async () => {
+  it('asks whether it ended, then says how late it is, until it is closed', async () => {
     const items = await itemsFor([block({ routine: 'daily' })]);
     const asks = ofKind(items, 'askEnd');
 
     expect(times(asks)).toEqual([
       '2026-09-21T15:00:00-03:00',
       '2026-09-21T15:10:00-03:00',
-      '2026-09-21T15:20:00-03:00',
     ]);
     expect(asks[0]).toMatchObject({
-      title: 'Revisão de código terminou?',
+      title: 'Revisão de código',
+      body: 'Terminando agora, certo?',
       card: 'event',
       edge: 'end',
+    });
+    expect(asks[1]).toMatchObject({
+      title: 'Revisão de código',
+      body: 'Atraso no término · 10 minutos',
     });
 
     const closed = block({ closedAt: '2026-09-21T15:01:00.000Z' });
@@ -220,10 +222,9 @@ describe('a fixed block', () => {
       confirmedAt: '2026-09-21T14:00:00.000Z',
     });
 
-    expect(times(ofKind(await itemsFor([late]), 'askEnd'))).toEqual([
-      '2026-09-21T12:10:00-03:00',
-      '2026-09-21T12:20:00-03:00',
-    ]);
+    const asks = ofKind(await itemsFor([late]), 'askEnd');
+    expect(times(asks)).toEqual(['2026-09-21T12:10:00-03:00']);
+    expect(asks[0].body).toBe('Atraso no término · 10 minutos');
   });
 
   it('gets a heads-up only when something runs right up to it', async () => {
@@ -235,8 +236,8 @@ describe('a fixed block', () => {
     const [heads] = ofKind(await itemsFor([lunch], 1, [before]), 'headsUp');
     expect(heads).toMatchObject({
       fireAt: '2026-09-21T13:45:00-03:00',
-      title: 'Almoço em 15 minutos',
-      body: 'Das 14:00 às 15:00',
+      title: 'Almoço',
+      body: 'Começa em 15 minutos, às 14:00',
       eventId: 'lunch',
       card: 'event',
       edge: 'start',
@@ -301,7 +302,7 @@ describe('the re-asks', () => {
     });
     const asks = ofKind(await itemsFor([tomorrow], 2), 'askStart');
 
-    // 12:00 tomorrow is inside the day; 12:10 and 12:20 are past 12:04.
+    // 12:00 tomorrow is inside the day; 12:10 is past 12:04.
     expect(times(asks)).toEqual(['2026-09-22T12:00:00-03:00']);
   });
 });

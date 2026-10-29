@@ -17,7 +17,6 @@ import 'package:lunna/demo/demo_clock.dart';
 import 'package:lunna/links/api_link_previews.dart';
 import 'package:lunna/notifications/background_refresh.dart';
 import 'package:lunna/notifications/live_activity.dart';
-import 'package:lunna/notifications/reminder_answers.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
@@ -73,7 +72,6 @@ Future<void> _main() async {
   );
   final notificationScheduler = NotificationScheduler(
     repository: NotificationsRepository(apiClient: apiClient),
-    onBackgroundAction: answerReminderInBackground,
   );
   await notificationScheduler.initialize();
   unawaited(registerBackgroundRefresh());

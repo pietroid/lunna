@@ -1,10 +1,11 @@
 /**
  * What a reminder is for.
  *
- * `askStart`, `askEnd` and `headsUp` follow a block, and each asks: Confirmar,
- * +10 min, or talk it over. `askStart` is a block's hour arriving (a task
- * waits for the answer; a fixed block starts anyway), `askEnd` its end, and
- * each comes back twice, ten minutes apart, until it is answered.
+ * `askStart`, `askEnd` and `headsUp` follow a block; a tap opens the app on
+ * a sheet that asks the same thing: Confirmar, +10 min, or talk it over.
+ * `askStart` is a block's hour arriving (a task waits for the answer; a
+ * fixed block starts anyway), `askEnd` its end, and each comes back once,
+ * ten minutes later, until it is answered.
  * `headsUp` comes a quarter of an hour before a fixed block that something
  * runs right up to. `morning` and `evening` follow the clock alone: one at
  * the start of the day and one near its end, every day, whatever is booked.
@@ -44,7 +45,7 @@ export class NotificationItem {
   card?: NotificationCard;
   /**
    * Which end of the block an ask is about; set on every ask. With [card]
-   * it names the route each button posts to: Confirmar is start or done,
+   * it names the route each of the sheet's answers posts to: Confirmar is start or done,
    * +10 min is snooze, delay or extend.
    */
   edge?: NotificationEdge;

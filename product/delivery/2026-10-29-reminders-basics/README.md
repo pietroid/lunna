@@ -1,9 +1,9 @@
 # Reminders, back to the basics
 
-Status: **design, waiting for approval** (issue
-[#65](https://github.com/pietroid/lunna/issues/65)). Mockup track: the
-reminder opens a sheet in the app, the late card changes and the copy
-changes, all of it something the person sees.
+Status: **built** (issue
+[#65](https://github.com/pietroid/lunna/issues/65)), design approved on the
+issue. Mockup track: the reminder opens a sheet in the app, the late card
+changes and the copy changes, all of it something the person sees.
 
 ## 1. The prompt
 
@@ -28,7 +28,12 @@ The first board was reviewed on the issue, and the person replied:
 > ok great, but adjust the look of it, the contrast is awful, it is black above red. Also invert 10 min at the left and terminei at the right to maintain consistency with the done button
 
 Second round: the labels on red are white now, and +10 sits on the left
-with the answer on the right, on the card and in the sheet.
+with the answer on the right, on the card and in the sheet. The design was
+then approved on the issue, and the build was asked for as:
+
+> build reminders-basics
+>
+> The design was approved on the issue. Do Phases 3 and 4 unattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. In section 5 write "Measured by the queue: see the pull request." instead of .tool/cost tables.
 
 ## 2. The design
 
@@ -172,67 +177,144 @@ No new icon: ✓ (`AppIcons.check`), ▶ (`AppIcons.play`), ⚠
   delivery clears on every app run instead; push is a separate RFC if the
   pile is still there.
 
-## Build brief
+## 3. What was built
 
-Phase 3 starts here and Phase 4 removes this section.
+### Prints of the real build
 
-**Files the design wrote or changed (uncommitted until the queue commits
-them):**
+Drawn by the real widgets over the demo's day (a preview entry point,
+deleted after the shots), the same five scenes as the board: the late card,
+the sheet on a task's end, on a task's start, on a fixed block's start,
+and the Lock Screen's one reminder.
 
-- `app/lib/reminders_preview.dart`: the preview entry point, five scenes
-  (`?s=1..5`). Delete after Phase 4's prints.
-- `app/lib/notifications/view/reminder_sheet.dart`: `ReminderAsk`,
-  `ReminderSheet` (+ `ReminderSheet.show`), real.
-- `app/packages/timeline/lib/src/widgets/now_surface.dart`: `NowLate`,
-  real (+10 left, Terminei right); `event_tile.dart` draws it in place of
-  the tag and `NowProgress` while `card.isLate`.
-- `app/packages/app_ui/lib/src/widgets/app_button.dart`: `_onColor` gives
-  the accent `onAccent` and other fills black or white by luminance (the
-  review's contrast). Its tests pass under both brands; the build adds one
-  that a Lunna accent button's label is white.
-- `app/lib/demo/data/demo_repositories.dart`, `app/lib/demo/view/demo_app.dart`:
-  a `late` option on the demo's day (the running task that many minutes
-  past its end).
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`): `reminderStarting`,
-  `reminderEnding`, `reminderHours`, `lateEnd`, `reminderFinished`,
-  `reminderDelay10`.
+**Lunna**
 
-**Server** (`server/src/notifications/`):
+![Lunna](img/build-lunna.png)
 
-- `notification-copy.ts`: titles are the card's title; bodies as in *The
-  copy* (start, end, the late re-ask with its minutes, the heads-up).
-- `notifications.service.ts`: `ASKS_PER_EDGE` 2; the re-ask of an end
-  carries the late body; every item gets a `thread` (the card's id) for
-  `threadIdentifier`. Update `notifications.service.spec.ts`.
+**Focus**
 
-**App:**
+![Focus](img/build-focus.png)
 
-- `RemindersListener`: a tap (`NotificationTap` with an ask) looks the card
-  up in the loaded day (waiting for it if it is loading), builds a
-  `ReminderAsk` from it (hours, `overtimeMinutes`) and opens
-  `ReminderSheet`; confirm and later post `NotificationAnswer.of` through
-  `NotificationScheduler.answer` (via `notification`) and reload the day;
-  talk opens the agent's sheet. Edge already answered → no sheet. Remove
-  `_startSheet`, `_StartAnswer`, `_buttonsAnswer` and the open-on-launch
-  question that only Android needed (the sheet covers it).
-- `LocalNotificationQueue`: no Darwin category and no actions;
-  `threadIdentifier`; `clearDelivered({keepNewest})` over
-  `getActiveNotifications`, called from `sync`, launch, resume and the
-  background refresh; Android `timeoutAfter`.
-- Delete `reminder_answers.dart`'s background handler and the registrant
-  callback in `AppDelegate.swift`.
-- Live Activity off (`kLiveActivity = false`): `RemindersListener` stops
-  syncing it, and ends any running one at launch.
-- `EventTile`: the late branch (done); its tests: no progress bar and a
-  Terminei button while `overtimeMinutes > 0`, +10 before it. The old test
-  `says "atrasado" on Agora while it runs past its end` fails since the
-  design removed the tag: rewrite it for "Atraso no término".
-- Tests: `ReminderSheet` (the four cases' labels and the answer each
-  returns, later on the left of confirm, the late line), `RemindersListener` (tap → sheet → the route),
-  the queue (no category, clearing), under both brands.
+### The contract
 
-**Docs:** `product/spec/notifications.md` (the sheet, the copy, clearing,
-two asks), `live-activity.md` (switched off), the Reminders section of
-`AGENTS.md`.
+**A reminder asks one thing, and a tap answers it in the app.** It is
+titled with the card and carries no buttons; a tap reads the day again and,
+if the edge is still open, opens `ReminderSheet` with the card's own
+answers, posted to the card's own routes (`X-Lunna-Via: notification`).
+**One reminder on the Lock Screen at a time**: whenever the app runs, the
+ones already shown are cleared but the last. **The Live Activity is off**.
 
-**Design session cost:** measured by the queue and written in the PR.
+### Server (`server/src/notifications/`)
+
+- `notification-copy.ts`: the title is the card's title; bodies
+  `STARTING_BODY` ("Começando agora, certo?"), `ENDING_BODY` ("Terminando
+  agora, certo?"), `lateBody(n)` ("Atraso no término · 10 minutos") and
+  `headsUpBody` ("Começa em 15 minutos, às 12:00"). The old titles
+  ("Café começou", "Café terminou?") and bodies are gone.
+- `notifications.service.ts`: `ASKS_PER_EDGE` 3 → 2; the re-ask of an end
+  says how late it is (`asks({ late })`). No route changed.
+
+### App
+
+- `packages/notifications`: no Darwin category, no actions, no background
+  handler (`BackgroundAction`, `askCategory` gone). `QueuedNotification`
+  carries `thread` (iOS `threadIdentifier`, the card's id) and `timeout`
+  (Android `timeoutAfter`, until the next reminder is due, `nextOf`).
+  `NotificationQueue.delivered()` over `getActiveNotifications`, and
+  `NotificationScheduler.clearDelivered({keepNewest})`, run at the start of
+  every sync; the payload now carries `fireAt`, which `newestOf` reads.
+  `answer(NotificationAnswer)` posts, clears every reminder shown, and
+  syncs. `NotificationTap` lost `action`/`answer` and gained `asks`.
+  `NotificationsRepository.answer` posts with `via: 'notification'`
+  (`ApiClient.post` takes a `via` now; the header interceptor keeps a
+  request's own).
+- `lib/notifications/view/reminder_sheet.dart`: `ReminderSheet` and
+  `ReminderAsk.of`, the rule of when an edge is still open (a task's start
+  while it waits; a fixed block's start while it runs; an end from its
+  hour on, unless given more time).
+- `RemindersListener`: a tap (or the launch tap) reloads the day, asks
+  `ReminderAsk.of`, opens the sheet, and answers through the scheduler or
+  opens the agent. Gone: the Android start sheet, the open-on-launch
+  question, `_buttonsAnswer`.
+- `lib/notifications/reminder_answers.dart` deleted; `main.dart` and
+  `AppDelegate.swift` lose the background handler and its plugin
+  registrant.
+- `live_activity.dart`: `kLiveActivity = false`; `LiveActivity(enabled:)`
+  defaults to it, and a disabled `sync` sends "nothing runs", once.
+- `packages/timeline`: `NowLate` in place of the bar and the "atrasado"
+  tag (from the design).
+- `packages/app_ui`: `AppButton` labels the accent `onAccent` and any other
+  fill black or white by luminance (from the design); its label now
+  ellipsizes rather than overflowing a narrow button.
+- `l10n`: gone `timelineLate`, `remindersNextBlock`,
+  `remindersStartTitle`, `remindersStartBody`; `remindersAskBody` no longer
+  promises answering "ali mesmo".
+- Docs: `product/spec/notifications.md` (the sheet, the copy, clearing,
+  two asks), `live-activity.md` (switched off), the Reminders section of
+  `AGENTS.md`.
+
+### Tests
+
+- Server: `notifications.service.spec.ts`, 23 tests: two asks per edge,
+  the new titles and bodies, the late re-ask's body.
+- `packages/notifications`, 25 tests: no buttons; the thread; Android's
+  timeout; clearing all but the newest (and a payload with no hour counts
+  as oldest); an answer clears every reminder shown; the route table.
+- App, `test/notifications/reminder_sheet_test.dart`, 12 tests: the four
+  cases' labels and the answer each returns, ten minutes left of the
+  answer, the late line; `ReminderAsk.of` for each edge (late, due, given
+  more time, gone, waiting, delayed, a heads-up); `RemindersListener` from
+  a tap to `/tasks/c/done`, and a tap on an answered edge opening no sheet.
+  `live_activity_test.dart` + 1: switched off, it ends once and sends no
+  block.
+- `packages/timeline/test/overtime_test.dart`: the "atrasado" test
+  rewritten for the late card (no bar, no −10, +10 min left of Terminei,
+  both answer), the singular.
+- `packages/app_ui/test/app_button_test.dart` (new), 3 tests: the
+  accent's label is `onAccent` (white on Lunna), other fills by luminance,
+  a long label does not overflow.
+- `.tool/check` passed, every step (app analyze; agent, analytics,
+  api_client, app_ui, artifacts, notifications and timeline under both
+  brands; server eslint, tsc and tests), and was run again green after
+  the last edit. It does not run the app's own `test/`, so that was run by
+  hand: 43 tests, all passed, under Focus and under Lunna. No flaky test,
+  and no failure that had to be proved someone else's.
+
+### Where the build differs from the design
+
+- **The thread is the card's id on the app side**, not a new `thread`
+  field on the plan: `eventId` already is the card's id, so the wire
+  format did not change.
+- **`kLiveActivity` switches `LiveActivity.sync` itself**, rather than the
+  listener no longer calling it: every caller (the listener, sign-out)
+  then ends the activity, once, and the tests can still turn it on.
+- **`AppButton`'s label ellipsizes.** The late card's Terminei overflowed
+  under the test font; a narrow button now cuts its label instead of
+  drawing stripes, for every button.
+- **The "Atraso no término" re-ask is the end's only one**, since the asks went
+  from three to two; a start's re-ask repeats "Começando agora, certo?".
+
+### Decided unattended (build)
+
+- When the sheet's answer fails (no network), it is logged and the day
+  reloaded; the card on Tempo still shows where the block stands and asks
+  the same. No new error copy.
+- An end is "still open" when the block is late or ends within the next
+  minute; a fixed block's start while it runs. A tap on a reminder whose
+  card is paused opens Tempo.
+
+## 4. How to turn it on
+
+Nothing to set: no env var, no migration, no new route. The server's new
+copy and two asks reach every phone on its next sync. A new app build is
+what removes the buttons and the Live Activity; an old build keeps its
+buttons, which still post the same routes. Reminders shown by an old
+build carry no `fireAt`, so the first sync of the new one clears them all
+but one.
+
+Not run here: a device. The sheet, the clearing and the switched-off
+activity are proved by the tests and the prints above; how iOS stacks a
+`threadIdentifier` and Android's `timeoutAfter` were not seen on a phone.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

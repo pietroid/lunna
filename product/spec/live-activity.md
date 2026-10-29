@@ -8,6 +8,15 @@ left counting down, a progress line, and four buttons, ⏯ −10 +10 and
 Phase 3 of the
 [notification-lifecycle RFC](../research/2026-10-28-notification-lifecycle/README.md).
 
+> **Switched off** since
+> [2026-10-29-reminders-basics](../delivery/2026-10-29-reminders-basics/README.md)
+> (#65): three voices for one block (the card, the reminder, the activity)
+> were confusing. `kLiveActivity = false` in
+> `app/lib/notifications/live_activity.dart` makes every `sync` end the
+> activity, so the one left running goes at launch and no other starts.
+> The extension, the intents and the channel stay; turning it back on is
+> that line. Everything below describes it switched on.
+
 ## The contract
 
 - **Only while a block runs**: Agora's begun task or its fixed block,
@@ -55,7 +64,6 @@ and `via` accepts `live_activity` (`analytics/events.ts`).
 - `RemindersListener` syncs it on every day loaded, opens the card a tap
   came from (`opened`, `launchCard`), and reads the day again when a
   button changed it (`changes`). Sign-out ends it (`App`).
-  `answerReminderInBackground` syncs it after a reminder's answer.
 - `ios/Runner/LiveActivityPlugin.swift`: the channel, on every engine
   (`AppDelegate.registerOwnPlugins`), and the tap's link through Flutter's
   scene life cycle (`addSceneDelegate`).

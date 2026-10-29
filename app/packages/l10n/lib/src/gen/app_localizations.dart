@@ -653,12 +653,6 @@ abstract class AppLocalizations {
   /// **'Concluir'**
   String get controlDone;
 
-  /// On a running card whose end passed with nobody saying it was over.
-  ///
-  /// In pt, this message translates to:
-  /// **'atrasado {minutes} min'**
-  String timelineLate(int minutes);
-
   /// No description provided for @nowPausedLeft.
   ///
   /// In pt, this message translates to:
@@ -989,12 +983,6 @@ abstract class AppLocalizations {
   /// **'Um recado no começo e no fim do dia.'**
   String get notificationChannelDailyDescription;
 
-  /// No description provided for @remindersNextBlock.
-  ///
-  /// In pt, this message translates to:
-  /// **'Próximo bloco'**
-  String get remindersNextBlock;
-
   /// No description provided for @remindersAskTitle.
   ///
   /// In pt, this message translates to:
@@ -1004,7 +992,7 @@ abstract class AppLocalizations {
   /// No description provided for @remindersAskBody.
   ///
   /// In pt, this message translates to:
-  /// **'Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.'**
+  /// **'Pergunto quando um bloco começa e quando termina, e um toque no lembrete abre a pergunta aqui. E mando um bom dia e um boa noite.'**
   String get remindersAskBody;
 
   /// No description provided for @remindersEnable.
@@ -1018,18 +1006,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Agora não'**
   String get commonNotNow;
-
-  /// No description provided for @remindersStartTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Começar “{title}”?'**
-  String remindersStartTitle(String title);
-
-  /// No description provided for @remindersStartBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.'**
-  String get remindersStartBody;
 
   /// No description provided for @reminderStarting.
   ///

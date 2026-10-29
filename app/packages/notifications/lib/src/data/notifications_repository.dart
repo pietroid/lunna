@@ -4,7 +4,7 @@ import 'package:notifications/src/models/notification_plan.dart';
 
 /// {@template notifications_repository}
 /// Asks the server which reminders the device should be holding, and
-/// writes what a reminder's button answered.
+/// writes what a reminder was answered with.
 /// {@endtemplate}
 class NotificationsRepository {
   /// {@macro notifications_repository}
@@ -23,8 +23,13 @@ class NotificationsRepository {
     return NotificationPlan.fromJson(response.data ?? const {});
   }
 
-  /// Makes the write a reminder's button stands for.
+  /// Makes the write an answer to a reminder stands for, saying it came
+  /// from one (`X-Lunna-Via: notification`).
   Future<void> answer(NotificationAnswer answer) async {
-    await apiClient.post<Object?>(answer.path, data: answer.data);
+    await apiClient.post<Object?>(
+      answer.path,
+      data: answer.data,
+      via: 'notification',
+    );
   }
 }

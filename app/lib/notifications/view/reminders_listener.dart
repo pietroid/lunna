@@ -1,42 +1,39 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
-import 'package:flutter/foundation.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/notifications/live_activity.dart';
+import 'package:lunna/notifications/view/reminder_sheet.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template reminders_listener}
-/// Keeps the reminder queue in step with the day, and opens what a reminder
-/// was about when it is tapped.
+/// Keeps the reminder queue in step with the day, and asks again in the app
+/// what a tapped reminder asked.
 ///
-/// A tap on the reminder itself always opens the app on its card, whatever
-/// it asked. On iOS its buttons answer it without the app: Confirmar and
-/// +10 min are posted from the background (`answerReminderInBackground`),
-/// and Falar com a Lunna opens the app here, with the agent's sheet about
-/// the card.
-///
-/// Android draws no buttons yet (#56), so there a task's start reminder
-/// still opens the question, begin it now or in ten minutes, and until one
-/// is answered the task keeps sliding down the day with the clock. The
-/// notification is not the only way back into the app, so the question
-/// does not depend on it: opening the app, or bringing it back, while a
-/// task is still waiting asks the same question. Once per opening: a
-/// dismissed question is left to the card, which goes on saying it is
-/// waiting.
+/// A reminder carries no buttons (iOS draws them only when it is held
+/// down). A tap opens the app on [ReminderSheet], over Tempo, with the
+/// same question read again from the day (how late it is now, not when it
+/// fired) and the answers the card's own buttons give: the ten minutes, the
+/// answer, and Falar com a Lunna. Its answers post the card's routes saying
+/// they came from a reminder. A reminder whose edge was already answered,
+/// or one that asked nothing (a heads-up, the day's greetings), just opens
+/// Tempo.
 ///
 /// The queue is re-synced when the app comes back to the foreground and
 /// whenever a block on the timeline is added, moved, renamed, paused or taken
 /// off, whoever did it: the sheet, a drag, or a conversation that booked
-/// something.
+/// something. Each sync also clears the reminders already shown but the
+/// last, and an answer clears them all.
 ///
-/// It keeps the Lock Screen's activity on the block that runs too
-/// ([LiveActivity]), opens the card it is tapped on, and reads the day
-/// again when one of its buttons changed it.
+/// It hands the day to the Lock Screen's activity too ([LiveActivity]),
+/// which is switched off ([kLiveActivity]) and so only ends one left
+/// running.
 ///
 /// It is also where permission is asked, and only once: the first time a
 /// block appears on a day the app had already loaded, which is the first
@@ -65,17 +62,9 @@ class _RemindersListenerState extends State<RemindersListener>
   late TimelineState _last;
   bool _asking = false;
 
-  /// Whether the next day loaded should be looked at for a block still
-  /// waiting to be begun, which is true just after the app is opened.
-  bool _lookForWaiting = false;
-
-  /// The block the start question is open for, so it is never open twice.
-  String? _askingStart;
-
-  /// Whether the reminders' own buttons answer them, which makes the start
-  /// question redundant: on iOS, and on Android once #56 lands.
-  bool get _buttonsAnswer =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+  /// Whether a reminder's sheet is open, so a second tap does not stack
+  /// another on it.
+  bool _answering = false;
 
   @override
   void initState() {
@@ -83,7 +72,7 @@ class _RemindersListenerState extends State<RemindersListener>
     _scheduler = context.read<NotificationScheduler>();
     _last = context.read<TimelineBloc>().state;
     WidgetsBinding.instance.addObserver(this);
-    _taps = _scheduler.taps.listen(_open);
+    _taps = _scheduler.taps.listen((tap) => unawaited(_open(tap)));
     _live = context.read<LiveActivity>();
     _activityTaps = _live.opened.listen(_openCard);
     final timeline = context.read<TimelineBloc>();
@@ -91,9 +80,12 @@ class _RemindersListenerState extends State<RemindersListener>
       (_) => timeline.add(const TimelineRequested()),
     );
     unawaited(_openLaunchTap());
-    if (_last.status == TimelineStatus.success) {
-      unawaited(_live.sync(_last.cards));
-    }
+    // Ends an activity left running from before, the first thing it does.
+    unawaited(
+      _live.sync(
+        _last.status == TimelineStatus.success ? _last.cards : const [],
+      ),
+    );
   }
 
   @override
@@ -110,14 +102,10 @@ class _RemindersListenerState extends State<RemindersListener>
     if (state != AppLifecycleState.resumed) return;
 
     unawaited(_scheduler.sync());
-    // The day moved on while the app was away, so it is read again, and the
-    // fresh one is the one asked about.
-    _lookForWaiting = true;
     context.read<TimelineBloc>().add(const TimelineRequested());
   }
 
-  /// Opens what the notification that launched the app was about, or looks
-  /// for a waiting block when it was not launched from one.
+  /// Asks what the reminder that launched the app asked, if one did.
   Future<void> _openLaunchTap() async {
     final card = await _live.launchCard();
     if (!mounted) return;
@@ -127,67 +115,84 @@ class _RemindersListenerState extends State<RemindersListener>
     }
 
     final tap = await _scheduler.launchTap();
-    if (!mounted) return;
+    if (tap != null) await _open(tap);
+  }
 
-    if (tap != null) {
-      _open(tap);
-      return;
-    }
+  /// Opens the sheet for [tap], on the day read again.
+  Future<void> _open(NotificationTap tap) async {
+    if (!mounted || !tap.asks || _answering) return;
+    _answering = true;
 
-    final day = context.read<TimelineBloc>().state;
-    if (day.status == TimelineStatus.success) {
-      _askIfWaiting(day);
-    } else {
-      _lookForWaiting = true;
+    try {
+      final day = await _freshDay();
+      if (!mounted || day == null) return;
+
+      final ask = ReminderAsk.of(tap, day, clock.now(), context.l10n);
+      if (ask == null) return;
+
+      final action = await ReminderSheet.show(context, ask);
+      if (!mounted || action == null) return;
+
+      await _answer(tap, action);
+    } finally {
+      _answering = false;
     }
   }
 
-  /// Asks about the block in Agora still waiting to be begun, if there is
-  /// one.
-  void _askIfWaiting(TimelineState day) {
-    if (_buttonsAnswer) return;
+  /// The day as the server has it now, or null when it could not be read.
+  ///
+  /// The block went on while the app was away (it may be late by more now,
+  /// or closed), so the question is never asked from the day in memory.
+  Future<TimelineState?> _freshDay() async {
+    final timeline = context.read<TimelineBloc>();
+    final loaded = timeline.stream.firstWhere(
+      (state) =>
+          state.status == TimelineStatus.success ||
+          state.status == TimelineStatus.failure,
+    );
+    timeline.add(const TimelineRequested());
 
-    final waiting = day.tasks
-        .where(
-          (card) => card.section == TimelineSection.agora && card.awaitingStart,
-        )
-        .firstOrNull;
-    if (waiting != null) unawaited(_askToStart(waiting.id, waiting.title));
+    try {
+      final day = await loaded.timeout(const Duration(seconds: 15));
+      return day.status == TimelineStatus.success ? day : null;
+    } on TimeoutException {
+      return null;
+    }
   }
 
-  void _open(NotificationTap tap) {
-    if (!mounted) return;
+  Future<void> _answer(NotificationTap tap, NotificationAction action) async {
+    final id = tap.eventId!;
+    final card = tap.card!;
 
-    final eventId = tap.eventId;
-    if (eventId == null) return;
-
-    if (tap.action == NotificationAction.talk) {
-      unawaited(
-        showAgentSheet(
-          context,
-          about: tap.card == NotificationCard.task
-              ? AgentSubject.task(eventId)
-              : null,
-        ),
+    if (action == NotificationAction.talk) {
+      await showAgentSheet(
+        context,
+        about: card == NotificationCard.task ? AgentSubject.task(id) : null,
       );
       return;
     }
 
-    // Confirmar and +10 min are answered in the background; one that still
-    // reaches the app is answered here, the same way.
-    if (tap.answer != null) {
-      unawaited(_answer(tap));
-      return;
-    }
+    final answer = NotificationAnswer.of(
+      card: card,
+      edge: tap.edge!,
+      id: id,
+      action: action,
+    );
+    if (answer == null) return;
 
-    if (tap.asksToStartTask && !_buttonsAnswer) {
-      unawaited(
-        _askToStart(eventId, tap.title ?? context.l10n.remindersNextBlock),
+    final timeline = context.read<TimelineBloc>();
+    try {
+      await _scheduler.answer(answer);
+    } on Object catch (error, stackTrace) {
+      // The card on Tempo says where the block stands, and asks the same.
+      log(
+        'reminder answer failed',
+        name: 'notifications',
+        error: error,
+        stackTrace: stackTrace,
       );
-      return;
     }
-
-    _openCard(eventId);
+    timeline.add(const TimelineRequested());
   }
 
   void _openCard(String id) {
@@ -195,53 +200,12 @@ class _RemindersListenerState extends State<RemindersListener>
     unawaited(context.push<void>('/evento/${Uri.encodeComponent(id)}'));
   }
 
-  Future<void> _answer(NotificationTap tap) async {
-    final timeline = context.read<TimelineBloc>();
-    await _scheduler.answer(tap);
-    timeline.add(const TimelineRequested());
-  }
-
-  /// Asks whether the waiting task starts now or in ten minutes.
-  Future<void> _askToStart(String eventId, String title) async {
-    // A notification tapped while the app was opening, and the opening
-    // itself, both ask. One sheet is enough.
-    if (_askingStart != null) return;
-    _askingStart = eventId;
-
-    final timeline = context.read<TimelineBloc>()
-      // The block has been sliding while the app was closed, so the day is
-      // read again under the question.
-      ..add(const TimelineRequested());
-
-    final _StartAnswer? answer;
-    try {
-      answer = await _startSheet(context, title);
-    } finally {
-      _askingStart = null;
-    }
-    switch (answer) {
-      case _StartAnswer.now:
-        timeline.add(EventStarted(eventId));
-      case _StartAnswer.later:
-        timeline.add(EventSnoozed(eventId));
-      case null:
-        // Dismissed: nothing is decided, and the card on the timeline goes
-        // on asking.
-        break;
-    }
-  }
-
   void _onDay(TimelineState current) {
     // A reload passes through loading on its way back. Comparing against
     // that would make every block look new, so only a loaded day counts.
     if (current.status != TimelineStatus.success) return;
 
-    if (_lookForWaiting) {
-      _lookForWaiting = false;
-      _askIfWaiting(current);
-    }
-
-    // Sent only when the block it shows changed; the timers count alone.
+    // Sent only when the block it shows changed; switched off, only once.
     unawaited(_live.sync(current.cards));
 
     final previous = _last;
@@ -363,66 +327,4 @@ Future<bool> _explain(BuildContext context) async {
   );
 
   return accepted ?? false;
-}
-
-/// What the start question was answered with.
-enum _StartAnswer { now, later }
-
-/// The question a task's start reminder opens, on Android (#56).
-///
-/// One primary answer and one quiet one. Dismissing it answers nothing, and
-/// the block keeps waiting.
-Future<_StartAnswer?> _startSheet(BuildContext context, String title) {
-  return showModalBottomSheet<_StartAnswer>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    barrierColor: AppColors.bg.withValues(alpha: 0.72),
-    builder: (sheetContext) => Material(
-      color: AppColors.bg,
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(AppSpacing.cardRadius),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.s6,
-            AppSpacing.s5,
-            AppSpacing.s6,
-            AppSpacing.s4,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                context.l10n.remindersStartTitle(title),
-                style: AppTypography.title,
-              ),
-              const SizedBox(height: AppSpacing.s1),
-              Text(
-                context.l10n.remindersStartBody,
-                style: AppTypography.body.copyWith(color: AppColors.ink2),
-              ),
-              const SizedBox(height: AppSpacing.s5),
-              AppButton(
-                text: context.l10n.controlStartNow,
-                expand: true,
-                onPressed: () =>
-                    Navigator.of(sheetContext).pop(_StartAnswer.now),
-              ),
-              const SizedBox(height: AppSpacing.s2),
-              AppButton.text(
-                text: context.l10n.controlWait10,
-                color: AppColors.ink2,
-                expand: true,
-                onPressed: () =>
-                    Navigator.of(sheetContext).pop(_StartAnswer.later),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
 }

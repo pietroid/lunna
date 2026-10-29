@@ -4,38 +4,22 @@ import 'package:notifications/src/models/notification_plan.dart';
 /// The step of a reminder's "+10 min": the server's `STEP_MINUTES`.
 const notificationStepMinutes = 10;
 
-/// A reminder's buttons, in the order they are drawn.
-///
-/// The ids are what the system hands back when one is chosen, so they are
-/// part of the contract with the category registered on the device.
+/// The answers a tapped reminder's sheet offers, in the order they are
+/// ranked.
 enum NotificationAction {
   /// Yes: it started, or it is over.
-  confirm('confirm'),
+  confirm,
 
   /// Not yet: ten minutes more before it starts, or before it ends.
-  later('later'),
+  later,
 
-  /// Talk it over: opens the app with the agent asked about the card.
-  talk('talk');
-
-  const NotificationAction(this.id);
-
-  /// What the system hands back when this button is chosen.
-  final String id;
-
-  /// The button whose id is [id], or null for a tap on the notification
-  /// itself.
-  static NotificationAction? fromId(String? id) {
-    for (final action in values) {
-      if (action.id == id) return action;
-    }
-    return null;
-  }
+  /// Talk it over: the agent's sheet, asked about the card.
+  talk,
 }
 
 /// {@template notification_answer}
-/// The write one of a reminder's buttons makes: the same request the app's
-/// own button on the card makes, so every rule stays on the server.
+/// The write an answer to a reminder makes: the same request the app's own
+/// button on the card makes, so every rule stays on the server.
 /// {@endtemplate}
 class NotificationAnswer extends Equatable {
   /// {@macro notification_answer}

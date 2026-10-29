@@ -12,7 +12,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 /// {@template notification_tap}
-/// A reminder the user tapped, or one of its buttons.
+/// A reminder the user tapped.
 /// {@endtemplate}
 class NotificationTap {
   /// {@macro notification_tap}
@@ -22,7 +22,6 @@ class NotificationTap {
     this.kind,
     this.card,
     this.edge,
-    this.action,
   });
 
   /// The block it was about, when it was about one.
@@ -40,32 +39,13 @@ class NotificationTap {
   /// Which end of the block it asked about, on an ask.
   final NotificationEdge? edge;
 
-  /// The button chosen, or null for a tap on the notification itself,
-  /// which always opens the app on the card.
-  final NotificationAction? action;
-
-  /// Whether it asked the person to begin a task.
-  bool get asksToStartTask =>
-      kind == NotificationKind.askStart && card == NotificationCard.task;
-
-  /// The write [action] stands for, or null when it writes nothing: a tap,
-  /// talking it over, or a reminder that asked nothing.
-  NotificationAnswer? get answer {
-    final id = eventId;
-    final card = this.card;
-    final edge = this.edge;
-    final action = this.action;
-    if (id == null || card == null || edge == null || action == null) {
-      return null;
-    }
-
-    return NotificationAnswer.of(
-      card: card,
-      edge: edge,
-      id: id,
-      action: action,
-    );
-  }
+  /// Whether it asked about an edge of a block, which a tap answers in the
+  /// app's sheet. A heads-up names a block too, but asks nothing.
+  bool get asks =>
+      eventId != null &&
+      card != null &&
+      edge != null &&
+      (kind == NotificationKind.askStart || kind == NotificationKind.askEnd);
 }
 
 /// {@template notification_scheduler}
@@ -89,7 +69,6 @@ class NotificationScheduler {
     Future<SharedPreferences> Function()? preferences,
     DateTime Function()? now,
     bool? supported,
-    this._onBackgroundAction,
   }) : _queue = queue ?? LocalNotificationQueue(),
        _preferences = preferences ?? SharedPreferences.getInstance,
        _now = now ?? DateTime.now,
@@ -110,12 +89,6 @@ class NotificationScheduler {
   final DateTime Function() _now;
   final bool _supported;
 
-  /// Where a button chosen without opening the app is answered: a top-level
-  /// function the system runs in an engine of its own (see
-  /// [NotificationQueue.initialize]). Null where nothing answers in the
-  /// background, which is a sync from that very engine.
-  final BackgroundAction? _onBackgroundAction;
-
   final _taps = StreamController<NotificationTap>.broadcast();
 
   Future<void>? _initialized;
@@ -133,23 +106,18 @@ class NotificationScheduler {
 
     tz_data.initializeTimeZones();
     await _queue.initialize(
-      onTap: (payload, actionId) => _taps.add(tapOf(payload, actionId)),
-      onBackgroundAction: _onBackgroundAction,
+      onTap: (payload) => _taps.add(tapOf(payload)),
     );
   }
 
-  /// Makes the write [tap]'s button stands for, then syncs, which takes
-  /// off the re-asks of the edge it answered. Answers whether it wrote.
-  ///
-  /// What a button chosen from the lock screen runs, in the background
-  /// engine; nothing here needs the app's screens.
-  Future<bool> answer(NotificationTap tap) async {
-    final answer = tap.answer;
-    if (answer == null) return false;
-
+  /// Makes the write [answer] stands for, from a reminder's sheet, clears
+  /// every reminder shown (each was about a moment that has now been
+  /// answered or gone by), then syncs, which takes off the re-asks of the
+  /// edge it answered.
+  Future<void> answer(NotificationAnswer answer) async {
     await _repository.answer(answer);
+    await clearDelivered(keepNewest: false);
     await sync();
-    return true;
   }
 
   /// The reminder that launched the app, if one did.
@@ -157,8 +125,8 @@ class NotificationScheduler {
     if (!_supported) return null;
     await initialize();
 
-    final launch = await _queue.launchResponse();
-    return launch == null ? null : tapOf(launch.payload, launch.actionId);
+    final payload = await _queue.launchPayload();
+    return payload == null ? null : tapOf(payload);
   }
 
   /// Whether the user has not been asked yet and could be.
@@ -193,7 +161,38 @@ class NotificationScheduler {
     await preferences.setBool(askedKey, true);
   }
 
-  /// Moves the queue to match the server's plan.
+  /// Takes the reminders already shown out of the notification centre, all
+  /// but the one that fired last unless [keepNewest] is false.
+  ///
+  /// The day is a timeline, so a reminder is stale once the next one has
+  /// come: the start of a block once its end is asked, an ask once it is
+  /// asked again. iOS runs nothing when a reminder is delivered with the
+  /// app away, so this runs whenever the app does: on every [sync] (the
+  /// launch, coming back, any change to the day, the background refresh).
+  /// Errors are logged and swallowed, like a failed sync.
+  Future<void> clearDelivered({bool keepNewest = true}) async {
+    if (!_supported) return;
+    try {
+      await initialize();
+      final shown = await _queue.delivered();
+      if (shown.isEmpty) return;
+
+      final newest = keepNewest ? newestOf(shown) : null;
+      for (final notification in shown) {
+        if (notification.id != newest) await _queue.cancel(notification.id);
+      }
+    } on Object catch (error, stackTrace) {
+      log(
+        'clearing failed',
+        name: 'notifications',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Moves the queue to match the server's plan, and clears the reminders
+  /// already shown but the last ([clearDelivered]).
   ///
   /// A no-op when reminders are not permitted. Errors are logged and
   /// swallowed: the queue is left as it was, which is the right place to
@@ -227,11 +226,13 @@ class NotificationScheduler {
     if (!_supported) return;
     await initialize();
     if (!await _queue.isPermitted()) return;
+    await clearDelivered();
 
     final plan = await _repository.fetchPlan();
     final pending = await _queue.pendingIds();
     final location = locationOf(plan.timeZone);
     final diff = reconcile(plan.items, pending, _now());
+    final next = nextOf(plan.items);
 
     for (final id in diff.cancel) {
       await _queue.cancel(id);
@@ -248,7 +249,8 @@ class NotificationScheduler {
           daily:
               item.kind == NotificationKind.morning ||
               item.kind == NotificationKind.evening,
-          asks: item.asks,
+          thread: item.eventId,
+          timeout: next[item.id],
           payload: payloadOf(item),
         ),
       );
@@ -328,11 +330,64 @@ int queueIdOf(String id) {
   return hash & 0x7fffffff;
 }
 
-/// What a reminder carries back when it is tapped.
+/// How long each of [items] has until the next one fires, which takes its
+/// place, by id. The last one has none.
+Map<String, Duration> nextOf(List<PlannedNotification> items) {
+  final sorted = [...items]..sort((a, b) => a.fireAt.compareTo(b.fireAt));
+  final next = <String, Duration>{};
+
+  for (var i = 0; i < sorted.length; i++) {
+    final after = sorted
+        .skip(i + 1)
+        .where((it) => it.fireAt.isAfter(sorted[i].fireAt))
+        .firstOrNull;
+    if (after != null) {
+      next[sorted[i].id] = after.fireAt.difference(sorted[i].fireAt);
+    }
+  }
+
+  return next;
+}
+
+/// The id of whichever of [shown] fired last, by the hour its payload
+/// carries. One without (from a version that did not write it) is older
+/// than any with.
+int? newestOf(List<DeliveredNotification> shown) {
+  DeliveredNotification? newest;
+  DateTime? newestAt;
+
+  for (final notification in shown) {
+    final at = firedAtOf(notification.payload);
+    if (newest == null ||
+        (at != null && (newestAt == null || at.isAfter(newestAt)))) {
+      newest = notification;
+      newestAt = at;
+    }
+  }
+
+  return newest?.id;
+}
+
+/// When the reminder that carried [payload] was due, if it says.
+DateTime? firedAtOf(String? payload) {
+  if (payload == null || payload.isEmpty) return null;
+  try {
+    final json = jsonDecode(payload);
+    if (json is! Map<String, dynamic>) return null;
+    final fireAt = json['fireAt'];
+    return fireAt is String ? DateTime.tryParse(fireAt) : null;
+  } on FormatException {
+    return null;
+  }
+}
+
+/// What a reminder carries back when it is tapped, and what tells the
+/// shown ones apart when they are cleared ([newestOf]).
 String payloadOf(PlannedNotification item) {
   return jsonEncode({
     'id': item.id,
     'kind': item.kind.name,
+    'fireAt': item.fireAt.toUtc().toIso8601String(),
     'title': item.title,
     if (item.eventId != null) 'eventId': item.eventId,
     if (item.card != null) 'card': item.card!.name,
@@ -340,17 +395,13 @@ String payloadOf(PlannedNotification item) {
   });
 }
 
-/// A tap, read off a reminder's payload, and the button chosen ([actionId],
-/// null for the notification itself).
-NotificationTap tapOf(String? payload, [String? actionId]) {
-  final action = NotificationAction.fromId(actionId);
-  if (payload == null || payload.isEmpty) {
-    return NotificationTap(action: action);
-  }
+/// A tap, read off a reminder's payload.
+NotificationTap tapOf(String? payload) {
+  if (payload == null || payload.isEmpty) return const NotificationTap();
 
   try {
     final json = jsonDecode(payload);
-    if (json is! Map<String, dynamic>) return NotificationTap(action: action);
+    if (json is! Map<String, dynamic>) return const NotificationTap();
 
     final eventId = json['eventId'];
     final title = json['title'];
@@ -360,10 +411,9 @@ NotificationTap tapOf(String? payload, [String? actionId]) {
       kind: NotificationKind.fromName(json['kind']),
       card: NotificationCard.fromName(json['card']),
       edge: NotificationEdge.fromName(json['edge']),
-      action: action,
     );
   } on FormatException {
-    return NotificationTap(action: action);
+    return const NotificationTap();
   }
 }
 
