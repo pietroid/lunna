@@ -9,7 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template suggestion_card}
-/// The agent's one unasked-for offer, drawn on Tempo above the list.
+/// The agent's one unasked-for offer, drawn at the top of the Feed.
 ///
 /// It is quieter than any card: a wash of the accent, the agent's mark and
 /// what it is about (the goal, a delivery, the routine), a sentence, and

@@ -31,8 +31,13 @@ class ArtifactsPage extends StatefulWidget {
   const ArtifactsPage({
     this.shown = 5,
     this.initialShelf = const Shelf(),
+    this.titled = true,
     super.key,
   });
+
+  /// Whether it draws its own heading and search. Plano heads it with its
+  /// tabs instead, and keeps the search at their end.
+  final bool titled;
 
   /// How many of the queue are drawn before "Ver todas".
   final int shown;
@@ -84,33 +89,38 @@ class _ArtifactsPageState extends State<ArtifactsPage> {
           child: CustomScrollView(
             slivers: [
               SliverPadding(
-                padding: side.copyWith(top: AppSpacing.s5),
+                padding: side.copyWith(
+                  top: widget.titled ? AppSpacing.s5 : AppSpacing.s2,
+                ),
                 sliver: SliverList.list(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              left: AppSpacing.s1,
-                            ),
-                            child: Text(
-                              l10n.shellArtifactsTab,
-                              style: AppTypography.headline,
+                    if (widget.titled) ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                left: AppSpacing.s1,
+                              ),
+                              child: Text(
+                                l10n.shellArtifactsTab,
+                                style: AppTypography.headline,
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: l10n.artifactsSearch,
-                          onPressed: () => unawaited(openAllArtifacts(context)),
-                          icon: const AppIcon(
-                            iconData: AppIcons.search,
-                            color: AppColors.ink2,
+                          IconButton(
+                            tooltip: l10n.artifactsSearch,
+                            onPressed: () =>
+                                unawaited(openAllArtifacts(context)),
+                            icon: const AppIcon(
+                              iconData: AppIcons.search,
+                              color: AppColors.ink2,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.s4),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                    ],
                     if (data.catalog.isNotEmpty) ...[
                       ShelfFilter(
                         categories: data.catalog,

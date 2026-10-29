@@ -193,9 +193,11 @@ lands. Only a sheet or the conversation's page covers it.
 
 | Screen | The round button | The conversation is about |
 |--------|------------------|---------------------------|
-| Tempo | + writes on the day in sight | the day in sight |
-| Entregas | + Nova entrega | the day in sight |
-| Menu | + writes on Tempo's day, bringing Tempo forward | the day in sight |
+| Feed | + writes on the day in sight, staying on the home | the day in sight |
+| Plano › Tarefas | + writes on the day in sight | the day in sight |
+| Plano › Entregas | + Nova entrega | the day in sight |
+| Plano › Objetivos | + Novo objetivo | the day in sight |
+| Menu | + writes on Tempo's day, bringing Tarefas forward | the day in sight |
 | Rotina | + Nova rotina, at the next whole hour of the working day | nothing more |
 | Feitas | + writes a task into Para depois | nothing more |
 | Todas as entregas | + Nova entrega | nothing more |
@@ -207,7 +209,10 @@ lands. Only a sheet or the conversation's page covers it.
 kept): the header's caret ⌄ on the left takes it back down. Tapping the bar
 opens it empty, on the field, keyboard up: no welcome and no suggested
 questions. Opened from a suggestion it starts on the suggestion's opening,
-keyboard down. Aplicar closes it, as before. Applying replaces the day
+keyboard down. Aplicar closes it, as before.
+The suggestion is drawn at the top of the Feed tab (asked for again each
+time the tab comes forward and when a new day begins), and its ✕ rests it
+for 24 hours on the device. Applying replaces the day
 (`TimelineReplaced(undoable:)`); the cards it changed are drawn like any
 others. **Desfazer** (`UndoChip`) sits on the Lista/Calendário row while
 `TimelineState.undoable` holds the plan: it does not time out, and any
@@ -217,7 +222,7 @@ were before the plan.
 ### The suggestion
 
 **The goal first, then the deliveries that reach it, then the day.** One
-thing is offered on Tempo without being asked, above the list
+thing is offered on the Feed without being asked, at its top
 (`SuggestionCard`), worked out by arithmetic in `AgentService._offer`,
 never by the model; how the agent chooses better is research of its own.
 In order:

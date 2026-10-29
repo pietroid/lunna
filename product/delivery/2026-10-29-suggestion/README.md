@@ -116,6 +116,13 @@ with the two open questions unanswered):
   every opening and Aplicar never meets an expired plan.
 - **A delivery already on today is skipped**: its next part is in hand,
   so the next delivery, or Para depois, is offered instead.
+- **Merged with main's Feed (#lunna-home)**: main moved the suggestion
+  from Tempo to the top of the Feed tab. The only conflict was in
+  `product/spec/agent.md`, where both sides rewrote the paragraph after
+  the dock table; it keeps this branch's full-screen conversation and
+  main's "drawn at the top of the Feed". The card, `AGENTS.md` and the
+  spec's "The suggestion" now say Feed where they said Tempo. The mockups
+  and prints above still show it on Tempo; the card itself is the same.
 
 ## 3. What was built
 

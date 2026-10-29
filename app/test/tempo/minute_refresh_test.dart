@@ -1,7 +1,7 @@
 import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lunna/home/view/minute_refresh.dart';
+import 'package:lunna/tempo/view/minute_refresh.dart';
 
 void main() {
   group('MinuteRefresh', () {
@@ -11,9 +11,16 @@ void main() {
       refreshes = 0;
       // Lands on a known point of the minute, whatever the fake clock's start.
       final now = clock.now();
-      final start = DateTime(now.year, now.month, now.day, now.hour, now.minute);
-      await tester.pump(start.add(intoTheMinute).difference(now) +
-          const Duration(minutes: 1));
+      final start = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        now.hour,
+        now.minute,
+      );
+      await tester.pump(
+        start.add(intoTheMinute).difference(now) + const Duration(minutes: 1),
+      );
       await tester.pumpWidget(MinuteRefresh(onRefresh: () => refreshes++));
     }
 

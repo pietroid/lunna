@@ -8,7 +8,7 @@ import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/demo/demo.dart';
-import 'package:lunna/home/view/greeting.dart';
+import 'package:lunna/feed/feed.dart';
 import 'package:lunna/landing/landing.dart';
 
 /// Nobody signed in, and nobody signs in.
