@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// The readiness ladder, run on five people's states, beside the tiers of
+// Work Quality (the seven levels of a defined plan), run on five people's states, beside the tiers of
 // issue #67's thin layer. Prints data/ladder.csv.
 //
 //   node code/ladder.mjs > data/ladder.csv
 //
-// Every rung is arithmetic on what the server already reads (goals with
+// Every level is arithmetic on what the server already reads (goals with
 // done/queued, open deliveries, Schedule, routines, the day). The first
-// rung not met is what the one suggestion is about.
+// level not met is what the one suggestion is about.
 
-const RUNGS = [
+const LEVELS = [
   ['goal', 'a goal is running', (s) => s.goal !== null],
   ['reach', 'its open deliveries reach it (done + queued ≥ target)',
     (s) => s.goal.done + s.goal.queued >= s.goal.target],
@@ -24,10 +24,10 @@ const RUNGS = [
     (s) => s.goal.done >= s.goal.target * (s.timeGone - 0.15)],
 ];
 
-/** The first rung not met, or `keep` when all are. */
+/** The first Work Quality level not met, or `keep` when all are. */
 function ladder(state) {
   const met = [];
-  for (const [name, , test] of RUNGS) {
+  for (const [name, , test] of LEVELS) {
     if (!test(state)) return { topic: name, met };
     met.push(name);
   }
@@ -76,8 +76,8 @@ const PEOPLE = [
   }],
 ];
 
-console.log('person,ladder_topic,rungs_met,tiers_67');
+console.log('person,topic,work_quality,tiers_67');
 for (const [name, state] of PEOPLE) {
   const { topic, met } = ladder(state);
-  console.log(`"${name}",${topic},${met.length}/${RUNGS.length},${tiers(state)}`);
+  console.log(`"${name}",${topic},${met.length}/${LEVELS.length},${tiers(state)}`);
 }

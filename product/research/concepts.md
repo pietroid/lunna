@@ -223,12 +223,19 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Here:** a paused block's end is `now + owed`, so `catchUp` runs before each read instead of on a clock.
 - **Met in:** neon-compute, slides 7–8; notification-lifecycle, slides 5 and 7 (overtime dragged on read; the Live Activity changes on state only).
 
+### Arm a timer per due time, not a scan
+> When you know when something is due, wait for that moment; don't ask every hour who is due.
+
+- **Read:** Redis, [EXPIRE](https://redis.io/docs/latest/commands/expire/): absolute expiry times, settled when read; [neondatabase/neon#12909](https://github.com/neondatabase/neon/discussions/12909): a periodic poller keeps the compute up.
+- **Here:** each suggestion's `next_at` arms one in-memory timer per person (re-armed at boot); 100 wakes a month instead of an hourly scan's 720, +2.0 CU-h instead of +14.6. The read catches up a lost one.
+- **Met in:** agentic-suggestions, slide 12.
+
 ### Settle on access, from absolute times
 > Store when something happened; work out the rest from now, when someone asks.
 
 - **Read:** Redis, [EXPIRE: How Redis expires keys](https://redis.io/docs/latest/commands/expire/): "a key is passively expired when a client tries to access it", expiry kept as absolute timestamps so time flows while the server is down.
 - **Here:** a paused block's end is `now + owed` and a queued task's hour is `relayout` on read, so no tick and no "last read" watermark. The tick had hidden a `catchUp` bug that only a long gap shows.
-- **Met in:** neon-compute, slide 9.
+- **Met in:** neon-compute, slide 9; agentic-suggestions, slide 12 (a missed `next_at` is written on the next read).
 
 ## Interruptions: when to ask
 
@@ -250,15 +257,15 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > A proactive agent's hardest call is when to speak; keep it out of the model and keep it rare.
 
 - **Read:** Chen et al., [Need Help?](https://arxiv.org/html/2410.04596v2) (CHI 2025): +12–18% tasks done, but more frequent suggestions halved preference (90% → 47%); Lu et al., [Proactive Agent](https://arxiv.org/abs/2410.12361): 66% F1 on when to help, fine-tuned.
-- **Here:** one stored suggestion per person until `validUntil`; the topic is the first unmet rung of an arithmetic ladder; the model writes the turn.
-- **Met in:** agentic-suggestions, slides 4–6.
+- **Here:** one stored suggestion per person until `next_at`; the topic is the first Work Quality level not met (arithmetic); the model writes the turn and proposes its follow-up, held to 3–24 h.
+- **Met in:** agentic-suggestions, slides 4–6 and 11.
 
 ### Preview the outcome, not the diff
 > Show what the thing will look like once made, drawn by the screen that will hold it.
 
 - **Read:** Chen et al., [Need Help?](https://arxiv.org/html/2410.04596v2): the *Suggest and Preview* condition; summary first, expand for detail.
 - **Here:** a `preview` block draws a new goal with `GoalCard`, its forecast filled in by the dry run, so a plan that falls short shows it.
-- **Met in:** agentic-suggestions, slide 8.
+- **Met in:** agentic-suggestions, slides 8–9 (Ajustar and Aplicar under the preview).
 
 ## Freshness: what is generated ahead
 
@@ -266,5 +273,5 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 > Answer with what you have and regenerate in the background; never make a read wait on a slow producer.
 
 - **Read:** Nottingham, [RFC 5861](https://www.rfc-editor.org/rfc/rfc5861): `stale-while-revalidate`.
-- **Here:** `GET /agent/suggestion` returns the stored row at once and starts the agent turn behind it, only when someone is there to read it (no timer, Neon sleeps).
-- **Met in:** agentic-suggestions, slide 9.
+- **Here:** `GET /agent/suggestion` returns the stored row at once; a turn whose `next_at` passed unwritten is written behind it. After review 1 the turn is written on time by a per-person timer, and the read is the catch-up.
+- **Met in:** agentic-suggestions, slide 12.

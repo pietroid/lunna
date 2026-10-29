@@ -5,7 +5,9 @@ import 'package:l10n/l10n.dart';
 
 /// The research RFC's two pictures of one onboarding plan (a goal and two
 /// deliveries): `?s=1` as the plan card draws it today, `?s=2` drawn by
-/// the widgets the tabs draw once it is applied. Nothing ships from here.
+/// the widgets the tabs draw once it is applied; `?s=3` the suggestion as
+/// Feed would hold it, the preview first and Ajustar / Aplicar under it;
+/// `?s=4` the welcome a new person finds. Nothing ships from here.
 void main() => runApp(const _App());
 
 final DateTime _now = DateTime(2026, 10, 31, 10);
@@ -27,7 +29,12 @@ class _App extends StatelessWidget {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: _scene == '1' ? _today() : _preview(),
+          children: switch (_scene) {
+            '1' => _today(),
+            '2' => _preview(),
+            '3' => [_offer()],
+            _ => [_welcome()],
+          },
         ),
       ),
     ),
@@ -98,4 +105,100 @@ class _App extends StatelessWidget {
       const SizedBox(height: 8),
     ],
   ];
+
+  /// The agent's wash, its mark and its label, around [children].
+  Widget _wash(List<Widget> children) => Builder(
+    builder: (context) => Container(
+      padding: const EdgeInsets.all(AppSpacing.s4),
+      decoration: BoxDecoration(
+        color: AppColors.accentWash,
+        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const AppIcon(iconData: AppIcons.agent, size: AppSpacing.s4),
+              const SizedBox(width: AppSpacing.s2),
+              Text(
+                context.l10n.agentSuggestionLabel(AppBrand.id),
+                style: AppTypography.caption.copyWith(color: AppColors.accent),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s2),
+          ...children,
+        ],
+      ),
+    ),
+  );
+
+  Widget _offer() => _wash([
+    Text(
+      'Com essas duas entregas você chega a R\$ 4.200 dos R\$ 5.000 do mês. '
+      'Quer anotar as duas?',
+      style: AppTypography.body,
+    ),
+    const SizedBox(height: AppSpacing.s3),
+    ..._preview(),
+    const SizedBox(height: AppSpacing.s2),
+    Row(
+      children: [
+        Expanded(
+          child: AppButton.text(
+            text: 'Ajustar',
+            color: AppColors.ink,
+            expand: true,
+            onPressed: () {},
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s2),
+        Expanded(
+          child: AppButton(text: 'Aplicar', expand: true, onPressed: () {}),
+        ),
+      ],
+    ),
+  ]);
+
+  Widget _welcome() => _wash([
+    Text(
+      'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de '
+      'cada vez:',
+      style: AppTypography.body,
+    ),
+    const SizedBox(height: AppSpacing.s3),
+    for (final (n, step) in [
+      (1, 'um objetivo para o mês'),
+      (2, 'entregas que chegam nele'),
+      (3, 'dia, valor e tempo de cada uma'),
+      (4, 'a próxima tarefa'),
+      (5, 'o trabalho cabendo nas horas livres'),
+      (6, 'a sua rotina'),
+      (7, 'o ritmo em dia'),
+    ])
+      Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.s1),
+        child: Text(
+          '$n · $step',
+          style: (n == 1 ? AppTypography.labelStrong : AppTypography.body)
+              .copyWith(color: n == 1 ? AppColors.accent : AppColors.ink2),
+        ),
+      ),
+    const SizedBox(height: AppSpacing.s3),
+    Text('Quanto você quer faturar este mês?', style: AppTypography.body),
+    const SizedBox(height: AppSpacing.s2),
+    Wrap(
+      spacing: AppSpacing.s2,
+      runSpacing: AppSpacing.s2,
+      children: [
+        for (final it in ['R\$ 3.000', 'R\$ 5.000', 'R\$ 8.000', 'Outro'])
+          AppButton(
+            text: it,
+            variant: AppButtonVariant.secondary,
+            onPressed: () {},
+          ),
+      ],
+    ),
+  ]);
 }

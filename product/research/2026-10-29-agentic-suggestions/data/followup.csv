@@ -1,0 +1,4 @@
+option,server_wakes_month,extra_awake_min_month,extra_cu_hours_month,extra_usd_month,suggestions_month
+hourly-scan,720,3497,14.6,1.54,100
+timer-at-next,100,477,2.0,0.21,100
+on-read,0,0,0.0,0.00,100
