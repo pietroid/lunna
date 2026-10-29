@@ -30,6 +30,14 @@ routes the card already posts, it starts with the app, an intent or
 (iOS 26) a schedule, and there is no push server. The Android ongoing
 notification stays with [#56](https://github.com/pietroid/lunna/issues/56).
 
+### The review, on the issue
+
+> iOS 17 is good. Only when it runs. The fonts seem to bold doesn it? cant you have something similar to more natural looking of the flutter app?
+
+So: the activity needs **iOS 17** (every phone that gets it has the
+buttons), it shows **only while a block runs** (nothing for the next one
+waiting to be begun), and the type now follows the app's scale.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -48,6 +56,16 @@ in Onest and the brand's `AppColors` values. Only the wallpaper, the
 clock, the island's black shape and the home screen icons are the
 harness's stand-ins for iOS.
 
+**Lighter type, the app's scale.** The first round set everything in
+Onest 600, which the app never uses: `AppTypography` stops at 500 (300
+display, 400 headline and body, 500 titles and controls), with tracking
+that tightens as the size grows. The views now read that scale: the time
+28/400 (the headline), the title 17/500, the line above it 13/400, the
+buttons and their symbols 14/500, the island's second line 12/400. Before
+(top) and after:
+
+![The banner before and after](img/weights-before-after.png)
+
 **References** (from known patterns, not browsed): Apple's Clock timer
 and Uber's ride activity (title, one big counting time, a thin progress
 line); Structured and Things' running-task activities (controls on the
@@ -56,7 +74,7 @@ banner itself). Mobbin was not browsed.
 | Pin | Decision | Chosen |
 |---|---|---|
 | 1A | What heads the banner | the brand mark and the task's delivery; without one, the hour it began |
-| 1B | The time | time left, counted by the system (`Text(timerInterval:)`), in the accent; no update per minute |
+| 1B | The time | time left, counted by the system (`Text(timerInterval:)`), in the accent, 28/400 like the app's headline; no update per minute |
 | 1C | Progress | a 4 px line, done over `fill`, as the card's |
 | 1D | ⏯ | pause / resume (`POST …/pause`, `…/resume`), one button that flips |
 | 1E | −10 · +10 | `POST …/extend { minutes: ±10 }`; the server's "later of end and now" rule stands |
@@ -67,6 +85,8 @@ banner itself). Mobbin was not browsed.
 | 3C | Buttons in overtime | ⏯ +10 Terminei; −10 goes, the end has passed |
 | 4A | Mark on the island | the same mark image; on black its check drops out and the crescent remains |
 | 4B | Compact | crescent left, time right; minimal is the crescent |
+| — | Type | `AppTypography`'s weights only (300/400/500, never 600) and its tracking, through one `onest(size, weight)` modifier |
+| — | When it shows | only while a block runs: begun, paused or in overtime; never for the next block waiting |
 | 5A–B | Expanded | the same card in the dark brand's colours, Lunna's accent lifted for black (`#F0596C`); four equal buttons, ✓ icon only |
 
 **Icons.** SF Symbols (`pause.fill`, `play.fill`, `checkmark`) on the
@@ -94,8 +114,9 @@ the brand mark is the existing `lunna.png` / `focus.png`.
 
 ### What the build does
 
-- **iOS, extension.** A Widget Extension target `BlockActivity` (iOS
-  16.1; buttons need 17, so on 16.x the banner draws without them) with an
+- **iOS, extension.** A Widget Extension target `BlockActivity`
+  (deployment target **iOS 17**, the first with buttons in an activity;
+  the app starts it behind `#available(iOS 17, *)`) with an
   `ActivityConfiguration(for: BlockAttributes.self)` over the views above:
   `activityBackgroundTint(palette.surface)`, `staleDate = end` on every
   update, dynamic island regions from `BlockIslandExpanded` /
@@ -122,6 +143,9 @@ the brand mark is the existing `lunna.png` / `focus.png`.
 - **Server.** No new route. Add `live_activity` as a `via` value in
   `analytics/events.ts` / `logging.interceptor.ts`, so its answers are
   counted apart from the notification's.
+- **Type.** Keep the `onest(size, weight)` modifier and the weights in
+  the views (300/400/500 only, `AppTypography`'s tracking); register the
+  variable `Onest` in the extension so the weights resolve.
 - **Strings.** The extension's copy ("até", "Pausado", "Atrasado",
   "Terminei") goes in its own `Localizable.xcstrings`, pt-BR, since Swift
   cannot read `app_pt.arb`. Name it in `AGENTS.md` under Language.
@@ -147,14 +171,20 @@ the brand mark is the existing `lunna.png` / `focus.png`.
 - An own method channel rather than a pub package (`live_activities`):
   the intents must call the API natively anyway, so the plugin would add
   a dependency for the one call that is simple.
+- Second round: the exact sizes and weights of the lighter type (time
+  28/400, title 17/500, header 13/400, buttons 14/500, island 16/500 and
+  12/400), read off `AppTypography`; the SF Symbols on the buttons take
+  the label's weight (500).
+
+### Decided on review
+
+- iOS 17 is the activity's minimum.
+- Only while a block runs; the next block waiting to be begun gets none.
+- The type follows the app's (lighter) scale.
 
 ### Open questions
 
-- Should the activity also show for the **next** block, waiting to be
-  begun (with Confirmar), or only while something runs? The RFC says
-  "while a block runs"; the design follows it.
-- iOS 16.x phones get a banner with no buttons. Raise the activity's
-  minimum to 17 instead?
+None: both were answered on review (above).
 
 ### Cost
 

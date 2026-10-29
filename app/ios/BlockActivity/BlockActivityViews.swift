@@ -84,9 +84,13 @@ extension Color {
   }
 }
 
-extension Font {
-  static func onest(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-    .custom("Onest", size: size).weight(weight)
+// The app's type scale (`AppTypography`): Onest at 300, 400 and 500 only,
+// never heavier, with tracking that tightens as the size grows.
+extension View {
+  func onest(
+    _ size: CGFloat, _ weight: Font.Weight = .regular, tracking: CGFloat = -0.01
+  ) -> some View {
+    font(.custom("Onest", size: size).weight(weight)).tracking(size * tracking)
   }
 }
 
@@ -123,7 +127,8 @@ struct BlockTimer: View {
           .foregroundStyle(palette.accent)
       }
     }
-    .font(.onest(size, .semibold))
+    // Big, the headline's 28/400; small, in the island's corner, 500.
+    .onest(size, size > 20 ? .regular : .medium, tracking: size > 20 ? -0.02 : -0.01)
     .monospacedDigit()
     .multilineTextAlignment(.trailing)
   }
@@ -178,7 +183,8 @@ struct ControlFace: View {
         if !compact { Text("Terminei") }
       }
     }
-    .font(.onest(15, .semibold))
+    // The app's control labels, 14/500; the symbols take the same weight.
+    .onest(14, .medium)
     .foregroundStyle(primary ? palette.onAccent : palette.ink)
     // On the Lock Screen ✓ takes what the others leave; in the island all
     // four share the width.
@@ -214,12 +220,12 @@ struct BlockLockScreen<Wrap: View>: View {
         Spacer(minLength: 8)
         status
       }
-      .font(.onest(13, .medium))
+      .onest(13)
       .foregroundStyle(palette.ink2)
 
       HStack(alignment: .firstTextBaseline, spacing: 12) {
         Text(state.title)
-          .font(.onest(18, .semibold))
+          .onest(17, .medium)
           .foregroundStyle(palette.ink)
           .lineLimit(1)
         Spacer(minLength: 8)
@@ -263,10 +269,10 @@ struct BlockIslandExpanded<Wrap: View>: View {
       HStack(alignment: .center, spacing: 10) {
         p.markImage.resizable().frame(width: 24, height: 24)
         VStack(alignment: .leading, spacing: 2) {
-          Text(state.title).font(.onest(16, .semibold)).foregroundStyle(p.ink)
+          Text(state.title).onest(16, .medium).foregroundStyle(p.ink)
             .lineLimit(1)
           Text(state.delivery ?? "até \(hourFormat.string(from: state.end))")
-            .font(.onest(12, .medium)).foregroundStyle(p.ink2).lineLimit(1)
+            .onest(12).foregroundStyle(p.ink2).lineLimit(1)
         }
         Spacer(minLength: 8)
         BlockTimer(state: state, now: now, palette: p, size: 26).fixedSize()
