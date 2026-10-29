@@ -44,6 +44,15 @@ waiting to be begun), and the type now follows the app's scale.
 >
 > The design was approved on the issue. Do Phases 3 and 4 unattended.
 
+### The review of the build, on the issue
+
+> do anything needed to work
+
+So this round fixed what kept it from running on a phone: the iOS app
+(either brand, with or without this work) did not build under its
+flavors, and the activity's link was not registered. See "Made to work"
+in section 3.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -229,6 +238,43 @@ as a `via`.
   `focusProduction` (`com.pietroid.{lunna,focus}.BlockActivity`, version
   1.0.0 like the app's). See the Pods note in section 4.
 
+### Made to work (after the review)
+
+- **The flavored iOS builds failed**, on `main` too: every Runner
+  configuration was based on `Flutter/Debug.xcconfig` or
+  `Release.xcconfig`, which include `Pods-Runner.debug.xcconfig`, a file
+  CocoaPods never writes for a project with flavors (it writes
+  `Pods-Runner.debug-lunnadev.xcconfig` and so on). Without it `PODS_ROOT`
+  was empty and Xcode stopped at *Unable to load contents of file list:
+  '/Target Support Files/Pods-Runner/…xcfilelist'*. Each of the twelve
+  Runner configurations is now based on its own
+  `app/ios/Flutter/<config>.xcconfig` (`Debug-lunnaDev.xcconfig`, …), which
+  includes its Pods file and then Flutter's. Written in
+  `app/brands/README.md`.
+- **The activity's link is registered**: `lunna-activity` is in Runner's
+  `CFBundleURLTypes`, so a tap on the activity is always handed to the
+  app.
+- Checked that the rest holds on a locked phone: the session token is
+  kept with `first_unlock` accessibility (`TokenStore`), so the buttons
+  can read it from the Keychain with the screen locked; the intent runs
+  in the app's process; both targets have team `K3U55XXNRM` and automatic
+  signing.
+
+Proved, in this worktree, with the files in the tree and nothing patched
+for the build:
+
+```
+flutter build ios --simulator --debug --flavor lunnaDev …     ✓ Built build/ios/iphonesimulator/Runner.app
+flutter build ios --release --no-codesign --flavor focusProduction …
+                                                              ✓ Built build/ios/iphoneos/Runner.app (40.0MB)
+PlugIns/BlockActivity.appex CFBundleIdentifier                com.pietroid.focus.BlockActivity
+```
+
+The lunnaDev build was installed on an iPhone 17 Pro simulator (iOS
+26.5): the app launches and stays up with the extension embedded, and
+`xcrun simctl openurl … lunna-activity://card/demo` asks *Open in
+"[DEV] Lunna"?*, so iOS routes the activity's link to the app.
+
 ### Where the build differs from the design
 
 - **No scheduled start on iOS 26** for the next fixed block. The brief
@@ -250,6 +296,8 @@ as a `via`.
   (Atrasado, counting up).
 - The tap's link on a cold launch relies on Flutter handing the scene's
   connection options to a plugin registered after the scene connected.
+- Still not run on a phone (as above): a signed build on a device is the
+  one step left, and needs the person's Apple account.
 - The signing of the new bundle ids (`com.pietroid.{lunna,focus}[.dev].BlockActivity`)
   was not run: the builds here are unsigned.
 
@@ -266,6 +314,11 @@ as a `via`.
   route Google sign-in's URLs.
 - The render harness (`Preview/`) was deleted after the prints, as the
   brief said.
+- After the review: one xcconfig per Runner configuration (Flutter's
+  documented shape for flavors) rather than editing the Podfile or
+  letting CocoaPods set base configurations, which it refuses to do over
+  Flutter's own; the URL scheme registered even though a widget's link
+  often reaches the app without it. No UI changed, so the prints stand.
 
 ## 4. How to turn it on
 
@@ -278,14 +331,10 @@ later, and needs no env var or server change beyond this deploy.
   nothing starts, and the reminders work as before.
 - Without iOS 17 (or on Android and the web) nothing changes.
 
-**A build snag that predates this work:** in this worktree
-`flutter build ios --flavor lunnaDev` fails with *Unable to load contents
-of file list: '/Target Support Files/Pods-Runner/…'*, with or without
-this change (proved by building `HEAD`'s project file: the same error).
-`Flutter/Debug.xcconfig` and `Release.xcconfig` include
-`Pods-Runner.debug.xcconfig`, but CocoaPods writes one per flavor
-(`Pods-Runner.debug-lunnadev.xcconfig`). The builds above pointed the
-include at the flavor's file for the build only; the files are unchanged.
+**The flavored iOS builds** failed before this work (see "Made to
+work"); they build as they are now, with nothing to patch. After a
+`pod install` nothing changes: the per-configuration xcconfigs include
+CocoaPods' files by name.
 
 ## 5. Cost and time
 

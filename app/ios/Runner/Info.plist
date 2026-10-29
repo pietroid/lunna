@@ -86,6 +86,14 @@
 					<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
 				</array>
 			</dict>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>Live Activity</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>lunna-activity</string>
+				</array>
+			</dict>
 		</array>
 		<key>BGTaskSchedulerPermittedIdentifiers</key>
 		<array>

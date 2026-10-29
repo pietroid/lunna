@@ -25,7 +25,11 @@ in the platform folders and are committed.
   flavor. Each sets `PRODUCT_BUNDLE_IDENTIFIER`, `FLAVOR_APP_NAME`,
   `ASSETCATALOG_COMPILER_APPICON_NAME` (`AppIcon-<brand>`) and
   `LAUNCH_SCREEN_STORYBOARD` (`LaunchScreen<Brand>`). The Podfile lists
-  every configuration.
+  every configuration, and CocoaPods writes one xcconfig for each, so each
+  Runner configuration is based on its own `ios/Flutter/<config>.xcconfig`,
+  which includes that Pods file and then `Debug.xcconfig` or
+  `Release.xcconfig`. A new configuration needs its file too, or the build
+  fails on `/Target Support Files/…xcfilelist`.
 - **Web:** `tool/brand_web.sh <brand>` after `flutter build web`, which
   fills the placeholders in `web/index.html` and `web/manifest.json` and
   copies `brands/<brand>/web/` (icons, favicon, splash) over the build.

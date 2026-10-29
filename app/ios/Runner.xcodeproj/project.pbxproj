@@ -79,6 +79,7 @@
 		00C5B97F802F849686AB4783 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		034C3668AA8F74237852E4BC /* Pods-Runner.release-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-focusdev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-focusdev.xcconfig"; sourceTree = "<group>"; };
 		03AA1350A5DABE064B2081BD /* Base */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreenFocus.storyboard; sourceTree = "<group>"; };
+		04F891AF6F98C0A8DDD21518 /* Debug-lunnaProduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Debug-lunnaProduction.xcconfig"; path = "Flutter/Debug-lunnaProduction.xcconfig"; sourceTree = "<group>"; };
 		052227CC8CF4A5F2C896773C /* BlockActivities.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockActivities.swift; sourceTree = "<group>"; };
 		0654BBAB5FB5991F9B6310DB /* Pods-Runner.release-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-focusproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		0AA85638CD8E604AEE5D05BE /* Pods-Runner.debug-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-focusproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-focusproduction.xcconfig"; sourceTree = "<group>"; };
@@ -98,17 +99,24 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		3E1A8F58070CE9C50ED795AE /* Pods-Runner.profile-production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-production.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-production.xcconfig"; sourceTree = "<group>"; };
+		3EBBACA7DF7CEC700BA6CC41 /* Release-focusProduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Release-focusProduction.xcconfig"; path = "Flutter/Release-focusProduction.xcconfig"; sourceTree = "<group>"; };
+		404B0609D51CCEBE85EFE359 /* Profile-focusProduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Profile-focusProduction.xcconfig"; path = "Flutter/Profile-focusProduction.xcconfig"; sourceTree = "<group>"; };
 		42CC346910F6F9A49932247C /* BlockAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockAttributes.swift; sourceTree = "<group>"; };
+		456DD0C335B5F4983E9CEA7D /* Profile-lunnaProduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Profile-lunnaProduction.xcconfig"; path = "Flutter/Profile-lunnaProduction.xcconfig"; sourceTree = "<group>"; };
 		470C649551684BD153BBAFEA /* Onest.ttf */ = {isa = PBXFileReference; includeInIndex = 1; path = Onest.ttf; sourceTree = "<group>"; };
+		4769DD2B827E45C772A5BC24 /* Debug-focusProduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Debug-focusProduction.xcconfig"; path = "Flutter/Debug-focusProduction.xcconfig"; sourceTree = "<group>"; };
 		495EF1A6265EBBD6D5523A24 /* LiveActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveActivityPlugin.swift; sourceTree = "<group>"; };
 		4AC9B7CF9E1B42F766242E1A /* Pods-Runner.debug-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
 		4ACFAE501D9341E7BAAA4D81 /* Pods-Runner.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-dev.xcconfig"; sourceTree = "<group>"; };
+		4B0C9E3E08AA5315B8CA7935 /* Release-lunnaProduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Release-lunnaProduction.xcconfig"; path = "Flutter/Release-lunnaProduction.xcconfig"; sourceTree = "<group>"; };
 		4C39C0DAF371F671018AC3C0 /* Pods-Runner.profile-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-dev.xcconfig"; sourceTree = "<group>"; };
 		51B275A20FA2060E539CF7F1 /* BlockActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlockActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		543EA8CF3B30D1595907683A /* Pods-RunnerTests.debug-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-focusdev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-focusdev.xcconfig"; sourceTree = "<group>"; };
 		565A6595201BFF48D5AB330C /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		58B42FA51582708B8615E1A4 /* Release-lunnaDev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Release-lunnaDev.xcconfig"; path = "Flutter/Release-lunnaDev.xcconfig"; sourceTree = "<group>"; };
 		5CC1565173369F1AD67F16AD /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6E457E76ACFE0D83222C4C33 /* Pods-RunnerTests.release-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-dev.xcconfig"; sourceTree = "<group>"; };
+		6F3DCA48799E2643B8B9ED55 /* Debug-focusDev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Debug-focusDev.xcconfig"; path = "Flutter/Debug-focusDev.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		767F390C4871457075FEF3D1 /* Pods-RunnerTests.release-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-focusproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-focusproduction.xcconfig"; sourceTree = "<group>"; };
@@ -116,6 +124,7 @@
 		7A647803FA85381806AA8B24 /* Base */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreenLunna.storyboard; sourceTree = "<group>"; };
 		7ACB7E625D2B0AC2751EE037 /* OFL.txt */ = {isa = PBXFileReference; includeInIndex = 1; path = OFL.txt; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		7C39969D515195E89E946660 /* Release-focusDev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Release-focusDev.xcconfig"; path = "Flutter/Release-focusDev.xcconfig"; sourceTree = "<group>"; };
 		861914800F5C0F3200F4C4FB /* Pods-RunnerTests.profile-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-focusdev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-focusdev.xcconfig"; sourceTree = "<group>"; };
 		86ABA791E4B0D0D5654BFE5F /* BlockMark.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BlockMark.swift; sourceTree = "<group>"; };
 		8D597ACDFDD1EEABA621A7C3 /* Pods-RunnerTests.debug-production.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-production.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-production.xcconfig"; sourceTree = "<group>"; };
@@ -130,7 +139,9 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		97C147111CF9000F007C117D /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		9DB3F8D1D5E4F5E5D3C0ED4C /* Profile-focusDev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Profile-focusDev.xcconfig"; path = "Flutter/Profile-focusDev.xcconfig"; sourceTree = "<group>"; };
 		A36DBAA6C3799FD2710CF307 /* Pods-Runner.release-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-lunnadev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-lunnadev.xcconfig"; sourceTree = "<group>"; };
+		A4665113D8A37009DD2ABCEA /* Profile-lunnaDev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Profile-lunnaDev.xcconfig"; path = "Flutter/Profile-lunnaDev.xcconfig"; sourceTree = "<group>"; };
 		A7089BCDF6F5EB575C61C598 /* Pods-RunnerTests.profile-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile-focusproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		A767DFEF2FC5F07FBA293DB8 /* Pods-RunnerTests.release-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release-lunnadev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release-lunnadev.xcconfig"; sourceTree = "<group>"; };
 		AC464468D5A9B9ABA5EC389A /* Pods-Runner.release-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
@@ -141,6 +152,7 @@
 		D498015C843854CC8DDAFB72 /* Pods-RunnerTests.debug-lunnaproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-lunnaproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-lunnaproduction.xcconfig"; sourceTree = "<group>"; };
 		D5D085381B7970BA94A9C6A3 /* Pods-Runner.profile-focusdev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-focusdev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-focusdev.xcconfig"; sourceTree = "<group>"; };
 		DCD12D1A9A6A1A6F6F2534BF /* Pods-Runner.profile-lunnadev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile-lunnadev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile-lunnadev.xcconfig"; sourceTree = "<group>"; };
+		E94BBBA30E3B6D8A01C15021 /* Debug-lunnaDev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Debug-lunnaDev.xcconfig"; path = "Flutter/Debug-lunnaDev.xcconfig"; sourceTree = "<group>"; };
 		EB6B2CB188A4F110546A7E63 /* BlockActivity.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = BlockActivity.xcconfig; sourceTree = "<group>"; };
 		EBAF59DDA4775F30FA39CD8D /* Pods-RunnerTests.debug-focusproduction.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-focusproduction.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-focusproduction.xcconfig"; sourceTree = "<group>"; };
 		EC359384345915A316678A87 /* Pods-RunnerTests.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug-dev.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug-dev.xcconfig"; sourceTree = "<group>"; };
@@ -272,6 +284,18 @@
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
+				6F3DCA48799E2643B8B9ED55 /* Debug-focusDev.xcconfig */,
+				E94BBBA30E3B6D8A01C15021 /* Debug-lunnaDev.xcconfig */,
+				4769DD2B827E45C772A5BC24 /* Debug-focusProduction.xcconfig */,
+				04F891AF6F98C0A8DDD21518 /* Debug-lunnaProduction.xcconfig */,
+				7C39969D515195E89E946660 /* Release-focusDev.xcconfig */,
+				58B42FA51582708B8615E1A4 /* Release-lunnaDev.xcconfig */,
+				3EBBACA7DF7CEC700BA6CC41 /* Release-focusProduction.xcconfig */,
+				4B0C9E3E08AA5315B8CA7935 /* Release-lunnaProduction.xcconfig */,
+				9DB3F8D1D5E4F5E5D3C0ED4C /* Profile-focusDev.xcconfig */,
+				A4665113D8A37009DD2ABCEA /* Profile-lunnaDev.xcconfig */,
+				404B0609D51CCEBE85EFE359 /* Profile-focusProduction.xcconfig */,
+				456DD0C335B5F4983E9CEA7D /* Profile-lunnaProduction.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -647,7 +671,7 @@
 /* Begin XCBuildConfiguration section */
 		041036BAE17BB1CB46E2A3BA /* Release-focusDev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 7C39969D515195E89E946660 /* Release-focusDev.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-focus";
 				CLANG_ENABLE_MODULES = YES;
@@ -720,7 +744,7 @@
 		};
 		1730FE34D926A4C050AF8A3F /* Debug-focusDev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			baseConfigurationReference = 6F3DCA48799E2643B8B9ED55 /* Debug-focusDev.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-focus";
 				CLANG_ENABLE_MODULES = YES;
@@ -747,7 +771,7 @@
 		};
 		2FD7B1C4761845D93F98222D /* Profile-lunnaProduction */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 456DD0C335B5F4983E9CEA7D /* Profile-lunnaProduction.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-lunna";
 				CLANG_ENABLE_MODULES = YES;
@@ -773,7 +797,7 @@
 		};
 		354E54FD7301322179BA1395 /* Profile-lunnaDev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = A4665113D8A37009DD2ABCEA /* Profile-lunnaDev.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-lunna";
 				CLANG_ENABLE_MODULES = YES;
@@ -1117,7 +1141,7 @@
 		};
 		7086F8995768DBD1020E04E2 /* Profile-focusProduction */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 404B0609D51CCEBE85EFE359 /* Profile-focusProduction.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-focus";
 				CLANG_ENABLE_MODULES = YES;
@@ -1264,7 +1288,7 @@
 		};
 		8AC8631AED3ADB2D3088110F /* Debug-lunnaDev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			baseConfigurationReference = E94BBBA30E3B6D8A01C15021 /* Debug-lunnaDev.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-lunna";
 				CLANG_ENABLE_MODULES = YES;
@@ -1505,7 +1529,7 @@
 		};
 		A82E1987C1E8064BAA5F22CC /* Debug-lunnaProduction */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			baseConfigurationReference = 04F891AF6F98C0A8DDD21518 /* Debug-lunnaProduction.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-lunna";
 				CLANG_ENABLE_MODULES = YES;
@@ -1633,7 +1657,7 @@
 		};
 		B75A5FEBE7164D3260AEB9ED /* Release-lunnaDev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 58B42FA51582708B8615E1A4 /* Release-lunnaDev.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-lunna";
 				CLANG_ENABLE_MODULES = YES;
@@ -1813,7 +1837,7 @@
 		};
 		C66AE60622C5CF0DF80CC06B /* Profile-focusDev */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 9DB3F8D1D5E4F5E5D3C0ED4C /* Profile-focusDev.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-focus";
 				CLANG_ENABLE_MODULES = YES;
@@ -1956,7 +1980,7 @@
 		};
 		DCC66CDE86F0C7F0CA7759DF /* Release-lunnaProduction */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 4B0C9E3E08AA5315B8CA7935 /* Release-lunnaProduction.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-lunna";
 				CLANG_ENABLE_MODULES = YES;
@@ -1982,7 +2006,7 @@
 		};
 		E93AA8EAD26D76169C7B1C7F /* Debug-focusProduction */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
+			baseConfigurationReference = 4769DD2B827E45C772A5BC24 /* Debug-focusProduction.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-focus";
 				CLANG_ENABLE_MODULES = YES;
@@ -2095,7 +2119,7 @@
 		};
 		FBDFB02A6A077825470DC3E2 /* Release-focusProduction */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
+			baseConfigurationReference = 3EBBACA7DF7CEC700BA6CC41 /* Release-focusProduction.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "AppIcon-focus";
 				CLANG_ENABLE_MODULES = YES;
