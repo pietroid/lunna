@@ -274,3 +274,86 @@ class _NowProgressState extends State<NowProgress> {
     );
   }
 }
+
+/// {@template now_late}
+/// What Agora draws under a block that ran past its end with nobody saying
+/// so, in place of [NowProgress].
+///
+/// The bar would be full and say nothing; the line says how late the end
+/// is, and the answer most likely is the one button in the accent: it is
+/// over. Ten minutes more sits beside it, outlined. Pause and −10 are left
+/// out: a late block is not being measured any more, only closed.
+/// {@endtemplate}
+class NowLate extends StatelessWidget {
+  /// {@macro now_late}
+  const NowLate({
+    required this.card,
+    this.onDone,
+    this.onAdjusted,
+    super.key,
+  });
+
+  /// The late block.
+  final TimelineEvent card;
+
+  /// Finishes it. Without it only the line is drawn.
+  final VoidCallback? onDone;
+
+  /// Ten minutes more, from now.
+  final ValueChanged<int>? onAdjusted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const AppIcon(
+              iconData: AppIcons.warning,
+              size: AppSpacing.s4,
+              color: AppColors.dangerInk,
+            ),
+            const SizedBox(width: AppSpacing.s2),
+            Expanded(
+              child: Text(
+                context.l10n.lateEnd(card.overtimeMinutes),
+                style: AppTypography.labelStrong.copyWith(
+                  color: AppColors.dangerInk,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (onDone != null) ...[
+          const SizedBox(height: AppSpacing.s3),
+          Row(
+            children: [
+              Expanded(
+                child: AppButton.icon(
+                  text: context.l10n.reminderFinished,
+                  icon: const AppIcon(
+                    iconData: AppIcons.check,
+                    size: AppSpacing.s4,
+                    color: AppColors.onAccent,
+                  ),
+                  expand: true,
+                  onPressed: onDone,
+                ),
+              ),
+              if (onAdjusted != null) ...[
+                const SizedBox(width: AppSpacing.s2),
+                AppButton(
+                  text: context.l10n.notificationActionLater,
+                  variant: AppButtonVariant.secondary,
+                  color: AppColors.ink,
+                  onPressed: () => onAdjusted!(stepMinutes),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}

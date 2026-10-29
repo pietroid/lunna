@@ -439,6 +439,29 @@
     }
   },
   "remindersStartBody": "Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.",
+  "reminderStarting": "Começando agora, certo?",
+  "reminderEnding": "Terminando agora, certo?",
+  "reminderHours": "{start}–{end}",
+  "@reminderHours": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "lateEnd": "Atraso no término · {minutes, plural, =1{1 minuto} other{{minutes} minutos}}",
+  "@lateEnd": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "reminderFinished": "Terminei",
+  "reminderDelay10": "Adiar 10 min",
   "routinesHelp": "Toque num horário para criar. Segure um bloco para mudar a hora.",
   "routinesTitleHint": "Almoço, rotina da manhã…",
   "commonSave": "Salvar",

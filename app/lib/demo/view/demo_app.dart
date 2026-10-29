@@ -84,10 +84,18 @@ class DemoController extends ChangeNotifier {
 /// {@endtemplate}
 class DemoApp extends StatefulWidget {
   /// {@macro demo_app}
-  const DemoApp({this.resting = false, this.controller, super.key});
+  const DemoApp({
+    this.resting = false,
+    this.late = 0,
+    this.controller,
+    super.key,
+  });
 
   /// Whether the day starts on a break instead of a running block.
   final bool resting;
+
+  /// How many minutes past its end the running block is.
+  final int late;
 
   /// Which chapter is in front; without one the demo opens on Tempo and
   /// stays wherever it is tapped to.
@@ -102,6 +110,7 @@ class _DemoAppState extends State<DemoApp> {
   late final DemoTimelineRepository _timeline = DemoTimelineRepository(
     context.l10n,
     resting: widget.resting,
+    late: widget.late,
   );
   late final DemoArtifactsRepository _artifacts = DemoArtifactsRepository(
     context.l10n,

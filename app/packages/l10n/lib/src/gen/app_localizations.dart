@@ -1031,6 +1031,42 @@ abstract class AppLocalizations {
   /// **'Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.'**
   String get remindersStartBody;
 
+  /// No description provided for @reminderStarting.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começando agora, certo?'**
+  String get reminderStarting;
+
+  /// No description provided for @reminderEnding.
+  ///
+  /// In pt, this message translates to:
+  /// **'Terminando agora, certo?'**
+  String get reminderEnding;
+
+  /// No description provided for @reminderHours.
+  ///
+  /// In pt, this message translates to:
+  /// **'{start}–{end}'**
+  String reminderHours(String start, String end);
+
+  /// No description provided for @lateEnd.
+  ///
+  /// In pt, this message translates to:
+  /// **'Atraso no término · {minutes, plural, =1{1 minuto} other{{minutes} minutos}}'**
+  String lateEnd(int minutes);
+
+  /// No description provided for @reminderFinished.
+  ///
+  /// In pt, this message translates to:
+  /// **'Terminei'**
+  String get reminderFinished;
+
+  /// No description provided for @reminderDelay10.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adiar 10 min'**
+  String get reminderDelay10;
+
   /// No description provided for @routinesHelp.
   ///
   /// In pt, this message translates to:

@@ -566,6 +566,34 @@ class AppLocalizationsPt extends AppLocalizations {
   String get remindersStartBody => 'Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.';
 
   @override
+  String get reminderStarting => 'Começando agora, certo?';
+
+  @override
+  String get reminderEnding => 'Terminando agora, certo?';
+
+  @override
+  String reminderHours(String start, String end) {
+    return '$start–$end';
+  }
+
+  @override
+  String lateEnd(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes minutos',
+      one: '1 minuto',
+    );
+    return 'Atraso no término · $_temp0';
+  }
+
+  @override
+  String get reminderFinished => 'Terminei';
+
+  @override
+  String get reminderDelay10 => 'Adiar 10 min';
+
+  @override
   String get routinesHelp => 'Toque num horário para criar. Segure um bloco para mudar a hora.';
 
   @override
