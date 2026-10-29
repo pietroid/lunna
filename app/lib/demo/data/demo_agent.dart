@@ -58,6 +58,7 @@ class DemoAgentRepository implements AgentRepository {
     String? conversationId,
     DateTime? day,
     AgentSubject? about,
+    String? suggestionId,
   }) async {
     // Long enough for the thinking dots to be seen.
     await Future<void>.delayed(const Duration(milliseconds: 700));

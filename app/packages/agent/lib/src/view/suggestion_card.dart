@@ -43,10 +43,7 @@ class _Card extends StatelessWidget {
 
   /// The conversation, starting from what the card said.
   void _talk(BuildContext context) => unawaited(
-    showAgentSheet(
-      context,
-      opening: suggestion.opening ?? AgentReply(text: suggestion.text),
-    ),
+    showAgentSheet(context, suggestion: suggestion),
   );
 
   @override

@@ -167,97 +167,103 @@ void main() {
       expect(adjusted, isTrue);
     });
 
-    testWidgets('draws Entregas’ changes: deliver, move, kind and goals (new, changed, gone)', (
-      tester,
-    ) async {
-      final plan = AgentPlan.fromJson(const {
-        'id': 'p3',
-        'changes': [
-          {
-            'kind': 'remove_goal',
-            'title': 'Meta de posts',
-            'minutes': 0,
-            'goal': {'kind': 'count', 'period': 'week', 'target': 3},
-          },
-          {
-            'kind': 'deliver',
-            'id': 'a1',
-            'title': 'Mapa da Ana',
-            'minutes': 180,
-            'value': 4900,
-            'takes': ['Revisar texto'],
-          },
-          {
-            'kind': 'move_artifact',
-            'id': 'a2',
-            'title': 'Site da Bia',
-            'minutes': 0,
-            'place': {'before': 'Mapa da Ana'},
-          },
-          {
-            'kind': 'add_kind',
-            'title': 'Mapa astral',
-            'minutes': 180,
-            'shelf': 'Atendimentos',
-            'value': 350,
-          },
-          {
-            'kind': 'add_goal',
-            'title': 'Faturamento',
-            'minutes': 0,
-            'goal': {
-              'kind': 'money',
-              'target': 8000,
-              'deadline': '2026-11-30',
+    testWidgets(
+      'draws Entregas’ changes: deliver, move, kind and goals (new, changed, gone)',
+      (
+        tester,
+      ) async {
+        final plan = AgentPlan.fromJson(const {
+          'id': 'p3',
+          'changes': [
+            {
+              'kind': 'remove_goal',
+              'title': 'Meta de posts',
+              'minutes': 0,
+              'goal': {'kind': 'count', 'period': 'week', 'target': 3},
             },
-          },
-          {
-            'kind': 'edit_goal',
-            'id': 'g2',
-            'title': 'Faturamento',
-            'minutes': 0,
-            'goal': {
-              'kind': 'money',
-              'target': 9000,
-              'deadline': '2026-12-31',
+            {
+              'kind': 'deliver',
+              'id': 'a1',
+              'title': 'Mapa da Ana',
+              'minutes': 180,
+              'value': 4900,
+              'takes': ['Revisar texto'],
             },
-            'wasGoal': {
-              'kind': 'money',
-              'target': 6000,
-              'deadline': '2026-12-31',
+            {
+              'kind': 'move_artifact',
+              'id': 'a2',
+              'title': 'Site da Bia',
+              'minutes': 0,
+              'place': {'before': 'Mapa da Ana'},
             },
-          },
-        ],
-      });
+            {
+              'kind': 'add_kind',
+              'title': 'Mapa astral',
+              'minutes': 180,
+              'shelf': 'Atendimentos',
+              'value': 350,
+            },
+            {
+              'kind': 'add_goal',
+              'title': 'Faturamento',
+              'minutes': 0,
+              'goal': {
+                'kind': 'money',
+                'target': 8000,
+                'deadline': '2026-11-30',
+              },
+            },
+            {
+              'kind': 'edit_goal',
+              'id': 'g2',
+              'title': 'Faturamento',
+              'minutes': 0,
+              'goal': {
+                'kind': 'money',
+                'target': 9000,
+                'deadline': '2026-12-31',
+              },
+              'wasGoal': {
+                'kind': 'money',
+                'target': 6000,
+                'deadline': '2026-12-31',
+              },
+            },
+          ],
+        });
 
-      await tester.pumpWidget(
-        _app(
-          SingleChildScrollView(
-            child: PlanCard(
-              plan: plan,
-              status: PlanStatus.pending,
-              onApply: () {},
-              onAdjust: () {},
+        await tester.pumpWidget(
+          _app(
+            SingleChildScrollView(
+              child: PlanCard(
+                plan: plan,
+                status: PlanStatus.pending,
+                onApply: () {},
+                onAdjust: () {},
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      for (final detail in [
-        r'entregue · R$ 4.900 · 1 tarefa ainda aberta',
-        'na fila, antes de Mapa da Ana',
-        r'novo tipo · Atendimentos · 3h · R$ 350',
-        r'novo objetivo · R$ 8.000 até 30/11',
-        r'objetivo · R$ 6.000 até 31/12 → R$ 9.000 até 31/12',
-        // A plan kept from before goals had a day.
-        'apagar o objetivo · 3 por semana',
-      ]) {
-        expect(find.textContaining(detail, findRichText: true), findsOneWidget);
-      }
-      expect(find.text('Revisar texto'), findsOneWidget);
-      // A goal deleted makes the plan a delete.
-      expect(find.text('Apagar'), findsOneWidget);
-    });
+        for (final detail in [
+          r'entregue · R$ 4.900 · 1 tarefa ainda aberta',
+          'na fila, antes de Mapa da Ana',
+          r'novo tipo · Atendimentos · 3h · R$ 350',
+          r'novo objetivo · R$ 8.000 até 30/11',
+          r'objetivo · R$ 6.000 até 31/12 → R$ 9.000 até 31/12',
+          // A plan kept from before goals had a day.
+          'apagar o objetivo · 3 por semana',
+        ]) {
+          expect(
+            find.textContaining(detail, findRichText: true),
+            findsOneWidget,
+          );
+        }
+        expect(find.text('Revisar texto'), findsOneWidget);
+        // A goal deleted makes the plan a delete.
+        expect(find.text('Apagar'), findsOneWidget);
+      },
+    );
   });
 
   group('UndoChip', () {

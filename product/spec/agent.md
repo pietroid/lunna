@@ -154,9 +154,9 @@ a refusal.
 
 | Route | What it does |
 |-------|--------------|
-| `POST /agent/turn` | `{ conversationId?, messages, day?, about? }` → `{ conversationId, ui, reply, steps, plan?, options }` (`ui` the A2UI surface; the rest for older builds); writes the turn down, changes nothing on the day |
+| `POST /agent/turn` | `{ conversationId?, messages, day?, about?, suggestionId? }` → `{ conversationId, ui, reply, steps, plan?, options }` (`ui` the A2UI surface; the rest for older builds); writes the turn down, changes nothing on the day |
 | `GET /agent/conversations?before=&limit=` | earlier conversations, most recent first, for the person to read back |
-| `GET /agent/suggestion` | the first backlog task that fits in the room left today, as a plan; no model |
+| `GET /agent/suggestion` | `{ suggestion: { id, focus, text, validUntil, action?: { label, plan }, opening } \| null }`: the one kept while valid, else a new one (see "The suggestion"); no model |
 | `POST /agent/plans/:id/apply?days=` | the timeline, plus `touched`: the ids it changed; a plan or a quick reply's plan alike |
 | `POST /agent/plans/:id/undo?days=` | the timeline; the plan can be applied again |
 
@@ -175,7 +175,7 @@ and never writes them.
 `agent_message` (`ConversationStore`: Postgres, memory in tests), keyed by a
 `conversationId` the server hands out on the first turn. The model is sent
 only the conversation being had; the past reaches it only through
-`read_conversations`. Each opening of the sheet starts a new conversation
+`read_conversations`. Each opening of the conversation starts a new one
 (`AgentCubit.open`); the ones before are above it in the same list, out of
 sight until it is pulled down, dimmed and read only, each under the day and
 hour it began, their plans one line (aplicado, desfeito, não aplicado).
@@ -189,7 +189,7 @@ button beside the bar changes what it writes. Between pages the dock is a
 `Hero` (`DockHero`, one tag): a push, a pop or a swipe back slides the page
 under a still picture of the bar beside the arriving page's button (no
 pointer, nothing live), and the arriving page's dock takes over when it
-lands. Only a sheet covers it.
+lands. Only a sheet or the conversation's page covers it.
 
 | Screen | The round button | The conversation is about |
 |--------|------------------|---------------------------|
@@ -202,15 +202,61 @@ lands. Only a sheet covers it.
 | A delivery, Tarefas | + writes one of its tasks | the delivery |
 | A delivery's or a task's notes | microphone that dictates (`NotesDock`) | the delivery / the task |
 
-Tapping the bar opens the sheet empty, on the field, keyboard up: no
-welcome and no suggested questions.
-The suggestion is drawn above the list, and "Agora não" rests it for 24
-hours on the device. Applying replaces the day
+**The conversation is a page**, full screen, pushed as a
+`fullscreenDialog` from wherever it was asked (`showAgentSheet`, the name
+kept): the header's caret ⌄ on the left takes it back down. Tapping the bar
+opens it empty, on the field, keyboard up: no welcome and no suggested
+questions. Opened from a suggestion it starts on the suggestion's opening,
+keyboard down. Aplicar closes it, as before. Applying replaces the day
 (`TimelineReplaced(undoable:)`); the cards it changed are drawn like any
 others. **Desfazer** (`UndoChip`) sits on the Lista/Calendário row while
 `TimelineState.undoable` holds the plan: it does not time out, and any
 change made by hand forgets it, since undoing restores the cards as they
 were before the plan.
+
+### The suggestion
+
+**The goal first, then the deliveries that reach it, then the day.** One
+thing is offered on Tempo without being asked, above the list
+(`SuggestionCard`), worked out by arithmetic in `AgentService._offer`,
+never by the model; how the agent chooses better is research of its own.
+In order:
+
+1. **Goal** (`focus: goal`): no goal running today → "Quanto quer faturar
+   até …?" (the end of the month, or of the next with under a week left),
+   with choices that say an amount (the last goal's, and 20 % more; R$
+   5.000 and R$ 10.000 with none before). A goal short of its target with
+   no open delivery due inside it → "nenhuma entrega aberta vence até lá",
+   with choices naming the catalogue's priced kinds. **No action**: only
+   the person can say the number.
+2. **Delivery** (`focus: delivery`): the running goal's green is behind
+   its red (strictly: `done < target × time gone`, no slack) → the open
+   delivery worth something and due inside it, soonest first, then the
+   most valuable, whose open tasks are not already on today: its next task
+   (by hour, then the backlog) placed in today's first free room (`at_hour`,
+   "Encaixar às 14:00"). A delivery with no open tasks is offered with no
+   action, to be split in the conversation.
+3. **Routine** (`focus: routine`): one of the first three tasks of Para
+   depois that fits today, as before.
+
+Nothing fits (a goal reached, an empty backlog) → `null`.
+
+**It holds** (`agent_suggestion`, one row per person, `SuggestionStore`):
+the same one is answered while `now < validUntil`, the hash of what it read
+(`basis`: goals, open deliveries with deadline, value and open tasks,
+routines, the backlog, today's tasks) is the same, it is not taken, and its
+plan is still fresh. `validUntil` is the end of today without an action,
+and the action's hour with one (at least five minutes, at most the plan's
+two hours). Applying its plan, from the card or the conversation, marks it
+taken (`takeByPlan`). On the device, `SuggestionCubit.load` asks nothing
+while the one held is valid, and the ✕ rests suggestions for 24 hours.
+
+**Its conversation starts where it left off.** `opening` is a turn's reply
+(`ui`, `reply`, `plan?`): a caption, the delivery's peek, the plan (the
+action's own) and the choices. The page draws it as the first message;
+every turn of that conversation carries `suggestionId`, and the server puts
+the opening's words in front of what the model reads, in place of what the
+app sent, and writes them first in the conversation.
 
 ## The answer is a surface
 
@@ -310,11 +356,12 @@ the recorder replaces it while the finger is down):
   conversation opens with the message already said. Sliding 100 px left
   drops it; sliding 80 px up locks it, recording on without the finger
   (`VoiceHold.abandon`). The microphone and the hint follow the finger.
-  In the sheet's composer, letting go of a hold sends too.
+  In the conversation's composer, letting go of a hold sends too.
 - **Tapped** (or locked), the bar is the recorder and the + becomes send
   (↑). The words above it open the conversation with them in the field,
-  unsent, to be fixed first (`showAgentSheet(draft:)`). In the sheet, stop
-  puts the words in the field, all selected, keyboard up.
+  unsent, to be fixed first (`showAgentSheet(draft:)`). In the
+  conversation, **stopping sends**: the recorder's round button is send
+  (↑), and the trash is the only way not to.
 
 If the permission dialog takes the finger, the recording goes on as if
 tapped. The trash discards; at one minute it stops on its own and says so. Silence

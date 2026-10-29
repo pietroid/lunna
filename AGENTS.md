@@ -99,6 +99,7 @@ server/
                         (refs, dates, artifacts), actions/ (the registry:
                         one Action per verb), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
+                        the suggestion (SuggestionStore),
                         conversations (ConversationStore), plans
                         (PlanStore), evals/
     analytics/          PostHog: the provider, the route → event table
@@ -610,7 +611,13 @@ button calls, the card's line); the schema, the dry run, Aplicar and the
 card all read the registry, and Desfazer restores a snapshot of the rows
 the plan touched, so a new control is one entry. Today it moves cards on
 the day and makes, edits, delivers, moves and deletes deliveries, kinds
-and goals; plans are kept in Postgres. Agent changes are measured with `npm run eval:agent`
+and goals; plans are kept in Postgres. **The suggestion on Tempo looks at
+the goal first** (none, or nothing open towards it), then the delivery
+that reaches a goal behind, then Para depois; it is arithmetic, kept in
+`agent_suggestion` until its `validUntil` or a change to what it read, and
+its conversation opens on its first message. The conversation is a
+full-screen page, and stopping a recording there sends it.
+Agent changes are measured with `npm run eval:agent`
 (real model, costs money, never in CI). The tools, the plan rules, the
 routes, the conversations and voice are in
 [product/spec/agent.md](./product/spec/agent.md): read it before touching

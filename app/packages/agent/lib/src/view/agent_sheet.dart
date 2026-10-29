@@ -21,8 +21,8 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
 /// Opens the conversation over the whole screen, about [day], straight on
-/// the field, with [draft] in it, selected, when there is one. [opening] is
-/// the agent's first message, when it was opened from a suggestion.
+/// the field, with [draft] in it, selected, when there is one. Opened from a
+/// [suggestion], it starts on the agent's first message about it.
 ///
 /// The conversation is a page of its own, which need not sit under whatever
 /// provides the conversation, the agent's routes and the day, so it is handed
@@ -33,7 +33,7 @@ Future<void> showAgentSheet(
   DateTime? day,
   String? draft,
   AgentSubject? about,
-  AgentReply? opening,
+  AgentSuggestion? suggestion,
 }) {
   final agent = context.read<AgentCubit>();
   final repository = context.read<AgentRepository>();
@@ -41,7 +41,7 @@ Future<void> showAgentSheet(
   final voice = context.read<VoiceCubit>();
   final links = AgentLinks.of(context);
   // Every opening is a new conversation; the last one goes above it.
-  agent.open(about: about, opening: opening);
+  agent.open(about: about, suggestion: suggestion);
 
   // Full screen, coming up from the dock it was asked from: a conversation
   // with plans and peeks in it needs the whole height, and nothing under
@@ -58,7 +58,7 @@ Future<void> showAgentSheet(
             BlocProvider.value(value: timeline),
             BlocProvider.value(value: voice),
           ],
-          child: AgentSheet(day: day, draft: draft, focus: opening == null),
+          child: AgentSheet(day: day, draft: draft, focus: suggestion == null),
         ),
       ),
     ),
@@ -107,19 +107,12 @@ class _AgentSheetState extends State<AgentSheet> {
   /// Letting go of a held microphone sends what was said.
   late final _hold = VoiceHold(onRelease: () => unawaited(_say()));
 
-  /// How long the text in the field took to say, when it was spoken and then
-  /// corrected by hand.
-  Duration? _spoken;
-
   @override
   void initState() {
     super.initState();
     final voice = context.read<VoiceCubit>();
     final draft = widget.draft;
     if (draft != null) _fill(draft);
-    _field.addListener(() {
-      if (_field.text.isEmpty) _spoken = null;
-    });
     // Straight to the field: the keyboard comes up with the sheet, unless
     // the microphone has the floor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -141,11 +134,9 @@ class _AgentSheetState extends State<AgentSheet> {
     final said = (text ?? _field.text).trim();
     if (said.isEmpty) return;
 
-    final spoken = voice ?? (text == null ? _spoken : null);
     if (text == null) _field.clear();
-    _spoken = null;
     unawaited(
-      context.read<AgentCubit>().send(said, day: widget.day, voice: spoken),
+      context.read<AgentCubit>().send(said, day: widget.day, voice: voice),
     );
   }
 

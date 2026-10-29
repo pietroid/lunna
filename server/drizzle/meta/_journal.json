@@ -113,6 +113,13 @@
       "when": 1793221314291,
       "tag": "0015_goal_deadline",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793305384889,
+      "tag": "0016_agent_suggestion",
+      "breakpoints": true
     }
   ]
 }

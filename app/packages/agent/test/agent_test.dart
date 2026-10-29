@@ -516,6 +516,59 @@ void main() {
       expect(cubit.state, suggestion);
     });
 
+    test('keeps the one held until it runs out, asking nothing', () async {
+      final cubit = SuggestionCubit(repository: repository);
+      await withClock(Clock.fixed(DateTime(2026, 10, 16, 8)), () async {
+        await cubit.load();
+        await cubit.load();
+      });
+      verify(() => repository.suggestion()).called(1);
+
+      await withClock(Clock.fixed(DateTime(2026, 10, 16, 9)), cubit.load);
+      verify(() => repository.suggestion()).called(1);
+    });
+
+    test('a conversation opened from it starts on its opening, and names '
+        'it on every turn', () async {
+      const opening = AgentReply(text: 'Encaixo 2 h hoje às 14:00?');
+      final offered = AgentSuggestion(
+        id: 's1',
+        text: 'Quer encaixar?',
+        focus: SuggestionFocus.delivery,
+        validUntil: DateTime(2026, 10, 16, 9),
+        opening: opening,
+      );
+      when(
+        () => repository.conversations(before: any(named: 'before')),
+      ).thenAnswer((_) async => []);
+      when(
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+          about: any(named: 'about'),
+          suggestionId: any(named: 'suggestionId'),
+        ),
+      ).thenAnswer(
+        (_) async =>
+            (conversationId: 'c1', reply: const AgentReply(text: 'Ok')),
+      );
+      final agent = AgentCubit(repository: repository)
+        ..open(suggestion: offered);
+      expect(agent.state.entries, [const ReplyEntry(opening)]);
+
+      await agent.send('Pode ser amanhã?');
+      verify(
+        () => repository.turn(
+          any(),
+          conversationId: any(named: 'conversationId'),
+          day: any(named: 'day'),
+          about: any(named: 'about'),
+          suggestionId: 's1',
+        ),
+      ).called(1);
+    });
+
     test('says nothing when the server fails', () async {
       when(
         () => repository.suggestion(),

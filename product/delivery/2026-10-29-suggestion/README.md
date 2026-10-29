@@ -1,9 +1,9 @@
 # Suggestion: the goal first, a chat to answer it
 
-Draft, design session ([issue #67](https://github.com/pietroid/lunna/issues/67)).
+Delivered ([issue #67](https://github.com/pietroid/lunna/issues/67)).
 Mockup track: it changes the card on Tempo, the conversation's frame
-and how a recording ends. The build starts from the **Build brief** at
-the bottom.
+and how a recording ends. The spec is in
+[product/spec/agent.md](../../spec/agent.md#the-suggestion).
 
 ## 1. The prompt
 
@@ -99,102 +99,116 @@ Drawn from known patterns (Mobbin was not browsed in this run):
   opening the chat does not (the card stays until it is answered,
   dismissed or expires).
 
-## Build brief
+Decided unattended in the build (the design was approved on the issue
+with the two open questions unanswered):
 
-### Files the design session wrote (uncommitted on its own; kept for the build)
+- **Aplicar in the chat still closes it**, as it did as a sheet: the
+  point of applying is to see the day changed, and Desfazer is on Tempo.
+- **The ✕ rests every suggestion 24 h**, the goal's included. The card
+  comes back the next day, still asking for the goal while there is none.
+- **"Behind" is strict**: the goal tier hands over to a delivery as soon
+  as the goal's green is short of its red (`done < target × time gone`),
+  without the 15 % slack the goal's tag uses: the agent watches the goal
+  before anything else.
+- **No dismiss route**: the ✕ stays on the device, as before.
+- **An offer with an action holds at least five minutes, at most two
+  hours** (the life of its plan), so an offer of "now" is not remade on
+  every opening and Aplicar never meets an expired plan.
+- **A delivery already on today is skipped**: its next part is in hand,
+  so the next delivery, or Para depois, is offered instead.
 
-- `app/lib/suggestion_preview.dart`: the preview entry point, scenes 1–5.
-  Delete it at the end of Phase 4.
-- `app/packages/agent/lib/src/models.dart`: `AgentSuggestion` is now
-  `{ id, text, focus, validUntil, action?, opening? }`, with
-  `SuggestionFocus` (goal, delivery, routine) and `SuggestionAction
-  { label, plan }`.
-- `app/packages/agent/lib/src/view/suggestion_card.dart`: the new card.
-- `app/packages/agent/lib/src/agent_cubit.dart`: `open(opening:)` seeds
-  the conversation with the agent's first message.
-- `app/packages/agent/lib/src/view/agent_sheet.dart`: `showAgentSheet`
-  pushes a full-screen page (`fullscreenDialog`), takes `opening`; the
-  header's caret ⌄ closes it; `AgentSheet(focus:)`; stopping a recording
-  sends (`_stop` is gone, `_say` does both).
-- `app/packages/agent/lib/src/view/voice_bar.dart`: `stopIcon`.
-- `app/packages/agent/test/agent_test.dart`,
-  `app/packages/agent/test/voice_test.dart`: the suggestion's new shape;
-  "stopping sends what was said, at once" replaces the review test.
-- `app/test/landing/landing_page_test.dart`: with the chat a page, Tempo
-  is off-stage behind it, so the chapter titles and the phone's tab are
-  scrolled into view before they are tapped.
-- Verified in this session: `flutter analyze` (nothing new), the agent
-  package's and the app's tests under both brands (69 + 43, and 112 under
-  Lunna), all passing.
-- `app/lib/demo/data/demo_agent.dart`, `app/lib/demo/view/demo_app.dart`:
-  the demo can be offered a suggestion (`DemoApp(suggestion:)`), and its
-  Tempo now draws `SuggestionCard` (empty on the landing, offered nothing).
-- Re-shoot: `.tool/preview suggestion 1 2 3 4 5 --board
-  product/delivery/2026-10-29-suggestion/img/board.json` (its `png` paths
-  point at the design session's scratch output).
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): `agentSuggestionTalk`,
-  `agentSuggestionGoal|Delivery|Routine`; `agentSuggestionAccept` removed.
+## 3. What was built
+
+### Prints of the real build
+
+Lunna, scenes 1–5 (no goal; a goal behind with an action; Conversar on the
+opening; recording; sent on stop):
+
+![Lunna](img/build-lunna.png)
+
+Focus:
+
+![Focus](img/build-focus.png)
+
+### The contract
+
+**The goal first, then the deliveries that reach it, then the day; one
+suggestion held until it runs out.** `GET /agent/suggestion` answers the
+stored one while it is valid, the hash of what it read is the same and it
+was not taken; otherwise it works out a new one by arithmetic (no model)
+and stores it in place of the last.
+
+| Tier | When | Card | Action |
+|------|------|------|--------|
+| Objetivo | no goal running today | "Você ainda não tem um objetivo. Quanto quer faturar até 30/11?" | none; choices say an amount |
+| Objetivo | a goal short with no open delivery due in it | "Faltam R$ X … nenhuma entrega aberta vence até lá" | none; choices name priced kinds |
+| Entrega | the goal's green behind its red | the delivery due soonest (then worth most) not already on today: "Encaixo “Y” hoje às 14:00?" | `at_hour` of its next task in today's first free room |
+| Rotina | nothing above | the first of three Para depois tasks that fits today | `at_hour`, as before |
+
+`validUntil`: the end of today without an action; the action's hour with
+one (≥ 5 min, ≤ 2 h). Applying its plan, from the card or from the
+conversation, marks it taken.
 
 ### Server
 
-- A `suggestion` table (one live row per person): `id`, `user_id`,
-  `focus`, `text`, `plan_id?` (the action's plan, in `PlanStore`),
-  `action_label?`, `opening` (the answer's blocks, bound like a turn's),
-  `basis` (a hash of goals, open deliveries with their deadlines and
-  values, routines), `valid_until`, `taken_at?`, `dismissed_at?`.
-  Migration with `npm run db:generate`.
-- `GET /agent/suggestion` → `{ suggestion: { id, text, focus,
-  validUntil, action?: { label, plan }, opening?: { ui } } | null }`.
-  Return the stored row while `now < valid_until`, the basis is the same
-  and it is not taken; otherwise make a new one. **The tiers, in order:**
-  1. **Goal**: no current goal, or a goal with no open delivery due
-     inside it → "set a goal / add a delivery", no action, opening with
-     `choices` that `say` answers.
-  2. **Delivery**: the current goal is behind its pace (the goal bar's
-     red over green) → the open delivery due inside it that adds most
-     value soonest, with an action that places its next task today
-     (`at_hour` in the first free room, as the current backlog rule does).
-  3. **Routine**: nothing above → today's routine or backlog (the
-     current "Para depois fits today" rule becomes this tier).
-  `validUntil`: the end of today for tiers 1 and 3, the action's hour for
-  tier 2 (an offer of 14:00 is stale at 14:00).
-- `POST /agent/suggestion/:id/dismiss` (optional: the app's 24 h rest can
-  stay on the device) and taking the action marks `taken_at` (applying
-  its plan is enough: `apply` looks the plan up).
-- `POST /agent/turn` takes `suggestionId?`: the server puts the opening
-  in front of the conversation as the agent's first message, so the
-  model reads what it offered. The app already sends the opening in the
-  history as an assistant turn; the id makes it trusted, not just text.
-- Analytics rows for the new routes (`server/src/analytics/events.ts`).
-- Specs: tiers in order (no goal → tier 1 even with backlog), validity
-  (same basis before `valid_until` → same id; a new goal → a new one),
-  the action's plan applies and undoes.
+- `src/agent/suggestion.store.ts`: `SuggestionStore` and the memory store;
+  `pg-suggestion.store.ts` the Postgres one; table `agent_suggestion` (one
+  row per person), migration `drizzle/0016_agent_suggestion.sql`.
+- `AgentService.suggestion` (hold or make), `_offer` (the tiers),
+  `basisOf` (goals, open deliveries with deadline, value and open tasks,
+  routines, Para depois, today's tasks, hashed).
+- The opening is a turn's reply (`ui`, `reply`, `plan?`): a caption, the
+  delivery's `ArtifactPeek`, the plan block (the action's own plan) and the
+  choices.
+- `POST /agent/turn` takes `suggestionId`: the server puts the stored
+  opening's words in front of what the model reads (in place of what the
+  app sent back) and writes them first in a new conversation.
+- `apply` calls `takeByPlan`. No new write route, so no analytics row.
 
 ### App
 
-- `AgentRepository.suggestion()` parses the new shape (`opening` from
-  `ui` through `AgentSurface.decode`, as a turn's reply).
-- `SuggestionCubit`: keep the 24 h rest; hold the suggestion and skip the
-  request while `validUntil` is ahead and nothing on the day was changed
-  by hand (constraint 1, on the device too).
-- `showAgentSheet` callers keep working (same name); check the landing's
-  demo, which pushes it on its own `Navigator`, and the reminders'
-  "Falar com a Lunna".
-- The `DockHero` no longer has a sheet over it but a page: check the
-  hero doesn't fly into the chat.
-- `_spoken` in `AgentSheet` is now only reset, never set: remove it.
-- Specs: the card's two shapes (with and without action), Conversar opens
-  on the opening with its plan, stop sends.
-- Update `product/spec/agent.md` (suggestion section, the sheet →
-  page, voice) and the AGENTS.md "The agent" pointer.
+- `AgentSuggestion` `{ id, text, focus, validUntil, action?, opening? }`
+  (from the design); `SuggestionCubit.load` asks nothing while the held
+  one is valid.
+- `showAgentSheet(suggestion:)` and `AgentCubit.open(suggestion:)`: the
+  page starts on the opening, and every turn sends `suggestionId`; entries
+  with no words (an opening drawn only by its surface) are not sent.
+- The page, the caret ⌄, stop-sends and the card are as designed;
+  `_spoken` is gone from `AgentSheet`.
 
-### Open questions
+### Tests
 
-- Should **Aplicar** in the chat close it (as today) or keep the person in
-  the conversation, now that it is a page and not an overlay?
-- Is "put away for 24 h" still right when a suggestion is about the goal?
-  A person with no goal could dismiss it forever by habit.
+- Server: `agent.controller.spec.ts` "the suggestion", 7 cases (the goal
+  first even with a backlog; no delivery towards the goal; the delivery's
+  action, its validity, its opening, applied → taken → the next tier, and
+  undone; a delivery already today falls to Para depois; holds until a
+  goal is added; the conversation opens on the stored opening; nothing to
+  offer with the goal reached), and `pg-suggestion.store.spec.ts`, 2 cases
+  in PGlite. The agent's suites: 72 tests passing.
+- App: `agent_test.dart` (holds while valid; the conversation opens on
+  the opening and sends `suggestionId`), `voice_test.dart` "SuggestionCard"
+  (the goal's card only talks; Conversar opens the page on the opening, plan
+  and all). Agent package: 73 tests passing.
+- `.tool/check` passes: app-analyze, test-agent-focus, test-agent-lunna, server-eslint, server-tsc, server-test (exit 0).
 
-### Cost and time (design session)
+### Where the build differs from the mockup
 
-Measured by the queue and written in the PR.
+- The action places an **existing** task of the delivery (`move_task`,
+  "saiu de Para depois") where the mockup drew a new two-hour piece:
+  making new tasks is the conversation's job.
+- Screen 2's copy names the task ("Encaixo “Escrever a leitura” hoje às
+  14:00?") rather than "2 h dele".
+- The opening has no quick answers beyond a goal's amounts or kinds
+  ("Amanhã cedo", "Só 1 h hoje" in the prints are the preview's): a
+  delivery's opening offers its plan, and Ajustar.
+
+## 4. How to turn it on
+
+Nothing to set. The migration runs on boot (`migrateDatabase`); the old
+app keeps working against the route only in part: its `AgentSuggestion`
+read `text` and `plan`, and the route no longer sends `plan` at the top,
+so an old build shows no suggestion until it updates.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.
