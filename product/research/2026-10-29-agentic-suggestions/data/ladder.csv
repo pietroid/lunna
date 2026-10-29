@@ -1,0 +1,6 @@
+person,topic,work_quality,tiers_67
+"new: nothing written (the golden scenario)",goal,0/7,goal
+"goal R$ 5.000, two deliveries worth R$ 4.200",reach,1/7,routine/backlog
+"goal reached on paper, no tasks, no routine",tasks,3/7,routine/backlog
+"all written, but 40 h owed in 25 h free",fits,4/7,routine/backlog
+"demo: everything written, behind pace",pace,6/7,delivery

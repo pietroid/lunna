@@ -1,0 +1,7 @@
+model,case,calls,usd_per_call,usd_per_month
+claude-haiku-5.5,steady: 1 a day,30,0.00100,0.030
+claude-haiku-5.5,busy: 2 a day,60,0.00100,0.060
+claude-haiku-5.5,onboarding month,42,0.00080,0.034
+gemini-3.1-flash-lite,steady: 1 a day,30,0.00266,0.080
+gemini-3.1-flash-lite,busy: 2 a day,60,0.00266,0.160
+gemini-3.1-flash-lite,onboarding month,42,0.00216,0.091
