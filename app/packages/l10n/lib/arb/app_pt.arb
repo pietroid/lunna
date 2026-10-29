@@ -655,6 +655,43 @@
   "agentSuggestionGoal": "Objetivo",
   "agentSuggestionDelivery": "Entrega",
   "agentSuggestionRoutine": "Rotina",
+  "agentWelcome": "{brand, select, lunna{Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.} other{Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.}}",
+  "@agentWelcome": {
+    "placeholders": {
+      "brand": {
+        "type": "String",
+        "description": "AppBrand.id: lunna or focus."
+      }
+    }
+  },
+  "agentWelcomeQuestion": "Quanto você quer faturar este mês?",
+  "agentWelcomeAmount": "R$ {amount}",
+  "@agentWelcomeAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "agentWelcomeSay": "Quero faturar R$ {amount} este mês.",
+  "@agentWelcomeSay": {
+    "placeholders": {
+      "amount": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "agentWelcomeOther": "Outro valor",
+  "agentPreviewItems": "{count, plural, =1{1 item na lista} other{{count} itens na lista}}",
+  "@agentPreviewItems": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "agentFailure": "Algo deu errado. Tente de novo.",
   "agentFailureModelDown": "Não consegui falar com o modelo agora, nem tentando duas vezes.",
   "agentFailureModelEmpty": "O modelo respondeu em branco, duas vezes.",

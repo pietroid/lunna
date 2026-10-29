@@ -1,3 +1,4 @@
+import 'package:agent/src/surface.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,7 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 /// {@endtemplate}
 class AgentLinks {
   /// {@macro agent_links}
-  const AgentLinks({this.openArtifact});
+  const AgentLinks({this.openArtifact, this.preview});
 
   /// The links above [context], or none.
   factory AgentLinks.of(BuildContext context) {
@@ -22,4 +23,9 @@ class AgentLinks {
 
   /// Opens the page of the artifact with this id.
   final void Function(String id)? openArtifact;
+
+  /// Draws a [PreviewItem] with the widget of the tab it lands on (a goal
+  /// as `GoalCard`, a delivery as `ArtifactRow`); null for one it does not
+  /// draw, which the agent then draws itself.
+  final Widget? Function(BuildContext context, PreviewItem item)? preview;
 }

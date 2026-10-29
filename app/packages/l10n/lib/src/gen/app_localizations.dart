@@ -1571,6 +1571,42 @@ abstract class AppLocalizations {
   /// **'Rotina'**
   String get agentSuggestionRoutine;
 
+  /// No description provided for @agentWelcome.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.} other{Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.}}'**
+  String agentWelcome(String brand);
+
+  /// No description provided for @agentWelcomeQuestion.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto você quer faturar este mês?'**
+  String get agentWelcomeQuestion;
+
+  /// No description provided for @agentWelcomeAmount.
+  ///
+  /// In pt, this message translates to:
+  /// **'R\$ {amount}'**
+  String agentWelcomeAmount(int amount);
+
+  /// No description provided for @agentWelcomeSay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quero faturar R\$ {amount} este mês.'**
+  String agentWelcomeSay(int amount);
+
+  /// No description provided for @agentWelcomeOther.
+  ///
+  /// In pt, this message translates to:
+  /// **'Outro valor'**
+  String get agentWelcomeOther;
+
+  /// No description provided for @agentPreviewItems.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 item na lista} other{{count} itens na lista}}'**
+  String agentPreviewItems(int count);
+
   /// No description provided for @agentFailure.
   ///
   /// In pt, this message translates to:

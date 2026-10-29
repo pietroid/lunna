@@ -1,5 +1,6 @@
 import 'package:agent/src/models.dart';
 import 'package:equatable/equatable.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template answer_block}
 /// One component of an answer's surface, from the agent's catalog: what the
@@ -42,6 +43,112 @@ final class ChoicesBlock extends AnswerBlock {
 
   @override
   List<Object?> get props => [];
+}
+
+/// What the reply's plan would make, drawn by the widgets of the tabs it
+/// lands on (a goal as Objetivos draws it, a delivery as Entregas, a
+/// routine as Rotina), on the page's own background. The server fills
+/// every number from the dry run.
+///
+/// It turns the reply into three parts: the words above it, the preview,
+/// and the plan under it as [applies] with Ajustar and Aplicar.
+final class PreviewBlock extends AnswerBlock {
+  /// {@macro answer_block}
+  const PreviewBlock({required this.items, this.applies});
+
+  final List<PreviewItem> items;
+
+  /// What Aplicar makes, in a line, for what the preview can't draw ("Aplicar
+  /// anota a meta e as duas entregas.").
+  final String? applies;
+
+  @override
+  List<Object?> get props => [items, applies];
+}
+
+/// {@template preview_item}
+/// One thing a plan would make, as its tab will draw it.
+/// {@endtemplate}
+sealed class PreviewItem extends Equatable {
+  /// {@macro preview_item}
+  const PreviewItem();
+}
+
+/// A goal, with what the open deliveries due by its end would bring in.
+final class GoalPreview extends PreviewItem {
+  /// {@macro preview_item}
+  const GoalPreview({
+    required this.target,
+    required this.start,
+    required this.end,
+    this.queued = 0,
+    this.queuedCount = 0,
+  });
+
+  /// In whole reais.
+  final int target;
+
+  final DateTime start;
+
+  /// The day after its last.
+  final DateTime end;
+
+  /// What the open deliveries due by [end] are worth, the plan's included.
+  final int queued;
+
+  final int queuedCount;
+
+  @override
+  List<Object?> get props => [target, start, end, queued, queuedCount];
+}
+
+/// A delivery.
+final class ArtifactPreview extends PreviewItem {
+  /// {@macro preview_item}
+  const ArtifactPreview({
+    required this.title,
+    required this.minutes,
+    this.deadline,
+    this.value,
+  });
+
+  final String title;
+
+  final int minutes;
+
+  final DateTime? deadline;
+
+  /// In whole reais.
+  final int? value;
+
+  @override
+  List<Object?> get props => [title, minutes, deadline, value];
+}
+
+/// A routine, with its checklist.
+final class RoutinePreview extends PreviewItem {
+  /// {@macro preview_item}
+  const RoutinePreview({
+    required this.title,
+    required this.startMinute,
+    required this.minutes,
+    required this.days,
+    this.checklist = const [],
+  });
+
+  final String title;
+
+  /// Minutes past midnight, in the person's zone.
+  final int startMinute;
+
+  final int minutes;
+
+  final RoutineDays days;
+
+  final List<String> checklist;
+
+  @override
+  List<Object?> get props => [title, startMinute, minutes, days, checklist];
 }
 
 /// A slice of one day, as Tempo has it: the cards and the free room between

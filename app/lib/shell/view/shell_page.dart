@@ -149,9 +149,13 @@ class _ShellPageState extends State<ShellPage> {
       providers: [
         RepositoryProvider<TimelineAim>.value(value: _aim),
         RepositoryProvider<OpenDayHours>.value(value: _openDayHours),
-        // What the agent's answers open: an artifact's page, from Tempo.
+        // What the agent's answers open (an artifact's page, from Tempo) and
+        // how its previews draw a goal or a delivery.
         RepositoryProvider<AgentLinks>.value(
-          value: AgentLinks(openArtifact: (id) => openArtifact(context, id)),
+          value: AgentLinks(
+            openArtifact: (id) => openArtifact(context, id),
+            preview: drawAgentPreview,
+          ),
         ),
       ],
       child: BlocProvider<TimelineModeCubit>.value(

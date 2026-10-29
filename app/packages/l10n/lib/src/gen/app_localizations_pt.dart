@@ -938,6 +938,51 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSuggestionRoutine => 'Rotina';
 
   @override
+  String agentWelcome(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.',
+        'other': 'Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agentWelcomeQuestion => 'Quanto você quer faturar este mês?';
+
+  @override
+  String agentWelcomeAmount(int amount) {
+    final intl.NumberFormat amountNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String amountString = amountNumberFormat.format(amount);
+
+    return 'R\$ $amountString';
+  }
+
+  @override
+  String agentWelcomeSay(int amount) {
+    final intl.NumberFormat amountNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String amountString = amountNumberFormat.format(amount);
+
+    return 'Quero faturar R\$ $amountString este mês.';
+  }
+
+  @override
+  String get agentWelcomeOther => 'Outro valor';
+
+  @override
+  String agentPreviewItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count itens na lista',
+      one: '1 item na lista',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get agentFailure => 'Algo deu errado. Tente de novo.';
 
   @override

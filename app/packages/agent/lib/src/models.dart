@@ -580,6 +580,7 @@ class AgentSuggestion extends Equatable {
     required this.validUntil,
     this.action,
     this.opening,
+    this.welcome = false,
   });
 
   factory AgentSuggestion.fromJson(Map<String, dynamic> json) {
@@ -592,6 +593,7 @@ class AgentSuggestion extends Equatable {
       validUntil: DateTime.parse(json['validUntil'] as String).toLocal(),
       action: action == null ? null : SuggestionAction.fromJson(action),
       opening: opening == null ? null : AgentReply.fromJson(opening),
+      welcome: json['kind'] == 'welcome',
     );
   }
 
@@ -613,8 +615,21 @@ class AgentSuggestion extends Equatable {
   /// with its surface (plan, choices, peeks); null opens on [text] alone.
   final AgentReply? opening;
 
+  /// Whether it is the welcome a person who has never had a suggestion
+  /// finds: fixed words (in the app's strings, not the server's), the
+  /// amounts to bill, and no expiry.
+  final bool welcome;
+
   @override
-  List<Object?> get props => [id, text, focus, validUntil, action, opening];
+  List<Object?> get props => [
+    id,
+    text,
+    focus,
+    validUntil,
+    action,
+    opening,
+    welcome,
+  ];
 }
 
 /// Where a plan shown in the conversation stands.
