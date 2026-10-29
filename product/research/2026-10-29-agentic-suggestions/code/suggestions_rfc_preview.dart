@@ -6,8 +6,10 @@ import 'package:l10n/l10n.dart';
 /// The research RFC's two pictures of one onboarding plan (a goal and two
 /// deliveries): `?s=1` as the plan card draws it today, `?s=2` drawn by
 /// the widgets the tabs draw once it is applied; `?s=3` the suggestion as
-/// Feed would hold it, the preview first and Ajustar / Aplicar under it;
-/// `?s=4` the welcome a new person finds. Nothing ships from here.
+/// Feed would hold it, in three parts: a header card (the label and the
+/// caption), the preview on the page's own background, and a card with
+/// Ajustar / Aplicar; `?s=4` the welcome a new person finds, cut the same
+/// way. Nothing ships from here.
 void main() => runApp(const _App());
 
 final DateTime _now = DateTime(2026, 10, 31, 10);
@@ -32,8 +34,8 @@ class _App extends StatelessWidget {
           children: switch (_scene) {
             '1' => _today(),
             '2' => _preview(),
-            '3' => [_offer()],
-            _ => [_welcome()],
+            '3' => _offer(),
+            _ => _welcome(),
           },
         ),
       ),
@@ -106,9 +108,12 @@ class _App extends StatelessWidget {
     ],
   ];
 
-  /// The agent's wash, its mark and its label, around [children].
-  Widget _wash(List<Widget> children) => Builder(
+  /// The agent's wash around [children]: the header (with its mark and
+  /// label) or the actions' card. The preview between them is never in it,
+  /// so the real widgets keep the contrast they have on their tabs.
+  Widget _wash(List<Widget> children, {bool label = true}) => Builder(
     builder: (context) => Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.s4),
       decoration: BoxDecoration(
         color: AppColors.accentWash,
@@ -117,61 +122,78 @@ class _App extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const AppIcon(iconData: AppIcons.agent, size: AppSpacing.s4),
-              const SizedBox(width: AppSpacing.s2),
-              Text(
-                context.l10n.agentSuggestionLabel(AppBrand.id),
-                style: AppTypography.caption.copyWith(color: AppColors.accent),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.s2),
+          if (label) ...[
+            Row(
+              children: [
+                const AppIcon(iconData: AppIcons.agent, size: AppSpacing.s4),
+                const SizedBox(width: AppSpacing.s2),
+                Text(
+                  context.l10n.agentSuggestionLabel(AppBrand.id),
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.accent,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s2),
+          ],
           ...children,
         ],
       ),
     ),
   );
 
-  Widget _offer() => _wash([
-    Text(
-      'Com essas duas entregas você chega a R\$ 4.200 dos R\$ 5.000 do mês. '
-      'Quer anotar as duas?',
-      style: AppTypography.body,
-    ),
-    const SizedBox(height: AppSpacing.s3),
+  /// Header, the preview on the page, then the actions' card.
+  List<Widget> _offer() => [
+    _wash([
+      Text(
+        'Com essas duas entregas você chega a R\$ 4.200 dos R\$ 5.000 do '
+        'mês. Quer anotar as duas?',
+        style: AppTypography.body,
+      ),
+    ]),
+    const SizedBox(height: AppSpacing.s4),
     ..._preview(),
     const SizedBox(height: AppSpacing.s2),
-    Row(
-      children: [
-        Expanded(
-          child: AppButton.text(
-            text: 'Ajustar',
-            color: AppColors.ink,
-            expand: true,
-            onPressed: () {},
+    _wash(label: false, [
+      Text(
+        'Aplicar anota a meta e as duas entregas.',
+        style: AppTypography.caption.copyWith(color: AppColors.ink2),
+      ),
+      const SizedBox(height: AppSpacing.s3),
+      Row(
+        children: [
+          Expanded(
+            child: AppButton.text(
+              text: 'Ajustar',
+              color: AppColors.ink,
+              expand: true,
+              onPressed: () {},
+            ),
           ),
-        ),
-        const SizedBox(width: AppSpacing.s2),
-        Expanded(
-          child: AppButton(text: 'Aplicar', expand: true, onPressed: () {}),
-        ),
-      ],
-    ),
-  ]);
+          const SizedBox(width: AppSpacing.s2),
+          Expanded(
+            child: AppButton(text: 'Aplicar', expand: true, onPressed: () {}),
+          ),
+        ],
+      ),
+    ]),
+  ];
 
   /// No Work Quality on screen: the levels are the server's, and the
-  /// welcome only asks the first one's question.
-  Widget _welcome() => _wash([
-    Text(
-      'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de '
-      'cada vez. Começando pelo objetivo:',
-      style: AppTypography.body,
-    ),
-    const SizedBox(height: AppSpacing.s3),
-    Text('Quanto você quer faturar este mês?', style: AppTypography.body),
-    const SizedBox(height: AppSpacing.s2),
+  /// welcome only asks the first one's question. Header (the words and the
+  /// question), then the amounts on the page; it has no plan, so no actions' card.
+  List<Widget> _welcome() => [
+    _wash([
+      Text(
+        'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de '
+        'cada vez. Começando pelo objetivo:',
+        style: AppTypography.body,
+      ),
+      const SizedBox(height: AppSpacing.s3),
+      Text('Quanto você quer faturar este mês?', style: AppTypography.body),
+    ]),
+    const SizedBox(height: AppSpacing.s4),
     Wrap(
       spacing: AppSpacing.s2,
       runSpacing: AppSpacing.s2,
@@ -184,5 +206,5 @@ class _App extends StatelessWidget {
           ),
       ],
     ),
-  ]);
+  ];
 }
