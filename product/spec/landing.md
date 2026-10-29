@@ -21,7 +21,10 @@ pinned it is the real clock, unshifted. Code in `lib/demo` and
 ## The page (`lib/landing/`)
 
 - **Wide (≥ 960 px):** the headline and pitch, three **chapters** (Peça,
-  Tempo, Entregas: the app's tabs said in words) and the phone. The chosen
+  Tempo, Entregas: what the app does, said in words) and the phone. The
+  demo's shell keeps Tempo, Entregas and Menu as its tabs, one per chapter,
+  though the app's are Feed, Plano and Menu: a chapter is a thing the app
+  does, and the home is a summary of all three. The chosen
   chapter is what the phone shows, and a tab tapped in the phone moves the
   chosen chapter: both hold one `DemoController`. Under Peça, the example
   asks (`DemoAgentRepository.asks`) as pills; a tap opens the agent in the

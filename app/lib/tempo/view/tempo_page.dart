@@ -6,21 +6,21 @@ import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
-import 'package:lunna/home/view/minute_refresh.dart';
+import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
 
-/// {@template home_page}
-/// Tarefas, in Painel: the switch between the list and the calendar, and
+/// {@template tempo_page}
+/// Tarefas, in Plano: the switch between the list and the calendar, and
 /// the day below.
 ///
-/// The greeting, the clock and the agent's offer are on the Lunna tab
-/// (`OverviewPage`); this screen is the day itself. Which way it is drawn
-/// is kept above it ([TimelineModeCubit], given by the shell), so the Lunna
+/// The greeting, the clock and the agent's offer are on the Feed tab
+/// (`FeedPage`); this screen is the day itself. Which way it is drawn
+/// is kept above it ([TimelineModeCubit], given by the shell), so the Feed
 /// tab can open it on the calendar.
 /// {@endtemplate}
-class HomePage extends StatelessWidget {
-  /// {@macro home_page}
-  const HomePage({super.key});
+class TempoPage extends StatelessWidget {
+  /// {@macro tempo_page}
+  const TempoPage({super.key});
 
   @override
   Widget build(BuildContext context) {

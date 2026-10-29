@@ -25,7 +25,7 @@ class GoalsPage extends StatelessWidget {
   /// {@macro goals_page}
   const GoalsPage({this.titled = true, super.key});
 
-  /// Whether it draws its own heading. Painel heads it with its tabs.
+  /// Whether it draws its own heading. Plano heads it with its tabs.
   final bool titled;
 
   Future<void> _delete(BuildContext context, Goal goal) async {
@@ -77,7 +77,9 @@ class GoalsPage extends StatelessWidget {
               AppSpacing.s5,
               titled ? AppSpacing.s5 : AppSpacing.s2,
               AppSpacing.s5,
-              kNotesDockClearance,
+              // Under a tab's bottom bar, which the body runs under, the
+              // bar's height comes in the padding.
+              MediaQuery.paddingOf(context).bottom + kNotesDockClearance,
             ),
             children: [
               if (titled) ...[

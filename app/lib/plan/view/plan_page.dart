@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:l10n/l10n.dart';
-import 'package:lunna/home/home.dart';
+import 'package:lunna/tempo/tempo.dart';
 
 /// A level of Plano, and the one way in that is not a level: Tarefas
 /// opened on the calendar.
-enum PanelTab {
+enum PlanTab {
   /// Tarefas, the day, drawn whichever way it was left.
   tasks,
 
@@ -22,20 +22,21 @@ enum PanelTab {
 
   /// The word at the top of Plano that is lit for it.
   int get level => switch (this) {
-    PanelTab.tasks || PanelTab.calendar => 0,
-    PanelTab.deliveries => 1,
-    PanelTab.goals => 2,
+    PlanTab.tasks || PlanTab.calendar => 0,
+    PlanTab.deliveries => 1,
+    PlanTab.goals => 2,
   };
 
   /// The tab for the word at [level].
-  static PanelTab at(int level) =>
-      const [PanelTab.tasks, PanelTab.deliveries, PanelTab.goals][level];
+  static PlanTab at(int level) =>
+      const [PlanTab.tasks, PlanTab.deliveries, PlanTab.goals][level];
 }
 
-/// {@template panel_page}
-/// Plano: the three levels of what she manages, one over the other, in one
-/// tab. Tarefas is the day (Lista or Calendário), Entregas the deliveries,
-/// Objetivos the goals: the screens they always were, under one heading.
+/// {@template plan_page}
+/// Plano: the three levels of what the person manages, one over the other,
+/// in one tab. Tarefas is the day (Lista or Calendário), Entregas the
+/// deliveries, Objetivos the goals: the screens they always were, under one
+/// heading.
 ///
 /// The heading is the tabs ([AppTitleTabs]): picking a level is picking
 /// what the screen is about, so it reads as a title, and the switch between
@@ -43,15 +44,15 @@ enum PanelTab {
 /// a control. Every level is kept alive behind an [IndexedStack], as the
 /// app's tabs are, so each list is where it was left.
 /// {@endtemplate}
-class PanelPage extends StatelessWidget {
-  /// {@macro panel_page}
-  const PanelPage({required this.tab, required this.onSelected, super.key});
+class PlanPage extends StatelessWidget {
+  /// {@macro plan_page}
+  const PlanPage({required this.tab, required this.onSelected, super.key});
 
   /// The level in front.
-  final PanelTab tab;
+  final PlanTab tab;
 
   /// Called with the level a word was tapped for.
-  final ValueChanged<PanelTab> onSelected;
+  final ValueChanged<PlanTab> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -75,14 +76,14 @@ class PanelPage extends StatelessWidget {
                 ),
                 child: AppTitleTabs(
                   labels: [
-                    l10n.panelTasks,
+                    l10n.planTasks,
                     l10n.shellArtifactsTab,
                     l10n.shellGoalsTab,
                   ],
                   selected: tab.level,
-                  onSelected: (level) => onSelected(PanelTab.at(level)),
+                  onSelected: (level) => onSelected(PlanTab.at(level)),
                   // Entregas' search, which its own heading carried.
-                  trailing: tab == PanelTab.deliveries
+                  trailing: tab == PlanTab.deliveries
                       ? IconButton(
                           tooltip: l10n.artifactsSearch,
                           onPressed: () => unawaited(openAllArtifacts(context)),
@@ -98,7 +99,7 @@ class PanelPage extends StatelessWidget {
                 child: IndexedStack(
                   index: tab.level,
                   children: const [
-                    HomePage(),
+                    TempoPage(),
                     ArtifactsPage(titled: false),
                     GoalsPage(titled: false),
                   ],

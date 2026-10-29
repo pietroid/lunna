@@ -1745,37 +1745,37 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shellPlanTab => 'Plano';
 
   @override
-  String get panelTasks => 'Tarefas';
+  String get planTasks => 'Tarefas';
 
   @override
-  String get overviewNow => 'Agora';
+  String get feedNow => 'Agora';
 
   @override
-  String get overviewNext => 'Em seguida';
+  String get feedNext => 'Em seguida';
 
   @override
-  String get overviewBreak => 'Nada em andamento';
+  String get feedBreak => 'Nada em andamento';
 
   @override
-  String get overviewSeeDay => 'Ver o dia';
+  String get feedSeeDay => 'Ver o dia';
 
   @override
-  String get overviewMainDelivery => 'Entrega principal';
+  String get feedMainDelivery => 'Entrega principal';
 
   @override
-  String get overviewNoDelivery => 'Nenhuma entrega em andamento';
+  String get feedNoDelivery => 'Nenhuma entrega em andamento';
 
   @override
-  String get overviewSeeDeliveries => 'Entregas';
+  String get feedSeeDeliveries => 'Entregas';
 
   @override
-  String get overviewMainGoal => 'Objetivo';
+  String get feedMainGoal => 'Objetivo';
 
   @override
-  String get overviewNoGoal => 'Nenhum objetivo agora';
+  String get feedNoGoal => 'Nenhum objetivo agora';
 
   @override
-  String get overviewSeeGoals => 'Objetivos';
+  String get feedSeeGoals => 'Objetivos';
 
   @override
   String get demoSuggestionRenata => 'O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?';

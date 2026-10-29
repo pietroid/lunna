@@ -75,7 +75,9 @@ app/
   brands/               per-brand icons, splash and web assets (+ README)
   env/                  <brand>.<env>.json defines (examples committed)
   tool/brand_web.sh     stamps a brand on a web build
-  lib/                  shell, home (Tempo), routines page, landing + demo
+  lib/                  shell, feed (the home), plan (Tempo, Entregas,
+                        Objetivos under one heading), tempo, routines
+                        page, landing + demo
                         (the signed-out page, the app on fakes),
                         links (the real LinkPreviews)
   packages/
@@ -112,7 +114,7 @@ server/
   tool/coverage.mjs     which routes the agent reaches; every handler hands to a service
 deploy/                 docker-compose.yml, nginx.conf, web.Dockerfile
 product/
-  spec/                 feature specs moved out of this file (agent, artifacts)
+  spec/                 feature specs moved out of this file (agent, artifacts, home, …)
   delivery/             one folder per delivered feature: prompt, design, notes
   improvements/         one folder per /improve run: what changed, evidence, references
   research/             one folder per topic: the RFC (README.md, a deck), img/, data/, code/, reports/;
@@ -488,13 +490,22 @@ nothing; the app draws `GuardSheet` and posts the answer to
 
 ### The app shell
 
-Four tabs: **Tempo** (the timeline), **Entregas** (see below),
-**Objetivos** (the goals, below) and **Menu**, which opens Rotina and
-**Feitas** and sets when the day starts and ends. The `AppFab` (a `+`)
-writes down whatever the tab in front is about: on Entregas a delivery,
+Three tabs: **Feed** (`FeedPage`, the home: the agent's one offer,
+Agora with its controls and the one card after it, the main delivery,
+Entregas' first by `progressGroups`, and the goal being measured, each
+section's heading a pill into its level of Plano), **Plano** (`PlanPage`:
+Tempo, Entregas and Objetivos as they were, under a heading whose words are
+the levels, `AppTitleTabs`, `PlanTab`) and **Menu**, which opens Rotina and
+**Feitas** and sets when the day starts and ends. The app opens on Feed;
+its *Ver o dia* opens Tarefas on the calendar (`TimelineModeCubit` lives in
+the shell). The Feed asks for the offer again each time it comes forward
+and when a new day begins. The `AppFab` (a `+`)
+writes down whatever the level in front is about: on Entregas a delivery,
 on Objetivos a goal, anywhere else something on the day Tempo is showing
-(from Menu it brings Tempo forward). The landing's demo shell keeps
-three tabs, as the landing has three chapters. It sits in the same spot on
+(from Menu it brings Tarefas forward). See
+[product/spec/home.md](./product/spec/home.md).
+The landing's demo shell keeps
+its old three tabs (Tempo, Entregas, Menu), as the landing has three chapters. It sits in the same spot on
 every tab and never animates between them (`noAnimation`).
 **The agent's bar is on every screen, in the same place**: one `AskDock`
 for the tabs and one per page, floated at `AskDock.location` with
@@ -502,9 +513,10 @@ for the tabs and one per page, floated at `AskDock.location` with
 with the screen's own round button beside it (the `AppFab` on the tabs,
 Nova rotina on Rotina, a task on Feitas, the microphone on notes). A new
 page floats an `AskDock` too and leaves `kNotesDockClearance` under its
-last row; see "The agent" in [product/spec/agent.md](./product/spec/agent.md).
+last row (plus `MediaQuery.paddingOf(context).bottom` on a tab, whose body
+runs under the bottom bar); see "The agent" in [product/spec/agent.md](./product/spec/agent.md).
 The
-greeting at the top of Tempo is the account menu: **Rotina** and **Sair**.
+greeting at the top of Feed is the account menu: **Rotina** and **Sair**.
 
 **Feitas** (`/feitas`, `DoneArchivePage` over `DoneArchiveCubit`) is every
 task ticked off, newest first under the calendar's day headings, searched

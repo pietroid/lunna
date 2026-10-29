@@ -8,19 +8,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/app/app.dart';
-import 'package:lunna/home/home.dart';
+import 'package:lunna/feed/feed.dart';
 import 'package:lunna/menu/menu.dart';
 import 'package:lunna/notifications/notifications.dart';
-import 'package:lunna/overview/overview.dart';
-import 'package:lunna/panel/panel.dart';
+import 'package:lunna/plan/plan.dart';
+import 'package:lunna/tempo/tempo.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template shell_page}
 /// The app's three destinations, and the button that writes something down.
 ///
-/// **Feed** is the home ([OverviewPage]): the agent's offer, what runs now
+/// **Feed** is the home ([FeedPage]): the agent's offer, what runs now
 /// and what follows, the main delivery and the goal. **Plano** holds the
-/// three levels of what she manages ([PanelPage]): Tarefas, Entregas,
+/// three levels of what the person manages ([PlanPage]): Tarefas, Entregas,
 /// Objetivos. **Menu** is the rest.
 ///
 /// The destinations are kept alive behind an [IndexedStack] rather than
@@ -47,18 +47,18 @@ class ShellPage extends StatefulWidget {
 
 class _ShellPageState extends State<ShellPage> {
   /// Feed, the home.
-  static const _overviewIndex = 0;
+  static const _feedIndex = 0;
 
   /// Plano: Tarefas, Entregas, Objetivos.
-  static const _panelIndex = 1;
+  static const _planIndex = 1;
 
   /// Menu, where the working day's hours are set.
   static const _menuIndex = 2;
 
-  int _index = _overviewIndex;
+  int _index = _feedIndex;
 
   /// The level of Plano in front.
-  PanelTab _panel = PanelTab.tasks;
+  PlanTab _plan = PlanTab.tasks;
 
   /// Where Tempo is looking, which is where the button writes.
   final _aim = TimelineAim();
@@ -86,26 +86,25 @@ class _ShellPageState extends State<ShellPage> {
   /// The name the screen in front is reported under: they are one route, so
   /// the router never sees them change.
   String get _screenName => switch (_index) {
-    _overviewIndex => 'Feed',
+    _feedIndex => 'Feed',
     _menuIndex => 'Menu',
-    _ => switch (_panel) {
-      PanelTab.deliveries => 'Entregas',
-      PanelTab.goals => 'Objetivos',
+    _ => switch (_plan) {
+      PlanTab.deliveries => 'Entregas',
+      PlanTab.goals => 'Objetivos',
       _ => 'Tempo',
     },
   };
 
-  void _show(int index, [PanelTab? panel]) {
+  void _show(int index, [PlanTab? plan]) {
     final before = _screenName;
     setState(() {
       _index = index;
-      if (panel != null) _panel = panel;
+      if (plan != null) _plan = plan;
     });
     if (_screenName != before) {
       unawaited(AnalyticsScope.of(context).screen(_screenName));
     }
-    if (_index == _overviewIndex ||
-        (_index == _panelIndex && _panel.level > 0)) {
+    if (_index == _feedIndex || (_index == _planIndex && _plan.level > 0)) {
       unawaited(context.read<ArtifactsCubit>().load());
     }
   }
@@ -113,24 +112,24 @@ class _ShellPageState extends State<ShellPage> {
   void _onSelected(int index) => _show(index);
 
   /// A level of Plano, from its heading or from the Feed tab.
-  void _openPanel(PanelTab tab) {
-    if (tab == PanelTab.calendar) {
+  void _openPlan(PlanTab tab) {
+    if (tab == PlanTab.calendar) {
       _mode.choose(TimelineMode.calendar);
     }
-    _show(_panelIndex, tab == PanelTab.calendar ? PanelTab.tasks : tab);
+    _show(_planIndex, tab == PlanTab.calendar ? PlanTab.tasks : tab);
   }
 
   Future<void> _onFabPressed() async {
-    if (_index == _panelIndex && _panel == PanelTab.deliveries) {
+    if (_index == _planIndex && _plan == PlanTab.deliveries) {
       await showArtifactSheet(context);
       return;
     }
-    if (_index == _panelIndex && _panel == PanelTab.goals) {
+    if (_index == _planIndex && _plan == PlanTab.goals) {
       await showGoalSheet(context);
       return;
     }
 
-    if (_index == _menuIndex) _show(_panelIndex, PanelTab.tasks);
+    if (_index == _menuIndex) _show(_planIndex, PlanTab.tasks);
     await writeDownOnTimeline(
       context,
       placement: _aim.value ?? const Placement.backlog(),
@@ -143,8 +142,8 @@ class _ShellPageState extends State<ShellPage> {
     final firstName = context.select<AppBloc, String?>(
       (bloc) => bloc.state.firstName,
     );
-    final deliveries = _index == _panelIndex && _panel == PanelTab.deliveries;
-    final goals = _index == _panelIndex && _panel == PanelTab.goals;
+    final deliveries = _index == _planIndex && _plan == PlanTab.deliveries;
+    final goals = _index == _planIndex && _plan == PlanTab.goals;
 
     return MultiRepositoryProvider(
       providers: [
@@ -164,12 +163,13 @@ class _ShellPageState extends State<ShellPage> {
             body: IndexedStack(
               index: _index,
               children: [
-                OverviewPage(
+                FeedPage(
+                  shown: _index == _feedIndex,
                   firstName: firstName,
-                  onOpen: _openPanel,
+                  onOpen: _openPlan,
                   onProfile: _profileMenu,
                 ),
-                PanelPage(tab: _panel, onSelected: _openPanel),
+                PlanPage(tab: _plan, onSelected: _openPlan),
                 const MenuPage(),
               ],
             ),
@@ -199,7 +199,7 @@ class _ShellPageState extends State<ShellPage> {
                   label: l10n.shellFeedTab,
                 ),
                 AppBottomBarItem(
-                  iconData: AppIcons.panel,
+                  iconData: AppIcons.plan,
                   label: l10n.shellPlanTab,
                 ),
                 AppBottomBarItem(

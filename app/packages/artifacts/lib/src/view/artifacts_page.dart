@@ -35,7 +35,7 @@ class ArtifactsPage extends StatefulWidget {
     super.key,
   });
 
-  /// Whether it draws its own heading and search. Painel heads it with its
+  /// Whether it draws its own heading and search. Plano heads it with its
   /// tabs instead, and keeps the search at their end.
   final bool titled;
 

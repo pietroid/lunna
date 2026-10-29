@@ -6,11 +6,11 @@ import 'package:artifacts/artifacts.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
-import 'package:lunna/home/view/greeting.dart';
-import 'package:lunna/panel/panel.dart';
+import 'package:lunna/feed/view/greeting.dart';
+import 'package:lunna/plan/plan.dart';
 import 'package:timeline/timeline.dart';
 
-/// {@template overview_page}
+/// {@template feed_page}
 /// The Feed tab: what to do now, at a glance, and a way into each level
 /// of Plano.
 ///
@@ -24,11 +24,15 @@ import 'package:timeline/timeline.dart';
 ///
 /// Nothing here is a list. It is one of each, chosen the way Plano already
 /// orders them, so the screen stays the same size whatever the day holds.
+///
+/// The offer is asked for again each time the tab comes to the front
+/// ([shown]) and when a new day begins, since it is about the day.
 /// {@endtemplate}
-class OverviewPage extends StatelessWidget {
-  /// {@macro overview_page}
-  const OverviewPage({
+class FeedPage extends StatefulWidget {
+  /// {@macro feed_page}
+  const FeedPage({
     required this.onOpen,
+    this.shown = true,
     this.firstName,
     this.onProfile,
     this.controller,
@@ -38,9 +42,13 @@ class OverviewPage extends StatelessWidget {
   /// The person's first name, for the greeting.
   final String? firstName;
 
-  /// Brings a tab of Plano forward. [PanelTab.calendar] opens Tarefas on
+  /// Brings a tab of Plano forward. [PlanTab.calendar] opens Tarefas on
   /// the calendar.
-  final ValueChanged<PanelTab> onOpen;
+  final ValueChanged<PlanTab> onOpen;
+
+  /// Whether the tab is in front. Brought forward, it asks for the offer
+  /// again; behind, it asks nothing.
+  final bool shown;
 
   /// The account menu behind the greeting (Rotina, Sair); without it the
   /// greeting is only a greeting.
@@ -50,17 +58,72 @@ class OverviewPage extends StatelessWidget {
   final ScrollController? controller;
 
   @override
+  State<FeedPage> createState() => _FeedPageState();
+}
+
+class _FeedPageState extends State<FeedPage> {
+  late final SuggestionCubit _suggestion = SuggestionCubit(
+    repository: context.read<AgentRepository>(),
+  );
+
+  /// The day the offer on screen was asked for.
+  DateTime? _askedOn;
+
+  /// Wakes at the next midnight.
+  Timer? _midnight;
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back from the background on another day: the offer is yesterday's.
+    _lifecycle = AppLifecycleListener(onShow: _askIfNewDay);
+    if (widget.shown) _ask();
+    _scheduleMidnight();
+  }
+
+  @override
+  void didUpdateWidget(FeedPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shown && !oldWidget.shown) _ask();
+  }
+
+  @override
+  void dispose() {
+    _midnight?.cancel();
+    _lifecycle.dispose();
+    unawaited(_suggestion.close());
+    super.dispose();
+  }
+
+  static DateTime _dayOf(DateTime time) =>
+      DateTime(time.year, time.month, time.day);
+
+  void _ask() {
+    _askedOn = _dayOf(clock.now());
+    unawaited(_suggestion.load());
+  }
+
+  void _askIfNewDay() {
+    if (!mounted || !widget.shown) return;
+    if (_askedOn != _dayOf(clock.now())) _ask();
+  }
+
+  void _scheduleMidnight() {
+    final now = clock.now();
+    final next = DateTime(now.year, now.month, now.day + 1);
+    _midnight = Timer(next.difference(now), () {
+      _askIfNewDay();
+      if (mounted) _scheduleMidnight();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return BlocProvider<SuggestionCubit>(
-      create: (context) {
-        final cubit = SuggestionCubit(
-          repository: context.read<AgentRepository>(),
-        );
-        unawaited(cubit.load());
-        return cubit;
-      },
+    return BlocProvider<SuggestionCubit>.value(
+      value: _suggestion,
       child: SafeArea(
         bottom: false,
         child: Center(
@@ -69,32 +132,37 @@ class OverviewPage extends StatelessWidget {
               maxWidth: AppSpacing.maxContentWidth,
             ),
             child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.only(bottom: kNotesDockClearance),
+              controller: widget.controller,
+              // The bottom bar, which the body runs under, comes in the
+              // padding; the dock floats over it.
+              padding: EdgeInsets.only(
+                bottom:
+                    MediaQuery.paddingOf(context).bottom + kNotesDockClearance,
+              ),
               children: [
-                _Header(firstName: firstName, menu: onProfile),
+                _Header(firstName: widget.firstName, menu: widget.onProfile),
                 // The agent's one unasked-for offer, first: it is about the
                 // day below it, and goes once taken or turned down.
                 const SuggestionCard(),
                 _Heading(
-                  title: l10n.overviewNow,
-                  action: l10n.overviewSeeDay,
+                  title: l10n.feedNow,
+                  action: l10n.feedSeeDay,
                   icon: AppIcons.calendar,
-                  onTap: () => onOpen(PanelTab.calendar),
+                  onTap: () => widget.onOpen(PlanTab.calendar),
                 ),
                 const _NowAndNext(),
                 _Heading(
-                  title: l10n.overviewMainDelivery,
-                  action: l10n.overviewSeeDeliveries,
+                  title: l10n.feedMainDelivery,
+                  action: l10n.feedSeeDeliveries,
                   icon: AppIcons.artifacts,
-                  onTap: () => onOpen(PanelTab.deliveries),
+                  onTap: () => widget.onOpen(PlanTab.deliveries),
                 ),
                 const _MainDelivery(),
                 _Heading(
-                  title: l10n.overviewMainGoal,
-                  action: l10n.overviewSeeGoals,
+                  title: l10n.feedMainGoal,
+                  action: l10n.feedSeeGoals,
                   icon: AppIcons.goal,
-                  onTap: () => onOpen(PanelTab.goals),
+                  onTap: () => widget.onOpen(PlanTab.goals),
                 ),
                 const _MainGoal(),
               ],
@@ -239,7 +307,7 @@ class _NowAndNext extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (now == null)
-            _Quiet(text: context.l10n.overviewBreak)
+            _Quiet(text: context.l10n.feedBreak)
           else
             EventTile(
               card: now,
@@ -259,7 +327,7 @@ class _NowAndNext extends StatelessWidget {
                 AppSpacing.s2,
               ),
               child: Text(
-                context.l10n.overviewNext,
+                context.l10n.feedNext,
                 style: AppTypography.caption,
               ),
             ),
@@ -288,7 +356,7 @@ class _MainDelivery extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s5),
       child: main == null
-          ? _Quiet(text: context.l10n.overviewNoDelivery)
+          ? _Quiet(text: context.l10n.feedNoDelivery)
           : ArtifactRow(
               artifact: main,
               now: now,
@@ -320,7 +388,7 @@ class _MainGoal extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s5),
       child: goal == null
-          ? _Quiet(text: context.l10n.overviewNoGoal)
+          ? _Quiet(text: context.l10n.feedNoGoal)
           : GoalCard(
               goal: goal,
               now: now,

@@ -1,8 +1,8 @@
 # Lunna home: Feed, Plano, Menu
 
-Track: **mockup**. Design session, drawn by the real app (Lunna brand), on
-[issue #59](https://github.com/pietroid/lunna/issues/59). Round 2: the tabs
-were renamed as asked; the rest was approved.
+Track: **mockup**, on [issue #59](https://github.com/pietroid/lunna/issues/59).
+The design was approved on the issue after one round (the tabs renamed);
+the build was done unattended by the queue. Spec: [product/spec/home.md](../../spec/home.md).
 
 ## 1. The prompt
 
@@ -27,6 +27,12 @@ The first board was reviewed on the issue, and the person replied:
 > Change Lunna by "Feed", and Panel by "Plan"
 >
 > The rest is perfect
+
+Then, to build:
+
+> build lunna-home
+>
+> The design was approved on the issue. Do Phases 3 and 4 unattended.
 
 ## 2. The design
 
@@ -95,68 +101,78 @@ glyphs.
   "best next step" is future work for the agent.
 - **Em seguida can be a fixed block** (a meeting, lunch), not only a task.
 
-## Build brief
+### Decided unattended in the build
 
-Starts with `/create build lunna-home`. Phase 1 already wrote most of the
-view layer, so the build checks it, finishes it, and tests it.
+- **The landing's demo keeps its own shell** (Tempo, Entregas, Menu). Its
+  three chapters are things the app does, and the Feed is a summary of all
+  three, so it has no chapter of its own. `product/spec/landing.md` says so.
+  Moving the demo onto Feed/Plano is a follow-up if the landing should
+  mirror the tabs exactly.
+- **The offer is asked for again** each time Feed comes forward, at
+  midnight, and on returning from the background on a new day.
+  `GET /agent/suggestion` calls no model, so this costs one cheap read.
+- **The greeting moved to `lib/feed/`**, since Feed is the only screen
+  that draws it now (the demo imports it from there).
 
-**Files Phase 1 wrote or changed (uncommitted until the queue commits
-them):**
-- `app/lib/lunna_home_preview.dart`: the preview entry point, five scenes
-  (`?s=1..5`). It runs on the demo fakes plus a canned suggestion. Delete it
-  after Phase 4's prints.
-- `app/lib/overview/` (new): `OverviewPage`, the Feed tab.
-- `app/lib/panel/` (new): `PanelPage` and `PanelTab` (tasks, calendar,
-  deliveries, goals).
-- `app/lib/shell/view/shell_page.dart`: three tabs (Feed, Plano, Menu), `TimelineModeCubit`
-  owned by the shell, the + per Plano level, the account menu handed to the
-  home, and analytics screen names (Feed / Tempo / Entregas / Objetivos /
-  Menu).
-- `app/lib/home/view/home_page.dart`: Tempo without its header or
-  suggestion. It no longer creates `TimelineModeCubit` or `SuggestionCubit`.
-- `app/packages/app_ui/`: `AppTitleTabs` (new widget, exported) and
-  `AppIcons.panel` (to be renamed `AppIcons.plan`).
-- `app/packages/artifacts/`: `ArtifactsPage(titled:)` and
-  `GoalsPage(titled:)`.
-- `app/packages/l10n/`: `shellFeedTab` ("Feed"), `shellPlanTab` ("Plano"), `panelTasks`, `overview*`,
-  `demoSuggestionRenata` (`gen/` regenerated).
+## 3. What was built
 
-**What the build must do**
-- **Server:** nothing. Every piece of the home reads routes that exist today
-  (`/timeline`, `/artifacts`, `/agent/suggestion`).
-- **App:**
-  - Rename `HomePage` to something like `TempoPage` (it is no longer the
-    home), and maybe `lib/home/` along with it.
-  - Name the code after the tabs: `lib/overview/` → `lib/feed/`
-    (`FeedPage`), `lib/panel/` → `lib/plan/` (`PlanPage`, `PlanTab`),
-    `AppIcons.panel` → `AppIcons.plan`, `panelTasks` → `planTasks`,
-    `overview*` strings → `feed*`.
-  - Have the Feed tab load the suggestion again when it comes to the front,
-    and when the day changes (today it loads once).
-  - Keep the bottom of the home clear of the dock. On the prints, the last
-    line of the goal card ends under the bar. The same is true of Objetivos
-    today, so `kNotesDockClearance` may need the bottom bar's height on
-    pages that scroll under it.
-  - On Feed, *Ver o dia* also needs the calendar to scroll to now, which it
-    already does when it opens.
-  - The landing's demo (`lib/demo/`) keeps its own shell. Decide whether
-    its phone shows the new Feed tab as its first chapter (probably yes,
-    for the "agent" chapter), and update `product/spec/landing.md` to match.
-  - Tests: widget tests for `OverviewPage` (the empty states "Nada em
-    andamento", "Nenhuma entrega em andamento" and "Nenhum objetivo agora";
-    the main delivery being Entregas' first; each pill calling `onOpen`
-    with the right `PanelTab`), for `PanelPage` (switching levels, search
-    only on Entregas), and for `AppTitleTabs`. Run them under both brands.
-  - AGENTS.md "The app shell": three tabs (Feed, Plano, Menu), where the
-    greeting and suggestion live now, and the Layout block (`overview/`,
-    `panel/`).
-  - Shoot both brands. Both read Feed · Plano · Menu.
+![Lunna, the real build](img/build-lunna.png)
 
-**Open questions** (on the issue)
-- The second tab reads "Plano" (pt-BR for the "Plan" asked). Keep it,
-  or write "Plan" in English?
-- Should the Feed tab later show more than one suggestion (a short list
-  ranked by the agent), or stay with one?
+![Focus, the real build](img/build-focus.png)
 
-**Design session cost:** the queue measures it and writes the figures in the
-PR (`.tool/cost` was skipped, as the queue's run instructions say).
+The scenes, left to right: Feed (the offer, Agora, Em seguida), Feed
+scrolled to the end (the delivery and the goal, now clear of the dock),
+Plano › Tarefas on the calendar as *Ver o dia* opens it, Plano › Entregas
+(with its search), Plano › Objetivos. Both brands read Feed · Plano · Menu.
+
+**The contract.** The home is made up of what the app already loads. It is
+one of each and never a list: Agora is the `agora` card, Em seguida the
+first `dia` card (a task or a fixed block), the delivery is the first that
+`progressGroups` returns, and the goal is the money goal whose days are
+running. Each heading's pill opens its level of Plano. No server change.
+
+**App**
+- `app/lib/feed/`: `FeedPage` (stateful: it owns the `SuggestionCubit`,
+  `shown` asks again when the tab is brought forward, plus a midnight timer
+  and an `AppLifecycleListener`), and `greeting.dart` (moved from `home/`).
+- `app/lib/plan/`: `PlanPage` and `PlanTab` (`tasks`, `calendar`,
+  `deliveries`, `goals`; `calendar` lights Tarefas).
+- `app/lib/tempo/`: `TempoPage` (renamed from `HomePage`; `lib/home/` is
+  gone), `MinuteRefresh`.
+- `app/lib/shell/view/shell_page.dart`: three tabs, `TimelineModeCubit`
+  owned by the shell, the + per level, analytics screen names.
+- `app_ui`: `AppTitleTabs` and `AppIcons.plan` (Phosphor *squares-four*).
+- `artifacts`: `ArtifactsPage(titled:)` and `GoalsPage(titled:)`. Objetivos
+  now adds the bottom bar's height to `kNotesDockClearance`, so its last
+  card clears the dock (the same fix as on Feed).
+- `l10n`: `shellFeedTab`, `shellPlanTab`, `planTasks`, `feed*`.
+
+**Tests** (all pass under both brands)
+- `app/test/feed/feed_page_test.dart`, 9 tests: the three empty states, Agora
+  and the one card after it (a fixed block too), the main delivery (begun
+  before waiting, and otherwise the first waiting), the goal (not one that
+  hasn't started; the running one), each pill's `PlanTab`, the offer asked
+  for again when the tab comes back, and the offer drawn.
+- `app/test/plan/plan_page_test.dart`, 4: `PlanTab` levels, picking a level,
+  the `IndexedStack` keeping all three, and search only on Entregas.
+- `app/packages/app_ui/test/app_title_tabs_test.dart`, 3: ink and quiet
+  colours with the selected semantics, taps, the trailing widget.
+- App root: 33 tests, Focus and Lunna. `.tool/check`: analyze and every
+  package's tests, both brands, passed.
+- `.tool/check` does not run `app/test/` (only the packages'), so those were
+  run by hand: `flutter test --dart-define=BRAND=focus|lunna`.
+- No flaky test was seen.
+
+**Where it differs from the mockup.** Only in the code: the names follow
+the tabs (`FeedPage`, `PlanPage`, `PlanTab`, `TempoPage`, `AppIcons.plan`,
+`feed*` strings), and the Feed's last card no longer ends under the bar.
+What the person sees is the board.
+
+## 4. How to turn it on
+
+Nothing to set. It ships with the app; the server is unchanged. The new
+dev dependency `shared_preferences` (app root) is only for the tests.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

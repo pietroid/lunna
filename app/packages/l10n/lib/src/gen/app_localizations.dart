@@ -2729,71 +2729,71 @@ abstract class AppLocalizations {
   /// **'Plano'**
   String get shellPlanTab;
 
-  /// No description provided for @panelTasks.
+  /// No description provided for @planTasks.
   ///
   /// In pt, this message translates to:
   /// **'Tarefas'**
-  String get panelTasks;
+  String get planTasks;
 
-  /// No description provided for @overviewNow.
+  /// No description provided for @feedNow.
   ///
   /// In pt, this message translates to:
   /// **'Agora'**
-  String get overviewNow;
+  String get feedNow;
 
-  /// No description provided for @overviewNext.
+  /// No description provided for @feedNext.
   ///
   /// In pt, this message translates to:
   /// **'Em seguida'**
-  String get overviewNext;
+  String get feedNext;
 
-  /// No description provided for @overviewBreak.
+  /// No description provided for @feedBreak.
   ///
   /// In pt, this message translates to:
   /// **'Nada em andamento'**
-  String get overviewBreak;
+  String get feedBreak;
 
-  /// No description provided for @overviewSeeDay.
+  /// No description provided for @feedSeeDay.
   ///
   /// In pt, this message translates to:
   /// **'Ver o dia'**
-  String get overviewSeeDay;
+  String get feedSeeDay;
 
-  /// No description provided for @overviewMainDelivery.
+  /// No description provided for @feedMainDelivery.
   ///
   /// In pt, this message translates to:
   /// **'Entrega principal'**
-  String get overviewMainDelivery;
+  String get feedMainDelivery;
 
-  /// No description provided for @overviewNoDelivery.
+  /// No description provided for @feedNoDelivery.
   ///
   /// In pt, this message translates to:
   /// **'Nenhuma entrega em andamento'**
-  String get overviewNoDelivery;
+  String get feedNoDelivery;
 
-  /// No description provided for @overviewSeeDeliveries.
+  /// No description provided for @feedSeeDeliveries.
   ///
   /// In pt, this message translates to:
   /// **'Entregas'**
-  String get overviewSeeDeliveries;
+  String get feedSeeDeliveries;
 
-  /// No description provided for @overviewMainGoal.
+  /// No description provided for @feedMainGoal.
   ///
   /// In pt, this message translates to:
   /// **'Objetivo'**
-  String get overviewMainGoal;
+  String get feedMainGoal;
 
-  /// No description provided for @overviewNoGoal.
+  /// No description provided for @feedNoGoal.
   ///
   /// In pt, this message translates to:
   /// **'Nenhum objetivo agora'**
-  String get overviewNoGoal;
+  String get feedNoGoal;
 
-  /// No description provided for @overviewSeeGoals.
+  /// No description provided for @feedSeeGoals.
   ///
   /// In pt, this message translates to:
   /// **'Objetivos'**
-  String get overviewSeeGoals;
+  String get feedSeeGoals;
 
   /// No description provided for @demoSuggestionRenata.
   ///
