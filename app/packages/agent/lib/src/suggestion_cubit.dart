@@ -7,8 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// {@template suggestion_cubit}
 /// The one thing the agent offers on Tempo without being asked.
 ///
-/// "Agora não" puts suggestions away for a day, on this device: an offer
-/// turned down and made again an hour later is nagging.
+/// The ✕ puts suggestions away for a day, on this device: an offer turned
+/// down and made again an hour later is nagging. One held is kept until its
+/// `validUntil`, so loading again asks nothing.
 /// {@endtemplate}
 class SuggestionCubit extends Cubit<AgentSuggestion?> {
   /// {@macro suggestion_cubit}
@@ -19,8 +20,12 @@ class SuggestionCubit extends Cubit<AgentSuggestion?> {
   static const _dismissedKey = 'agent.suggestion.dismissedAt';
   static const quiet = Duration(hours: 24);
 
-  /// Asks for a suggestion, unless they were put away.
+  /// Asks for a suggestion, unless they were put away or the one held is
+  /// still good.
   Future<void> load() async {
+    if (state case final held? when held.validUntil.isAfter(clock.now())) {
+      return;
+    }
     if (await _resting()) {
       emit(null);
       return;
@@ -34,7 +39,7 @@ class SuggestionCubit extends Cubit<AgentSuggestion?> {
     }
   }
 
-  /// "Agora não".
+  /// The ✕.
   Future<void> dismiss() async {
     emit(null);
     try {

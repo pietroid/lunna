@@ -89,6 +89,7 @@ class DemoApp extends StatefulWidget {
     this.resting = false,
     this.late = 0,
     this.controller,
+    this.suggestion,
     super.key,
   });
 
@@ -101,6 +102,9 @@ class DemoApp extends StatefulWidget {
   /// Which chapter is in front; without one the demo opens on Tempo and
   /// stays wherever it is tapped to.
   final DemoController? controller;
+
+  /// What the agent offers on Tempo, made with the demo's strings.
+  final AgentSuggestion Function(AppLocalizations l10n)? suggestion;
 
   @override
   State<DemoApp> createState() => _DemoAppState();
@@ -120,6 +124,7 @@ class _DemoAppState extends State<DemoApp> {
     context.l10n,
     timeline: _timeline,
     artifacts: _artifacts,
+    offer: widget.suggestion?.call(context.l10n),
   );
 
   @override
@@ -314,6 +319,17 @@ class _DemoTempo extends StatelessWidget {
             children: [
               const _Header(),
               const TimelineModeSwitch(),
+              // Empty on the landing page, which is offered nothing.
+              BlocProvider<SuggestionCubit>(
+                create: (context) {
+                  final cubit = SuggestionCubit(
+                    repository: context.read<AgentRepository>(),
+                  );
+                  unawaited(cubit.load());
+                  return cubit;
+                },
+                child: const SuggestionCard(),
+              ),
               Expanded(
                 child: TimelineList(
                   key: ValueKey(context.watch<TimelineModeCubit>().state),

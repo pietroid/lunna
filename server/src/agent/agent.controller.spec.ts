@@ -786,39 +786,188 @@ describe('the agent', () => {
     expect(reply.steps).toEqual(['Olhei sex 13/03']);
   });
 
-  it('suggests fitting the first backlog task into today', async () => {
-    await post('/tasks', { title: 'Relatório mensal', minutes: 90 });
+  describe('the suggestion', () => {
+    interface Offered {
+      id: string;
+      focus: string;
+      text: string;
+      validUntil: string;
+      action?: { label: string; plan: NonNullable<AgentReply['plan']> };
+      opening: AgentReply;
+    }
 
-    const response = await request(app.getHttpServer()).get(
-      '/agent/suggestion',
-    );
-    const { suggestion } = response.body as {
-      suggestion: { text: string; plan: AgentReply['plan'] };
+    const suggestion = async () =>
+      (
+        (await request(app.getHttpServer()).get('/agent/suggestion')).body as {
+          suggestion: Offered | null;
+        }
+      ).suggestion;
+
+    const goal = (target = 6000) =>
+      app.get(ArtifactStore).insertGoal(USER, {
+        kind: 'money',
+        target,
+        starts: '2026-03-01',
+        deadline: '2026-03-31',
+      });
+
+    /** A delivery worth [value], due [deadline], with one task in Para depois. */
+    const delivery = async (title: string, step: string, value = 2400) => {
+      const artifact = await app.get(ArtifactStore).insert(USER, {
+        title,
+        value,
+        deadline: '2026-03-13',
+      });
+      const tasks = app.get(TaskStore);
+      const id = ((await task(step, 120, true)).body as Timeline).backlog.find(
+        (it) => it.title === step,
+      )!.id;
+      await tasks.update(USER, {
+        ...(await tasks.get(USER, id))!,
+        artifactId: artifact.id,
+      });
+      return artifact;
     };
 
-    expect(suggestion.text).toContain('Relatório mensal');
-    expect(suggestion.text).toContain('10:00');
-    expect(suggestion.plan?.changes[0].kind).toBe('move_task');
+    const surface = (offered: Offered) => JSON.stringify(offered.opening.ui);
 
-    // Asked again, it is the same offer, not a second one.
-    const again = await request(app.getHttpServer()).get('/agent/suggestion');
-    expect(
-      (again.body as { suggestion: { plan: { id: string } } }).suggestion.plan
-        .id,
-    ).toBe(suggestion.plan?.id);
+    it('asks for a goal first, with no action, even with a backlog', async () => {
+      await task('Relatório mensal', 90, true);
 
-    const applied = (await post(`/agent/plans/${suggestion.plan?.id}/apply`))
-      .body as Timeline;
-    expect(applied.backlog).toEqual([]);
-    expect(applied.tasks.map((it) => it.title)).toEqual(['Relatório mensal']);
-  });
+      const offered = (await suggestion())!;
+      expect(offered.focus).toBe('goal');
+      expect(offered.text).toContain('não tem um objetivo');
+      expect(offered.text).toContain('31/03');
+      expect(offered.action).toBeUndefined();
+      // The chat opens on choices that say an amount.
+      expect(surface(offered)).toContain('Quero faturar R$ 5.000 até 31/03.');
+      // No action, so it holds to the end of her day.
+      expect(offered.validUntil).toBe('2026-03-11T03:00:00.000Z');
+    });
 
-  it('has nothing to suggest with an empty backlog', async () => {
-    const response = await request(app.getHttpServer()).get(
-      '/agent/suggestion',
-    );
+    it('asks for a delivery when nothing open counts towards the goal', async () => {
+      await goal();
 
-    expect(response.body).toEqual({ suggestion: null });
+      const offered = (await suggestion())!;
+      expect(offered.focus).toBe('goal');
+      expect(offered.text).toBe(
+        'Faltam R$ 6.000 para o objetivo de 31/03, e nenhuma entrega aberta ' +
+          'vence até lá. Qual é a próxima?',
+      );
+      expect(offered.action).toBeUndefined();
+    });
+
+    it('offers the delivery that reaches a goal behind, and is taken by applying it', async () => {
+      await goal();
+      await task('Relatório mensal', 90, true);
+      await delivery('Mapa da Renata', 'Escrever a leitura');
+
+      const offered = (await suggestion())!;
+      expect(offered.focus).toBe('delivery');
+      expect(offered.text).toBe(
+        'Faltam R$ 6.000 para o objetivo, e “Mapa da Renata” vence 13/03. ' +
+          'Encaixo “Escrever a leitura” hoje às 10:00?',
+      );
+      expect(offered.action?.label).toBe('Encaixar às 10:00');
+      expect(offered.action?.plan.changes[0]).toMatchObject({
+        kind: 'move_task',
+        title: 'Escrever a leitura',
+        at: '2026-03-10T13:00:00.000Z',
+      });
+      // An offer of now holds five minutes.
+      expect(offered.validUntil).toBe('2026-03-10T13:05:00.000Z');
+      // The opening draws the delivery and the same plan.
+      expect(surface(offered)).toContain('ArtifactPeek');
+      expect(offered.opening.plan?.id).toBe(offered.action?.plan.id);
+
+      const planId = offered.action!.plan.id;
+      const applied = (await post(`/agent/plans/${planId}/apply`))
+        .body as Timeline;
+      expect(applied.tasks.map((it) => it.title)).toEqual([
+        'Escrever a leitura',
+      ]);
+
+      // Taken: the next ask is about something else.
+      const next = (await suggestion())!;
+      expect(next.id).not.toBe(offered.id);
+      expect(next.focus).toBe('routine');
+      expect(next.text).toContain('Relatório mensal');
+
+      expect((await post(`/agent/plans/${planId}/undo`)).status).toBe(201);
+    });
+
+    it('leaves a delivery already on today for the backlog', async () => {
+      await goal();
+      const artifact = await delivery('Mapa da Renata', 'Escrever a leitura');
+      const tasks = app.get(TaskStore);
+      const [step] = (await tasks.ofArtifacts(USER)).filter(
+        (it) => it.artifactId === artifact.id,
+      );
+      await post(`/tasks/${step.id}/move`, { index: 0 });
+      await task('Relatório mensal', 90, true);
+
+      const offered = (await suggestion())!;
+      expect(offered.focus).toBe('routine');
+      expect(offered.text).toContain('Relatório mensal');
+      expect(offered.action?.plan.changes[0].kind).toBe('move_task');
+    });
+
+    it('holds while what it read is the same, and is made again when it changes', async () => {
+      const first = (await suggestion())!;
+      expect((await suggestion())!.id).toBe(first.id);
+
+      await goal();
+      const next = (await suggestion())!;
+      expect(next.id).not.toBe(first.id);
+      expect(next.text).toContain('nenhuma entrega aberta');
+    });
+
+    it('opens the conversation on what it offered', async () => {
+      const offered = (await suggestion())!;
+      model.steps = [
+        (messages) => {
+          // The opening as the server wrote it, not as the app sent it.
+          expect(messages[1]).toEqual({
+            role: 'assistant',
+            content: offered.opening.reply,
+          });
+          return { kind: 'final', content: 'Anotado.' };
+        },
+      ];
+
+      const reply = await post('/agent/turn', {
+        suggestionId: offered.id,
+        messages: [
+          { role: 'assistant', text: 'qualquer coisa' },
+          { role: 'user', text: 'Quero faturar R$ 5.000 até 31/03.' },
+        ],
+      });
+      expect(reply.status).toBe(201);
+
+      const { conversations } = (
+        await request(app.getHttpServer()).get('/agent/conversations')
+      ).body as {
+        conversations: { messages: { role: string; text: string }[] }[];
+      };
+      expect(conversations[0].messages.map((it) => it.text)).toEqual([
+        offered.opening.reply,
+        'Quero faturar R$ 5.000 até 31/03.',
+        'Anotado.',
+      ]);
+    });
+
+    it('has nothing to offer when the goal is reached and nothing waits', async () => {
+      await goal(1);
+      const artifact = await app
+        .get(ArtifactStore)
+        .insert(USER, { title: 'Feita', value: 10 });
+      await app.get(ArtifactStore).update(USER, {
+        ...artifact,
+        doneAt: NOW.toISOString(),
+      });
+
+      expect(await suggestion()).toBeNull();
+    });
   });
 
   it('refuses a conversation that does not end with the user', async () => {

@@ -20,10 +20,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
-/// Opens the conversation over Tempo, about [day], straight on the field,
-/// with [draft] in it, selected, when there is one.
+/// Opens the conversation over the whole screen, about [day], straight on
+/// the field, with [draft] in it, selected, when there is one. Opened from a
+/// [suggestion], it starts on the agent's first message about it.
 ///
-/// The sheet is a route of its own, which need not sit under whatever
+/// The conversation is a page of its own, which need not sit under whatever
 /// provides the conversation, the agent's routes and the day, so it is handed
 /// all three from here, and the recording, which is the app's: one started
 /// on Tempo's bar carries on here.
@@ -32,6 +33,7 @@ Future<void> showAgentSheet(
   DateTime? day,
   String? draft,
   AgentSubject? about,
+  AgentSuggestion? suggestion,
 }) {
   final agent = context.read<AgentCubit>();
   final repository = context.read<AgentRepository>();
@@ -39,27 +41,24 @@ Future<void> showAgentSheet(
   final voice = context.read<VoiceCubit>();
   final links = AgentLinks.of(context);
   // Every opening is a new conversation; the last one goes above it.
-  agent.open(about: about);
+  agent.open(about: about, suggestion: suggestion);
 
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: AppColors.ink.withValues(alpha: 0.32),
-    builder: (_) => RepositoryProvider.value(
-      value: repository,
-      child: MultiBlocProvider(
-        providers: [
-          RepositoryProvider.value(value: links),
-          BlocProvider.value(value: agent),
-          BlocProvider.value(value: timeline),
-          BlocProvider.value(value: voice),
-        ],
-        child: FractionallySizedBox(
-          heightFactor: 0.88,
-          alignment: Alignment.bottomCenter,
-          child: AgentSheet(day: day, draft: draft),
+  // Full screen, coming up from the dock it was asked from: a conversation
+  // with plans and peeks in it needs the whole height, and nothing under
+  // it is being looked at meanwhile.
+  return Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => RepositoryProvider.value(
+        value: repository,
+        child: MultiBlocProvider(
+          providers: [
+            RepositoryProvider.value(value: links),
+            BlocProvider.value(value: agent),
+            BlocProvider.value(value: timeline),
+            BlocProvider.value(value: voice),
+          ],
+          child: AgentSheet(day: day, draft: draft, focus: suggestion == null),
         ),
       ),
     ),
@@ -69,20 +68,22 @@ Future<void> showAgentSheet(
 /// {@template agent_sheet}
 /// The conversation with the agent.
 ///
-/// It opens empty, on the field, keyboard up. Then it is the conversation:
-/// what the user said, what the agent did (one ticked line per step), what
-/// it answered, and the plan it proposes, which nothing makes until Aplicar.
+/// It opens empty, on the field, keyboard up, or on the suggestion it was
+/// opened from, keyboard down, so its plan can be read first. Then it is the
+/// conversation: what the user said, what the agent did (one ticked line per
+/// step), what it answered, and the plan it proposes, which nothing makes
+/// until Aplicar.
 ///
 /// It opens on the conversation alone, which fills the sheet. The ones before
 /// it are above, out of sight until the list is pulled down: dimmed, read
 /// only, each under the day and hour it began.
 ///
 /// What is said rather than typed is shown as it is heard, over the
-/// recorder; stopping puts it in the field, selected, to be sent as text.
+/// recorder; stopping sends it, as letting go of a held microphone does.
 /// {@endtemplate}
 class AgentSheet extends StatefulWidget {
   /// {@macro agent_sheet}
-  const AgentSheet({this.day, this.draft, super.key});
+  const AgentSheet({this.day, this.draft, this.focus = true, super.key});
 
   /// The day Tempo is showing.
   final DateTime? day;
@@ -90,6 +91,9 @@ class AgentSheet extends StatefulWidget {
   /// What the field opens with, selected, so it can be sent, changed or
   /// typed over.
   final String? draft;
+
+  /// Whether the keyboard comes up with the page.
+  final bool focus;
 
   @override
   State<AgentSheet> createState() => _AgentSheetState();
@@ -103,23 +107,18 @@ class _AgentSheetState extends State<AgentSheet> {
   /// Letting go of a held microphone sends what was said.
   late final _hold = VoiceHold(onRelease: () => unawaited(_say()));
 
-  /// How long the text in the field took to say, when it was spoken and then
-  /// corrected by hand.
-  Duration? _spoken;
-
   @override
   void initState() {
     super.initState();
     final voice = context.read<VoiceCubit>();
     final draft = widget.draft;
     if (draft != null) _fill(draft);
-    _field.addListener(() {
-      if (_field.text.isEmpty) _spoken = null;
-    });
     // Straight to the field: the keyboard comes up with the sheet, unless
     // the microphone has the floor.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !voice.state.status.recording) _focus.requestFocus();
+      if (mounted && widget.focus && !voice.state.status.recording) {
+        _focus.requestFocus();
+      }
     });
   }
 
@@ -135,28 +134,14 @@ class _AgentSheetState extends State<AgentSheet> {
     final said = (text ?? _field.text).trim();
     if (said.isEmpty) return;
 
-    final spoken = voice ?? (text == null ? _spoken : null);
     if (text == null) _field.clear();
-    _spoken = null;
     unawaited(
-      context.read<AgentCubit>().send(said, day: widget.day, voice: spoken),
+      context.read<AgentCubit>().send(said, day: widget.day, voice: voice),
     );
   }
 
-  /// Stops hearing and hands the words to the field, selected.
-  Future<void> _stop() async {
-    final voice = context.read<VoiceCubit>();
-    // Still asking for the microphone: the recording goes on as if tapped.
-    if (voice.state.status == VoiceStatus.preparing) return;
-    final take = await voice.take();
-    if (take == null || !mounted) return;
-
-    _fill(take.text);
-    _spoken = take.length;
-    _focus.requestFocus();
-  }
-
-  /// Stops hearing and sends the words as they were heard.
+  /// Stops hearing and sends the words as they were heard: tapped or held,
+  /// finishing the recording is sending it.
   Future<void> _say() async {
     final voice = context.read<VoiceCubit>();
     if (voice.state.status == VoiceStatus.preparing) return;
@@ -210,15 +195,9 @@ class _AgentSheetState extends State<AgentSheet> {
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppSpacing.cardRadius + 4),
-          ),
-        ),
+      child: Material(
+        color: AppColors.surface,
         child: SafeArea(
-          top: false,
           child: BlocConsumer<AgentCubit, AgentState>(
             listenWhen: (a, b) =>
                 a.entries.length != b.entries.length || a.busy != b.busy,
@@ -226,7 +205,6 @@ class _AgentSheetState extends State<AgentSheet> {
             builder: (context, state) {
               return Column(
                 children: [
-                  const _Grabber(),
                   const _Header(),
                   Expanded(
                     child: LayoutBuilder(
@@ -292,7 +270,7 @@ class _AgentSheetState extends State<AgentSheet> {
                       child: voice.status.recording
                           ? _Recording(
                               voice: voice,
-                              onStop: _stop,
+                              onStop: _say,
                               onDiscard: context.read<VoiceCubit>().cancel,
                             )
                           : _Composer(
@@ -321,23 +299,6 @@ class _AgentSheetState extends State<AgentSheet> {
   }
 }
 
-class _Grabber extends StatelessWidget {
-  const _Grabber();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 40,
-      height: 5,
-      margin: const EdgeInsets.only(top: AppSpacing.s3, bottom: AppSpacing.s1),
-      decoration: BoxDecoration(
-        color: AppColors.fillStrong,
-        borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
-      ),
-    );
-  }
-}
-
 class _Header extends StatelessWidget {
   const _Header();
 
@@ -345,28 +306,31 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
+    // The page came up from the dock, so it goes back down: the caret is
+    // on the left, where a page's way back is.
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s5,
         AppSpacing.s2,
-        AppSpacing.s3,
+        AppSpacing.s2,
+        AppSpacing.s5,
         AppSpacing.s2,
       ),
       child: Row(
         children: [
-          const AppIcon(iconData: AppIcons.agent, size: 26),
-          const SizedBox(width: AppSpacing.s3),
-          Expanded(
-            child: Text(l10n.appName(AppBrand.id), style: AppTypography.title),
-          ),
           Tooltip(
             message: l10n.agentClose,
             child: AppIconButton(
-              iconData: AppIcons.close,
+              iconData: AppIcons.unfold,
               size: AppSpacing.s5,
               color: AppColors.ink2,
               onPressed: () => Navigator.of(context).pop(),
             ),
+          ),
+          const SizedBox(width: AppSpacing.s1),
+          const AppIcon(iconData: AppIcons.agent, size: 26),
+          const SizedBox(width: AppSpacing.s3),
+          Expanded(
+            child: Text(l10n.appName(AppBrand.id), style: AppTypography.title),
           ),
         ],
       ),
@@ -1023,7 +987,14 @@ class _Recording extends StatelessWidget {
               color: AppColors.fill,
               borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
             ),
-            child: VoiceBar(voice: voice, onStop: onStop, onDiscard: onDiscard),
+            // Stopping sends: the button is the composer's send.
+            child: VoiceBar(
+              voice: voice,
+              onStop: onStop,
+              onDiscard: onDiscard,
+              stopIcon: AppIcons.arrowUp,
+              stopLabel: context.l10n.agentVoiceSend,
+            ),
           ),
         ],
       ),

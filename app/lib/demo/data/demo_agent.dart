@@ -23,6 +23,7 @@ class DemoAgentRepository implements AgentRepository {
     this._l10n, {
     required this.timeline,
     required this.artifacts,
+    this.offer,
   });
 
   final AppLocalizations _l10n;
@@ -32,6 +33,9 @@ class DemoAgentRepository implements AgentRepository {
 
   /// The deliveries the demo draws, where a plan's new delivery goes.
   final DemoArtifactsRepository artifacts;
+
+  /// What Tempo is offered without asking; none on the landing page.
+  final AgentSuggestion? offer;
 
   final _plans = <String, AgentPlan>{};
 
@@ -54,6 +58,7 @@ class DemoAgentRepository implements AgentRepository {
     String? conversationId,
     DateTime? day,
     AgentSubject? about,
+    String? suggestionId,
   }) async {
     // Long enough for the thinking dots to be seen.
     await Future<void>.delayed(const Duration(milliseconds: 700));
@@ -119,7 +124,13 @@ class DemoAgentRepository implements AgentRepository {
   }) async => const [];
 
   @override
-  Future<AgentSuggestion?> suggestion() async => null;
+  Future<AgentSuggestion?> suggestion() async {
+    final offer = this.offer;
+    for (final plan in [?offer?.action?.plan, ...?offer?.opening?.plans]) {
+      _plans[plan.id] = plan;
+    }
+    return offer;
+  }
 }
 
 /// What the agent answers to [said] in the demo: the delivery for its ask,

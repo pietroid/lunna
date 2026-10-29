@@ -113,6 +113,10 @@ class AgentCubit extends Cubit<AgentState> {
   /// The page this conversation was opened from, when not Tempo.
   AgentSubject? get about => _about;
 
+  /// The suggestion this conversation was opened from: the server puts its
+  /// opening in front of what the model reads.
+  String? _suggestionId;
+
   /// Whether the past has been asked for yet.
   bool _asked = false;
 
@@ -123,9 +127,11 @@ class AgentCubit extends Cubit<AgentState> {
   ///
   /// A conversation still being answered is left as it is: the answer is on
   /// its way to it. [about] is the page it is opened from, which every turn
-  /// of it is about.
-  void open({AgentSubject? about}) {
+  /// of it is about. Opened from a [suggestion], the agent's first message
+  /// is its opening, there, surface and all, before anything is said.
+  void open({AgentSubject? about, AgentSuggestion? suggestion}) {
     _about = about;
+    _suggestionId = suggestion?.id;
     if (!state.busy && state.entries.isNotEmpty) {
       emit(
         AgentState(
@@ -138,6 +144,18 @@ class AgentCubit extends Cubit<AgentState> {
             ...state.past,
           ],
           pastStatus: state.pastStatus,
+        ),
+      );
+    }
+    if (suggestion != null && !state.busy) {
+      emit(
+        state.copyWith(
+          entries: [
+            ReplyEntry(
+              suggestion.opening ?? AgentReply(text: suggestion.text),
+            ),
+          ],
+          startedAt: _now(),
         ),
       );
     }
@@ -200,6 +218,7 @@ class AgentCubit extends Cubit<AgentState> {
         conversationId: state.conversationId,
         day: day,
         about: _about,
+        suggestionId: _suggestionId,
       );
       emit(
         state.copyWith(

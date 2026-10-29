@@ -85,6 +85,7 @@ class VoiceBar extends StatelessWidget {
     required this.onDiscard,
     this.onStop,
     this.stopLabel,
+    this.stopIcon,
     this.discardLabel,
     super.key,
   });
@@ -99,6 +100,10 @@ class VoiceBar extends StatelessWidget {
   /// What the two buttons say to a screen reader, when not the composer's.
   final String? stopLabel;
   final String? discardLabel;
+
+  /// The stop button's icon, when stopping does more than stop (the
+  /// agent's sends).
+  final AppIconData? stopIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +137,7 @@ class VoiceBar extends StatelessWidget {
         if (onStop != null)
           VoiceRound(
             label: stopLabel ?? l10n.agentVoiceStop,
-            icon: AppIcons.stop,
+            icon: stopIcon ?? AppIcons.stop,
             fill: AppColors.accent,
             ink: AppColors.onAccent,
             size: 40,
