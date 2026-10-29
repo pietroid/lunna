@@ -94,7 +94,7 @@ describe('analytics', () => {
   });
 
   it('says where an answer came from when the app says so, and nothing else', async () => {
-    for (const via of ['notification', 'app', 'somewhere']) {
+    for (const via of ['notification', 'live_activity', 'app', 'somewhere']) {
       await lastValueFrom(
         interceptor.intercept(
           contextFor(
@@ -112,6 +112,7 @@ describe('analytics', () => {
 
     expect(analytics.events.map((it) => it.properties)).toEqual([
       { route: '/events/:id/delay', status: 201, via: 'notification' },
+      { route: '/events/:id/delay', status: 201, via: 'live_activity' },
       { route: '/events/:id/delay', status: 201, via: 'app' },
       { route: '/events/:id/delay', status: 201 },
     ]);

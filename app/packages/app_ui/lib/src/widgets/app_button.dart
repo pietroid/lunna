@@ -100,6 +100,8 @@ class AppButton extends StatelessWidget {
 
     final label = Text(
       text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: AppTypography.bodyStrong.copyWith(color: foreground),
     );
 
@@ -114,7 +116,8 @@ class AppButton extends StatelessWidget {
                 child: icon!,
               ),
               const SizedBox(width: AppSpacing.s2),
-              label,
+              // A narrow button cuts its label rather than overflowing.
+              Flexible(child: label),
             ],
           );
 
@@ -141,10 +144,14 @@ class AppButton extends StatelessWidget {
     return FilledButton(onPressed: onPressed, style: style, child: child);
   }
 
-  /// Black or white, whichever stays readable on [background].
+  /// Black or white, whichever stays readable on [background]: the
+  /// accent's own [AppColors.onAccent] (white on Lunna's red, black on
+  /// Focus's lime), and by luminance for any other fill. The brand's ink is
+  /// not used here: on Lunna it is near black, which drew black on red.
   static Color _onColor(Color background) {
+    if (background == AppColors.accent) return AppColors.onAccent;
     return background.computeLuminance() > 0.5
-        ? AppColors.onAccent
-        : AppColors.ink;
+        ? const Color(0xFF000000)
+        : const Color(0xFFFFFFFF);
   }
 }

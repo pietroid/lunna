@@ -47,7 +47,8 @@ class ApiClient {
       ..add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            options.headers[viaHeader] = via;
+            // A request may say it came from elsewhere ([post]'s `via`).
+            options.headers.putIfAbsent(viaHeader, () => via);
             handler.next(options);
           },
         ),
@@ -72,9 +73,14 @@ class ApiClient {
     return _dio.get<T>(path, queryParameters: queryParameters);
   }
 
-  /// Performs a `POST` request to [path] with optional [data].
-  Future<Response<T>> post<T>(String path, {Object? data}) {
-    return _dio.post<T>(path, data: data);
+  /// Performs a `POST` request to [path] with optional [data], saying it
+  /// came from [via] when that is not this client's own.
+  Future<Response<T>> post<T>(String path, {Object? data, String? via}) {
+    return _dio.post<T>(
+      path,
+      data: data,
+      options: via == null ? null : Options(headers: {viaHeader: via}),
+    );
   }
 
   /// Performs a `PUT` request to [path] with optional [data].

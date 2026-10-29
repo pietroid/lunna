@@ -51,7 +51,9 @@ They share one backend and one database.
 Everything the user reads is in **Brazilian Portuguese**. On the app, every
 such string lives in `app/packages/l10n/lib/arb/app_pt.arb` and is read
 through `context.l10n` (or `lookupAppLocalizations` where there is no
-context). A hardcoded user-facing string in Dart is a bug. The server still
+context). A hardcoded user-facing string in Dart is a bug. The iOS Live
+Activity's copy, which Swift draws, is in
+`app/ios/BlockActivity/Localizable.xcstrings`. The server still
 writes its own refusals and reminder copy in Portuguese, and the app shows
 them as written.
 
@@ -74,6 +76,8 @@ Code, comments, commits and this file stay in English.
 app/
   brands/               per-brand icons, splash and web assets (+ README)
   env/                  <brand>.<env>.json defines (examples committed)
+  ios/BlockActivity/    the running block's Live Activity (Widget Extension,
+                        iOS 17): SwiftUI views, intents, the shared state
   tool/brand_web.sh     stamps a brand on a web build
   lib/                  shell, feed (the home), plan (Tempo, Entregas,
                         Objetivos under one heading), tempo, routines
@@ -88,7 +92,7 @@ app/
     app_ui/             the design system: AppBrand, theme, tokens, widgets
     auth/               Better Auth client: Google sign-in, token store
     l10n/               every user-facing string (pt-BR)
-    notifications/      local reminder queue, its buttons, background refresh
+    notifications/      local reminder queue, clearing what was shown, background refresh
     artifacts/          Entregas and Objetivos: queue, catalogue, goals, sheets, the delivery's page
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
@@ -569,21 +573,30 @@ goals on either side.
 ### Reminders
 
 A block has two edges, its start and its end, and **every reminder asks
-about one of them** (`askStart`, `askEnd`), at its hour and again 10 and
-20 minutes later while nobody answers (the re-asks only within 24 h). A
-task not begun is asked about only when it is the next one; a fixed block,
-meetings included, is asked at both edges, plus a 15-minute `headsUp` when
-something runs right up to it. On iOS each ask has three buttons:
-**Confirmar** and **+10 min** answer from the lock screen without opening
-the app (a background engine posts the same route the card's button does,
-`X-Lunna-Via: notification`), and **Falar com a Lunna** opens the agent
-about the card. **A tap on the reminder itself always opens the app on the
-card.** Android has no buttons yet (#56) and keeps the start sheet.
+about one of them** (`askStart`, `askEnd`), at its hour and once more 10
+minutes later while nobody answers (the re-ask only within 24 h), titled
+with the card and asking one plain thing ("Terminando agora, certo?";
+asked again, "Atraso no término · 10 minutos"). A task not begun is asked
+about only when it is the next one; a fixed block, meetings included, is
+asked at both edges, plus a 15-minute `headsUp` when something runs right
+up to it. **A reminder has no buttons: a tap opens the app on
+`ReminderSheet`**, the same question read again from the day, with the
+card's own answers (the ten minutes on the left, Começar / Confirmar /
+Terminei on the right, Falar com a Lunna under them), posted with
+`X-Lunna-Via: notification`. An edge already answered opens Tempo.
+**One reminder on the Lock Screen at a time**: every sync (launch,
+resume, any change to the day, the background refresh) clears the ones
+shown but the last, and an answer clears them all.
+
+**The Live Activity is switched off** (`kLiveActivity = false`): every
+sync ends it. The extension stays, so turning it back on is that line. See
+[product/spec/live-activity.md](./product/spec/live-activity.md).
 
 **Nothing ends in silence.** A begun block whose end passes with no answer
 (`event.closed_at` unset) is in **overtime**: `catchUp` drags its end along
-with the clock, the queue after it slides, and the card says "atrasado N
-min" (`overtimeMinutes`). It is closed, its task done there, at the start
+with the clock, the queue after it slides, and the card drops its bar for
+"Atraso no término · N minutos" with +10 min and **Terminei**
+(`overtimeMinutes`). It is closed, its task done there, at the start
 of the next fixed block or at the end of the working day. A fixed block
 starts at its hour whether or not anyone confirms it (`confirmed_at`).
 Every "not yet" and "more time" is **10 minutes from the later of the

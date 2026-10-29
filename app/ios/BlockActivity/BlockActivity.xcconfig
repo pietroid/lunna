@@ -1,0 +1,3 @@
+// The extension reads the version Flutter writes for the app, so the two
+// match (the App Store refuses an extension whose version differs).
+#include? "../Flutter/Generated.xcconfig"

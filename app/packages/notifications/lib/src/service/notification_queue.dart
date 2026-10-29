@@ -1,20 +1,8 @@
-import 'package:app_ui/app_ui.dart' show AppBrand;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:l10n/l10n.dart';
-import 'package:notifications/src/models/notification_answer.dart';
 import 'package:timezone/timezone.dart' as tz;
-
-/// Where a reminder's button chosen without opening the app is answered.
-///
-/// Must be a top-level or static function marked
-/// `@pragma('vm:entry-point')`: the system runs it in an engine of its own,
-/// with nothing of the app set up.
-typedef BackgroundAction = void Function(NotificationResponse response);
-
-/// The category of a reminder that asks, whose buttons answer it.
-const askCategory = 'ask';
 
 /// {@template queued_notification}
 /// One reminder as the operating system's queue holds it.
@@ -29,7 +17,8 @@ class QueuedNotification {
     required this.timeSensitive,
     required this.daily,
     required this.payload,
-    this.asks = false,
+    this.thread,
+    this.timeout,
   });
 
   /// The queue's own integer id.
@@ -54,9 +43,27 @@ class QueuedNotification {
   /// What comes back when it is tapped.
   final String payload;
 
-  /// Whether it asks about a block, and so carries the buttons that answer
-  /// it (on iOS; Android's come with #56).
-  final bool asks;
+  /// What it is filed under on iOS, so the reminders of one card stack as
+  /// one: the card's id, or null for the day's greetings.
+  final String? thread;
+
+  /// How long it stays once shown, on Android: until the next reminder is
+  /// due, which takes its place. Null to stay until it is dismissed.
+  final Duration? timeout;
+}
+
+/// {@template delivered_notification}
+/// A reminder already shown and still in the notification centre.
+/// {@endtemplate}
+class DeliveredNotification {
+  /// {@macro delivered_notification}
+  const DeliveredNotification({required this.id, this.payload});
+
+  /// The queue's own integer id.
+  final int id;
+
+  /// What it carried, which says when it fired (`payloadOf`).
+  final String? payload;
 }
 
 /// The device's notification queue, reduced to what the scheduler needs.
@@ -65,17 +72,11 @@ class QueuedNotification {
 /// channel. [LocalNotificationQueue] is the one real implementation.
 abstract interface class NotificationQueue {
   /// Sets the queue up, without asking for permission. [onTap] receives the
-  /// payload of a reminder tapped while the app is running, and the id of
-  /// the button when one that opens the app was chosen;
-  /// [onBackgroundAction] answers the buttons that do not open it.
-  Future<void> initialize({
-    required void Function(String? payload, String? actionId) onTap,
-    BackgroundAction? onBackgroundAction,
-  });
+  /// payload of a reminder tapped while the app is running.
+  Future<void> initialize({required void Function(String? payload) onTap});
 
-  /// The reminder that launched the app, and the button that did, if one
-  /// did.
-  Future<({String? payload, String? actionId})?> launchResponse();
+  /// The payload of the reminder that launched the app, if one did.
+  Future<String?> launchPayload();
 
   /// Whether reminders may be shown at all.
   Future<bool> isPermitted();
@@ -89,7 +90,11 @@ abstract interface class NotificationQueue {
   /// Queues [notification].
   Future<void> schedule(QueuedNotification notification);
 
-  /// Takes the reminder with [id] off the queue.
+  /// The reminders shown and still in the notification centre.
+  Future<List<DeliveredNotification>> delivered();
+
+  /// Takes the reminder with [id] off the queue, or out of the notification
+  /// centre when it was already shown.
   Future<void> cancel(int id);
 }
 
@@ -135,48 +140,24 @@ class LocalNotificationQueue implements NotificationQueue {
         AndroidFlutterLocalNotificationsPlugin
       >();
 
-  /// A reminder's three buttons, on iOS: Confirmar and +10 min answer
-  /// without opening the app; talking it over opens it. Android draws none
-  /// until #56, and its reminders open the app as before.
-  static final _askCategory = DarwinNotificationCategory(
-    askCategory,
-    actions: [
-      DarwinNotificationAction.plain(
-        NotificationAction.confirm.id,
-        _l10n.notificationActionConfirm,
-      ),
-      DarwinNotificationAction.plain(
-        NotificationAction.later.id,
-        _l10n.notificationActionLater,
-      ),
-      DarwinNotificationAction.plain(
-        NotificationAction.talk.id,
-        _l10n.notificationActionTalk(AppBrand.id),
-        options: {DarwinNotificationActionOption.foreground},
-      ),
-    ],
-  );
-
   @override
   Future<void> initialize({
-    required void Function(String? payload, String? actionId) onTap,
-    BackgroundAction? onBackgroundAction,
+    required void Function(String? payload) onTap,
   }) async {
     await _plugin.initialize(
-      settings: InitializationSettings(
-        android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
         // Nothing is asked for here. The prompt waits for the moment the
         // user does something a reminder would be for.
+        // A reminder carries no buttons: iOS shows them only when it is
+        // held down, so a tap opens the app on the question instead.
         iOS: DarwinInitializationSettings(
           requestAlertPermission: false,
           requestBadgePermission: false,
           requestSoundPermission: false,
-          notificationCategories: [_askCategory],
         ),
       ),
-      onDidReceiveNotificationResponse: (response) =>
-          onTap(response.payload, response.actionId),
-      onDidReceiveBackgroundNotificationResponse: onBackgroundAction,
+      onDidReceiveNotificationResponse: (response) => onTap(response.payload),
     );
 
     await _android?.createNotificationChannel(_blocksChannel);
@@ -184,12 +165,11 @@ class LocalNotificationQueue implements NotificationQueue {
   }
 
   @override
-  Future<({String? payload, String? actionId})?> launchResponse() async {
+  Future<String?> launchPayload() async {
     final details = await _plugin.getNotificationAppLaunchDetails();
     if (details == null || !details.didNotificationLaunchApp) return null;
 
-    final response = details.notificationResponse;
-    return (payload: response?.payload, actionId: response?.actionId);
+    return details.notificationResponse?.payload;
   }
 
   @override
@@ -246,6 +226,7 @@ class LocalNotificationQueue implements NotificationQueue {
           priority: notification.daily
               ? Priority.defaultPriority
               : Priority.high,
+          timeoutAfter: notification.timeout?.inMilliseconds,
         ),
         iOS: DarwinNotificationDetails(
           // Shown while the app is open too: the app is not the only place
@@ -257,10 +238,23 @@ class LocalNotificationQueue implements NotificationQueue {
           interruptionLevel: notification.timeSensitive
               ? InterruptionLevel.timeSensitive
               : InterruptionLevel.active,
-          categoryIdentifier: notification.asks ? askCategory : null,
+          threadIdentifier: notification.thread,
         ),
       ),
     );
+  }
+
+  @override
+  Future<List<DeliveredNotification>> delivered() async {
+    final active = await _plugin.getActiveNotifications();
+    return [
+      for (final notification in active)
+        if (notification.id != null)
+          DeliveredNotification(
+            id: notification.id!,
+            payload: notification.payload,
+          ),
+    ];
   }
 
   @override

@@ -1200,13 +1200,17 @@ describe('the day', () => {
       await begin('Escrever');
 
       later(35);
-      expect((await task('Escrever')).overtimeMinutes).toBe(5);
+      const late = await task('Escrever');
+      expect(late.overtimeMinutes).toBe(5);
+      // What the Lock Screen counts up from: the end it ran past.
+      expect(hhmm(late.overtimeFrom!)).toBe('10:30');
 
       const [more] = tasks(
         await post(`/tasks/${running.id}/extend`, { minutes: 10 }).expect(201),
       );
       expect(hhmm(more.endTime)).toBe('10:45');
       expect(more.overtimeMinutes).toBeUndefined();
+      expect(more.overtimeFrom).toBeUndefined();
     });
 
     it('closes a late task at the end of the working day, as done there', async () => {

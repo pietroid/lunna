@@ -21,7 +21,11 @@ void main() {
     overtimeMinutes: over,
   );
 
-  Future<void> pump(WidgetTester tester, TimelineEvent card) async {
+  Future<void> pump(
+    WidgetTester tester,
+    TimelineEvent card, {
+    List<String>? taps,
+  }) async {
     await withClock(Clock.fixed(now), () async {
       await tester.pumpWidget(
         MaterialApp(
@@ -36,9 +40,9 @@ void main() {
                 width: 360,
                 child: EventTile(
                   card: card,
-                  onPauseToggled: () {},
-                  onAdjusted: (_) {},
-                  onDone: () {},
+                  onPauseToggled: () => taps?.add('pause'),
+                  onAdjusted: (minutes) => taps?.add('adjust $minutes'),
+                  onDone: () => taps?.add('done'),
                 ),
               ),
             ),
@@ -64,19 +68,42 @@ void main() {
     expect(onTime.isLate, isFalse);
   });
 
-  testWidgets('says "atrasado" on Agora while it runs past its end', (
-    tester,
-  ) async {
-    await pump(tester, report(over: 5));
+  testWidgets('late, says how late in place of the bar, and asks to close '
+      'it: +10 on the left, Terminei on the right', (tester) async {
+    final taps = <String>[];
+    await pump(tester, report(over: 5), taps: taps);
 
-    expect(find.text('atrasado 5 min'), findsOneWidget);
+    expect(find.text('Atraso no término · 5 minutos'), findsOneWidget);
+    expect(find.byType(NowProgress), findsNothing);
+    // Pause and −10 are left out: a late block is only closed.
+    expect(find.text('−10'), findsNothing);
+
+    final more = find.text('+10 min');
+    final done = find.text('Terminei');
+    expect(more, findsOneWidget);
+    expect(done, findsOneWidget);
+    expect(tester.getCenter(more).dx, lessThan(tester.getCenter(done).dx));
+
+    await tester.tap(more);
+    await tester.tap(done);
+    expect(taps, ['adjust 10', 'done']);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('says nothing while it is on time', (tester) async {
+  testWidgets('says one minute in the singular', (tester) async {
+    await pump(tester, report(over: 1));
+
+    expect(find.text('Atraso no término · 1 minuto'), findsOneWidget);
+  });
+
+  testWidgets('on time, keeps the bar and says nothing of a delay', (
+    tester,
+  ) async {
     await pump(tester, report());
 
-    expect(find.textContaining('atrasado'), findsNothing);
+    expect(find.byType(NowProgress), findsOneWidget);
+    expect(find.textContaining('Atraso'), findsNothing);
+    expect(find.text('Terminei'), findsNothing);
   });
 
   testWidgets('steps ten minutes either way', (tester) async {

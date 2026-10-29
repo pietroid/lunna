@@ -86,6 +86,12 @@ export class TimelineCard {
    */
   overtimeMinutes?: number;
   /**
+   * ISO 8601, the planned end it ran past, from the moment it did (a
+   * minute before [overtimeMinutes] appears): what the Lock Screen's
+   * activity counts up from.
+   */
+  overtimeFrom?: string;
+  /**
    * ISO 8601, the hour a task not yet begun is anchored at, when it is.
    *
    * An anchored task keeps that hour and the queue flows around it; it only

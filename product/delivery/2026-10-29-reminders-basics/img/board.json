@@ -1,0 +1,110 @@
+{
+ "title": "Reminders, back to the basics (#65)",
+ "screens": [
+  {
+   "png": "mockup-1.png",
+   "title": "1 · Agora, late",
+   "why": "A late block says how late; finishing is the obvious answer, on the right like the ✓.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 335,
+     "y": 258,
+     "label": "Atraso no término",
+     "text": "Replaces the progress bar and the 'atrasado' tag: dangerInk line with the warning mark, minutes from overtimeMinutes."
+    },
+    {
+     "id": "B",
+     "x": 246,
+     "y": 333,
+     "label": "Terminei, right",
+     "text": "The one accent button, white label on the red (onAccent), filling the row on the right, where the running card's ✓ sits. Posts /done."
+    },
+    {
+     "id": "C",
+     "x": 87,
+     "y": 333,
+     "label": "+10 min, left",
+     "text": "Outlined, on the left (extend). Pause and −10 are left out while late."
+    }
+   ]
+  },
+  {
+   "png": "mockup-2.png",
+   "title": "2 · Tap on an end reminder",
+   "why": "The tap opens the question in the app, with the reminder's answers.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 300,
+     "y": 640,
+     "label": "Head",
+     "text": "Hours (ink3), the card's title, the question. Late: 'Atraso no término · N minutos' in red instead."
+    },
+    {
+     "id": "B",
+     "x": 300,
+     "y": 723,
+     "label": "Mais 10 min · Terminei",
+     "text": "One row: outlined /extend on the left, accent /done on the right, as on the card."
+    },
+    {
+     "id": "C",
+     "x": 300,
+     "y": 811,
+     "label": "Falar com a Lunna",
+     "text": "Tertiary, the crescent (AppIcons.agent): opens the agent about the card."
+    }
+   ]
+  },
+  {
+   "png": "mockup-3.png",
+   "title": "3 · A task's start",
+   "why": "The card's own words for beginning or waiting.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 300,
+     "y": 723,
+     "label": "Esperar 10 min · Começar",
+     "text": "Outlined /snooze on the left, ▶ /tasks/:id/start on the right. Dismissing answers nothing."
+    }
+   ]
+  },
+  {
+   "png": "mockup-4.png",
+   "title": "4 · A fixed block's start",
+   "why": "It starts anyway; +10 moves it, so it says adiar.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 300,
+     "y": 723,
+     "label": "Adiar 10 min · Confirmar",
+     "text": "Outlined /events/:id/delay on the left, ▶ /events/:id/start on the right."
+    }
+   ]
+  },
+  {
+   "png": "mockup-5.png",
+   "title": "5 · One reminder on the Lock Screen",
+   "why": "Title is the card, body one plain question; the old ones are cleared.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 195,
+     "y": 640,
+     "label": "Card · question",
+     "text": "'Fazendo a Lunna' — 'Terminando agora, certo?'. No buttons: a tap opens the sheet."
+    },
+    {
+     "id": "B",
+     "x": 195,
+     "y": 790,
+     "label": "Only the newest",
+     "text": "Delivered reminders older than the newest are removed whenever the app runs; one re-ask per edge, not two."
+    }
+   ]
+  }
+ ]
+}

@@ -341,11 +341,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get controlDone => 'Concluir';
 
   @override
-  String timelineLate(int minutes) {
-    return 'atrasado $minutes min';
-  }
-
-  @override
   String nowPausedLeft(String left) {
     return 'Pausado · faltam $left';
   }
@@ -543,13 +538,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationChannelDailyDescription => 'Um recado no começo e no fim do dia.';
 
   @override
-  String get remindersNextBlock => 'Próximo bloco';
-
-  @override
   String get remindersAskTitle => 'Quer lembretes?';
 
   @override
-  String get remindersAskBody => 'Pergunto quando um bloco começa e quando termina, e você responde ali mesmo. E mando um bom dia e um boa noite.';
+  String get remindersAskBody => 'Pergunto quando um bloco começa e quando termina, e um toque no lembrete abre a pergunta aqui. E mando um bom dia e um boa noite.';
 
   @override
   String get remindersEnable => 'Ativar lembretes';
@@ -558,12 +550,32 @@ class AppLocalizationsPt extends AppLocalizations {
   String get commonNotNow => 'Agora não';
 
   @override
-  String remindersStartTitle(String title) {
-    return 'Começar “$title”?';
+  String get reminderStarting => 'Começando agora, certo?';
+
+  @override
+  String get reminderEnding => 'Terminando agora, certo?';
+
+  @override
+  String reminderHours(String start, String end) {
+    return '$start–$end';
   }
 
   @override
-  String get remindersStartBody => 'Enquanto você não confirmar, ele vai para mais tarde a cada minuto, e o resto do dia anda junto.';
+  String lateEnd(int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes minutos',
+      one: '1 minuto',
+    );
+    return 'Atraso no término · $_temp0';
+  }
+
+  @override
+  String get reminderFinished => 'Terminei';
+
+  @override
+  String get reminderDelay10 => 'Adiar 10 min';
 
   @override
   String get routinesHelp => 'Toque num horário para criar. Segure um bloco para mudar a hora.';

@@ -388,18 +388,25 @@ function eventCard(day: Day, event: CalendarEvent): TimelineCard | undefined {
   };
 }
 
-/** `overtimeMinutes`, to spread into a card: nothing while it is on time. */
+/**
+ * `overtimeMinutes` and the end it ran past, to spread into a card: nothing
+ * while it is on time.
+ */
 function overtimeOf(
   day: Day,
   event: CalendarEvent | undefined,
-): { overtimeMinutes?: number } {
+): { overtimeMinutes?: number; overtimeFrom?: string } {
   if (event?.overtimeFrom === undefined || event.closedAt !== undefined) {
     return {};
   }
   const minutes = Math.floor(
     (day.now.getTime() - Date.parse(event.overtimeFrom)) / 60_000,
   );
-  return minutes > 0 ? { overtimeMinutes: minutes } : {};
+  // The end it ran past goes from the first second, so what counts up
+  // from it never sees the end the clock is dragging.
+  return minutes > 0
+    ? { overtimeMinutes: minutes, overtimeFrom: event.overtimeFrom }
+    : { overtimeFrom: event.overtimeFrom };
 }
 
 /**
