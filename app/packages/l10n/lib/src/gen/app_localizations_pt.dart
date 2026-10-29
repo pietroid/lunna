@@ -923,10 +923,19 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentOtherTimeDraft => 'Prefiro outro horário: ';
 
   @override
-  String get agentSuggestionAccept => 'Encaixar';
+  String get agentSuggestionDismiss => 'Agora não';
 
   @override
-  String get agentSuggestionDismiss => 'Agora não';
+  String get agentSuggestionTalk => 'Conversar';
+
+  @override
+  String get agentSuggestionGoal => 'Objetivo';
+
+  @override
+  String get agentSuggestionDelivery => 'Entrega';
+
+  @override
+  String get agentSuggestionRoutine => 'Rotina';
 
   @override
   String get agentFailure => 'Algo deu errado. Tente de novo.';

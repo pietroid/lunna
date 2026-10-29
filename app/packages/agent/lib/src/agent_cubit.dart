@@ -123,8 +123,10 @@ class AgentCubit extends Cubit<AgentState> {
   ///
   /// A conversation still being answered is left as it is: the answer is on
   /// its way to it. [about] is the page it is opened from, which every turn
-  /// of it is about.
-  void open({AgentSubject? about}) {
+  /// of it is about. [opening] is the agent's first message, when the
+  /// conversation starts from a suggestion: it is there, surface and all,
+  /// before anything is said.
+  void open({AgentSubject? about, AgentReply? opening}) {
     _about = about;
     if (!state.busy && state.entries.isNotEmpty) {
       emit(
@@ -138,6 +140,14 @@ class AgentCubit extends Cubit<AgentState> {
             ...state.past,
           ],
           pastStatus: state.pastStatus,
+        ),
+      );
+    }
+    if (opening != null && !state.busy) {
+      emit(
+        state.copyWith(
+          entries: [ReplyEntry(opening)],
+          startedAt: _now(),
         ),
       );
     }

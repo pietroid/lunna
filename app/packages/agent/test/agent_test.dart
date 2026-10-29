@@ -475,7 +475,13 @@ void main() {
 
   group('SuggestionCubit', () {
     late AgentRepository repository;
-    const suggestion = AgentSuggestion(text: 'Quer encaixar?', plan: _plan);
+    final suggestion = AgentSuggestion(
+      id: 's1',
+      text: 'Quer encaixar?',
+      focus: SuggestionFocus.delivery,
+      validUntil: DateTime(2026, 10, 16, 9),
+      action: const SuggestionAction(label: 'Encaixar', plan: _plan),
+    );
 
     setUp(() {
       repository = _MockRepository();

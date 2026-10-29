@@ -354,9 +354,7 @@ void main() {
       expect(field(tester).focusNode!.hasFocus, isTrue);
     });
 
-    testWidgets('stop puts the words in the field, selected; send sends', (
-      tester,
-    ) async {
+    testWidgets('stopping sends what was said, at once', (tester) async {
       final (recognizer, agent, _) = await pumpSheet(tester);
 
       await tester.tap(find.bySemanticsLabel('Falar'));
@@ -370,28 +368,16 @@ void main() {
       await tester.pump();
       expect(find.textContaining('O que tenho amanhã?'), findsOneWidget);
 
-      await tester.tap(find.bySemanticsLabel('Parar e revisar'));
-      await tester.pump();
-      await tester.pump();
-
-      // Stopping never sends.
-      expect(agent.state.entries, isEmpty);
-      expect(recognizer.stops, 1);
-      final controller = field(tester).controller!;
-      expect(controller.text, 'O que tenho amanhã?');
-      expect(
-        controller.selection,
-        const TextSelection(baseOffset: 0, extentOffset: 19),
-      );
-      expect(field(tester).focusNode!.hasFocus, isTrue);
-
+      // The recorder's stop is the composer's send: one tap, not two.
       await tester.tap(find.bySemanticsLabel('Enviar'));
       await tester.pumpAndSettle();
 
+      expect(recognizer.stops, 1);
       final said = agent.state.entries.first as UserEntry;
       expect(said.text, 'O que tenho amanhã?');
       expect(said.voice, isNotNull);
       expect(find.text('por voz · 0:00'), findsOneWidget);
+      expect(field(tester).controller!.text, isEmpty);
     });
 
     testWidgets('held, letting go sends what was said', (tester) async {

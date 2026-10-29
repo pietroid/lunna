@@ -1,0 +1,138 @@
+{
+ "title": "Suggestion: the goal first, a chat to answer it",
+ "screens": [
+  {
+   "png": "/tmp/claude/67/design/lunna/1.png",
+   "title": "1 · No goal yet",
+   "why": "The first suggestion is always about the goal; with nothing to make, it only talks.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 215,
+     "y": 176,
+     "label": "What it's about",
+     "text": "Objetivo · Entrega · Rotina, with the tab's icon: the order the agent looks in."
+    },
+    {
+     "id": "B",
+     "x": 196,
+     "y": 340,
+     "label": "No action",
+     "text": "A goal needs a number only she can say: Conversar is the one accented button."
+    },
+    {
+     "id": "C",
+     "x": 362,
+     "y": 210,
+     "label": "✕ = Agora não",
+     "text": "Puts suggestions away for 24 h, as today; frees the button row."
+    }
+   ]
+  },
+  {
+   "png": "/tmp/claude/67/design/lunna/2.png",
+   "title": "2 · Goal behind, a delivery reaches it",
+   "why": "Goal → deliveries → routine: the delivery that adds most to the goal, with an action.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 133,
+     "y": 338,
+     "label": "Optional action",
+     "text": "Its verb and hour; makes the plan without a chat, Desfazer takes it back."
+    },
+    {
+     "id": "B",
+     "x": 306,
+     "y": 338,
+     "label": "Conversar",
+     "text": "Always there (and a tap on the card): the chat opens on this suggestion."
+    },
+    {
+     "id": "C",
+     "x": 227,
+     "y": 176,
+     "label": "Valid until 14:00",
+     "text": "Kept by the server until its hour or until goals, deliveries or routines change."
+    }
+   ]
+  },
+  {
+   "png": "/tmp/claude/67/design/lunna/3.png",
+   "title": "3 · The chat, full screen",
+   "why": "Opens on the agent's first message, surface and all; keyboard down to read it.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 30,
+     "y": 30,
+     "label": "A page, not a sheet",
+     "text": "Comes up from the dock; the caret takes it back down. Everywhere, not only here."
+    },
+    {
+     "id": "B",
+     "x": 30,
+     "y": 185,
+     "label": "First message",
+     "text": "The suggestion as the agent's opening (opening), already in the conversation."
+    },
+    {
+     "id": "C",
+     "x": 196,
+     "y": 263,
+     "label": "GenUI already there",
+     "text": "The delivery's peek, the plan and quick answers, as a turn draws them."
+    },
+    {
+     "id": "D",
+     "x": 378,
+     "y": 668,
+     "label": "Same plan",
+     "text": "Aplicar here = the card's action; Ajustar answers it."
+    }
+   ]
+  },
+  {
+   "png": "/tmp/claude/67/design/lunna/4.png",
+   "title": "4 · Answering by voice",
+   "why": "The words appear as heard; the round on the right sends.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 347,
+     "y": 805,
+     "label": "Stop = send (↑)",
+     "text": "Was ■ 'Parar e revisar'. One tap ends and sends."
+    },
+    {
+     "id": "B",
+     "x": 42,
+     "y": 778,
+     "label": "Trash",
+     "text": "The only way not to send: drop it."
+    }
+   ]
+  },
+  {
+   "png": "/tmp/claude/67/design/lunna/5.png",
+   "title": "5 · Sent at once",
+   "why": "No field to review: the agent answers right away, as it does today.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 62,
+     "y": 622,
+     "label": "Her message",
+     "text": "Sent as heard, the moment the recording stopped."
+    },
+    {
+     "id": "B",
+     "x": 266,
+     "y": 724,
+     "label": "por voz · 0:06",
+     "text": "Marked as spoken, as held-and-released already was."
+    }
+   ]
+  }
+ ]
+}

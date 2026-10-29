@@ -527,25 +527,94 @@ class AgentReply extends Equatable {
   List<Object?> get props => [text, steps, plan, options, blocks];
 }
 
-/// {@template agent_suggestion}
-/// A plan offered without being asked, and the sentence that offers it.
-/// {@endtemplate}
-class AgentSuggestion extends Equatable {
-  /// {@macro agent_suggestion}
-  const AgentSuggestion({required this.text, required this.plan});
+/// What a suggestion is about, in the order the agent looks: the goal
+/// first, then the deliveries that reach it, then the routine.
+enum SuggestionFocus {
+  goal,
+  delivery,
+  routine;
 
-  factory AgentSuggestion.fromJson(Map<String, dynamic> json) =>
-      AgentSuggestion(
-        text: json['text'] as String? ?? '',
+  static SuggestionFocus fromWire(String? value) => switch (value) {
+    'delivery' => delivery,
+    'routine' => routine,
+    _ => goal,
+  };
+}
+
+/// {@template suggestion_action}
+/// What a suggestion can do straight from its card, without a conversation.
+/// {@endtemplate}
+class SuggestionAction extends Equatable {
+  /// {@macro suggestion_action}
+  const SuggestionAction({required this.label, required this.plan});
+
+  factory SuggestionAction.fromJson(Map<String, dynamic> json) =>
+      SuggestionAction(
+        label: json['label'] as String? ?? '',
         plan: AgentPlan.fromJson(json['plan'] as Map<String, dynamic>),
       );
 
-  final String text;
+  /// The verb on the button ("Encaixar 2 h hoje").
+  final String label;
 
   final AgentPlan plan;
 
   @override
-  List<Object?> get props => [text, plan];
+  List<Object?> get props => [label, plan];
+}
+
+/// {@template agent_suggestion}
+/// The one thing the agent offers without being asked: a sentence about
+/// the goal, a delivery or the routine, an optional [action] made from the
+/// card, and the [opening] a conversation about it starts from.
+///
+/// It holds until [validUntil], or until what it was made from changes:
+/// the server keeps it, so opening the app does not make a new one.
+/// {@endtemplate}
+class AgentSuggestion extends Equatable {
+  /// {@macro agent_suggestion}
+  const AgentSuggestion({
+    required this.id,
+    required this.text,
+    required this.focus,
+    required this.validUntil,
+    this.action,
+    this.opening,
+  });
+
+  factory AgentSuggestion.fromJson(Map<String, dynamic> json) {
+    final action = json['action'] as Map<String, dynamic>?;
+    final opening = json['opening'] as Map<String, dynamic>?;
+    return AgentSuggestion(
+      id: json['id'] as String? ?? '',
+      text: json['text'] as String? ?? '',
+      focus: SuggestionFocus.fromWire(json['focus'] as String?),
+      validUntil: DateTime.parse(json['validUntil'] as String).toLocal(),
+      action: action == null ? null : SuggestionAction.fromJson(action),
+      opening: opening == null ? null : AgentReply.fromJson(opening),
+    );
+  }
+
+  final String id;
+
+  /// What the card says.
+  final String text;
+
+  final SuggestionFocus focus;
+
+  /// When the server makes another, unless something it read changes first.
+  final DateTime validUntil;
+
+  /// Made from the card; null when the suggestion is only something to talk
+  /// about.
+  final SuggestionAction? action;
+
+  /// The agent's first message in the conversation opened from the card,
+  /// with its surface (plan, choices, peeks); null opens on [text] alone.
+  final AgentReply? opening;
+
+  @override
+  List<Object?> get props => [id, text, focus, validUntil, action, opening];
 }
 
 /// Where a plan shown in the conversation stands.
