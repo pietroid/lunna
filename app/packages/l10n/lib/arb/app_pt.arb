@@ -1350,7 +1350,8 @@
       }
     }
   },
-  "shellPanelTab": "Painel",
+  "shellFeedTab": "Feed",
+  "shellPlanTab": "Plano",
   "panelTasks": "Tarefas",
   "overviewNow": "Agora",
   "overviewNext": "Em seguida",

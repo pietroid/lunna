@@ -18,8 +18,8 @@ import 'package:timeline/timeline.dart';
 /// {@template shell_page}
 /// The app's three destinations, and the button that writes something down.
 ///
-/// **Lunna** is the home ([OverviewPage]): the agent's offer, what runs now
-/// and what follows, the main delivery and the goal. **Painel** holds the
+/// **Feed** is the home ([OverviewPage]): the agent's offer, what runs now
+/// and what follows, the main delivery and the goal. **Plano** holds the
 /// three levels of what she manages ([PanelPage]): Tarefas, Entregas,
 /// Objetivos. **Menu** is the rest.
 ///
@@ -29,7 +29,7 @@ import 'package:timeline/timeline.dart';
 ///
 /// Every tab has the agent's bar at its foot ([AskDock]), in the same
 /// place, and the + beside it. The + writes down whatever is in front: on
-/// Painel's Entregas a delivery, on its Objetivos a goal, anywhere else
+/// Plano's Entregas a delivery, on its Objetivos a goal, anywhere else
 /// something on the timeline, where Tempo is looking; from Menu it brings
 /// Tarefas forward first, so the new block is on screen when the sheet
 /// closes.
@@ -46,10 +46,10 @@ class ShellPage extends StatefulWidget {
 }
 
 class _ShellPageState extends State<ShellPage> {
-  /// Lunna, the home.
+  /// Feed, the home.
   static const _overviewIndex = 0;
 
-  /// Painel: Tarefas, Entregas, Objetivos.
+  /// Plano: Tarefas, Entregas, Objetivos.
   static const _panelIndex = 1;
 
   /// Menu, where the working day's hours are set.
@@ -57,13 +57,13 @@ class _ShellPageState extends State<ShellPage> {
 
   int _index = _overviewIndex;
 
-  /// The level of Painel in front.
+  /// The level of Plano in front.
   PanelTab _panel = PanelTab.tasks;
 
   /// Where Tempo is looking, which is where the button writes.
   final _aim = TimelineAim();
 
-  /// Lista or Calendário, kept here so the Lunna tab can open the calendar.
+  /// Lista or Calendário, kept here so the Feed tab can open the calendar.
   final _mode = TimelineModeCubit();
 
   /// What Agora's "Mudar horário" does: brings Menu forward.
@@ -86,7 +86,7 @@ class _ShellPageState extends State<ShellPage> {
   /// The name the screen in front is reported under: they are one route, so
   /// the router never sees them change.
   String get _screenName => switch (_index) {
-    _overviewIndex => 'Lunna',
+    _overviewIndex => 'Feed',
     _menuIndex => 'Menu',
     _ => switch (_panel) {
       PanelTab.deliveries => 'Entregas',
@@ -112,7 +112,7 @@ class _ShellPageState extends State<ShellPage> {
 
   void _onSelected(int index) => _show(index);
 
-  /// A level of Painel, from its heading or from the Lunna tab.
+  /// A level of Plano, from its heading or from the Feed tab.
   void _openPanel(PanelTab tab) {
     if (tab == PanelTab.calendar) {
       _mode.choose(TimelineMode.calendar);
@@ -196,11 +196,11 @@ class _ShellPageState extends State<ShellPage> {
               items: [
                 AppBottomBarItem(
                   iconData: AppIcons.agent,
-                  label: l10n.appName(AppBrand.id),
+                  label: l10n.shellFeedTab,
                 ),
                 AppBottomBarItem(
                   iconData: AppIcons.panel,
-                  label: l10n.shellPanelTab,
+                  label: l10n.shellPlanTab,
                 ),
                 AppBottomBarItem(
                   iconData: AppIcons.menu,

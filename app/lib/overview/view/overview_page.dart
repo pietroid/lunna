@@ -11,18 +11,18 @@ import 'package:lunna/panel/panel.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template overview_page}
-/// The Lunna tab: what to do now, at a glance, and a way into each level
-/// of Painel.
+/// The Feed tab: what to do now, at a glance, and a way into each level
+/// of Plano.
 ///
 /// From the top: who you are and what time it is; the agent's one offer
 /// ([SuggestionCard]); **Agora**, the block being lived through with its
 /// own controls, and under it the one that follows; the **main delivery**,
 /// the one Entregas puts first; and the **goal** being measured. Each
-/// section's heading ends in the place in Painel it summarises (the day on
+/// section's heading ends in the place in Plano it summarises (the day on
 /// the calendar, Entregas, Objetivos), and each card opens what it is, as it
-/// does in Painel.
+/// does in Plano.
 ///
-/// Nothing here is a list. It is one of each, chosen the way Painel already
+/// Nothing here is a list. It is one of each, chosen the way Plano already
 /// orders them, so the screen stays the same size whatever the day holds.
 /// {@endtemplate}
 class OverviewPage extends StatelessWidget {
@@ -38,7 +38,7 @@ class OverviewPage extends StatelessWidget {
   /// The person's first name, for the greeting.
   final String? firstName;
 
-  /// Brings a tab of Painel forward. [PanelTab.calendar] opens Tarefas on
+  /// Brings a tab of Plano forward. [PanelTab.calendar] opens Tarefas on
   /// the calendar.
   final ValueChanged<PanelTab> onOpen;
 
@@ -175,7 +175,7 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// A section's name, and the way to the place in Painel it summarises.
+/// A section's name, and the way to the place in Plano it summarises.
 class _Heading extends StatelessWidget {
   const _Heading({
     required this.title,

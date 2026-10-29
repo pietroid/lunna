@@ -1739,7 +1739,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get shellPanelTab => 'Painel';
+  String get shellFeedTab => 'Feed';
+
+  @override
+  String get shellPlanTab => 'Plano';
 
   @override
   String get panelTasks => 'Tarefas';

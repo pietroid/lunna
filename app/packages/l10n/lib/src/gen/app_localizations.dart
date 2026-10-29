@@ -2717,11 +2717,17 @@ abstract class AppLocalizations {
   /// **'Conta desde {date}: uns {amount} por semana.'**
   String goalReadbackSince(String date, String amount);
 
-  /// No description provided for @shellPanelTab.
+  /// No description provided for @shellFeedTab.
   ///
   /// In pt, this message translates to:
-  /// **'Painel'**
-  String get shellPanelTab;
+  /// **'Feed'**
+  String get shellFeedTab;
+
+  /// No description provided for @shellPlanTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Plano'**
+  String get shellPlanTab;
 
   /// No description provided for @panelTasks.
   ///

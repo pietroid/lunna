@@ -5,13 +5,13 @@ import 'package:artifacts/artifacts.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/home/home.dart';
 
-/// A level of Painel, and the one way in that is not a level: Tarefas
+/// A level of Plano, and the one way in that is not a level: Tarefas
 /// opened on the calendar.
 enum PanelTab {
   /// Tarefas, the day, drawn whichever way it was left.
   tasks,
 
-  /// Tarefas on the calendar: what the Lunna tab's "Ver o dia" opens.
+  /// Tarefas on the calendar: what the Feed tab's "Ver o dia" opens.
   calendar,
 
   /// Entregas.
@@ -20,7 +20,7 @@ enum PanelTab {
   /// Objetivos.
   goals;
 
-  /// The word at the top of Painel that is lit for it.
+  /// The word at the top of Plano that is lit for it.
   int get level => switch (this) {
     PanelTab.tasks || PanelTab.calendar => 0,
     PanelTab.deliveries => 1,
@@ -33,7 +33,7 @@ enum PanelTab {
 }
 
 /// {@template panel_page}
-/// Painel: the three levels of what she manages, one over the other, in one
+/// Plano: the three levels of what she manages, one over the other, in one
 /// tab. Tarefas is the day (Lista or Calendário), Entregas the deliveries,
 /// Objetivos the goals: the screens they always were, under one heading.
 ///

@@ -16,13 +16,13 @@ import 'package:lunna/overview/overview.dart';
 import 'package:lunna/panel/panel.dart';
 import 'package:timeline/timeline.dart';
 
-/// The Lunna home and Painel, drawn on the demo's fakes, one scene per `?s=`:
+/// The Feed and Plano, drawn on the demo's fakes, one scene per `?s=`:
 ///
-/// 1. Lunna, the top: the offer, Agora and what follows.
-/// 2. Lunna, scrolled to the end: the main delivery and the goal.
-/// 3. Painel › Tarefas on the calendar, as "Ver o dia" opens it.
-/// 4. Painel › Entregas.
-/// 5. Painel › Objetivos.
+/// 1. Feed, the top: the offer, Agora and what follows.
+/// 2. Feed, scrolled to the end: the main delivery and the goal.
+/// 3. Plano › Tarefas on the calendar, as "Ver o dia" opens it.
+/// 4. Plano › Entregas.
+/// 5. Plano › Objetivos.
 ///
 /// Nothing ships from here.
 void main() {
@@ -227,9 +227,9 @@ class _ShellState extends State<_Shell> {
         items: [
           AppBottomBarItem(
             iconData: AppIcons.agent,
-            label: l10n.appName(AppBrand.id),
+            label: l10n.shellFeedTab,
           ),
-          AppBottomBarItem(iconData: AppIcons.panel, label: l10n.shellPanelTab),
+          AppBottomBarItem(iconData: AppIcons.panel, label: l10n.shellPlanTab),
           AppBottomBarItem(iconData: AppIcons.menu, label: l10n.shellMenuTab),
         ],
       ),
