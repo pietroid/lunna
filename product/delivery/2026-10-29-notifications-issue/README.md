@@ -19,7 +19,33 @@ The design was reviewed on the issue, and the person replied:
 > mean, just adding a local notificaiton and showing the buttons without
 > user tapping it?
 
+The revised plan was reviewed on the issue, and the person replied:
+
+> you dont need to have a new start block actually. Also, we will not use
+> APNs. What are the next steps?
+
 ## 2. The plan
+
+### The answer to the second review: next steps
+
+Both follow-ups are dropped: no Live Activity for the next block
+(decision 7) and no push-to-start, so no APNs key, no token table and
+no sender on the server (decision 3). What is left is this fix, and
+nothing in it needed either of them. The next steps are:
+
+1. **Approve this plan** on the issue; the queue then builds it (Phase 3),
+   in the order of the Approach below: the simulator run first, then the
+   queue version (H2) and the Live Activity retry (H4), then the specs.
+2. **The build's PR** carries the simulator shots (the reminder as a
+   banner and expanded, the activity after a cold launch) and the log
+   lines for H4, in `img/`.
+3. **On your iPhone**, with a `lunnaDev` build from that PR: the checklist
+   under "How it will be proved", the part no simulator can show.
+
+Without APNs, the one thing that stays as it is (H3): Confirmar on a
+start reminder with the app closed begins the block, and its Live
+Activity appears the next time the app is opened, not at once. iOS lets
+only an app in front, or a push, start one.
 
 ### The answer to the review: buttons without opening the reminder
 
@@ -35,12 +61,9 @@ Activity**, and Lunna already has one: while a block runs it shows ⏯ −10
 +10 Terminei on the Lock Screen, so the *end* of a running block is
 already answered without expanding anything, once the activity appears
 (H3, H4). The *start* of a block not yet begun has no such surface today:
-the activity is drawn only while a block runs. Showing the **next** block
-as a Live Activity with **Começar** and **+10 min** would give the start
-reminder visible buttons too. That changes what is on the Lock Screen (a
-waiting state for the activity, its copy, when it appears and goes) and
-needs a mockup, so it is proposed as the next issue rather than folded
-into this fix (decision 7).
+the activity is drawn only while a block runs, and it stays so (decision
+7, after the second review): the start reminder keeps its buttons in
+the expanded notification.
 
 **On Android, yes**: a notification's buttons are drawn on the
 notification itself in the shade and on the heads-up banner. Lunna's
@@ -91,10 +114,10 @@ turns up four likely causes:
    `failed` and `disabled` are sent to PostHog as
    `live_activity_not_started { reason }`, which carries no text the person
    wrote.
-4. **H3 is explained, not solved, in this delivery** (see decision 3). After
-   a reminder's Confirmar, the activity appears the next time the app is
-   opened (step 3 makes sure it does). The spec says so in
-   `live-activity.md`.
+4. **H3 is explained, not solved** (decision 3: no APNs). After a
+   reminder's Confirmar with the app closed, the activity appears the
+   next time the app is opened (step 3 makes sure it does). The spec says
+   so in `live-activity.md`.
 5. **H1 goes into the spec and the issue's answer.** The buttons are there
    once the reminder is expanded; buttons with no touch are the Live
    Activity's (the answer above). No copy changes. The simulator run of
@@ -107,9 +130,9 @@ turns up four likely causes:
 ### References
 
 - [Apple, `Activity.request(attributes:content:pushType:)`](https://developer.apple.com/documentation/activitykit/activity/request(attributes:content:pushtype:)): an app starts a Live Activity only while it is in front (H3).
-- [Apple, `Activity.pushToStartToken`](https://developer.apple.com/documentation/activitykit/activity/pushtostarttoken): starting one from a server push needs iOS 17.2+ and an APNs token (decision 3). [Apple forums #835188](https://developer.apple.com/forums/thread/835188) reports the token as nil on iOS 26.5.
+- [Apple, `Activity.pushToStartToken`](https://developer.apple.com/documentation/activitykit/activity/pushtostarttoken): the only other way to start one is a server push, which needs APNs (decision 3: not used).
 - [Apple, Declaring your actionable notification types](https://developer.apple.com/documentation/usernotifications/declaring-your-actionable-notification-types): actions show only for a notification carrying a registered category id, and only in the notification's expanded interface (H1, H2, the answer above).
-- [Apple, Displaying live data with Live Activities](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities): a Live Activity's buttons (App Intents, iOS 17) are drawn on the Lock Screen with no touch first, which is why it is the surface for decision 7.
+- [Apple, Displaying live data with Live Activities](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities): a Live Activity's buttons (App Intents, iOS 17) are drawn on the Lock Screen with no touch first (the answer above).
 - [Android, Notifications overview](https://developer.android.com/develop/ui/views/notifications): up to three action buttons on the notification itself (the Android half of the answer, #56).
 - `flutter_local_notifications` 22.3.1, `FlutterLocalNotificationsPlugin.m` (read in the pub cache): categories are set in `initialize` before permissions, and an action without `foreground` always goes to the background engine.
 
@@ -119,11 +142,11 @@ turns up four likely causes:
 |---|---|---|---|
 | 1 | Fix before measuring, or measure first | **Measure on the simulator first**, then fix only what it confirms (H2 and H4 are fixed either way, since the code shows them) | Two deliveries shipped on reading alone; this one should not |
 | 2 | How old reminders get their buttons | **A queue version that re-queues everything once** | Ids stay stable, so a sync after an answer still only removes what it should; adding the category to the id would churn every id for nothing |
-| 3 | Starting the activity from the lock screen (Confirmar with the app closed) | **Not in this delivery**: a follow-up RFC on ActivityKit push-to-start | It needs an APNs `.p8` key (a new secret and the person's Apple account), a table of push-to-start tokens, and a sender on the server, and on iOS 26.5 it is reported broken. That is a research question, not a fix |
+| 3 | Starting the activity from the lock screen (Confirmar with the app closed) | **No, and no follow-up**: the activity appears when the app is next opened | **Decided on the issue: no APNs.** Push-to-start is the only other way iOS allows, and it needs APNs |
 | 4 | Making Confirmar a `foreground` action so the app can start the activity | **No** | It would open the app, which is what #54 removed |
 | 5 | Reminder copy telling people to hold for the buttons | **No** | That is how iOS works everywhere. It goes in the spec and on the issue |
 | 6 | Android | **Unchanged**: no buttons until #56 | Out of scope; asked below in case the person meant Android. Android is where buttons on the notification itself are possible |
-| 7 | Buttons on the Lock Screen without expanding (the review's question) | **Not possible on an iOS notification; proposed as a follow-up issue: the next block as a Live Activity** with Começar and +10 min | The only iOS surface with buttons on sight is the Live Activity. A waiting state is new UI (mockup track), and it inherits H3: it can only be started while the app is in front, so it would be put up when the app is last opened before the block's hour (an activity lives 8 h). It goes after this fix, which makes the activity reliable first |
+| 7 | Buttons on the Lock Screen without expanding (the first review's question) | **Not possible on an iOS notification, and no new start block**: the Live Activity stays the running block's only | **Decided on the issue**: a Live Activity for the next block is not wanted. A start reminder's buttons are in its expanded view |
 
 ### How it will be proved
 
@@ -146,11 +169,13 @@ turns up four likely causes:
 ### Decided unattended
 
 - Plan track, not a mockup: nothing on screen changes.
-- Decision 3 (push-to-start goes to a follow-up RFC), decision 1 (measure
-  first) and the queue-version approach of decision 2.
-- After the review: the plan stays a plan (the answer is iOS's rule, not
-  a screen), and decision 7: the next block as a Live Activity is a
-  follow-up issue with its own mockup, not part of this fix.
+- Decision 1 (measure first) and the queue-version approach of
+  decision 2.
+- After the first review: the plan stays a plan (the answer is iOS's
+  rule, not a screen).
+- After the second review: decisions 3 and 7 now record the person's
+  answers, the two follow-ups are dropped from the Build brief, and the
+  rest of the plan is unchanged. Still a plan: nothing to draw.
 
 ### Open questions
 
@@ -158,13 +183,6 @@ turns up four likely causes:
 - "Not the right information": only the missing buttons, or is the title
   or text wrong too? If so, which reminder (start of a task, end of a
   block, the 15-minute heads-up)?
-- Should push-to-start (the activity appearing right after Confirmar, with
-  the app closed) be researched next? It needs an APNs key from the Apple
-  account.
-- Should the next block be shown as a Live Activity with Começar and
-  +10 min (decision 7), so the start reminder has buttons on the Lock
-  Screen without expanding? If yes, it is opened as its own `/create`
-  issue (mockup track) after this one.
 
 ## Build brief
 
@@ -185,9 +203,10 @@ turns up four likely causes:
 - **Specs**: H1 and H3 in `live-activity.md` and `notifications.md`; the
   queue version in `notifications.md`.
 - **Answer on the issue** (with the build): iOS draws a notification's
-  buttons only expanded; a Live Activity is where buttons show with no
-  touch; Android shows them on the notification (#56).
-- **After the build**: open the push-to-start RFC as an issue, and the
-  next-block Live Activity (decision 7) as a `/create` issue, if the
-  person says yes to the questions above.
+  buttons only expanded; the running block's Live Activity is where
+  buttons show with no touch; after Confirmar with the app closed, the
+  activity appears on the next opening (no APNs); Android shows buttons
+  on the notification (#56).
+- **Not built, decided on the issue**: no push-to-start, no APNs key or
+  token table, no Live Activity for the next block. No follow-up issues.
 - **Cost**: the queue measures the run and writes the figures in the PR.
