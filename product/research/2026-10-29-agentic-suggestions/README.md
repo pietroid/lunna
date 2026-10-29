@@ -1,11 +1,11 @@
 # A suggestion is a turn the agent asks itself, about Work Quality
 
-2026-10-29 · RFC · draft, review 1 answered (phases 1–3; deep-research pass not run) · server agent, Feed, notifications, agent package · [issue #69](https://github.com/pietroid/lunna/issues/69), after [#67](https://github.com/pietroid/lunna/issues/67)
+2026-10-29 · RFC · draft, review 2 answered (phases 1–3; deep-research pass not run) · server agent, Feed, notifications, agent package · [issue #69](https://github.com/pietroid/lunna/issues/69), after [#67](https://github.com/pietroid/lunna/issues/67)
 
 ## Code picks the topic; the model writes the turn and its hour
 
 > [!IMPORTANT]
-> A suggestion should be an ordinary agent turn the server asks on the person's behalf, about the **first Work Quality level** that isn't met yet (goal → deliveries that reach it → tasks → time → routine → pace). The model writes the words, the plan, a **preview drawn with the real widgets**, and **when the next one is due** (3–24 h after the answer). A new person starts on a **welcome that never expires**. At that hour a timer per person writes the next turn and the phone says so. Nothing polls.
+> A suggestion should be an ordinary agent turn the server asks on the person's behalf, about the **first Work Quality level** that isn't met yet (goal → deliveries that reach it → tasks → time → routine → pace). The model writes the words, the plan, a **preview drawn with the real widgets**, and **when the next one is due** (3–24 h after the answer). Work Quality is **internal**, never drawn. A new person starts on a **welcome that never expires**. At that hour a timer per person writes the next turn and the phone says so. Nothing polls.
 
 ```mermaid
 flowchart TD
@@ -19,11 +19,11 @@ flowchart TD
 
 - **Do:** Work Quality, the self-asked turn, a `preview` block, the welcome, `next_at`, routines in the agent's registry.
 - **Not needed:** an hourly scan, a separate onboarding wizard, a second model path, a push server.
-- **You decide:** the goal model for the golden scenario (money only today), and whether a one-shot timer per person may touch Postgres.
+- **You decide:** the goal model for the golden scenario (money only today).
 
 > **Q:** Consider an onboarding user or a user that never had a suggestion. It already should have a placeholder with infinite expiration that welcomes the user and walks through their journey from the beginning, using the structure you did there.
 >
-> **A:** Yes. Anyone with no suggestion yet gets the welcome. It is fixed copy, costs no model call and never expires. It lists the seven Work Quality levels and opens the first one with the amounts to choose from ([slide](#a-new-person-starts-on-a-welcome-that-never-expires)). It goes when it is answered, and from then on the turns take over.
+> **A:** Yes. Anyone with no suggestion yet gets the welcome. It is fixed copy, costs no model call and never expires. It asks the first level's question, with the amounts to choose from ([slide](#a-new-person-starts-on-a-welcome-that-never-expires)). It goes when it is answered, and from then on the turns take over.
 
 > **Q:** I'm in doubt about this model, because the user should see a suggestion based on post-suggestion editing. Each suggestion adds a follow-up time (3 h or 24 h, the model's evaluation); with none, or past the expiration, the new one arrives at that time; the first expires after 1 day; schedule notifications when the user rejects or finishes the chat; a backend queue checks expired suggestions hour by hour; a daily notification reminds that Lunna sent a message. Propose a simplified and consumption-friendly job.
 >
@@ -87,7 +87,8 @@ flowchart TD
   O --> P[7 on pace]
 ```
 
-- The **first level not met is the topic**. It is also the metric you asked for: "Work Quality 4/7" is how defined a person's plan is, and it can go to PostHog as a number (`work_quality`), never as text.
+- The **first level not met is the topic**. It is also the metric you asked for: "Work Quality 4/7" is how defined a person's plan is, and it goes to PostHog as a number (`work_quality`), never as text.
+- **It is internal.** No screen draws it, names it or counts it: the person only sees the question it picked ([welcome](#a-new-person-starts-on-a-welcome-that-never-expires)).
 - Topics run from top to bottom: no goal outranks everything, as #67 asks.
 - Level 6 comes after the work on purpose, since a routine is built around what the month holds. Swap it with level 4 if you'd rather the routine come earlier.
 
@@ -147,12 +148,16 @@ Left: the plan card today, with three lines of text. Right: the same plan drawn 
 
 ## A new person starts on a welcome that never expires
 
-![The welcome: the seven levels, the first one lit, and four amounts](img/welcome.png)
+![The welcome: a greeting, the first question and four amounts](img/welcome.png)
 
 - Whoever has **never had a suggestion** gets this one ([code](code/suggestions_rfc_preview.dart), `?s=4`). It is fixed copy in `app_pt.arb`, so it costs no model call, and it never expires (`next_at` is null).
-- It walks the journey from the start: the seven Work Quality levels as the plan for the month, the first one lit, and its question with amounts to tap.
+- It says what Lunna does in one line and asks the first level's question, with amounts to tap. **It shows no levels**: Work Quality stays the server's.
 - An amount opens the chat with it as the first message ("Quero faturar R$ 5.000 este mês"), which is an ordinary turn. From the answer on, `next_at` runs as for everyone else.
 - ✕ puts it away for 24 h. After that comes the first generated suggestion, which is about level 1 anyway.
+
+> **Q:** I don't think we should be explicit on the image about Work Quality. This is much more an internal metric and should have no component.
+>
+> **A:** Agreed, and changed. The welcome now greets, says Lunna builds the month one step at a time, and asks how much to bill, with the amounts; the seven levels are gone from it (picture above). Work Quality only picks the topic and goes to PostHog as a number; no screen draws, names or scores it.
 
 ## The next suggestion comes when the last one said
 
@@ -234,18 +239,22 @@ flowchart TD
 | Who picks the topic | code (Work Quality) / model | **code** | the model would get the timing wrong a third of the time |
 | Who writes it | stored agent turn / template | **stored turn**, template if it fails | templates can't converse or preview |
 | When the next one comes | model's follow-up, 3–24 h, default 24 h / fixed 1 day | **follow-up** | a fixed day ignores a step under way |
-| How it's made on time | timer per person / hourly scan / on read only | **timer per person**, on read as catch-up | the scan adds 7× the Neon hours; on read makes the tap wait |
-| The rule "no timer touches Postgres" (AGENTS.md) | allow one-shots at an hour someone was told to look / keep it | **allow one-shots**, never periodic | keeping it means on read only |
-| A new person | fixed welcome, never expires / a model turn | **fixed welcome** | a model call for the same words every time |
+| How it's made on time | timer per person / hourly scan / on read only | **timer per person**, on read as catch-up (**decided**, review 2) | the scan adds 7× the Neon hours; on read makes the tap wait |
+| The rule "no timer touches Postgres" (AGENTS.md) | allow one-shots at an hour someone was told to look / keep it | **allow one-shots**, never periodic (**decided** with the timer) | keeping it means on read only |
+| A new person | fixed welcome, never expires / a model turn | **fixed welcome**, no levels drawn (review 2) | a model call for the same words every time |
 | Previews | real widgets in a `preview` block / richer plan lines | **real widgets** | plain lines hide the shortfall |
 | Routines for the agent | `new_routine`, `edit_routine`, `set_work_day` / none | **add them** | level 6 is reached by hand only |
 | Goal model for the golden scenario | money only / open `count` goals / free-text goal | **ask you** (below) | — |
 
 ## Decided unattended
 
-- **Phase 4 (deep research) not run**: the review didn't ask for it. The Horvitz paper didn't extract, so its three regions (act, ask, wait) come from course summaries and are unverified.
+- **Phase 4 (deep research) not run**: neither review asked for it. The Horvitz paper didn't extract, so its three regions (act, ask, wait) come from course summaries and are unverified.
 - **Level order:** routine after work, not before. It's one line in `ladder.mjs` to swap.
 - **The hourly scan became a timer per person**, because it does the same job for 7× fewer Neon hours. The scan stays in the table if you'd rather keep it.
+
+> **Q:** Yes, the fewer hours seem OK to me.
+>
+> **A:** Then the timer per person is decided ([slide](#one-timer-per-person-not-an-hourly-scan)). The hourly scan stays only as the row it was measured against, and the read catches up a timer lost to a restart.
 - **"Finalizes the conversation"** is read as "the last message in it": there's no end event in a chat, so each message moves `next_at`.
 - **The first suggestion's 24 h** is the default for all of them when the model gives no follow-up. The welcome alone never expires.
 - **Conversar became Ajustar**, so the card has two buttons under the preview. Ajustar already opens the chat on the plan card.

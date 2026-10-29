@@ -161,30 +161,14 @@ class _App extends StatelessWidget {
     ),
   ]);
 
+  /// No Work Quality on screen: the levels are the server's, and the
+  /// welcome only asks the first one's question.
   Widget _welcome() => _wash([
     Text(
       'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de '
-      'cada vez:',
+      'cada vez. Começando pelo objetivo:',
       style: AppTypography.body,
     ),
-    const SizedBox(height: AppSpacing.s3),
-    for (final (n, step) in [
-      (1, 'um objetivo para o mês'),
-      (2, 'entregas que chegam nele'),
-      (3, 'dia, valor e tempo de cada uma'),
-      (4, 'a próxima tarefa'),
-      (5, 'o trabalho cabendo nas horas livres'),
-      (6, 'a sua rotina'),
-      (7, 'o ritmo em dia'),
-    ])
-      Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.s1),
-        child: Text(
-          '$n · $step',
-          style: (n == 1 ? AppTypography.labelStrong : AppTypography.body)
-              .copyWith(color: n == 1 ? AppColors.accent : AppColors.ink2),
-        ),
-      ),
     const SizedBox(height: AppSpacing.s3),
     Text('Quanto você quer faturar este mês?', style: AppTypography.body),
     const SizedBox(height: AppSpacing.s2),
