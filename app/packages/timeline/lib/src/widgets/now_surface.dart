@@ -281,7 +281,8 @@ class _NowProgressState extends State<NowProgress> {
 ///
 /// The bar would be full and say nothing; the line says how late the end
 /// is, and the answer most likely is the one button in the accent: it is
-/// over. Ten minutes more sits beside it, outlined. Pause and −10 are left
+/// over, on the right where the running card's ✓ is. Ten minutes more sits
+/// on its left, outlined. Pause and −10 are left
 /// out: a late block is not being measured any more, only closed.
 /// {@endtemplate}
 class NowLate extends StatelessWidget {
@@ -327,8 +328,19 @@ class NowLate extends StatelessWidget {
         ),
         if (onDone != null) ...[
           const SizedBox(height: AppSpacing.s3),
+          // +10 on the left, Terminei on the right: where the card's ✓
+          // sits in its controls while it runs.
           Row(
             children: [
+              if (onAdjusted != null) ...[
+                AppButton(
+                  text: context.l10n.notificationActionLater,
+                  variant: AppButtonVariant.secondary,
+                  color: AppColors.ink,
+                  onPressed: () => onAdjusted!(stepMinutes),
+                ),
+                const SizedBox(width: AppSpacing.s2),
+              ],
               Expanded(
                 child: AppButton.icon(
                   text: context.l10n.reminderFinished,
@@ -341,15 +353,6 @@ class NowLate extends StatelessWidget {
                   onPressed: onDone,
                 ),
               ),
-              if (onAdjusted != null) ...[
-                const SizedBox(width: AppSpacing.s2),
-                AppButton(
-                  text: context.l10n.notificationActionLater,
-                  variant: AppButtonVariant.secondary,
-                  color: AppColors.ink,
-                  onPressed: () => onAdjusted!(stepMinutes),
-                ),
-              ],
             ],
           ),
         ],

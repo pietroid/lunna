@@ -38,8 +38,9 @@ class ReminderAsk {
 /// iOS draws a notification's buttons only when it is held down, so the
 /// reminder carries none: a tap opens Tempo with this sheet over it, and it
 /// asks the same thing the reminder said, with the answers the card's own
-/// buttons give. One accent answer (yes, it started; yes, it is over), one
-/// outlined (ten minutes), and the agent, quiet, at the foot. Dismissing it
+/// buttons give. Ten minutes outlined on the left, the answer in the accent
+/// on the right (yes, it started; yes, it is over), and the agent, quiet,
+/// at the foot. Dismissing it
 /// answers nothing.
 /// {@endtemplate}
 class ReminderSheet extends StatelessWidget {
@@ -122,23 +123,33 @@ class ReminderSheet extends StatelessWidget {
                   style: AppTypography.body.copyWith(color: AppColors.ink2),
                 ),
               const SizedBox(height: AppSpacing.s5),
-              AppButton.icon(
-                text: confirm,
-                icon: AppIcon(
-                  iconData: start ? AppIcons.play : AppIcons.check,
-                  size: AppSpacing.s4,
-                  color: AppColors.onAccent,
-                ),
-                expand: true,
-                onPressed: () => answer(NotificationAction.confirm),
-              ),
-              const SizedBox(height: AppSpacing.s2),
-              AppButton(
-                text: later,
-                variant: AppButtonVariant.secondary,
-                color: AppColors.ink,
-                expand: true,
-                onPressed: () => answer(NotificationAction.later),
+              // Ten minutes on the left, the answer on the right, as on
+              // the running card, whose ✓ closes its controls.
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: later,
+                      variant: AppButtonVariant.secondary,
+                      color: AppColors.ink,
+                      expand: true,
+                      onPressed: () => answer(NotificationAction.later),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.s2),
+                  Expanded(
+                    child: AppButton.icon(
+                      text: confirm,
+                      icon: AppIcon(
+                        iconData: start ? AppIcons.play : AppIcons.check,
+                        size: AppSpacing.s4,
+                        color: AppColors.onAccent,
+                      ),
+                      expand: true,
+                      onPressed: () => answer(NotificationAction.confirm),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.s2),
               AppButton.icon(

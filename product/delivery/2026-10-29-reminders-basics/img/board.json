@@ -4,28 +4,28 @@
   {
    "png": "mockup-1.png",
    "title": "1 · Agora, late",
-   "why": "A late block says how late, and finishing is the obvious answer.",
+   "why": "A late block says how late; finishing is the obvious answer, on the right like the ✓.",
    "pins": [
     {
      "id": "A",
      "x": 335,
-     "y": 255,
+     "y": 258,
      "label": "Atraso no término",
      "text": "Replaces the progress bar and the 'atrasado' tag: dangerInk line with the warning mark, minutes from overtimeMinutes."
     },
     {
      "id": "B",
-     "x": 140,
+     "x": 246,
      "y": 333,
-     "label": "Terminei",
-     "text": "The card's one accent button, full width (✓ AppIcons.check). Posts /done."
+     "label": "Terminei, right",
+     "text": "The one accent button, white label on the red (onAccent), filling the row on the right, where the running card's ✓ sits. Posts /done."
     },
     {
      "id": "C",
-     "x": 300,
+     "x": 87,
      "y": 333,
-     "label": "+10 min",
-     "text": "Outlined beside it (extend). Pause and −10 are left out while late."
+     "label": "+10 min, left",
+     "text": "Outlined, on the left (extend). Pause and −10 are left out while late."
     }
    ]
   },
@@ -45,8 +45,8 @@
      "id": "B",
      "x": 300,
      "y": 723,
-     "label": "Terminei · Mais 10 min",
-     "text": "Accent /done, outlined /extend: the routes the iOS buttons posted."
+     "label": "Mais 10 min · Terminei",
+     "text": "One row: outlined /extend on the left, accent /done on the right, as on the card."
     },
     {
      "id": "C",
@@ -66,8 +66,8 @@
      "id": "A",
      "x": 300,
      "y": 723,
-     "label": "Começar · Esperar 10 min",
-     "text": "▶ /tasks/:id/start, outlined /snooze. Dismissing answers nothing."
+     "label": "Esperar 10 min · Começar",
+     "text": "Outlined /snooze on the left, ▶ /tasks/:id/start on the right. Dismissing answers nothing."
     }
    ]
   },
@@ -79,9 +79,9 @@
     {
      "id": "A",
      "x": 300,
-     "y": 767,
-     "label": "Confirmar · Adiar 10 min",
-     "text": "▶ /events/:id/start, outlined /events/:id/delay."
+     "y": 723,
+     "label": "Adiar 10 min · Confirmar",
+     "text": "Outlined /events/:id/delay on the left, ▶ /events/:id/start on the right."
     }
    ]
   },

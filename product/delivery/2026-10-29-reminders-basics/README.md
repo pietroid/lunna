@@ -23,6 +23,13 @@ Issue #65, *Fix notifications interaction*:
 Worked unattended by the queue; the decisions it took alone are listed
 under *Decided unattended*, and the person approves on the issue.
 
+The first board was reviewed on the issue, and the person replied:
+
+> ok great, but adjust the look of it, the contrast is awful, it is black above red. Also invert 10 min at the left and terminei at the right to maintain consistency with the done button
+
+Second round: the labels on red are white now, and +10 sits on the left
+with the answer on the right, on the card and in the sheet.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -36,21 +43,24 @@ Lunna). Each screen alone: [1](img/mockup-1.png) ·
 
 1. **Agora, late.** A begun block past its end with no answer loses its
    progress bar (it would be full and say nothing). In its place, in the
-   danger ink: **"Atraso no término · 12 minutos"**, and under it the one
-   accent button of the card, **Terminei** (✓), with **+10 min** outlined
-   beside it. Pause and −10 are left out while it is late: a late block is
+   danger ink: **"Atraso no término · 12 minutos"**, and under it one row:
+   **+10 min** outlined on the left, and the one accent button of the card,
+   **Terminei** (✓, white on the red), filling the rest on the right, where
+   the running card's ✓ closes its controls. Pause and −10 are left out while it is late: a late block is
    not being measured any more, only closed. Replaces the "atrasado N min"
    tag.
 2. **A tap on a reminder opens a sheet** over Tempo, the same question the
    reminder asked, read again from the day (so "12 minutos" is what it is
    now, not what it was when the reminder fired): the hours, the title, the
-   question, and three answers. A task's end: **Terminei** ·
-   **Mais 10 min** · **Falar com a Lunna**.
-3. **A task's start**: **Começar** (▶) · **Esperar 10 min** · Falar com a
+   question, and three answers: the ten minutes and the answer side by
+   side (ten minutes left, answer right, as on the card), the agent under
+   them. A task's end: **Mais 10 min** | **Terminei** · **Falar com a
+   Lunna**.
+3. **A task's start**: **Esperar 10 min** | **Começar** (▶) · Falar com a
    Lunna.
-4. **A fixed block's start** (it starts anyway): **Confirmar** (▶) ·
-   **Adiar 10 min** · Falar com a Lunna. A fixed block's end is the task's
-   end (Terminei · Mais 10 min).
+4. **A fixed block's start** (it starts anyway): **Adiar 10 min** |
+   **Confirmar** (▶) · Falar com a Lunna. A fixed block's end is the
+   task's end (Mais 10 min | Terminei).
 5. **The Lock Screen keeps one reminder**, titled with the card and asking
    one plain thing. Every new reminder takes the place of the one before.
 
@@ -59,12 +69,12 @@ Lunna). Each screen alone: [1](img/mockup-1.png) ·
 They are the routes the reminders' buttons post today
 (`NotificationAnswer.of`), unchanged; only where they are drawn moves.
 
-| Case | Accent | Outlined | Quiet |
+| Case | Outlined (left) | Accent (right) | Quiet (below) |
 |---|---|---|---|
-| task, start | Começar → `/tasks/:id/start` | Esperar 10 min → `/tasks/:id/snooze` | Falar com a Lunna |
-| task, end | Terminei → `/tasks/:id/done` | Mais 10 min → `/tasks/:id/extend` | Falar com a Lunna |
-| fixed block, start | Confirmar → `/events/:id/start` | Adiar 10 min → `/events/:id/delay` | Falar com a Lunna |
-| fixed block, end | Terminei → `/events/:id/done` | Mais 10 min → `/events/:id/extend` | Falar com a Lunna |
+| task, start | Esperar 10 min → `/tasks/:id/snooze` | Começar → `/tasks/:id/start` | Falar com a Lunna |
+| task, end | Mais 10 min → `/tasks/:id/extend` | Terminei → `/tasks/:id/done` | Falar com a Lunna |
+| fixed block, start | Adiar 10 min → `/events/:id/delay` | Confirmar → `/events/:id/start` | Falar com a Lunna |
+| fixed block, end | Mais 10 min → `/events/:id/extend` | Terminei → `/events/:id/done` | Falar com a Lunna |
 
 Falar com a Lunna opens the agent's sheet about the card, as the button
 does today. Dismissing the sheet answers nothing.
@@ -95,12 +105,12 @@ they are about.
 | Pin | Decision | Why |
 |---|---|---|
 | 1A | Late: the line "Atraso no término · N minutos" in `dangerInk` with the warning mark, where the bar was | the issue's words; the bar at 100 % says nothing |
-| 1B | **Terminei** is the card's only accent button, full width; **+10 min** outlined beside it | "a more evident button"; ending is the likely answer to a late block |
-| 1C | Pause, −10 and the "atrasado" tag go while late | one way to read the state, two answers |
+| 1B | **Terminei** is the card's only accent button, on the right, filling the row, its label and ✓ white (`onAccent`) | "a more evident button"; the right is where the running card's ✓ is (the review); white on red reads, black did not |
+| 1C | **+10 min** outlined on the **left**; pause, −10 and the "atrasado" tag go while late | the review: ten minutes left, the answer right; one way to read the state, two answers |
 | 2A | The sheet's head: hours (ink3), the title, the question | the title is what the reminder was about; the hours say which one |
-| 2B | Accent ✓ **Terminei**, outlined **Mais 10 min**, tertiary **Falar com a Lunna** with the crescent | the same three answers the reminder's buttons had, ranked |
-| 3A | A task's start: ▶ **Começar** · **Esperar 10 min** | the card's own words (`controlStart`, `controlWait10`) |
-| 4A | A fixed block's start: ▶ **Confirmar** · **Adiar 10 min** | +10 on a fixed start moves it (`delay`), so it says *adiar* |
+| 2B | One row: outlined **Mais 10 min** left, accent ✓ **Terminei** right; tertiary **Falar com a Lunna** with the crescent under it | the same three answers the reminder's buttons had, ranked, and in the card's order |
+| 3A | A task's start: **Esperar 10 min** \| ▶ **Começar** | the card's own words (`controlStart`, `controlWait10`) |
+| 4A | A fixed block's start: **Adiar 10 min** \| ▶ **Confirmar** | +10 on a fixed start moves it (`delay`), so it says *adiar* |
 | 5A | Title = the card's title; body = one question | the issue's example: "Café — terminando agora, certo?" |
 | 5B | One reminder of the app on the Lock Screen at a time | the issue's 2: the day is a timeline, the old ones are stale |
 
@@ -135,6 +145,19 @@ No new icon: ✓ (`AppIcons.check`), ▶ (`AppIcons.play`), ⚠
   extension and `live_activity.dart` stay in the tree, unused, behind one
   constant (`kLiveActivity = false`), so turning it back on is one line.
   `product/spec/live-activity.md` says so.
+- **The contrast is fixed in `AppButton`, for every button.** The black
+  on red came from `AppButton._onColor`, which drew a filled button's
+  label in `AppColors.ink` whenever the fill was dark: on Lunna that ink
+  is near black, so every red primary button in Lunna had a black label
+  (its icon, passed in as `onAccent`, was already white). Now the accent's
+  label is `onAccent` (white on Lunna's red, black on Focus's lime, as
+  before) and any other fill picks black or white by its luminance. Focus
+  looks the same; on Lunna every red button gets a white label, not only
+  these. The late card keeps its tint.
+- **The sheet follows the card's order too.** The reply named the card's
+  buttons; the sheet's two answers were stacked, so they are now one row,
+  ten minutes left and the answer right, with the agent under them, so the
+  answer sits on the same side wherever it is asked.
 - **Wording**: "Atraso no término · 12 minutos" with the app's middle dot
   rather than the issue's hyphen; the late button says **Terminei**, the
   word the Live Activity already used, rather than "Concluir".
@@ -161,8 +184,12 @@ them):**
 - `app/lib/notifications/view/reminder_sheet.dart`: `ReminderAsk`,
   `ReminderSheet` (+ `ReminderSheet.show`), real.
 - `app/packages/timeline/lib/src/widgets/now_surface.dart`: `NowLate`,
-  real; `event_tile.dart` draws it in place of the tag and `NowProgress`
-  while `card.isLate`.
+  real (+10 left, Terminei right); `event_tile.dart` draws it in place of
+  the tag and `NowProgress` while `card.isLate`.
+- `app/packages/app_ui/lib/src/widgets/app_button.dart`: `_onColor` gives
+  the accent `onAccent` and other fills black or white by luminance (the
+  review's contrast). Its tests pass under both brands; the build adds one
+  that a Lunna accent button's label is white.
 - `app/lib/demo/data/demo_repositories.dart`, `app/lib/demo/view/demo_app.dart`:
   a `late` option on the demo's day (the running task that many minutes
   past its end).
@@ -197,9 +224,11 @@ them):**
 - Live Activity off (`kLiveActivity = false`): `RemindersListener` stops
   syncing it, and ends any running one at launch.
 - `EventTile`: the late branch (done); its tests: no progress bar and a
-  Terminei button while `overtimeMinutes > 0`.
+  Terminei button while `overtimeMinutes > 0`, +10 before it. The old test
+  `says "atrasado" on Agora while it runs past its end` fails since the
+  design removed the tag: rewrite it for "Atraso no término".
 - Tests: `ReminderSheet` (the four cases' labels and the answer each
-  returns, the late line), `RemindersListener` (tap → sheet → the route),
+  returns, later on the left of confirm, the late line), `RemindersListener` (tap → sheet → the route),
   the queue (no category, clearing), under both brands.
 
 **Docs:** `product/spec/notifications.md` (the sheet, the copy, clearing,
