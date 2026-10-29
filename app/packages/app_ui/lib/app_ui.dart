@@ -30,5 +30,6 @@ export 'src/widgets/app_skeleton.dart';
 export 'src/widgets/app_tag.dart';
 export 'src/widgets/app_text_editor.dart';
 export 'src/widgets/app_text_field.dart';
+export 'src/widgets/app_title_tabs.dart';
 export 'src/widgets/app_wheel_picker.dart';
 export 'src/widgets/live_text_controller.dart';

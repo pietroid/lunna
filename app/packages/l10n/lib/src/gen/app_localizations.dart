@@ -2728,6 +2728,90 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Conta desde {date}: uns {amount} por semana.'**
   String goalReadbackSince(String date, String amount);
+
+  /// No description provided for @shellFeedTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Feed'**
+  String get shellFeedTab;
+
+  /// No description provided for @shellPlanTab.
+  ///
+  /// In pt, this message translates to:
+  /// **'Plano'**
+  String get shellPlanTab;
+
+  /// No description provided for @planTasks.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefas'**
+  String get planTasks;
+
+  /// No description provided for @feedNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Agora'**
+  String get feedNow;
+
+  /// No description provided for @feedNext.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em seguida'**
+  String get feedNext;
+
+  /// No description provided for @feedBreak.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada em andamento'**
+  String get feedBreak;
+
+  /// No description provided for @feedSeeDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver o dia'**
+  String get feedSeeDay;
+
+  /// No description provided for @feedMainDelivery.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entrega principal'**
+  String get feedMainDelivery;
+
+  /// No description provided for @feedNoDelivery.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhuma entrega em andamento'**
+  String get feedNoDelivery;
+
+  /// No description provided for @feedSeeDeliveries.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entregas'**
+  String get feedSeeDeliveries;
+
+  /// No description provided for @feedMainGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivo'**
+  String get feedMainGoal;
+
+  /// No description provided for @feedNoGoal.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nenhum objetivo agora'**
+  String get feedNoGoal;
+
+  /// No description provided for @feedSeeGoals.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivos'**
+  String get feedSeeGoals;
+
+  /// No description provided for @demoSuggestionRenata.
+  ///
+  /// In pt, this message translates to:
+  /// **'O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?'**
+  String get demoSuggestionRenata;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

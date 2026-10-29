@@ -1353,5 +1353,19 @@
         "type": "String"
       }
     }
-  }
+  },
+  "shellFeedTab": "Feed",
+  "shellPlanTab": "Plano",
+  "planTasks": "Tarefas",
+  "feedNow": "Agora",
+  "feedNext": "Em seguida",
+  "feedBreak": "Nada em andamento",
+  "feedSeeDay": "Ver o dia",
+  "feedMainDelivery": "Entrega principal",
+  "feedNoDelivery": "Nenhuma entrega em andamento",
+  "feedSeeDeliveries": "Entregas",
+  "feedMainGoal": "Objetivo",
+  "feedNoGoal": "Nenhum objetivo agora",
+  "feedSeeGoals": "Objetivos",
+  "demoSuggestionRenata": "O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?"
 }

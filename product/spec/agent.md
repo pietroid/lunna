@@ -193,9 +193,11 @@ lands. Only a sheet covers it.
 
 | Screen | The round button | The conversation is about |
 |--------|------------------|---------------------------|
-| Tempo | + writes on the day in sight | the day in sight |
-| Entregas | + Nova entrega | the day in sight |
-| Menu | + writes on Tempo's day, bringing Tempo forward | the day in sight |
+| Feed | + writes on the day in sight, staying on the home | the day in sight |
+| Plano › Tarefas | + writes on the day in sight | the day in sight |
+| Plano › Entregas | + Nova entrega | the day in sight |
+| Plano › Objetivos | + Novo objetivo | the day in sight |
+| Menu | + writes on Tempo's day, bringing Tarefas forward | the day in sight |
 | Rotina | + Nova rotina, at the next whole hour of the working day | nothing more |
 | Feitas | + writes a task into Para depois | nothing more |
 | Todas as entregas | + Nova entrega | nothing more |
@@ -204,7 +206,8 @@ lands. Only a sheet covers it.
 
 Tapping the bar opens the sheet empty, on the field, keyboard up: no
 welcome and no suggested questions.
-The suggestion is drawn above the list, and "Agora não" rests it for 24
+The suggestion is drawn at the top of the Feed tab (asked for again each
+time the tab comes forward and when a new day begins), and "Agora não" rests it for 24
 hours on the device. Applying replaces the day
 (`TimelineReplaced(undoable:)`); the cards it changed are drawn like any
 others. **Desfazer** (`UndoChip`) sits on the Lista/Calendário row while

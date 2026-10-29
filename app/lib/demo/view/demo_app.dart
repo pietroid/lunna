@@ -9,7 +9,8 @@ import 'package:l10n/l10n.dart';
 import 'package:lunna/demo/data/demo_agent.dart';
 import 'package:lunna/demo/data/demo_artifacts.dart';
 import 'package:lunna/demo/data/demo_repositories.dart';
-import 'package:lunna/home/home.dart';
+import 'package:lunna/feed/feed.dart';
+import 'package:lunna/tempo/tempo.dart';
 import 'package:timeline/timeline.dart';
 
 /// What the demo is showing: the three things the landing page is about.
