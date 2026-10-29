@@ -12,7 +12,8 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 [agent-full-surface](./2026-10-21-agent-full-surface/README.md) ·
 [multica-on-the-mac](./2026-10-21-multica-on-the-mac/README.md) ·
 [neon-compute](./2026-10-23-neon-compute/README.md) ·
-[notification-lifecycle](./2026-10-28-notification-lifecycle/README.md)
+[notification-lifecycle](./2026-10-28-notification-lifecycle/README.md) ·
+[agentic-suggestions](./2026-10-29-agentic-suggestions/README.md)
 
 ## Tools: what the model is given
 
@@ -81,7 +82,7 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 
 - **Read:** Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents).
 - **Here:** read the day, propose, reply: hard-coded, one round-trip fewer.
-- **Met in:** agent-reliability §4.2; multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent; the trial measures whether it does).
+- **Met in:** agent-reliability §4.2; agentic-suggestions (code climbs the readiness ladder, the model writes the turn); multica-on-the-mac, idea 3 (deeper: a gate in a prompt can be skipped; Multica's workflow leaves "move the card" to the agent; the trial measures whether it does).
 
 ### The model arranges, the server states facts
 > The model may lay out the answer; only the server writes the facts in it.
@@ -244,3 +245,26 @@ RFCs: [agent-reliability](./2026-10-16-agent-reliability/README.md) ·
 - **Read:** Apple, [Displaying live data with Live Activities](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities): `Text(timerInterval:)`, 4 KB, start in the foreground or from a `LiveActivityIntent`.
 - **Here:** the running block's activity is updated on start, pause, ±10, done and overtime; no push server and no minute updates.
 - **Met in:** notification-lifecycle, slide 7.
+
+### Code says when, the model says what
+> A proactive agent's hardest call is when to speak; keep it out of the model and keep it rare.
+
+- **Read:** Chen et al., [Need Help?](https://arxiv.org/html/2410.04596v2) (CHI 2025): +12–18% tasks done, but more frequent suggestions halved preference (90% → 47%); Lu et al., [Proactive Agent](https://arxiv.org/abs/2410.12361): 66% F1 on when to help, fine-tuned.
+- **Here:** one stored suggestion per person until `validUntil`; the topic is the first unmet rung of an arithmetic ladder; the model writes the turn.
+- **Met in:** agentic-suggestions, slides 4–6.
+
+### Preview the outcome, not the diff
+> Show what the thing will look like once made, drawn by the screen that will hold it.
+
+- **Read:** Chen et al., [Need Help?](https://arxiv.org/html/2410.04596v2): the *Suggest and Preview* condition; summary first, expand for detail.
+- **Here:** a `preview` block draws a new goal with `GoalCard`, its forecast filled in by the dry run, so a plan that falls short shows it.
+- **Met in:** agentic-suggestions, slide 8.
+
+## Freshness: what is generated ahead
+
+### Serve stale, refresh behind
+> Answer with what you have and regenerate in the background; never make a read wait on a slow producer.
+
+- **Read:** Nottingham, [RFC 5861](https://www.rfc-editor.org/rfc/rfc5861): `stale-while-revalidate`.
+- **Here:** `GET /agent/suggestion` returns the stored row at once and starts the agent turn behind it, only when someone is there to read it (no timer, Neon sleeps).
+- **Met in:** agentic-suggestions, slide 9.
