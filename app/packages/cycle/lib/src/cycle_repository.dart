@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
 import 'package:cycle/src/models.dart';
+import 'package:timeline/timeline.dart';
 
 /// {@template cycle_repository}
 /// Where the cycle, the weekend's rules and the dates off are read and
@@ -29,6 +30,10 @@ class CycleRepository {
         'length': cycle.length,
         'periodLength': cycle.periodLength,
         'periodKind': cycle.periodKind.name,
+        'nextStart': switch (cycle.nextStart) {
+          final day? => _day(day),
+          null => null,
+        },
       },
     ),
   );
@@ -53,16 +58,22 @@ class CycleRepository {
     ),
   );
 
-  /// Writes [day] down as a day off, named [title].
-  Future<Rhythm> addDayOff(DateTime day, String title) async => _read(
+  /// Writes [day] down as [kind]: a day off named [title], or a day of the
+  /// weekend put back to work.
+  Future<Rhythm> addDay(
+    DateTime day, {
+    DayKind kind = DayKind.off,
+    String title = '',
+  }) async => _read(
     await apiClient.post<Map<String, dynamic>>(
       '/rhythm/days-off',
-      data: {'day': _day(day), 'title': title},
+      data: {'day': _day(day), 'kind': kind.name, 'title': title},
     ),
   );
 
-  /// Takes the day off [id] away.
-  Future<Rhythm> removeDayOff(String id) async => _read(
+  /// Takes the date [id] away: the day is what the weekend and the cycle
+  /// make it again.
+  Future<Rhythm> removeDay(String id) async => _read(
     await apiClient.delete<Map<String, dynamic>>('/rhythm/days-off/$id'),
   );
 

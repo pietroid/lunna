@@ -111,17 +111,22 @@ class CycleTag extends StatelessWidget {
 /// there, so there is nothing to scale.
 ///
 /// A tap still writes something down on it, at the hour the day would
-/// open: the queue keeps off it, the person does not have to.
+/// open: the queue keeps off it, the person does not have to. A day of
+/// the weekend also offers **Trabalhar** ([onWork]), which puts that one
+/// day back to work and the queue back on it.
 /// {@endtemplate}
 class RestDayTile extends StatelessWidget {
   /// {@macro rest_day_tile}
-  const RestDayTile({required this.mark, this.onTap, super.key});
+  const RestDayTile({required this.mark, this.onTap, this.onWork, super.key});
 
   /// The day off.
   final DayMark mark;
 
   /// Writes something down on the day anyway.
   final VoidCallback? onTap;
+
+  /// Puts this day of the weekend back to work; offered only on one.
+  final VoidCallback? onWork;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +165,8 @@ class RestDayTile extends StatelessWidget {
                   style: AppTypography.label.copyWith(color: AppColors.ink2),
                 ),
               ),
+              if (onWork != null && mark.reason == DayReason.weekend)
+                AppButton.text(text: l10n.dayOffWorkHere, onPressed: onWork),
               if (onTap != null)
                 const AppIcon(
                   iconData: AppIcons.plus,

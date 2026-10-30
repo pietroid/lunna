@@ -1884,13 +1884,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dayOffTag => 'Folga';
 
   @override
-  String get dayOffWeekend => 'Fim de semana. Nada da fila vem para cá.';
+  String get dayOffWeekend => 'Fim de semana · folga';
 
   @override
-  String get dayOffPeriod => 'Menstruação. Nada da fila vem para cá.';
+  String get dayOffPeriod => 'Menstruação · folga';
 
   @override
-  String get dayOffDate => 'Folga marcada. Nada da fila vem para cá.';
+  String get dayOffDate => 'Folga marcada';
 
   @override
   String get menuCycle => 'Ciclo';
@@ -1975,7 +1975,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get cycleStarted => 'Menstruação começou hoje';
 
   @override
-  String get cycleHelp => 'As fases seguem a duração do ciclo a partir do início da última menstruação. Registre cada início para a previsão acertar.';
+  String get cycleHelp => 'A previsão conta a duração do ciclo a partir do início da última menstruação. Toque num dia da grade para corrigi-la.';
 
   @override
   String get daysOffTitle => 'Folgas';
@@ -1999,10 +1999,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get daysOffLightHelp => 'Num dia leve a fila põe só tarefas soltas, até esse limite. As tarefas de entregas esperam o próximo dia de trabalho, e o prazo delas conta só os dias de trabalho.';
 
   @override
-  String get daysOffDates => 'Folgas marcadas';
-
-  @override
-  String get daysOffFromCycle => 'Do ciclo';
+  String get daysOffDates => 'Próximas folgas';
 
   @override
   String cycleDate(DateTime date) {
@@ -2041,4 +2038,84 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get demoDayOffRepublic => 'Proclamação da República';
+
+  @override
+  String get dayLightShort => 'dia leve';
+
+  @override
+  String get dayOffShort => 'folga';
+
+  @override
+  String get dayOffWorkHere => 'Trabalhar';
+
+  @override
+  String get cycleTapHint => 'Toque num dia para corrigir';
+
+  @override
+  String get cycleNextStart => 'Próxima menstruação';
+
+  @override
+  String cycleNextPredicted(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString · prevista';
+  }
+
+  @override
+  String cycleNextCorrected(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString · corrigida por você';
+  }
+
+  @override
+  String cycleDayTitle(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('EEEE, d \'de\' MMMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString';
+  }
+
+  @override
+  String cycleDayPredicted(int day, String phase) {
+    return 'Previsto: dia $day do ciclo · $phase';
+  }
+
+  @override
+  String get cycleDayStarted => 'A menstruação começou neste dia';
+
+  @override
+  String get cycleDayWillStart => 'A menstruação vai começar neste dia';
+
+  @override
+  String get cycleDayHelp => 'A previsão dos dias seguintes passa a contar daqui, e os dias leves andam junto.';
+
+  @override
+  String get cycleBackToPrediction => 'Voltar à previsão';
+
+  @override
+  String get daysOffWeekendHelp => 'Todo fim de semana é folga. Para trabalhar num deles, toque em Trabalhar na lista abaixo.';
+
+  @override
+  String daysOffWeekendEntry(DateTime saturday, DateTime sunday) {
+    final intl.DateFormat saturdayDateFormat = intl.DateFormat('d/M', localeName);
+    final String saturdayString = saturdayDateFormat.format(saturday);
+    final intl.DateFormat sundayDateFormat = intl.DateFormat('d/M', localeName);
+    final String sundayString = sundayDateFormat.format(sunday);
+
+    return '$saturdayString e $sundayString';
+  }
+
+  @override
+  String get daysOffWork => 'Trabalhar';
+
+  @override
+  String daysOffWorking(String dates) {
+    return '$dates · você vai trabalhar';
+  }
+
+  @override
+  String get daysOffUndo => 'Desfazer';
 }

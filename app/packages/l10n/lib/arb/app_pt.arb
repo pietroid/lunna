@@ -1435,7 +1435,7 @@
   },
   "cycleDayPhase": "Dia {day} do ciclo · {phase}",
   "@cycleDayPhase": {
-    "description": "Tag under the date on the Feed: the day of the cycle and its phase.",
+    "description": "The one tag under the date on the Feed: the day of the cycle, then what the day is (dia leve, folga) or, on a working day, its phase.",
     "placeholders": {
       "day": {
         "type": "int"
@@ -1458,15 +1458,15 @@
   "@dayOffTag": {
     "description": "Tag on a day off."
   },
-  "dayOffWeekend": "Fim de semana. Nada da fila vem para cá.",
+  "dayOffWeekend": "Fim de semana · folga",
   "@dayOffWeekend": {
     "description": "Row drawn for a whole day off on the calendar, when it is a weekend."
   },
-  "dayOffPeriod": "Menstruação. Nada da fila vem para cá.",
+  "dayOffPeriod": "Menstruação · folga",
   "@dayOffPeriod": {
     "description": "Row drawn for a whole day off on the calendar, when the period makes it one."
   },
-  "dayOffDate": "Folga marcada. Nada da fila vem para cá.",
+  "dayOffDate": "Folga marcada",
   "@dayOffDate": {
     "description": "Row drawn for a whole day off on the calendar, written down in Folgas."
   },
@@ -1598,7 +1598,7 @@
   "@cycleStarted": {
     "description": "Primary button on the cycle page: starts a new cycle today."
   },
-  "cycleHelp": "As fases seguem a duração do ciclo a partir do início da última menstruação. Registre cada início para a previsão acertar.",
+  "cycleHelp": "A previsão conta a duração do ciclo a partir do início da última menstruação. Toque num dia da grade para corrigi-la.",
   "@cycleHelp": {
     "description": "Help under the cycle settings."
   },
@@ -1630,13 +1630,9 @@
   "@daysOffLightHelp": {
     "description": "Help under the light day budget."
   },
-  "daysOffDates": "Folgas marcadas",
+  "daysOffDates": "Próximas folgas",
   "@daysOffDates": {
     "description": "Heading over the dates off."
-  },
-  "daysOffFromCycle": "Do ciclo",
-  "@daysOffFromCycle": {
-    "description": "Tag on a day set by the cycle, in the dates list."
   },
   "cycleDate": "{date}",
   "@cycleDate": {
@@ -1697,5 +1693,123 @@
   "demoDayOffRepublic": "Proclamação da República",
   "@demoDayOffRepublic": {
     "description": "A holiday written down as a day off, in the demo."
+  },
+  "dayLightShort": "dia leve",
+  "@dayLightShort": {
+    "description": "What a light day is, after the cycle's day in the Feed's tag."
+  },
+  "dayOffShort": "folga",
+  "@dayOffShort": {
+    "description": "What a day off is, after the cycle's day in the Feed's tag."
+  },
+  "dayOffWorkHere": "Trabalhar",
+  "@dayOffWorkHere": {
+    "description": "Button on a weekend day off on the calendar: puts that one day back to work."
+  },
+  "cycleTapHint": "Toque num dia para corrigir",
+  "@cycleTapHint": {
+    "description": "Hint beside the 30-day grid's heading: a day can be tapped to correct the prediction."
+  },
+  "cycleNextStart": "Próxima menstruação",
+  "@cycleNextStart": {
+    "description": "Setting row on the cycle page: when the next period begins."
+  },
+  "cycleNextPredicted": "{date} · prevista",
+  "@cycleNextPredicted": {
+    "description": "Subtitle of the next period's row while it is the prediction.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "d 'de' MMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "cycleNextCorrected": "{date} · corrigida por você",
+  "@cycleNextCorrected": {
+    "description": "Subtitle of the next period's row once the person moved it.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "d 'de' MMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "cycleDayTitle": "{date}",
+  "@cycleDayTitle": {
+    "description": "Title of the sheet a day of the grid opens.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "EEEE, d 'de' MMMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "cycleDayPredicted": "Previsto: dia {day} do ciclo · {phase}",
+  "@cycleDayPredicted": {
+    "description": "What the prediction says of the tapped day.",
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "phase": {
+        "type": "String"
+      }
+    }
+  },
+  "cycleDayStarted": "A menstruação começou neste dia",
+  "@cycleDayStarted": {
+    "description": "Primary button on a past day or today: a period began there."
+  },
+  "cycleDayWillStart": "A menstruação vai começar neste dia",
+  "@cycleDayWillStart": {
+    "description": "Primary button on a day ahead: the next period begins there instead of when predicted."
+  },
+  "cycleDayHelp": "A previsão dos dias seguintes passa a contar daqui, e os dias leves andam junto.",
+  "@cycleDayHelp": {
+    "description": "Under the day sheet's button."
+  },
+  "cycleBackToPrediction": "Voltar à previsão",
+  "@cycleBackToPrediction": {
+    "description": "Tertiary button on the day sheet once the next period was moved by hand."
+  },
+  "daysOffWeekendHelp": "Todo fim de semana é folga. Para trabalhar num deles, toque em Trabalhar na lista abaixo.",
+  "@daysOffWeekendHelp": {
+    "description": "Under the weekend's controls in Folgas."
+  },
+  "daysOffWeekendEntry": "{saturday} e {sunday}",
+  "@daysOffWeekendEntry": {
+    "description": "The days of a weekend in Folgas' list, under \"Fim de semana\".",
+    "placeholders": {
+      "saturday": {
+        "type": "DateTime",
+        "format": "d/M",
+        "isCustomDateFormat": "true"
+      },
+      "sunday": {
+        "type": "DateTime",
+        "format": "d/M",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "daysOffWork": "Trabalhar",
+  "@daysOffWork": {
+    "description": "Button on a weekend in Folgas' list: puts both its days back to work."
+  },
+  "daysOffWorking": "{dates} · você vai trabalhar",
+  "@daysOffWorking": {
+    "description": "Subtitle of a weekend put back to work in Folgas' list.",
+    "placeholders": {
+      "dates": {
+        "type": "String"
+      }
+    }
+  },
+  "daysOffUndo": "Desfazer",
+  "@daysOffUndo": {
+    "description": "Button on a weekend put back to work: makes it a day off again."
   }
 }

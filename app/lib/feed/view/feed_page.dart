@@ -421,9 +421,11 @@ class _Quiet extends StatelessWidget {
   }
 }
 
-/// What today is beyond its hours, under the date: the day of the cycle
-/// and its phase, and whether the day is light or off. Nothing when the
-/// day is a plain working day with no cycle written down.
+/// What today is beyond its hours, under the date, as one tag: the day of
+/// the cycle and then what the day is ("Dia 2 do ciclo · dia leve"), or
+/// its phase on a working day ("Dia 9 do ciclo · Folicular"), in the
+/// phase's colours. Without a cycle, the day's own tag ("Folga"); on a
+/// plain working day with no cycle, nothing.
 class _TodayMarks extends StatelessWidget {
   const _TodayMarks({required this.mark});
 
@@ -431,23 +433,31 @@ class _TodayMarks extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final mark = this.mark;
     final day = mark?.cycleDay;
     final phase = mark?.phase;
-    if (mark == null || (!mark.restricted && phase == null)) {
+    final Widget tag;
+    if (mark != null && day != null && phase != null) {
+      tag = AppTag(
+        text: l10n.cycleDayPhase(day, switch (mark.kind) {
+          DayKind.light => l10n.dayLightShort,
+          DayKind.off => l10n.dayOffShort,
+          DayKind.work => phase.label(l10n),
+        }),
+        iconData: phase.icon,
+        fill: phase.fill,
+        ink: phase.ink,
+      );
+    } else if (mark != null && mark.restricted) {
+      tag = DayMarkTag(mark: mark);
+    } else {
       return const SizedBox.shrink();
     }
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.s2),
-      child: Wrap(
-        spacing: AppSpacing.s2,
-        runSpacing: AppSpacing.s1,
-        children: [
-          if (day != null && phase != null) CycleTag(day: day, phase: phase),
-          if (mark.restricted) DayMarkTag(mark: mark),
-        ],
-      ),
+      child: tag,
     );
   }
 }

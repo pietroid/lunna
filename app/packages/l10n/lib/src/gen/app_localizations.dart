@@ -2897,7 +2897,7 @@ abstract class AppLocalizations {
   /// **'Lútea'**
   String get cyclePhaseLuteal;
 
-  /// Tag under the date on the Feed: the day of the cycle and its phase.
+  /// The one tag under the date on the Feed: the day of the cycle, then what the day is (dia leve, folga) or, on a working day, its phase.
   ///
   /// In pt, this message translates to:
   /// **'Dia {day} do ciclo · {phase}'**
@@ -2918,19 +2918,19 @@ abstract class AppLocalizations {
   /// Row drawn for a whole day off on the calendar, when it is a weekend.
   ///
   /// In pt, this message translates to:
-  /// **'Fim de semana. Nada da fila vem para cá.'**
+  /// **'Fim de semana · folga'**
   String get dayOffWeekend;
 
   /// Row drawn for a whole day off on the calendar, when the period makes it one.
   ///
   /// In pt, this message translates to:
-  /// **'Menstruação. Nada da fila vem para cá.'**
+  /// **'Menstruação · folga'**
   String get dayOffPeriod;
 
   /// Row drawn for a whole day off on the calendar, written down in Folgas.
   ///
   /// In pt, this message translates to:
-  /// **'Folga marcada. Nada da fila vem para cá.'**
+  /// **'Folga marcada'**
   String get dayOffDate;
 
   /// Menu row opening the cycle page.
@@ -3074,7 +3074,7 @@ abstract class AppLocalizations {
   /// Help under the cycle settings.
   ///
   /// In pt, this message translates to:
-  /// **'As fases seguem a duração do ciclo a partir do início da última menstruação. Registre cada início para a previsão acertar.'**
+  /// **'A previsão conta a duração do ciclo a partir do início da última menstruação. Toque num dia da grade para corrigi-la.'**
   String get cycleHelp;
 
   /// Title of the days off page.
@@ -3122,14 +3122,8 @@ abstract class AppLocalizations {
   /// Heading over the dates off.
   ///
   /// In pt, this message translates to:
-  /// **'Folgas marcadas'**
+  /// **'Próximas folgas'**
   String get daysOffDates;
-
-  /// Tag on a day set by the cycle, in the dates list.
-  ///
-  /// In pt, this message translates to:
-  /// **'Do ciclo'**
-  String get daysOffFromCycle;
 
   /// A day on the cycle page: "28 de out.".
   ///
@@ -3172,6 +3166,114 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Proclamação da República'**
   String get demoDayOffRepublic;
+
+  /// What a light day is, after the cycle's day in the Feed's tag.
+  ///
+  /// In pt, this message translates to:
+  /// **'dia leve'**
+  String get dayLightShort;
+
+  /// What a day off is, after the cycle's day in the Feed's tag.
+  ///
+  /// In pt, this message translates to:
+  /// **'folga'**
+  String get dayOffShort;
+
+  /// Button on a weekend day off on the calendar: puts that one day back to work.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trabalhar'**
+  String get dayOffWorkHere;
+
+  /// Hint beside the 30-day grid's heading: a day can be tapped to correct the prediction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Toque num dia para corrigir'**
+  String get cycleTapHint;
+
+  /// Setting row on the cycle page: when the next period begins.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próxima menstruação'**
+  String get cycleNextStart;
+
+  /// Subtitle of the next period's row while it is the prediction.
+  ///
+  /// In pt, this message translates to:
+  /// **'{date} · prevista'**
+  String cycleNextPredicted(DateTime date);
+
+  /// Subtitle of the next period's row once the person moved it.
+  ///
+  /// In pt, this message translates to:
+  /// **'{date} · corrigida por você'**
+  String cycleNextCorrected(DateTime date);
+
+  /// Title of the sheet a day of the grid opens.
+  ///
+  /// In pt, this message translates to:
+  /// **'{date}'**
+  String cycleDayTitle(DateTime date);
+
+  /// What the prediction says of the tapped day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Previsto: dia {day} do ciclo · {phase}'**
+  String cycleDayPredicted(int day, String phase);
+
+  /// Primary button on a past day or today: a period began there.
+  ///
+  /// In pt, this message translates to:
+  /// **'A menstruação começou neste dia'**
+  String get cycleDayStarted;
+
+  /// Primary button on a day ahead: the next period begins there instead of when predicted.
+  ///
+  /// In pt, this message translates to:
+  /// **'A menstruação vai começar neste dia'**
+  String get cycleDayWillStart;
+
+  /// Under the day sheet's button.
+  ///
+  /// In pt, this message translates to:
+  /// **'A previsão dos dias seguintes passa a contar daqui, e os dias leves andam junto.'**
+  String get cycleDayHelp;
+
+  /// Tertiary button on the day sheet once the next period was moved by hand.
+  ///
+  /// In pt, this message translates to:
+  /// **'Voltar à previsão'**
+  String get cycleBackToPrediction;
+
+  /// Under the weekend's controls in Folgas.
+  ///
+  /// In pt, this message translates to:
+  /// **'Todo fim de semana é folga. Para trabalhar num deles, toque em Trabalhar na lista abaixo.'**
+  String get daysOffWeekendHelp;
+
+  /// The days of a weekend in Folgas' list, under "Fim de semana".
+  ///
+  /// In pt, this message translates to:
+  /// **'{saturday} e {sunday}'**
+  String daysOffWeekendEntry(DateTime saturday, DateTime sunday);
+
+  /// Button on a weekend in Folgas' list: puts both its days back to work.
+  ///
+  /// In pt, this message translates to:
+  /// **'Trabalhar'**
+  String get daysOffWork;
+
+  /// Subtitle of a weekend put back to work in Folgas' list.
+  ///
+  /// In pt, this message translates to:
+  /// **'{dates} · você vai trabalhar'**
+  String daysOffWorking(String dates);
+
+  /// Button on a weekend put back to work: makes it a day off again.
+  ///
+  /// In pt, this message translates to:
+  /// **'Desfazer'**
+  String get daysOffUndo;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

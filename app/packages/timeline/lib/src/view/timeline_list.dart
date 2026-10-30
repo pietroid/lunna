@@ -169,9 +169,14 @@ class TimelineList extends StatefulWidget {
     this.onAdjustDay,
     this.mode = TimelineMode.calendar,
     this.onDeliveryTap,
+    this.onWorkOn,
     this.only,
     super.key,
   });
+
+  /// Puts a day of the weekend back to work, from its rest row on the
+  /// calendar. Null offers nothing.
+  final ValueChanged<DateTime>? onWorkOn;
 
   /// The tasks the list draws, by id, when it is not the whole day: a
   /// artifact's. Null draws every task.
@@ -1790,6 +1795,9 @@ class _TimelineListState extends State<TimelineList> {
               // A whole day off: one row, not its hours to scale.
               (null, _) when room!.slot.rest != null => RestDayTile(
                 mark: room.slot.rest!,
+                onWork: widget.onWorkOn == null
+                    ? null
+                    : () => widget.onWorkOn!(room.slot.rest!.day),
                 onTap: widget.onWriteDown == null
                     ? null
                     : () => widget.onWriteDown!(Placement.at(room.slot.start)),

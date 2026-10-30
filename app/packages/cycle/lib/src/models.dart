@@ -2,15 +2,17 @@ import 'package:equatable/equatable.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template cycle}
-/// The person's menstrual cycle, as she tells it: the first day of her
+/// The person's menstrual cycle, as they tell it: the first day of the
 /// last period, how long a cycle lasts and how long the period, and what a
 /// day of the period is to the queue.
 ///
-/// Every phase is worked out from those, the way Apple Health predicts
-/// them: the period from its first day, ovulation fourteen days before the
-/// next one, the follicular phase between, the luteal after. The server
-/// works them out the same way for the timeline's [DayMark]s; this copy
-/// draws the next 30 days on the cycle's page.
+/// Every phase is worked out from those: the period from its first day,
+/// ovulation fourteen days before the next one, the follicular phase
+/// between, the luteal after. **The prediction is the person's to
+/// correct**: [nextStart], set from a tap on the grid, says when the next
+/// period will begin, and the cycles after it count from there. The server
+/// works the phases out the same way for the timeline's [DayMark]s; this
+/// copy draws the next 30 days on the cycle's page.
 /// {@endtemplate}
 class Cycle extends Equatable {
   /// {@macro cycle}
@@ -19,6 +21,7 @@ class Cycle extends Equatable {
     this.length = 28,
     this.periodLength = 5,
     this.periodKind = DayKind.light,
+    this.nextStart,
   });
 
   /// Reads one from the API's JSON.
@@ -27,6 +30,10 @@ class Cycle extends Equatable {
     length: json['length'] as int? ?? 28,
     periodLength: json['periodLength'] as int? ?? 5,
     periodKind: DayKind.parse(json['periodKind']),
+    nextStart: switch (json['nextStart']) {
+      final String day => DateTime.parse(day),
+      _ => null,
+    },
   );
 
   /// The first day of the last period, at midnight.
@@ -41,27 +48,46 @@ class Cycle extends Equatable {
   /// What a day of the period is to the queue: light by default.
   final DayKind periodKind;
 
-  /// The day of the cycle ovulation falls on: fourteen before the next
-  /// period, which is the part of the cycle that varies least.
-  int get ovulationDay => length - 14;
+  /// When the next period will begin, as the person corrected it; null
+  /// while the prediction ([lastStart] plus [length]) stands.
+  final DateTime? nextStart;
+
+  /// When the next period is expected: [nextStart], or the prediction.
+  DateTime get predictedStart =>
+      nextStart ?? _plus(lastStart, length);
 
   /// Which day of its cycle [day] is, from 1, or null before [lastStart].
-  int? dayOn(DateTime day) {
-    final from = DateTime.utc(lastStart.year, lastStart.month, lastStart.day);
-    final to = DateTime.utc(day.year, day.month, day.day);
-    final days = to.difference(from).inDays;
-    if (days < 0) return null;
+  int? dayOn(DateTime day) => _place(day)?.$1;
 
-    return days % length + 1;
+  /// How long the cycle [day] falls in lasts: [length], or up to a
+  /// corrected [nextStart].
+  int? lengthOn(DateTime day) => _place(day)?.$2;
+
+  /// The day of its cycle and that cycle's length. Before [nextStart] the
+  /// cycle runs from [lastStart] to it; from it on, cycles of [length].
+  (int, int)? _place(DateTime day) {
+    final next = nextStart;
+    if (next != null && !_utc(day).isBefore(_utc(next))) {
+      return (_daysBetween(next, day) % length + 1, length);
+    }
+    final days = _daysBetween(lastStart, day);
+    if (days < 0) return null;
+    if (next != null) return (days + 1, _daysBetween(lastStart, next));
+
+    return (days % length + 1, length);
   }
 
   /// The phase [day] falls in, or null before [lastStart].
   CyclePhase? phaseOn(DateTime day) {
-    final at = dayOn(day);
-    if (at == null) return null;
+    final place = _place(day);
+    if (place == null) return null;
+    final (at, cycleLength) = place;
+    // Ovulation falls fourteen days before the next period, the part of
+    // the cycle that varies least.
+    final ovulation = cycleLength - 14;
     if (at <= periodLength) return CyclePhase.menstrual;
-    if (at < ovulationDay - 1) return CyclePhase.follicular;
-    if (at <= ovulationDay + 1) return CyclePhase.ovulatory;
+    if (at < ovulation - 1) return CyclePhase.follicular;
+    if (at <= ovulation + 1) return CyclePhase.ovulatory;
 
     return CyclePhase.luteal;
   }
@@ -78,35 +104,61 @@ class Cycle extends Equatable {
     return end;
   }
 
-  /// A copy with the given fields replaced.
+  /// A copy with the given fields replaced. [nextStart] is replaced
+  /// whole: pass null to go back to the prediction.
   Cycle copyWith({
     DateTime? lastStart,
     int? length,
     int? periodLength,
     DayKind? periodKind,
+    DateTime? Function()? nextStart,
   }) => Cycle(
     lastStart: lastStart ?? this.lastStart,
     length: length ?? this.length,
     periodLength: periodLength ?? this.periodLength,
     periodKind: periodKind ?? this.periodKind,
+    nextStart: nextStart == null ? this.nextStart : nextStart(),
   );
 
+  static DateTime _utc(DateTime day) =>
+      DateTime.utc(day.year, day.month, day.day);
+
+  static int _daysBetween(DateTime from, DateTime to) =>
+      _utc(to).difference(_utc(from)).inDays;
+
+  static DateTime _plus(DateTime day, int days) =>
+      DateTime(day.year, day.month, day.day + days);
+
   @override
-  List<Object?> get props => [lastStart, length, periodLength, periodKind];
+  List<Object?> get props => [
+    lastStart,
+    length,
+    periodLength,
+    periodKind,
+    nextStart,
+  ];
 }
 
 /// {@template day_off}
-/// A date written down as a day off: a holiday, a trip.
+/// A date written down in Folgas: a day off (a holiday, a trip), or a day
+/// of the weekend put back to work ([kind] work). A date the person wrote
+/// down wins over the weekend and the cycle.
 /// {@endtemplate}
 class DayOff extends Equatable {
   /// {@macro day_off}
-  const DayOff({required this.id, required this.day, required this.title});
+  const DayOff({
+    required this.id,
+    required this.day,
+    this.title = '',
+    this.kind = DayKind.off,
+  });
 
   /// Reads one from the API's JSON.
   factory DayOff.fromJson(Map<String, dynamic> json) => DayOff(
     id: json['id'] as String,
     day: DateTime.parse(json['day'] as String),
     title: json['title'] as String? ?? '',
+    kind: DayKind.parse(json['kind'] ?? 'off'),
   );
 
   /// Its id.
@@ -118,25 +170,31 @@ class DayOff extends Equatable {
   /// What it is, as the person named it.
   final String title;
 
+  /// What the day is: off, or a weekend day put back to work.
+  final DayKind kind;
+
   @override
-  List<Object?> get props => [id, day, title];
+  List<Object?> get props => [id, day, title, kind];
 }
 
 /// {@template rest_rules}
 /// What the weekend is to the queue, and how much a light day takes.
+///
+/// Saturdays and Sundays are days off until the person says otherwise,
+/// here for every weekend or in Folgas' list for one.
 /// {@endtemplate}
 class RestRules extends Equatable {
   /// {@macro rest_rules}
   const RestRules({
-    this.saturday = DayKind.work,
-    this.sunday = DayKind.work,
+    this.saturday = DayKind.off,
+    this.sunday = DayKind.off,
     this.lightMinutes = 180,
   });
 
   /// Reads them from the API's JSON.
   factory RestRules.fromJson(Map<String, dynamic>? json) => RestRules(
-    saturday: DayKind.parse(json?['saturday']),
-    sunday: DayKind.parse(json?['sunday']),
+    saturday: DayKind.parse(json?['saturday'] ?? 'off'),
+    sunday: DayKind.parse(json?['sunday'] ?? 'off'),
     lightMinutes: json?['lightMinutes'] as int? ?? 180,
   );
 
@@ -196,7 +254,8 @@ class Rhythm extends Equatable {
   /// The weekend's rules and the light day's budget.
   final RestRules rules;
 
-  /// The dates off ahead, earliest first.
+  /// The dates written down ahead, off or put back to work, earliest
+  /// first.
   final List<DayOff> daysOff;
 
   @override

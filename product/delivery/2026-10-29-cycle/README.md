@@ -1,9 +1,10 @@
 # Ciclo e folgas: the menstrual cycle and days off shape the day
 
 > Issue [#73](https://github.com/pietroid/lunna/issues/73), mockup track.
-> Designed unattended. This is the draft: sections 1 and 2 and the Build
-> brief. The person approves (or comments) on the issue; the build is a
-> fresh session, `/create build cycle`.
+> Designed unattended, then changed (round 2) after the reply on the
+> issue. This is the draft: sections 1 and 2 and the Build brief. The
+> person approves (or comments) on the issue; the build is a fresh
+> session, `/create build cycle`.
 
 ## 1. The prompt
 
@@ -21,6 +22,30 @@ From the issue, verbatim:
 >
 > Also include this time off dynamic to the calculation of deliverables goals etc (where we calculate time related things)
 
+The reply to the first design, on the issue:
+
+> Don't integrate to apple health or anything like that, just a simple prediction is ok but the most important is the user able to change it.
+>
+> Also I didn't like the home page have two repeated badges, make it simpler. The rest seems great. Weekends are folgas unless they are removed (and one weekend can be specifically removed or something)
+
+What round 2 changed for it:
+
+- **The prediction is the person's to change.** Every day of Ciclo's
+  grid can be tapped. A sheet says what the prediction makes of that day
+  and offers one button: on today or a day gone, "A menstruação começou
+  neste dia"; on a day ahead, "A menstruação vai começar neste dia".
+  The cycles after it count from there. A new row, "Próxima
+  menstruação", says when the next one is expected and whether the
+  person corrected it ("prevista" / "corrigida por você"). Nothing reads
+  Apple Health.
+- **One tag on the Feed**, not two: "Dia 2 do ciclo · dia leve", in the
+  phase's colour and icon. On a working day it names the phase instead
+  ("Dia 9 do ciclo · Folicular").
+- **Weekends are days off by default.** Folgas lists every weekend of
+  the next 30 days, each with **Trabalhar** (that weekend alone goes back
+  to work) or, once put back, **Desfazer**. On the calendar, a weekend
+  day's rest row has **Trabalhar** too, for that one day.
+
 The "research did here, talking about apple health" is not in the repo
 (no RFC under `product/research/` mentions the cycle or Apple Health), so
 the design follows how Apple Health's Cycle Tracking works: you log the
@@ -33,23 +58,29 @@ window from your cycle and period lengths.
 
 The screens one by one, for a phone: [1](img/mockup-1.png) ·
 [2](img/mockup-2.png) · [3](img/mockup-3.png) · [4](img/mockup-4.png) ·
-[5](img/mockup-5.png). The pins are in [board.json](board.json). The real
-app (Lunna) draws them through `app/lib/cycle_preview.dart`, on the demo's
-day and deliveries. Screens 1 to 4 are on Thursday 29 Oct at 10:00, the
-second day of a period that began on the 28th. Screen 5 is on Friday at
-18:40, so the weekend is in sight.
+[5](img/mockup-5.png) · [6](img/mockup-6.png). The pins are in
+[board.json](board.json). The real app (Lunna) draws them through
+`app/lib/cycle_preview.dart`, on the demo's day and deliveries. Screens 1
+to 5 are on Thursday 29 Oct at 10:00, the second day of a period that
+began on the 28th. Screen 6 is on Friday evening, so the weekend is in
+sight. Round 2 changed screens 1, 3, 5 and 6 and added 4.
 
 ### The rule
 
 **A day is one of three kinds: work, light or off.** The kind is the
-server's to work out. It comes from three sources, and the strictest one
-wins (off over light over work):
+server's to work out. It comes from three sources. **A date the person
+wrote down wins**; otherwise the strictest of the other two (off over
+light over work):
 
 | Source | Sets | Default |
 |--------|------|---------|
-| The weekend (Folgas) | Saturday and Sunday, each Normal / Leve / Folga | Normal (nothing changes until it is set) |
+| A date (Folgas, the calendar) | that date: Folga, or Trabalho for a weekend day put back to work | none |
+| The weekend (Folgas) | Saturday and Sunday, each Normal / Leve / Folga | **Folga** |
 | The cycle (Ciclo) | every predicted day of the period | Leve |
-| A date off (Folgas) | that date | Folga |
+
+A date written as Trabalho undoes the weekend only: the cycle is applied
+over it, so a weekend put back to work that falls in the period is still
+a light day.
 
 - **Off**: the queue puts nothing there, as it does outside the working
   day. Fixed blocks and routines stay where they are (a meeting on a
@@ -70,9 +101,12 @@ wins (off over light over work):
 
 ### The cycle
 
-Four phases, worked out the way Apple Health predicts them, from the
-first day of the last period, the cycle length (28) and the period
-length (5):
+Four phases, predicted the simple way, from the first day of the last
+period, the cycle length (28) and the period length (5). **The person
+corrects the prediction by hand**: a tapped day says the period began
+there (a new start) or will begin there (the cycle's `nextStart`); from
+a corrected start the cycles count again at the set length, and "Voltar
+à previsão" drops the correction:
 
 | Phase | Days (28-day cycle) | Icon (Phosphor) | Colour token |
 |-------|--------------------|-----------------|--------------|
@@ -102,26 +136,42 @@ not opened in this unattended run):
 
 | Pin | Decision | Chosen |
 |-----|----------|--------|
-| A | Where today's cycle shows | Under the Feed's date, as two tags: `CycleTag` ("Dia 2 do ciclo · Menstruação", in the phase's colour and icon) and `DayMarkTag` ("Dia leve · 3h"). With no cycle and a working day, nothing is drawn. |
+| A | Where today's cycle shows | Under the Feed's date, **one tag**: the cycle's day and what the day is ("Dia 2 do ciclo · dia leve"), in the phase's colour and icon; on a working day the phase ("Dia 9 do ciclo · Folicular"). Without a cycle only a day off or a light day is tagged ("Folga"). Nothing on a plain working day. |
 | B | Does the agent know | The suggestion and every turn read the day's kind and the cycle: here it offers to move a delivery's task off the light day |
 | C | Entry point | Menu, a new section **Ritmo** with **Ciclo** (today's phase icon and "Dia 2 · Menstruação") and **Folgas** (couch) |
 | D | Today on Ciclo | A card in the phase's fill: the icon, "Dia 2 de 28", "Menstruação até 1 de nov.", and what that does to the day |
 | E | Add the next cycle | One primary button, **Menstruação começou hoje**. It starts a new cycle today, and every prediction moves with it. |
-| F | The next 30 days | A month grid, Sunday first, each day in its phase's colours, today ringed, a legend of the four phases |
-| G | What the cycle is worked out from | Under the grid: the last period's start, the cycle length (28), the period length (5), and **Na menstruação** Normal / Leve / Folga (default Leve) |
-| H | Weekend | Saturday and Sunday, each Normal / Leve / Folga (the same segmented control as G) |
-| I | The light budget | "Tarefas num dia leve · 3h", and a line on what a light day does (no delivery tasks, deadlines count working days) |
-| J | Every day that is not a working day | The dates written down (couch), and the cycle's next period with its kind ("Do ciclo"), in date order, then + |
+| F | The next 30 days | A month grid, Sunday first, each day in its phase's colours, today ringed, a legend of the four phases. "Toque num dia para corrigir" beside the heading: **every day can be tapped** |
+| G | What the cycle is worked out from | Under the grid: the last period's start, **the next period (prevista / corrigida por você, pen)**, the cycle length (28), the period length (5), and **Na menstruação** Normal / Leve / Folga (default Leve) |
+| N | Correct a day | A sheet: the day, what the prediction makes of it (its phase tag), one primary button ("A menstruação vai começar neste dia" ahead, "…começou neste dia" today or before), and "Voltar à previsão" once corrected |
+| H | Weekend | Saturday and Sunday, each Normal / Leve / Folga (the same segmented control as G), **Folga by default**, and a line saying one weekend can be put back to work below |
+| J | The next 30 days off | Every weekend (couch), the dates written down, and the cycle's next period with its kind, in date order, then + |
+| O | One weekend back to work | **Trabalhar** on a weekend's row puts both its days back to work for that weekend alone; the row then says "Você vai trabalhar" (clock icon, grey) with **Desfazer** |
+| I | The light budget | "Tarefas num dia leve · 3h", and a line on what a light day does (no delivery tasks, deadlines count working days). Moved to the foot of Folgas: the weekend is what most people change |
 | K | The calendar's day heading | The same `DayMarkTag` after the day's name, in Lista and Calendário |
-| L | A day off with nothing on it | One quiet row, `RestDayTile` ("Fim de semana. Nada da fila vem para cá."), not 15 hours of free stretch. A tap still writes there. |
+| L | A day off with nothing on it | One quiet row, `RestDayTile` ("Fim de semana · folga"), not 15 hours of free stretch. A tap still writes there. On a weekend it also offers **Trabalhar**, for that one day |
 | M | A day off with a fixed block | The block stays; no free stretches are drawn around it |
 
 ### Decided unattended
 
-- **Weekends default to Normal.** The issue says time off "corresponds to
-  weekends", but switching every account's weekends off at once would
-  move every queue that runs into a weekend. Folgas sets it in one tap.
-  The person can flip the default.
+- **Weekends are Folga by default, for every account**, as the reply
+  asks. This moves every queue that runs into a weekend the day the build
+  ships: tasks the queue had put on Saturday or Sunday go to Monday. A
+  task the person anchored there by hand keeps its hour.
+- **"One weekend can be removed" is a date written as Trabalho.** Folgas
+  writes both days of the weekend; the calendar's rest row writes one.
+  Desfazer deletes them. They are rows of the same `day_off` table as a
+  holiday, with `kind` `work` instead of `off`.
+- **A date the person wrote wins over the weekend; the cycle still
+  applies over a weekend put back to work.** A worked Saturday in the
+  period is a light day, not a full one.
+- **Correcting the prediction is one date, `nextStart`.** A day ahead
+  moves the next period there, and the cycles after count from it at the
+  set length. A day gone (or today) is a logged start, as the Ciclo
+  button is. There is no per-day "this is / is not a period day" yet:
+  the period's length stays the setting. Once the corrected day comes,
+  "Menstruação começou hoje" (or the day passing with a start logged)
+  makes it the last start and the correction is dropped.
 - **A period day defaults to Leve, not Folga**, per the issue ("some
   tasks can be done but usually not deliverables").
 - **Light means loose tasks only, up to 3 h.** "Not deliverables for
@@ -131,13 +181,10 @@ not opened in this unattended run):
 - **Only the period changes the day.** The other three phases are shown
   (Feed, Ciclo, the agent reads them) but set no restriction. A later
   issue can let the luteal days, say, be light too.
-- **Prediction is Apple Health's arithmetic** (ovulation = length − 14,
-  a 3-day ovulatory window), from one logged start and two lengths. There
-  is no averaging over past cycles yet. The server keeps every logged start
-  (`cycle_start` rows), so it can average later.
-- **No HealthKit import.** "Input the four stages" is done by hand here.
-  Reading Apple Health is its own issue: it needs an iOS entitlement and
-  a permission screen.
+- **No Apple Health, no HealthKit**, as the reply says: a simple
+  prediction from one logged start and two lengths, which the person
+  corrects. The server keeps every logged start (`cycle_start` rows), so
+  it could average past cycles later.
 - **The data is health data.** It stays in Postgres, behind the session
   like everything else, and is **never sent to PostHog** (the route →
   event table logs only that the rhythm changed, never what to). The
@@ -146,10 +193,9 @@ not opened in this unattended run):
 
 ### Open questions
 
-1. Should weekends default to **Folga** for everyone (the issue's
-   reading), or stay Normal until set (drawn here)?
-2. Should the luteal phase (or the days just before the period) be light
-   too, or is the period the only phase that changes the day?
+1. Should the luteal phase (or the days just before the period) be light
+   too, or is the period the only phase that changes the day? (Not
+   answered in the reply; the period alone, as drawn.)
 
 ## Build brief
 
@@ -159,26 +205,36 @@ feature it touches first: [agent.md](../../spec/agent.md),
 
 ### Files the design wrote (uncommitted on the branch, kept for the build)
 
-- `app/lib/cycle_preview.dart`: the preview entry point (5 scenes,
-  `?s=1..5`). Its fake timeline drops tasks on days off and anything past
+- `app/lib/cycle_preview.dart`: the preview entry point (6 scenes,
+  `?s=1..6`; 4 opens the day sheet on 23 Nov). Its fake timeline drops tasks on days off and anything past
   22:00, which the real server must do itself. **Delete it in Phase 4.**
 - `app/packages/cycle/` (new package): `Cycle` (the phase math),
   `RestRules`, `DayOff`, `Rhythm`, `CycleRepository` (`/api/rhythm`),
-  `CycleCubit`, `CyclePage`, `DaysOffPage`, `DayKindChoice`. It has no
-  tests yet.
+  `CycleCubit` (`predictStart`, `workOn`, `addDayOff`, `remove`),
+  `CyclePage`, `CycleDaySheet` (`showCycleDaySheet`), `DaysOffPage`,
+  `DayKindChoice`. `Cycle.nextStart` (the corrected next period) with
+  `predictedStart` and `lengthOn`; `DayOff.kind` (`off`, or `work` for a
+  weekend day put back); `RestRules` default to Folga on both days.
+  `test/cycle_test.dart` covers the phase math and the correction (4
+  tests).
 - `app/packages/timeline/`: `models/day_mark.dart` (`DayKind`,
   `DayReason`, `CyclePhase`, `DayMark`, `marks.on(day)`);
   `Timeline.marks` read from the response's `days`; `TimelineState.marks`
   set by every bloc handler; `FreeSlot.rest`, so `freeSlots(marks:)`
   draws no room on a day off and one rest slot when the day is empty;
   `widgets/day_mark_tag.dart` (`CyclePhaseLook`, `DayMarkTag`, `CycleTag`,
-  `RestDayTile`); `_HeadingRow(mark:)` in Lista and Calendário, and the
+  `RestDayTile` with `onWork`); `TimelineList.onWorkOn`; `_HeadingRow(mark:)` in Lista and Calendário, and the
   `RestDayTile` branch in the calendar.
 - `app/packages/app_ui`: 8 tokens, `cycle{Menstrual,Follicular,Ovulatory,Luteal}`
   and their `…Fill`, in both brands; icons `cycleMenstrual` (drop),
   `cycleFollicular` (plant), `cycleOvulatory` (sun), `cycleLuteal` (moon),
   `dayOff` (couch), `dayLight` (feather).
-- `app/lib/feed/view/feed_page.dart` (`_TodayMarks` under the date) and
+- `app/lib/tempo/view/tempo_page.dart`: `WorkOnDay` (read like
+  `OpenDayHours`) handed to `TimelineList.onWorkOn`. `shell_page.dart`
+  provides a no-op one with a `TODO(build)`, and `plan_page_test.dart`
+  provides one too: **the build wires it to `CycleCubit.workOn`**.
+- `app/lib/feed/view/feed_page.dart` (`_TodayMarks`: one tag under the
+  date) and
   `app/lib/menu/view/menu_page.dart` (the Ritmo section, which pushes
   `/ciclo` and `/folgas`).
 - `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): the `cycle*`, `dayKind*`,
@@ -190,16 +246,21 @@ feature it touches first: [agent.md](../../spec/agent.md),
 
 - **Schema** (`db/schema.ts`, `npm run db:generate`):
   - `user.saturday_kind` and `user.sunday_kind` (`work|light|off`,
-    default `work`), and `user.light_minutes` (default 180).
-  - `cycle` (one per user: `length`, `period_length`, `period_kind`).
+    **default `off`**, which every existing account takes on the
+    migration), and `user.light_minutes` (default 180).
+  - `cycle` (one per user: `length`, `period_length`, `period_kind`,
+    `next_start` nullable: the person's correction of the next period).
   - `cycle_start` (user, day): every logged start. The last one is
-    `lastStart`.
-  - `day_off` (id, user, day, title).
+    `lastStart`. Logging a start on or after `next_start` clears it.
+  - `day_off` (id, user, day, title, `kind` `off|work`, unique per user
+    and day). `work` is a weekend day put back to work.
 - **`rhythm/`** (a Nest module, `@UseInterceptors(CatchUpInterceptor)`):
   - `GET /api/rhythm` answers `{ cycle, rest, daysOff }`.
-  - `PUT /api/rhythm/cycle`, `POST /api/rhythm/cycle/start { day }`.
+  - `PUT /api/rhythm/cycle` (with `nextStart`, a day after today or
+    null), `POST /api/rhythm/cycle/start { day }`.
   - `PATCH /api/rhythm/rest`.
-  - `POST /api/rhythm/days-off`, `DELETE /api/rhythm/days-off/:id`.
+  - `POST /api/rhythm/days-off { day, kind, title }` (a second write on
+    the same day replaces it), `DELETE /api/rhythm/days-off/:id`.
   - Every write answers the whole rhythm. Validate as `events/request.ts`
     does: length 21 to 45, period 1 to 10, a start not in the future,
     refusals in Portuguese.
@@ -240,8 +301,10 @@ feature it touches first: [agent.md](../../spec/agent.md),
   - `work-quality.ts`: `fits` and `pace` use the working-day math.
   - The suggestion's turn sees today's kind and phase, so it can offer,
     as on screen 1, to move a delivery's task off a light day.
-  - New actions (`actions/rhythm.ts`): `period_started`, `set_day_kind`
-    (weekend), `add_day_off`, each a gesture the pages make.
+  - New actions (`actions/rhythm.ts`): `period_started`,
+    `predict_period` (the correction), `set_day_kind` (weekend),
+    `add_day_off`, `work_on` (a weekend day back to work), each a gesture
+    the pages make.
   - One eval case in `agent/evals/` (a light day with a delivery task).
 
 ### App
@@ -254,12 +317,17 @@ feature it touches first: [agent.md](../../spec/agent.md),
   of days for the lengths, and a wheel of hours for the light budget.
   `DaysOffPage.onAdd` opens a small sheet (date + name) that posts to
   `/rhythm/days-off`. A tap on a date off offers to remove it.
+- `CycleDaySheet` and the Folgas rows already call the cubit; the
+  shell's `WorkOnDay` must reach the same cubit (provide `CycleCubit` in
+  the shell, not only on the two routes).
 - `RestDayTile.onTap` writes at the day's start with `Placement.at` (the
   server keeps it there: by hand wins). A drop on a rest row lands at the
   day's start too: make it a drop target like a free stretch.
 - `Artifact` reads `timeGone` from the server (above).
 - Tests:
-  - `Cycle` (phase math, day before the start, a 35-day cycle);
+  - `Cycle` (written: phase math, the correction; add a 35-day cycle);
+  - `DaysOffPage`'s weekend rows (Trabalhar, Desfazer) and
+    `CycleDaySheet`'s two buttons (a day ahead, a day gone);
   - `DayMark.fromJson`;
   - `freeSlots` with an off day, with and without a card;
   - `_HeadingRow`'s tag;
@@ -272,8 +340,10 @@ feature it touches first: [agent.md](../../spec/agent.md),
 
 ### Checked so far
 
-- `flutter analyze` on `lib`, `timeline`, `cycle` and `app_ui`: no issues.
-- `timeline`'s tests: 169 passed.
+- `flutter analyze` on `lib`, `cycle` and `timeline/lib`: no issues (the
+  infos left are in `timeline/test`, untouched here).
+- `cycle`'s tests: 4 passed (round 2).
+- `timeline`'s tests: 169 passed; `app/test/plan/plan_page_test.dart`: 4 passed.
 - `app/test/feed/feed_page_test.dart` does not compile, on main too. At
   line 264 it passes `plan:` to `AgentSuggestion`, which lost that
   parameter in #72. The build fixes it while it adds the Feed's tag tests.
@@ -287,8 +357,9 @@ the Menu and the calendar need no new request; only the two pages read
 
 ### Open questions
 
-The two in section 2. Both have a default the build can take if nobody
-answers: weekends stay Normal, and only the period changes the day.
+The one left in section 2 (the luteal phase). Its default, if nobody
+answers: only the period changes the day. The weekend question is
+answered: Folga by default.
 
 ### Cost of the design session
 

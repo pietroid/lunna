@@ -13,10 +13,12 @@ import 'package:timeline/timeline.dart';
 /// Folgas (`/folgas`, from the Menu): every day the queue keeps off or goes
 /// easy on, in one place.
 ///
-/// The weekend's two days, each a working day, a light one or a day off;
-/// how much a light day takes; and the dates off ahead, the ones written
-/// down here and the periods the cycle makes light or off, so the person
-/// sees every day that is not a working day whatever set it.
+/// The weekend's two days, each a working day, a light one or a day off
+/// (off until the person says otherwise); the next 30 days' folgas,
+/// whatever set them: each weekend, which **Trabalhar** puts back to work
+/// for that weekend alone (and Desfazer gives back), the dates written
+/// down here, and the period the cycle makes light or off; and how much a
+/// light day takes.
 /// {@endtemplate}
 class DaysOffPage extends StatelessWidget {
   /// {@macro days_off_page}
@@ -82,6 +84,18 @@ class DaysOffPage extends StatelessWidget {
                         cubit.saveRules(rules.copyWith(sunday: kind)),
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.s2),
+                    Text(
+                      l10n.daysOffWeekendHelp,
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.ink3,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s6),
+                    Text(l10n.daysOffDates, style: hint),
+                    const SizedBox(height: AppSpacing.s2),
+                    ..._dates(context, rhythm),
+                    AppAddRow(onTap: onAdd ?? () {}),
                     const SizedBox(height: AppSpacing.s6),
                     Text(l10n.daysOffLight, style: hint),
                     const SizedBox(height: AppSpacing.s2),
@@ -95,11 +109,6 @@ class DaysOffPage extends StatelessWidget {
                       l10n.daysOffLightHelp,
                       style: AppTypography.body.copyWith(color: AppColors.ink3),
                     ),
-                    const SizedBox(height: AppSpacing.s6),
-                    Text(l10n.daysOffDates, style: hint),
-                    const SizedBox(height: AppSpacing.s2),
-                    ..._dates(context, rhythm),
-                    AppAddRow(onTap: onAdd ?? () {}),
                   ],
                 );
               },
@@ -113,32 +122,74 @@ class DaysOffPage extends StatelessWidget {
     );
   }
 
-  /// The dates off ahead and the cycle's next period, in the order of their
-  /// days.
+  /// The next 30 days' folgas in the order of their days: each weekend,
+  /// the dates off and the cycle's next period.
   List<Widget> _dates(BuildContext context, Rhythm rhythm) {
     final l10n = context.l10n;
+    final cubit = context.read<CycleCubit>();
     final now = clock.now();
     final today = DateTime(now.year, now.month, now.day);
+    final until = DateTime(today.year, today.month, today.day + 30);
     final cycle = rhythm.cycle;
+    final rules = rhythm.rules;
+
+    DayOff? written(DateTime day) {
+      for (final date in rhythm.daysOff) {
+        if (date.day == day) return date;
+      }
+      return null;
+    }
 
     final rows = <(DateTime, Widget)>[
       for (final day in rhythm.daysOff)
-        (
-          day.day,
-          AppListItem(
-            title: l10n.daysOffEntry(day.day, day.title),
-            iconData: AppIcons.dayOff,
-            onTap: () {},
+        if (day.kind == DayKind.off)
+          (
+            day.day,
+            AppListItem(
+              title: l10n.daysOffEntry(day.day, day.title),
+              iconData: AppIcons.dayOff,
+              onTap: () {},
+            ),
           ),
-        ),
     ];
 
-    if (cycle != null && cycle.periodKind != DayKind.work) {
-      // The next period that has not begun yet.
-      var start = cycle.lastStart;
-      while (!start.isAfter(today)) {
-        start = DateTime(start.year, start.month, start.day + cycle.length);
+    if (rules.saturday != DayKind.work || rules.sunday != DayKind.work) {
+      var saturday = DateTime(
+        today.year,
+        today.month,
+        today.day + (DateTime.saturday - today.weekday) % 7,
+      );
+      while (saturday.isBefore(until)) {
+        final sunday = DateTime(
+          saturday.year,
+          saturday.month,
+          saturday.day + 1,
+        );
+        // Put back to work, for this weekend alone.
+        final worked = [
+          for (final day in [saturday, sunday])
+            if (written(day) case final date? when date.kind == DayKind.work)
+              date,
+        ];
+        final working = worked.isNotEmpty;
+        rows.add((
+          saturday,
+          _Weekend(
+            dates: l10n.daysOffWeekendEntry(saturday, sunday),
+            working: working,
+            onPressed: working
+                ? () => unawaited(
+                    cubit.remove([for (final date in worked) date.id]),
+                  )
+                : () => unawaited(cubit.workOn([saturday, sunday])),
+          ),
+        ));
+        saturday = DateTime(saturday.year, saturday.month, saturday.day + 7);
       }
+    }
+
+    if (cycle != null && cycle.periodKind != DayKind.work) {
+      final start = cycle.predictedStart;
       final end = DateTime(
         start.year,
         start.month,
@@ -163,7 +214,7 @@ class DaysOffPage extends StatelessWidget {
               text: cycle.periodKind == DayKind.off
                   ? l10n.dayKindOff
                   : l10n.dayKindLight,
-              iconData: AppIcons.repeat,
+              iconData: AppIcons.cycleMenstrual,
               fill: AppColors.cycleMenstrualFill,
               ink: AppColors.cycleMenstrual,
             ),
@@ -174,5 +225,41 @@ class DaysOffPage extends StatelessWidget {
 
     rows.sort((a, b) => a.$1.compareTo(b.$1));
     return [for (final row in rows) row.$2];
+  }
+}
+
+/// A weekend in the list: off, with **Trabalhar**, or put back to work,
+/// with **Desfazer**.
+class _Weekend extends StatelessWidget {
+  const _Weekend({
+    required this.dates,
+    required this.working,
+    required this.onPressed,
+  });
+
+  final String dates;
+  final bool working;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return Row(
+      children: [
+        Expanded(
+          child: AppListItem(
+            title: l10n.daysOffWeekend,
+            subtitle: working ? l10n.daysOffWorking(dates) : dates,
+            iconData: working ? AppIcons.time : AppIcons.dayOff,
+            color: working ? AppColors.ink3 : AppColors.ink2,
+          ),
+        ),
+        AppButton.text(
+          text: working ? l10n.daysOffUndo : l10n.daysOffWork,
+          onPressed: onPressed,
+        ),
+      ],
+    );
   }
 }

@@ -2,6 +2,7 @@ import 'package:bloc/bloc.dart';
 import 'package:cycle/src/cycle_repository.dart';
 import 'package:cycle/src/models.dart';
 import 'package:equatable/equatable.dart';
+import 'package:timeline/timeline.dart';
 
 /// Where the rhythm is in being read.
 enum CycleStatus {
@@ -65,6 +66,37 @@ class CycleCubit extends Cubit<CycleState> {
   /// A period began on [day].
   Future<void> periodStarted(DateTime day) =>
       _run(() => _repository.periodStarted(day));
+
+  /// Corrects the prediction: the next period begins on [day]. Null goes
+  /// back to the prediction.
+  Future<void> predictStart(DateTime? day) {
+    final cycle = state.data?.cycle;
+    if (cycle == null) return Future.value();
+
+    return saveCycle(cycle.copyWith(nextStart: () => day));
+  }
+
+  /// Puts each of [days] back to work, though the weekend is off.
+  Future<void> workOn(List<DateTime> days) => _run(() async {
+    late Rhythm rhythm;
+    for (final day in days) {
+      rhythm = await _repository.addDay(day, kind: DayKind.work);
+    }
+    return rhythm;
+  });
+
+  /// Writes [day] down as a day off named [title].
+  Future<void> addDayOff(DateTime day, String title) =>
+      _run(() => _repository.addDay(day, title: title));
+
+  /// Takes the dates [ids] away.
+  Future<void> remove(List<String> ids) => _run(() async {
+    var rhythm = state.data ?? const Rhythm();
+    for (final id in ids) {
+      rhythm = await _repository.removeDay(id);
+    }
+    return rhythm;
+  });
 
   /// Writes the weekend's rules and the light day's budget.
   Future<void> saveRules(RestRules rules) =>

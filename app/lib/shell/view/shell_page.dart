@@ -149,6 +149,8 @@ class _ShellPageState extends State<ShellPage> {
       providers: [
         RepositoryProvider<TimelineAim>.value(value: _aim),
         RepositoryProvider<OpenDayHours>.value(value: _openDayHours),
+        // TODO(build): answered by the rhythm's cubit (`CycleCubit.workOn`).
+        RepositoryProvider<WorkOnDay>.value(value: WorkOnDay((_) {})),
         // What the agent's answers open (an artifact's page, from Tempo) and
         // how its previews draw a goal or a delivery.
         RepositoryProvider<AgentLinks>.value(

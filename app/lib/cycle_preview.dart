@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
@@ -15,13 +17,14 @@ import 'package:lunna/tempo/tempo.dart';
 import 'package:timeline/timeline.dart';
 
 /// The cycle and the days off, against fixed data. `?s=<n>` picks the
-/// scene: 1 Feed, 2 Menu, 3 Ciclo, 4 Folgas, 5 the calendar on a Friday
-/// evening before a weekend off. Nothing ships from here.
+/// scene: 1 Feed, 2 Menu, 3 Ciclo, 4 Ciclo correcting a day ahead, 5
+/// Folgas, 6 the calendar on a Friday evening before a weekend off.
+/// Nothing ships from here.
 void main() {
   final scene = int.tryParse(Uri.base.queryParameters['s'] ?? '') ?? 1;
   // A Thursday morning on the second day of a period; the calendar's
   // scene the evening after, so the weekend is in sight.
-  final at = scene == 5
+  final at = scene == 6
       ? DateTime(2026, 10, 30, 21, 5)
       : DateTime(2026, 10, 29, 10);
   final shift = at.difference(DateTime.now());
@@ -33,10 +36,14 @@ void main() {
 
 final _cycle = Cycle(lastStart: DateTime(2026, 10, 28));
 
-const _rules = RestRules(saturday: DayKind.off, sunday: DayKind.off);
+const _rules = RestRules();
 
-/// What the server would say of each of the next days: the weekend off,
-/// the period light, the day of the cycle on every one.
+/// The weekend of 7 November, put back to work in Folgas.
+final _worked = [DateTime(2026, 11, 7), DateTime(2026, 11, 8)];
+
+/// What the server would say of each of the next days: the weekend off
+/// (but the one put back to work), the period light, the day of the cycle
+/// on every one.
 List<DayMark> _marks(DateTime now) => [
   for (var i = -1; i < 21; i++)
     () {
@@ -44,7 +51,9 @@ List<DayMark> _marks(DateTime now) => [
       final phase = _cycle.phaseOn(day);
       final holiday = day == DateTime(2026, 11, 2);
       final weekend =
-          day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
+          (day.weekday == DateTime.saturday ||
+              day.weekday == DateTime.sunday) &&
+          !_worked.contains(day);
       final period = phase == CyclePhase.menstrual;
       return DayMark(
         day: day,
@@ -140,7 +149,6 @@ class _SceneState extends State<_Scene> {
   );
   late final _rhythm = Rhythm(
     cycle: _cycle,
-    rules: _rules,
     daysOff: [
       DayOff(
         id: 'finados',
@@ -152,6 +160,8 @@ class _SceneState extends State<_Scene> {
         day: DateTime(2026, 11, 20),
         title: context.l10n.demoDayOffRepublic,
       ),
+      for (final (i, day) in _worked.indexed)
+        DayOff(id: 'worked-$i', day: day, kind: DayKind.work),
     ],
   );
 
@@ -163,6 +173,7 @@ class _SceneState extends State<_Scene> {
         RepositoryProvider<AgentRepository>.value(value: _agent),
         RepositoryProvider<TimelineAim>(create: (_) => TimelineAim()),
         RepositoryProvider<OpenDayHours>(create: (_) => OpenDayHours(() {})),
+        RepositoryProvider<WorkOnDay>(create: (_) => WorkOnDay((_) {})),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -208,12 +219,16 @@ class _SceneState extends State<_Scene> {
 
     return switch (widget.scene) {
       3 => CyclePage(dock: dock),
-      4 => DaysOffPage(dock: dock),
+      4 => _Opened(
+        open: (context) => showCycleDaySheet(context, DateTime(2026, 11, 23)),
+        child: CyclePage(dock: dock),
+      ),
+      5 => DaysOffPage(dock: dock),
       _ => Scaffold(
         extendBody: true,
         body: switch (widget.scene) {
           2 => const MenuPage(),
-          5 => PlanPage(tab: PlanTab.calendar, onSelected: (_) {}),
+          6 => PlanPage(tab: PlanTab.calendar, onSelected: (_) {}),
           _ => FeedPage(firstName: 'Marina', onOpen: (_) {}),
         },
         floatingActionButton: dock,
@@ -222,7 +237,7 @@ class _SceneState extends State<_Scene> {
         bottomNavigationBar: AppBottomBar(
           currentIndex: switch (widget.scene) {
             2 => 2,
-            5 => 1,
+            6 => 1,
             _ => 0,
           },
           onSelected: (_) {},
@@ -238,4 +253,28 @@ class _SceneState extends State<_Scene> {
       ),
     };
   }
+}
+
+/// [child], with a sheet opened over it once it is up.
+class _Opened extends StatefulWidget {
+  const _Opened({required this.open, required this.child});
+
+  final Future<void> Function(BuildContext context) open;
+  final Widget child;
+
+  @override
+  State<_Opened> createState() => _OpenedState();
+}
+
+class _OpenedState extends State<_Opened> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => unawaited(widget.open(context)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

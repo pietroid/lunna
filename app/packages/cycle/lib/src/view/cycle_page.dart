@@ -14,8 +14,11 @@ import 'package:timeline/timeline.dart';
 /// worked out from.
 ///
 /// The one thing to do here most months is to say the period began, so
-/// that is the page's button; the lengths and what a day of the period is
-/// are set once and left.
+/// that is the page's button. **Every prediction is the person's to
+/// change**: a tap on any day of the grid opens [CycleDaySheet], which
+/// says the period began there (a day gone) or will begin there (a day
+/// ahead); the lengths and what a day of the period is are set once and
+/// left.
 /// {@endtemplate}
 class CyclePage extends StatelessWidget {
   /// {@macro cycle_page}
@@ -76,9 +79,31 @@ class CyclePage extends StatelessWidget {
                     ),
                     if (cycle != null) ...[
                       const SizedBox(height: AppSpacing.s6),
-                      Text(l10n.cycleNext30, style: AppTypography.title),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              l10n.cycleNext30,
+                              style: AppTypography.title,
+                            ),
+                          ),
+                          Text(
+                            l10n.cycleTapHint,
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.ink3,
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: AppSpacing.s3),
-                      _Next30(cycle: cycle, today: today),
+                      _Next30(
+                        cycle: cycle,
+                        today: today,
+                        onTap: (day) =>
+                            unawaited(showCycleDaySheet(context, day)),
+                      ),
                       const SizedBox(height: AppSpacing.s3),
                       const _Legend(),
                     ],
@@ -98,6 +123,17 @@ class CyclePage extends StatelessWidget {
                       iconData: AppIcons.calendar,
                       onTap: () {},
                     ),
+                    if (cycle != null)
+                      AppListItem(
+                        title: l10n.cycleNextStart,
+                        subtitle: cycle.nextStart == null
+                            ? l10n.cycleNextPredicted(cycle.predictedStart)
+                            : l10n.cycleNextCorrected(cycle.predictedStart),
+                        iconData: AppIcons.pen,
+                        onTap: () => unawaited(
+                          showCycleDaySheet(context, cycle.predictedStart),
+                        ),
+                      ),
                     AppListItem(
                       title: l10n.cycleLength,
                       subtitle: l10n.cycleDays(cycle?.length ?? 28),
@@ -255,10 +291,11 @@ class _Today extends StatelessWidget {
 /// The next 30 days, a week to a row, each day in its phase's colours and
 /// today ringed.
 class _Next30 extends StatelessWidget {
-  const _Next30({required this.cycle, required this.today});
+  const _Next30({required this.cycle, required this.today, this.onTap});
 
   final Cycle cycle;
   final DateTime today;
+  final ValueChanged<DateTime>? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +335,7 @@ class _Next30 extends StatelessWidget {
                         day: day,
                         phase: cycle.phaseOn(day),
                         today: day == today,
+                        onTap: onTap == null ? null : () => onTap!(day),
                       ),
             ]),
           ),
@@ -307,16 +345,30 @@ class _Next30 extends StatelessWidget {
 }
 
 class _DayCell extends StatelessWidget {
-  const _DayCell({required this.day, required this.phase, required this.today});
+  const _DayCell({
+    required this.day,
+    required this.phase,
+    required this.today,
+    this.onTap,
+  });
 
   final DateTime day;
   final CyclePhase? phase;
   final bool today;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final phase = this.phase;
 
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: _cell(phase),
+    );
+  }
+
+  Widget _cell(CyclePhase? phase) {
     return Container(
       width: 40,
       height: 40,
@@ -356,6 +408,125 @@ class _Legend extends StatelessWidget {
             ink: phase.ink,
           ),
       ],
+    );
+  }
+}
+
+/// Opens [CycleDaySheet] on [day], handed the cubit it writes with.
+Future<void> showCycleDaySheet(BuildContext context, DateTime day) {
+  final cubit = context.read<CycleCubit>();
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: AppColors.bg.withValues(alpha: 0.72),
+    builder: (_) => BlocProvider.value(
+      value: cubit,
+      child: CycleDaySheet(day: day),
+    ),
+  );
+}
+
+/// {@template cycle_day_sheet}
+/// One day of the grid, to correct the prediction on: what the prediction
+/// says of it, and one button. On today or a day gone, the period **began**
+/// there (a new start, `POST /rhythm/cycle/start`); on a day ahead, the
+/// next period **will begin** there (the cycle's `nextStart`), and the
+/// cycles after it count from that day. Once moved, the next period can go
+/// back to the prediction.
+/// {@endtemplate}
+class CycleDaySheet extends StatelessWidget {
+  /// {@macro cycle_day_sheet}
+  const CycleDaySheet({required this.day, super.key});
+
+  /// The day tapped, at midnight.
+  final DateTime day;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cubit = context.read<CycleCubit>();
+    final cycle = cubit.state.data?.cycle;
+    final now = clock.now();
+    final ahead = day.isAfter(DateTime(now.year, now.month, now.day));
+    final phase = cycle?.phaseOn(day);
+    final at = cycle?.dayOn(day);
+
+    void done(Future<void> write) {
+      unawaited(write);
+      unawaited(Navigator.of(context).maybePop());
+    }
+
+    return Material(
+      color: AppColors.bg,
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppSpacing.cardRadius),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.s5,
+            AppSpacing.s2,
+            AppSpacing.s5,
+            AppSpacing.s4,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l10n.cycleDayTitle(day),
+                      style: AppTypography.title,
+                    ),
+                  ),
+                  AppIconButton(
+                    iconData: AppIcons.close,
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
+                ],
+              ),
+              if (phase != null && at != null) ...[
+                const SizedBox(height: AppSpacing.s2),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: AppTag(
+                    text: l10n.cycleDayPredicted(at, phase.label(l10n)),
+                    iconData: phase.icon,
+                    fill: phase.fill,
+                    ink: phase.ink,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.s5),
+              AppButton(
+                expand: true,
+                text: ahead ? l10n.cycleDayWillStart : l10n.cycleDayStarted,
+                onPressed: () => done(
+                  ahead ? cubit.predictStart(day) : cubit.periodStarted(day),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.s3),
+              Text(
+                l10n.cycleDayHelp,
+                style: AppTypography.label.copyWith(color: AppColors.ink3),
+              ),
+              if (cycle?.nextStart != null) ...[
+                const SizedBox(height: AppSpacing.s2),
+                AppButton(
+                  variant: AppButtonVariant.tertiary,
+                  expand: true,
+                  text: l10n.cycleBackToPrediction,
+                  onPressed: () => done(cubit.predictStart(null)),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
