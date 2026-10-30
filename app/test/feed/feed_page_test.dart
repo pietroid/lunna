@@ -147,7 +147,10 @@ void main() {
   ) async {
     await pump(tester);
 
-    expect(find.text(l10n.feedBreak), findsOneWidget);
+    // Agora is Tempo's break, and the empty queue is said where the next
+    // would be.
+    expect(find.byType(FreeTile), findsOneWidget);
+    expect(find.text(l10n.feedQueueEmpty), findsOneWidget);
     expect(find.text(l10n.feedNoDelivery), findsOneWidget);
     expect(find.text(l10n.feedNoGoal), findsOneWidget);
     expect(find.text(l10n.feedNext), findsNothing);
@@ -176,7 +179,54 @@ void main() {
     expect(find.text('Standup'), findsOneWidget);
     // The home is not a list: one card after Agora.
     expect(find.text('Responder e-mails'), findsNothing);
-    expect(find.text(l10n.feedBreak), findsNothing);
+    expect(find.byType(FreeTile), findsNothing);
+    expect(find.text(l10n.feedQueueEmpty), findsNothing);
+  });
+
+  testAt('draws the break before the next task, as Tempo does', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      cards: [card('b', 'Standup', TimelineSection.dia, at: 40)],
+    );
+
+    expect(find.byType(FreeTile), findsOneWidget);
+    expect(find.text(l10n.feedNext), findsOneWidget);
+    expect(find.text('Standup'), findsOneWidget);
+    expect(find.text(l10n.feedQueueEmpty), findsNothing);
+  });
+
+  testWidgets('outside the working day, says so and heads tomorrow', (
+    tester,
+  ) async {
+    // Half past ten at night: the standard day ended at 22:00.
+    final late = DateTime(2026, 10, 28, 22, 30);
+    await withClock(Clock.fixed(late), () async {
+      final start = DateTime(2026, 10, 29, 7);
+      await pump(
+        tester,
+        cards: [
+          TimelineEvent(
+            id: 'm',
+            title: 'Responder e-mails',
+            section: TimelineSection.dia,
+            kind: CardKind.task,
+            startTime: start,
+            endTime: start.add(const Duration(minutes: 30)),
+            durationMinutes: 30,
+          ),
+        ],
+      );
+
+      expect(find.byType(DayOverTile), findsOneWidget);
+      expect(find.byType(FreeTile), findsNothing);
+      expect(
+        find.text(l10n.feedNextOn(l10n.sectionTomorrow)),
+        findsOneWidget,
+      );
+      expect(find.text('Responder e-mails'), findsOneWidget);
+    });
   });
 
   testAt('puts the delivery Entregas puts first: begun before waiting', (

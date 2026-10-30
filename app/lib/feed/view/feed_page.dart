@@ -282,64 +282,114 @@ class _Heading extends StatelessWidget {
 
 /// What is being lived through, with its controls, and what comes after.
 ///
-/// Agora is the card the timeline puts in its first stage, drawn by the
-/// same tile with the same buttons; the next is the first card after it,
-/// task or fixed block, since what follows is what the person plans around.
+/// Agora is what Tempo's Agora is, drawn by the same tiles: the card the
+/// timeline puts in its first stage, with the same buttons; with nothing
+/// running, the break ([FreeTile]); outside the working day, the day being
+/// over ([DayOverTile]). The next is the first card after it, task or fixed
+/// block, since what follows is what the person plans around, headed by its
+/// day when that is not today. With nothing queued at all, a line says so
+/// where the next would be, and how to put something there.
 class _NowAndNext extends StatelessWidget {
   const _NowAndNext();
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final bloc = context.read<TimelineBloc>();
     final cards = context.select<TimelineBloc, List<TimelineEvent>>(
       (bloc) => bloc.state.cards,
     );
-    final now = cards
-        .where(
-          (card) => card.section == TimelineSection.agora,
-        )
-        .firstOrNull;
-    final next = cards
-        .where(
-          (card) => card.section == TimelineSection.dia && card != now,
-        )
-        .firstOrNull;
+    final workDay = context.select<TimelineBloc, WorkDay>(
+      (bloc) => bloc.state.workDay,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s5),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (now == null)
-            _Quiet(text: context.l10n.feedBreak)
-          else
-            EventTile(
-              card: now,
-              onPauseToggled: () => bloc.add(EventPauseToggled(now.id)),
-              onAdjusted: (minutes) =>
-                  unawaited(adjustTime(context, now, minutes)),
-              onDone: () => bloc.add(EventFinished(now.id)),
-              onStarted: () => bloc.add(EventStarted(now.id)),
-              onSnoozed: () => bloc.add(EventSnoozed(now.id)),
-            ),
-          if (next != null) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.s1,
-                AppSpacing.s4,
-                0,
-                AppSpacing.s2,
-              ),
-              child: Text(
-                context.l10n.feedNext,
-                style: AppTypography.caption,
-              ),
-            ),
-            EventTile(card: next),
-          ],
-        ],
+      child: AppMinuteBuilder(
+        builder: (context, now) {
+          final running = cards
+              .where((card) => card.section == TimelineSection.agora)
+              .firstOrNull;
+          final next = cards
+              .where(
+                (card) =>
+                    card.section == TimelineSection.dia && card != running,
+              )
+              .firstOrNull;
+          final minute = now.hour * 60 + now.minute;
+          final closed = minute < workDay.start || minute >= workDay.end;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (running != null)
+                EventTile(
+                  card: running,
+                  onPauseToggled: () =>
+                      bloc.add(EventPauseToggled(running.id)),
+                  onAdjusted: (minutes) =>
+                      unawaited(adjustTime(context, running, minutes)),
+                  onDone: () => bloc.add(EventFinished(running.id)),
+                  onStarted: () => bloc.add(EventStarted(running.id)),
+                  onSnoozed: () => bloc.add(EventSnoozed(running.id)),
+                )
+              else if (closed)
+                DayOverTile(workDay: workDay, over: minute >= workDay.end)
+              else
+                FreeTile(slot: _breakUntil(now, next), now: true),
+              if (next == null) ...[
+                const SizedBox(height: AppSpacing.s3),
+                _Quiet(text: l10n.feedQueueEmpty),
+              ] else ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.s1,
+                    AppSpacing.s4,
+                    0,
+                    AppSpacing.s2,
+                  ),
+                  child: Text(
+                    _nextLabel(l10n, next, now),
+                    style: AppTypography.caption,
+                  ),
+                ),
+                EventTile(card: next),
+              ],
+            ],
+          );
+        },
       ),
     );
+  }
+
+  /// The break, from this minute to the next card's start, or an hour
+  /// when nothing follows, as Tempo draws it.
+  static FreeSlot _breakUntil(DateTime now, TimelineEvent? next) {
+    final minute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    return FreeSlot(
+      start: minute,
+      end: next?.startTime ?? minute.add(const Duration(hours: 1)),
+      earliest: minute,
+      index: 0,
+    );
+  }
+
+  /// "Em seguida", with the next card's day when it is not today.
+  static String _nextLabel(
+    AppLocalizations l10n,
+    TimelineEvent next,
+    DateTime now,
+  ) {
+    final today = DateTime(now.year, now.month, now.day);
+    final start = next.startTime;
+    final days = DateTime(
+      start.year,
+      start.month,
+      start.day,
+    ).difference(today).inDays;
+    if (days <= 0) return l10n.feedNext;
+    if (days == 1) return l10n.feedNextOn(l10n.sectionTomorrow);
+    return l10n.feedNextOn(l10n.sectionDay(start));
   }
 }
 

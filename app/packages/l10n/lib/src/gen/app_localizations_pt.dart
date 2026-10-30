@@ -1832,7 +1832,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get feedNext => 'Em seguida';
 
   @override
-  String get feedBreak => 'Nada em andamento';
+  String feedNextOn(String day) {
+    return 'Em seguida · $day';
+  }
+
+  @override
+  String get feedQueueEmpty => 'Nada na fila. Toque no + para anotar algo.';
 
   @override
   String get feedSeeDay => 'Ver o dia';
