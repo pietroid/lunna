@@ -858,10 +858,13 @@ class _TimelineListState extends State<TimelineList> {
     final shown = anchor.shown;
     final area = anchor.area;
     final origin = _originRect;
+    // A day off is one row, not its hours to scale: a drop on it lands at
+    // the day's start, and the server keeps it there, since by hand wins.
     if (shown != null &&
         area != null &&
         origin != null &&
-        anchor.row?.$2 != null) {
+        anchor.row?.$2 != null &&
+        slot.rest == null) {
       final aimed = TimelineScale.timeAt(
         shown,
         origin.top + _travel.dy - area.top,
@@ -1584,7 +1587,7 @@ class _TimelineListState extends State<TimelineList> {
       if (rect.top >= view.bottom) continue;
 
       final dy = (seen - rect.top).clamp(0.0, rect.height);
-      final at = dy <= 0
+      final at = dy <= 0 || room.slot.rest != null
           ? room.slot.earliest
           : _upToStep(TimelineScale.timeAt(room.slot, dy, rect.height));
       if (!at.isBefore(room.slot.end.subtract(TimelinePlan.gap))) continue;

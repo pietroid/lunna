@@ -3149,24 +3149,6 @@ abstract class AppLocalizations {
   /// **'D,S,T,Q,Q,S,S'**
   String get cycleWeekdays;
 
-  /// The agent's offer on a light day, in the cycle preview.
-  ///
-  /// In pt, this message translates to:
-  /// **'Hoje é dia leve. Passo o roteiro da Acme para segunda e deixo só tarefas soltas, 2h30 no total?'**
-  String get demoSuggestionLightDay;
-
-  /// A holiday written down as a day off, in the demo.
-  ///
-  /// In pt, this message translates to:
-  /// **'Finados'**
-  String get demoDayOffSouls;
-
-  /// A holiday written down as a day off, in the demo.
-  ///
-  /// In pt, this message translates to:
-  /// **'Proclamação da República'**
-  String get demoDayOffRepublic;
-
   /// What a light day is, after the cycle's day in the Feed's tag.
   ///
   /// In pt, this message translates to:
@@ -3274,6 +3256,66 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Desfazer'**
   String get daysOffUndo;
+
+  /// The title of the sheet that asks for a date.
+  ///
+  /// In pt, this message translates to:
+  /// **'Que dia?'**
+  String get pickerDateTitle;
+
+  /// The wheel that sets the cycle's length.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quantos dias dura o ciclo?'**
+  String get cyclePickLength;
+
+  /// The wheel that sets the period's length.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quantos dias dura a menstruação?'**
+  String get cyclePickPeriod;
+
+  /// The sheet that writes a date off down.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nova folga'**
+  String get daysOffAddTitle;
+
+  /// The hint of the date off's name.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nome (opcional): feriado, viagem'**
+  String get daysOffAddName;
+
+  /// The sheet's button that writes the date off down.
+  ///
+  /// In pt, this message translates to:
+  /// **'Marcar folga'**
+  String get daysOffAddConfirm;
+
+  /// The button that takes a date off away.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tirar esta folga'**
+  String get daysOffRemove;
+
+  /// Under the button that takes a date off away.
+  ///
+  /// In pt, this message translates to:
+  /// **'O dia volta a ser o que o fim de semana e o ciclo fazem dele.'**
+  String get daysOffRemoveHelp;
+
+  /// When a write on Ciclo or Folgas failed.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não deu para salvar. Tente de novo.'**
+  String get daysOffFailure;
+
+  /// A plan's line that changes the cycle, the weekend or a date off.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ciclo e folgas'**
+  String get agentChangeRhythm;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

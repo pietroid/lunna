@@ -1,10 +1,9 @@
 # Ciclo e folgas: the menstrual cycle and days off shape the day
 
 > Issue [#73](https://github.com/pietroid/lunna/issues/73), mockup track.
-> Designed unattended, then changed (round 2) after the reply on the
-> issue. This is the draft: sections 1 and 2 and the Build brief. The
-> person approves (or comments) on the issue; the build is a fresh
-> session, `/create build cycle`.
+> Designed unattended, changed once after the reply on the issue,
+> approved there ("Approve"), and built unattended. Spec:
+> [product/spec/cycle.md](../../spec/cycle.md).
 
 ## 1. The prompt
 
@@ -27,6 +26,8 @@ The reply to the first design, on the issue:
 > Don't integrate to apple health or anything like that, just a simple prediction is ok but the most important is the user able to change it.
 >
 > Also I didn't like the home page have two repeated badges, make it simpler. The rest seems great. Weekends are folgas unless they are removed (and one weekend can be specifically removed or something)
+
+The reply to round 2, on the issue: "Approve".
 
 What round 2 changed for it:
 
@@ -195,173 +196,168 @@ not opened in this unattended run):
 
 1. Should the luteal phase (or the days just before the period) be light
    too, or is the period the only phase that changes the day? (Not
-   answered in the reply; the period alone, as drawn.)
+   answered in the reply nor after the approval; built as drawn: the
+   period alone.)
 
-## Build brief
+## 3. What was built
 
-Phase 3 starts here (`/create build cycle`). Read the spec of each
-feature it touches first: [agent.md](../../spec/agent.md),
-[artifacts.md](../../spec/artifacts.md), [goals.md](../../spec/goals.md).
+### The real build, both brands
 
-### Files the design wrote (uncommitted on the branch, kept for the build)
+Lunna, the seven scenes (Feed on a period day, Menu, Ciclo, a day ahead
+corrected, Folgas, the calendar on a Friday evening before a weekend off,
+a date off written down):
 
-- `app/lib/cycle_preview.dart`: the preview entry point (6 scenes,
-  `?s=1..6`; 4 opens the day sheet on 23 Nov). Its fake timeline drops tasks on days off and anything past
-  22:00, which the real server must do itself. **Delete it in Phase 4.**
-- `app/packages/cycle/` (new package): `Cycle` (the phase math),
-  `RestRules`, `DayOff`, `Rhythm`, `CycleRepository` (`/api/rhythm`),
-  `CycleCubit` (`predictStart`, `workOn`, `addDayOff`, `remove`),
-  `CyclePage`, `CycleDaySheet` (`showCycleDaySheet`), `DaysOffPage`,
-  `DayKindChoice`. `Cycle.nextStart` (the corrected next period) with
-  `predictedStart` and `lengthOn`; `DayOff.kind` (`off`, or `work` for a
-  weekend day put back); `RestRules` default to Folga on both days.
-  `test/cycle_test.dart` covers the phase math and the correction (4
-  tests).
-- `app/packages/timeline/`: `models/day_mark.dart` (`DayKind`,
-  `DayReason`, `CyclePhase`, `DayMark`, `marks.on(day)`);
-  `Timeline.marks` read from the response's `days`; `TimelineState.marks`
-  set by every bloc handler; `FreeSlot.rest`, so `freeSlots(marks:)`
-  draws no room on a day off and one rest slot when the day is empty;
-  `widgets/day_mark_tag.dart` (`CyclePhaseLook`, `DayMarkTag`, `CycleTag`,
-  `RestDayTile` with `onWork`); `TimelineList.onWorkOn`; `_HeadingRow(mark:)` in Lista and Calendário, and the
-  `RestDayTile` branch in the calendar.
-- `app/packages/app_ui`: 8 tokens, `cycle{Menstrual,Follicular,Ovulatory,Luteal}`
-  and their `…Fill`, in both brands; icons `cycleMenstrual` (drop),
-  `cycleFollicular` (plant), `cycleOvulatory` (sun), `cycleLuteal` (moon),
-  `dayOff` (couch), `dayLight` (feather).
-- `app/lib/tempo/view/tempo_page.dart`: `WorkOnDay` (read like
-  `OpenDayHours`) handed to `TimelineList.onWorkOn`. `shell_page.dart`
-  provides a no-op one with a `TODO(build)`, and `plan_page_test.dart`
-  provides one too: **the build wires it to `CycleCubit.workOn`**.
-- `app/lib/feed/view/feed_page.dart` (`_TodayMarks`: one tag under the
-  date) and
-  `app/lib/menu/view/menu_page.dart` (the Ritmo section, which pushes
-  `/ciclo` and `/folgas`).
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): the `cycle*`, `dayKind*`,
-  `dayOff*`, `daysOff*`, `menuCycle*`, `menuDaysOff*` and
-  `menuRestSection` strings, and three `demo*` strings for the preview.
-- `app/pubspec.yaml`: the `cycle` path dependency.
+![Lunna](img/build-lunna.png)
+
+Focus, the same scenes:
+
+![Focus](img/build-focus.png)
+
+Drawn by the real app through a preview entry point (deleted afterwards)
+over the demo's day, with the real `CycleCubit` behind a canned rhythm.
+
+### The contract
+
+**Every date is work, light or off**, and the server alone says which
+(`server/src/time/day-kinds.ts`). A date written down wins; otherwise the
+strictest of the weekend (off by default) and the period (light by
+default). The queue puts nothing on a day off, and only loose tasks up to
+the budget on a light day; a delivery's task hops to the next working
+day. Anchored tasks, events and routines keep their hours. A delivery's
+red bar, a goal's "what its days ask by now" and the month's free minutes
+count working time only.
 
 ### Server
 
-- **Schema** (`db/schema.ts`, `npm run db:generate`):
-  - `user.saturday_kind` and `user.sunday_kind` (`work|light|off`,
-    **default `off`**, which every existing account takes on the
-    migration), and `user.light_minutes` (default 180).
-  - `cycle` (one per user: `length`, `period_length`, `period_kind`,
-    `next_start` nullable: the person's correction of the next period).
-  - `cycle_start` (user, day): every logged start. The last one is
-    `lastStart`. Logging a start on or after `next_start` clears it.
-  - `day_off` (id, user, day, title, `kind` `off|work`, unique per user
-    and day). `work` is a weekend day put back to work.
-- **`rhythm/`** (a Nest module, `@UseInterceptors(CatchUpInterceptor)`):
-  - `GET /api/rhythm` answers `{ cycle, rest, daysOff }`.
-  - `PUT /api/rhythm/cycle` (with `nextStart`, a day after today or
-    null), `POST /api/rhythm/cycle/start { day }`.
-  - `PATCH /api/rhythm/rest`.
-  - `POST /api/rhythm/days-off { day, kind, title }` (a second write on
-    the same day replaces it), `DELETE /api/rhythm/days-off/:id`.
-  - Every write answers the whole rhythm. Validate as `events/request.ts`
-    does: length 21 to 45, period 1 to 10, a start not in the future,
-    refusals in Portuguese.
-  - Rows in `analytics/events.ts` that never carry dates or lengths.
-- **`time/day-kinds.ts`**: `dayKindsFor(user, window, zone)` →
-  `Map<YYYY-MM-DD, { kind, reason, budgetMinutes, cycle: { day, length,
-  phase } }>`. The strictest source wins. The phase math is the same as
-  `Cycle` in the app. One pure function, unit-tested across zones.
-- **`relayout`** (`time/scheduling.ts`) takes the day kinds:
-  - an off day has no slots for the queue;
-  - a light day takes queued loose tasks until `budgetMinutes` is used,
-    and a task with `artifact_id` skips it (as it skips a fixed block);
-  - anchored tasks and events are untouched.
-  - `catchUp` is unchanged.
-  - End-to-end specs in `events/` with a frozen clock: a weekend off, a
-    light Friday with a delivery task that moves to Monday, a loose task
-    that stays, a budget that runs out.
-- **`GET /api/timeline`** (and every write that answers with it) adds
-  `days: DayMark[]` for the window: every non-work day, plus every day
-  with a cycle.
-- **Time math on working days.**
-  - Add `capacityShare(from, to, now, kinds)`: the share of working time
-    gone, where an off day counts 0, a light day counts 0 for deliveries,
-    and a work day counts 1.
-  - Use it for a delivery's time share: the server sends `timeGone` on
-    each artifact, and the app's `Artifact.progressAt` / `lagOf` /
-    `isBehind` read it instead of calendar time.
-  - Use it for a goal's time share (`measureGoals`).
-  - `freeMinutes` in `artifacts.service.ts` skips off days and caps light
-    days at their budget, for loose work only.
-  - Update the specs of each. Say it in `artifacts.md` and `goals.md`.
-- **Agent:**
-  - The board (`agent/board.ts`) carries each day's kind, reason and
-    phase.
-  - The prompt says what a light day and a day off mean: never propose a
-    delivery's task on a light or off day unless asked.
-  - The dry run refuses such a move with a doubt.
-  - `work-quality.ts`: `fits` and `pace` use the working-day math.
-  - The suggestion's turn sees today's kind and phase, so it can offer,
-    as on screen 1, to move a delivery's task off a light day.
-  - New actions (`actions/rhythm.ts`): `period_started`,
-    `predict_period` (the correction), `set_day_kind` (weekend),
-    `add_day_off`, `work_on` (a weekend day back to work), each a gesture
-    the pages make.
-  - One eval case in `agent/evals/` (a light day with a delivery task).
+- `time/day-kinds.ts`: the kinds (`markOf`, `marksOf`), the phases
+  (`cycleDayOf`, `nextPeriodOf`), the share of working time gone
+  (`capacityShare`, `deliveryShare`, `goalShare`). Pure, tested in three
+  zones.
+- `time/scheduling.ts`: `relayout` takes the marks. A queued task that
+  would land on a day that will not take it hops to the next one that
+  does, stands in the way there like an anchor, and **leaves the queue's
+  cursor where it was**, so the loose tasks after it still fill the light
+  day it hopped.
+- `rhythm/`: `RhythmStore` (`PgRhythmStore`, `MemoryRhythmStore`),
+  `RhythmService` (the rules, refusals in Portuguese), `RhythmController`:
+  `GET /api/rhythm`, `PUT /api/rhythm/cycle`, `POST /api/rhythm/cycle/start`,
+  `PATCH /api/rhythm/rest`, `POST /api/rhythm/days-off`,
+  `DELETE /api/rhythm/days-off/:id`. Every route answers the whole rhythm.
+- Migration `drizzle/0019_rhythm.sql`: `rhythm` (one row per person, the
+  weekend's rule, the budget, the cycle's lengths, `next_start`),
+  `cycle_start`, `day_off`.
+- `events/timeline.service.ts`: reads the rhythm, lays the queue out over
+  it, answers `days` (a mark for every day drawn that is not a plain
+  working day or that has a cycle).
+- `artifacts/artifacts.service.ts`: `timeGone` on each delivery and goal,
+  `freeMinutes` on working days only.
+- `analytics/events.ts`: five rows, all `rhythm_changed`, carrying nothing
+  but the route.
+- Agent: the board's date table marks each day and the cycle's day; a
+  line says the weekend, the budget and the next period. The prompt says
+  what the kinds mean. `at_hour` refuses a delivery's task on a light day
+  or a day off unless `rest_day` (the person confirmed it). The suggestion
+  turn is told when today is light or off. Four actions in
+  `agent/actions/rhythm.ts` (`period_started`, `predict_period`,
+  `set_weekend`, `day_off`), drawn as `set_rhythm` lines, undone by
+  writing the rhythm back whole. `fits` and `pace` read the working-day
+  math. Eval case `light-day-delivery-task`.
 
 ### App
 
-- The shell provides `CycleRepository`. `app.dart` adds the `/ciclo` and
-  `/folgas` routes, each with a `CycleCubit(onChanged: () =>
-  timelineBloc.add(TimelineRequested()))` loaded on open and an
-  `AskDock` with the `AppFab` writing on the day, as `/feitas` does.
-- The rows on Ciclo open pickers: `AppWheelPicker` for the date, a wheel
-  of days for the lengths, and a wheel of hours for the light budget.
-  `DaysOffPage.onAdd` opens a small sheet (date + name) that posts to
-  `/rhythm/days-off`. A tap on a date off offers to remove it.
-- `CycleDaySheet` and the Folgas rows already call the cubit; the
-  shell's `WorkOnDay` must reach the same cubit (provide `CycleCubit` in
-  the shell, not only on the two routes).
-- `RestDayTile.onTap` writes at the day's start with `Placement.at` (the
-  server keeps it there: by hand wins). A drop on a rest row lands at the
-  day's start too: make it a drop target like a free stretch.
-- `Artifact` reads `timeGone` from the server (above).
-- Tests:
-  - `Cycle` (written: phase math, the correction; add a 35-day cycle);
-  - `DaysOffPage`'s weekend rows (Trabalhar, Desfazer) and
-    `CycleDaySheet`'s two buttons (a day ahead, a day gone);
-  - `DayMark.fromJson`;
-  - `freeSlots` with an off day, with and without a card;
-  - `_HeadingRow`'s tag;
-  - the Feed's tags (with marks, with none);
-  - the Menu's rows;
-  - `CyclePage` and `DaysOffPage` on a canned `Rhythm`;
-  - every test under both brands.
-- Spec `product/spec/cycle.md`, a short "Ciclo e folgas" section in
-  `AGENTS.md`, and `packages/cycle`, `server/src/rhythm` in its Layout.
+- `packages/cycle`: the pages now do what their rows say. The last start
+  and the lengths open wheels (`AppWheelPicker.date` and `.count`, new in
+  `app_ui`), the light budget the hours wheel, Folgas' + opens
+  `DayOffSheet` (day and name), a date off tapped opens
+  `RemoveDayOffSheet`, and a failed write says so in red under the page.
+- `main.dart` provides `CycleRepository` and one `CycleCubit` for the
+  app. Its writes read the timeline and Entregas again. `/ciclo` and
+  `/folgas` are routes in `app.dart`, each reading the rhythm as it opens,
+  each with the agent's bar. The calendar's **Trabalhar** reaches the same
+  cubit through the shell's `WorkOnDay`.
+- `packages/timeline`: a drop on a day off's rest row lands at the day's
+  first hour, and the + aims there too.
+- `packages/artifacts`: `Artifact.timeGone` and `Goal.timeGone` from the
+  server; a delivery whose deadline or start changed on the phone counts
+  calendar time until the next read.
+- `packages/agent`: `PlanChangeKind.setRhythm`, the line with the couch
+  and "Ciclo e folgas".
 
-### Checked so far
+### Tests
 
-- `flutter analyze` on `lib`, `cycle` and `timeline/lib`: no issues (the
-  infos left are in `timeline/test`, untouched here).
-- `cycle`'s tests: 4 passed (round 2).
-- `timeline`'s tests: 169 passed; `app/test/plan/plan_page_test.dart`: 4 passed.
-- `app/test/feed/feed_page_test.dart` does not compile, on main too. At
-  line 264 it passes `plan:` to `AgentSuggestion`, which lost that
-  parameter in #72. The build fixes it while it adds the Feed's tag tests.
+Server: 427 in 30 suites (`npm test`), 21 of them new or changed for this:
+the kinds and phases (`time/day-kinds.spec.ts`, 7 plus 2 in each of three
+zones), the queue over the kinds (`scheduling.spec.ts`, 4), the routes and
+what they do to the day end to end (`rhythm/rhythm.controller.spec.ts`,
+15), the Postgres store on PGlite (`rhythm/pg-rhythm.store.spec.ts`, 4),
+and the agent's day off proposed, applied and undone, and its refusal on
+a light day (`agent.controller.spec.ts`, 2). The pinned schema test now
+accounts for `rest_day`.
 
-### Decisions taken in this session that are not in the pins
+App, every package touched, under both brands: cycle 14 (the phases, a
+35-day cycle, the wire, Ciclo's button and both buttons of the day sheet,
+Folgas' order, Trabalhar, Desfazer, removing and writing a date off),
+timeline 6 new (`day_mark_test.dart`), artifacts 1 new (`timeGone`),
+agent 1 extended (`set_rhythm` line), app 4 new Feed tag tests and 2 Menu
+tests. `.tool/check`: see below.
 
-The rule and the "Decided unattended" list above. And: the day kinds live
-on the server and reach the app in the timeline's `days`, so the Feed,
-the Menu and the calendar need no new request; only the two pages read
-`/api/rhythm`.
+`.tool/check` passed every step: `app-analyze`, the tests of agent,
+analytics, api_client, app_ui, artifacts, cycle, notifications and
+timeline under Focus and under Lunna, `server-eslint`, `server-tsc`,
+`server-test`. The root app's tests (`flutter test`, 62) passed under both
+brands too, run by hand since the check does not list them.
 
-### Open questions
+No test was flaky in these runs.
 
-The one left in section 2 (the luteal phase). Its default, if nobody
-answers: only the period changes the day. The weekend question is
-answered: Folga by default.
+### Where the build differs from the design
 
-### Cost of the design session
+- **The weekend's rule and the cycle's lengths are in a `rhythm` table,
+  not columns on `user`.** The user table is Better Auth's, and a row of
+  our own needs no change to its additional fields. With no row, the
+  weekend is off, as the brief says.
+- **A start written down always clears the correction** (the brief said
+  "on or after `next_start`"). A start before a corrected day would
+  otherwise leave a two-day cycle between them.
+- **Anchored tasks count against a light day's budget.** Three hours put
+  there by hand leave no room for the queue.
+- **Working time is the working day's hours, not whole days.** The red
+  bar no longer grows overnight either. A delivery begun Friday morning
+  and due Monday is half gone on Friday night, and still half gone on
+  Sunday.
+- **The day sheet's correction and the rows' pickers** were stubs on the
+  board (`onTap: () {}`). They are real now, with two new wheels in
+  `app_ui`.
+- **A bug on the board, fixed.** Folgas' **Trabalhar** captured the
+  loop's `saturday` and put the last weekend of the 30 days back to work,
+  whichever was tapped. The new widget test caught it.
+- **One scene added** to the prints: the sheet that writes a date off
+  down (scene 7).
+- The rhythm's routes do not take `CatchUpInterceptor`: none reads the
+  day.
 
-The queue measures this run and writes the figures in the PR. In
-unattended runs it does not call `.tool/cost` here.
+### Decided in the build, unattended
+
+- The only open question (the luteal phase) is unanswered: **only the
+  period changes the day**, as drawn.
+- The agent may put a delivery's task on a light day or a day off **only
+  after the person confirmed it** (`rest_day`), otherwise it asks.
+- The agent's tests and the eval world keep the weekend at work (their
+  cases were written for a world without the rhythm). A case or a test
+  changes the rhythm itself.
+
+## 4. How to turn it on
+
+Nothing to set: the migration runs on the server's boot, and the app
+needs no new define. From the moment it ships **every account has its
+weekend off**. Tasks the queue had put on Saturday or Sunday move to
+Monday. A task someone anchored there keeps its hour. Someone who works
+weekends sets Sábado and Domingo to Normal in Menu → Folgas.
+
+Without a cycle written down nothing about the cycle shows (the Feed has
+no tag, Menu's Ciclo says what it is for). The first "Menstruação começou
+hoje", or the last start picked on Ciclo, begins it.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. No spend outside Claude:
+the agent's eval case was written but not run (it calls a real model).

@@ -1,6 +1,7 @@
 import { Action, ArgName, ARGS } from './action';
 import { ARTIFACTS } from './artifacts';
 import { QUEUE } from './queue';
+import { RHYTHM } from './rhythm';
 import { ROUTINES } from './routines';
 
 export * from './action';
@@ -10,7 +11,12 @@ export * from './action';
  * enum, the changes' schema, how each change is read, made and drawn: all
  * of it is read from here. Adding a control is adding an entry.
  */
-export const ACTIONS: readonly Action[] = [...QUEUE, ...ARTIFACTS, ...ROUTINES];
+export const ACTIONS: readonly Action[] = [
+  ...QUEUE,
+  ...ARTIFACTS,
+  ...ROUTINES,
+  ...RHYTHM,
+];
 
 const BY_NAME = new Map(ACTIONS.map((it) => [it.name, it]));
 

@@ -2031,15 +2031,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get cycleWeekdays => 'D,S,T,Q,Q,S,S';
 
   @override
-  String get demoSuggestionLightDay => 'Hoje é dia leve. Passo o roteiro da Acme para segunda e deixo só tarefas soltas, 2h30 no total?';
-
-  @override
-  String get demoDayOffSouls => 'Finados';
-
-  @override
-  String get demoDayOffRepublic => 'Proclamação da República';
-
-  @override
   String get dayLightShort => 'dia leve';
 
   @override
@@ -2118,4 +2109,34 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get daysOffUndo => 'Desfazer';
+
+  @override
+  String get pickerDateTitle => 'Que dia?';
+
+  @override
+  String get cyclePickLength => 'Quantos dias dura o ciclo?';
+
+  @override
+  String get cyclePickPeriod => 'Quantos dias dura a menstruação?';
+
+  @override
+  String get daysOffAddTitle => 'Nova folga';
+
+  @override
+  String get daysOffAddName => 'Nome (opcional): feriado, viagem';
+
+  @override
+  String get daysOffAddConfirm => 'Marcar folga';
+
+  @override
+  String get daysOffRemove => 'Tirar esta folga';
+
+  @override
+  String get daysOffRemoveHelp => 'O dia volta a ser o que o fim de semana e o ciclo fazem dele.';
+
+  @override
+  String get daysOffFailure => 'Não deu para salvar. Tente de novo.';
+
+  @override
+  String get agentChangeRhythm => 'Ciclo e folgas';
 }

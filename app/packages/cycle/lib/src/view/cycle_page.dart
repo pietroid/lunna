@@ -121,7 +121,7 @@ class CyclePage extends StatelessWidget {
                           ? null
                           : l10n.cycleDate(cycle.lastStart),
                       iconData: AppIcons.calendar,
-                      onTap: () {},
+                      onTap: () => unawaited(_pickStart(context, today)),
                     ),
                     if (cycle != null)
                       AppListItem(
@@ -138,13 +138,36 @@ class CyclePage extends StatelessWidget {
                       title: l10n.cycleLength,
                       subtitle: l10n.cycleDays(cycle?.length ?? 28),
                       iconData: AppIcons.repeat,
-                      onTap: () {},
+                      onTap: cycle == null
+                          ? null
+                          : () => unawaited(
+                              _pickCount(
+                                context,
+                                title: l10n.cyclePickLength,
+                                initial: cycle.length,
+                                min: 21,
+                                max: 45,
+                                save: (value) => cycle.copyWith(length: value),
+                              ),
+                            ),
                     ),
                     AppListItem(
                       title: l10n.cyclePeriodLength,
                       subtitle: l10n.cycleDays(cycle?.periodLength ?? 5),
                       iconData: AppIcons.cycleMenstrual,
-                      onTap: () {},
+                      onTap: cycle == null
+                          ? null
+                          : () => unawaited(
+                              _pickCount(
+                                context,
+                                title: l10n.cyclePickPeriod,
+                                initial: cycle.periodLength,
+                                min: 1,
+                                max: 10,
+                                save: (value) =>
+                                    cycle.copyWith(periodLength: value),
+                              ),
+                            ),
                     ),
                     const SizedBox(height: AppSpacing.s4),
                     Text(l10n.cyclePeriodKind, style: AppTypography.label),
@@ -159,8 +182,14 @@ class CyclePage extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.s3),
                     Text(
-                      l10n.cycleHelp,
-                      style: AppTypography.body.copyWith(color: AppColors.ink3),
+                      state.status == CycleStatus.failure
+                          ? l10n.daysOffFailure
+                          : l10n.cycleHelp,
+                      style: AppTypography.body.copyWith(
+                        color: state.status == CycleStatus.failure
+                            ? AppColors.dangerInk
+                            : AppColors.ink3,
+                      ),
                     ),
                   ],
                 );
@@ -176,6 +205,46 @@ class CyclePage extends StatelessWidget {
   }
 
   static DateTime _dayOf(DateTime at) => DateTime(at.year, at.month, at.day);
+
+  /// The last period's first day, from the date wheel: a day gone, within
+  /// the last 90. Without a cycle it is the first one written down.
+  static Future<void> _pickStart(BuildContext context, DateTime today) async {
+    final cubit = context.read<CycleCubit>();
+    final cycle = cubit.state.data?.cycle;
+    final picked = await AppWheelPicker.date(
+      context,
+      initial: cycle?.lastStart ?? today,
+      first: DateTime(today.year, today.month, today.day - 90),
+      last: today,
+    );
+    if (picked == null || picked == cycle?.lastStart) return;
+    await (cycle == null
+        ? cubit.periodStarted(picked)
+        : cubit.saveCycle(cycle.copyWith(lastStart: picked)));
+  }
+
+  /// A length, from a wheel of days, written down as [save] makes it.
+  static Future<void> _pickCount(
+    BuildContext context, {
+    required String title,
+    required int initial,
+    required int min,
+    required int max,
+    required Cycle Function(int value) save,
+  }) async {
+    final cubit = context.read<CycleCubit>();
+    final l10n = context.l10n;
+    final picked = await AppWheelPicker.count(
+      context,
+      title: title,
+      initial: initial,
+      min: min,
+      max: max,
+      label: l10n.cycleDays,
+    );
+    if (picked == null || picked == initial) return;
+    await cubit.saveCycle(save(picked));
+  }
 }
 
 /// Normal, Leve or Folga: what a kind of day is to the queue.

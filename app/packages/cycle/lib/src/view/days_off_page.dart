@@ -5,6 +5,7 @@ import 'package:clock/clock.dart';
 import 'package:cycle/src/cycle_cubit.dart';
 import 'package:cycle/src/models.dart';
 import 'package:cycle/src/view/cycle_page.dart';
+import 'package:cycle/src/view/day_off_sheets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
@@ -27,7 +28,7 @@ class DaysOffPage extends StatelessWidget {
   /// The agent's bar, floated over the page as on every screen.
   final Widget? dock;
 
-  /// Writes a new date off.
+  /// Writes a new date off: [showDayOffSheet] unless told otherwise.
   final VoidCallback? onAdd;
 
   @override
@@ -95,7 +96,9 @@ class DaysOffPage extends StatelessWidget {
                     Text(l10n.daysOffDates, style: hint),
                     const SizedBox(height: AppSpacing.s2),
                     ..._dates(context, rhythm),
-                    AppAddRow(onTap: onAdd ?? () {}),
+                    AppAddRow(
+                      onTap: onAdd ?? () => unawaited(showDayOffSheet(context)),
+                    ),
                     const SizedBox(height: AppSpacing.s6),
                     Text(l10n.daysOffLight, style: hint),
                     const SizedBox(height: AppSpacing.s2),
@@ -103,11 +106,17 @@ class DaysOffPage extends StatelessWidget {
                       title: l10n.daysOffLightBudget,
                       subtitle: durationLabel(l10n, rules.lightMinutes),
                       iconData: AppIcons.dayLight,
-                      onTap: () {},
+                      onTap: () => unawaited(_pickBudget(context, rules)),
                     ),
                     Text(
-                      l10n.daysOffLightHelp,
-                      style: AppTypography.body.copyWith(color: AppColors.ink3),
+                      state.status == CycleStatus.failure
+                          ? l10n.daysOffFailure
+                          : l10n.daysOffLightHelp,
+                      style: AppTypography.body.copyWith(
+                        color: state.status == CycleStatus.failure
+                            ? AppColors.dangerInk
+                            : AppColors.ink3,
+                      ),
                     ),
                   ],
                 );
@@ -120,6 +129,22 @@ class DaysOffPage extends StatelessWidget {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
     );
+  }
+
+  /// The light day's budget, from the wheel of hours: up to eight.
+  static Future<void> _pickBudget(
+    BuildContext context,
+    RestRules rules,
+  ) async {
+    final cubit = context.read<CycleCubit>();
+    final picked = await AppWheelPicker.duration(
+      context,
+      initial: Duration(minutes: rules.lightMinutes),
+    );
+    if (picked == null) return;
+    final minutes = picked.inMinutes.clamp(0, 8 * 60);
+    if (minutes == rules.lightMinutes) return;
+    await cubit.saveRules(rules.copyWith(lightMinutes: minutes));
   }
 
   /// The next 30 days' folgas in the order of their days: each weekend,
@@ -146,9 +171,11 @@ class DaysOffPage extends StatelessWidget {
           (
             day.day,
             AppListItem(
-              title: l10n.daysOffEntry(day.day, day.title),
+              title: day.title.isEmpty
+                  ? l10n.cycleDayTitle(day.day)
+                  : l10n.daysOffEntry(day.day, day.title),
               iconData: AppIcons.dayOff,
-              onTap: () {},
+              onTap: () => unawaited(showRemoveDayOffSheet(context, day)),
             ),
           ),
     ];
@@ -160,6 +187,9 @@ class DaysOffPage extends StatelessWidget {
         today.day + (DateTime.saturday - today.weekday) % 7,
       );
       while (saturday.isBefore(until)) {
+        // Its own copy: the closures below outlive this turn of the loop,
+        // which moves [saturday] on to the next weekend.
+        final day = saturday;
         final sunday = DateTime(
           saturday.year,
           saturday.month,
@@ -167,13 +197,13 @@ class DaysOffPage extends StatelessWidget {
         );
         // Put back to work, for this weekend alone.
         final worked = [
-          for (final day in [saturday, sunday])
-            if (written(day) case final date? when date.kind == DayKind.work)
+          for (final it in [day, sunday])
+            if (written(it) case final date? when date.kind == DayKind.work)
               date,
         ];
         final working = worked.isNotEmpty;
         rows.add((
-          saturday,
+          day,
           _Weekend(
             dates: l10n.daysOffWeekendEntry(saturday, sunday),
             working: working,
@@ -181,7 +211,7 @@ class DaysOffPage extends StatelessWidget {
                 ? () => unawaited(
                     cubit.remove([for (final date in worked) date.id]),
                   )
-                : () => unawaited(cubit.workOn([saturday, sunday])),
+                : () => unawaited(cubit.workOn([day, sunday])),
           ),
         ));
         saturday = DateTime(saturday.year, saturday.month, saturday.day + 7);

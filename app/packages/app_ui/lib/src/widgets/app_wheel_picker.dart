@@ -60,6 +60,69 @@ abstract final class AppWheelPicker {
     );
   }
 
+  /// Asks for a day between [first] and [last], starting at [initial].
+  static Future<DateTime?> date(
+    BuildContext context, {
+    required DateTime initial,
+    required DateTime first,
+    required DateTime last,
+  }) {
+    final start = initial.isBefore(first)
+        ? first
+        : initial.isAfter(last)
+        ? last
+        : initial;
+    var picked = start;
+
+    return _show<DateTime>(
+      context,
+      title: context.l10n.pickerDateTitle,
+      onConfirm: () => DateTime(picked.year, picked.month, picked.day),
+      wheel: CupertinoDatePicker(
+        mode: CupertinoDatePickerMode.date,
+        minimumDate: first,
+        maximumDate: last,
+        initialDateTime: start,
+        onDateTimeChanged: (value) => picked = value,
+      ),
+    );
+  }
+
+  /// Asks for a whole number from [min] to [max] under [title], each drawn
+  /// by [label], starting at [initial].
+  static Future<int?> count(
+    BuildContext context, {
+    required String title,
+    required int initial,
+    required int min,
+    required int max,
+    required String Function(int value) label,
+  }) {
+    var picked = initial.clamp(min, max);
+
+    return _show<int>(
+      context,
+      title: title,
+      onConfirm: () => picked,
+      wheel: CupertinoPicker(
+        itemExtent: 36,
+        scrollController: FixedExtentScrollController(
+          initialItem: picked - min,
+        ),
+        onSelectedItemChanged: (index) => picked = min + index,
+        children: [
+          for (var value = min; value <= max; value++)
+            Center(
+              child: Text(
+                label(value),
+                style: const TextStyle(color: AppColors.ink, fontSize: 20),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// Asks for a day and an hour, starting at [initial].
   ///
   /// Two wheels side by side, the day and the hour. The day wheel names days

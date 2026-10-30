@@ -28,6 +28,8 @@ import { formatTimeIn } from '../time/zone';
 import { UsersService } from '../users/users.service';
 import { AgentController } from './agent.controller';
 import { AgentReply, AgentService } from './agent.service';
+import { MemoryRhythmStore, RhythmStore } from '../rhythm/rhythm.store';
+import { RhythmService } from '../rhythm/rhythm.service';
 import {
   Conversation,
   ConversationStore,
@@ -189,9 +191,17 @@ afterAll(() => {
 describe('the agent', () => {
   let app: INestApplication<App>;
   let model: ScriptedModel;
+  let rhythm: MemoryRhythmStore;
 
   beforeEach(async () => {
     model = new ScriptedModel();
+    // Weekends at work, as every test here was written before the rhythm;
+    // the rhythm's own tests change it.
+    rhythm = new MemoryRhythmStore();
+    rhythm.seed(USER, {
+      rest: { saturday: 'work', sunday: 'work', lightMinutes: 180 },
+      daysOff: [],
+    });
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ ignoreEnvFile: true })],
       controllers: [
@@ -211,6 +221,8 @@ describe('the agent', () => {
         { provide: ArtifactStore, useClass: MemoryArtifactStore },
         { provide: ConversationStore, useClass: MemoryConversationStore },
         { provide: UsersService, useValue: workDays },
+        { provide: RhythmStore, useValue: rhythm },
+        RhythmService,
       ],
     })
       .overrideGuard(SessionGuard)
@@ -2273,6 +2285,88 @@ describe('the agent', () => {
         DEFAULT_WORK_DAY.start,
         DEFAULT_WORK_DAY.end,
       ]);
+    });
+  });
+
+  describe('the rhythm', () => {
+    it('writes a day off down, lays the dry run out around it, and takes it back', async () => {
+      // Today is full to 20:00, so Revisão is tomorrow's, until tomorrow is off.
+      await task('Relatório', 600);
+      await task('Revisão', 120);
+      model.steps = [
+        () =>
+          propose({
+            changes: [
+              {
+                do: 'day_off',
+                day: 'amanhã',
+                day_kind: 'off',
+                title: 'Feriado',
+              },
+            ],
+          }),
+      ];
+
+      const plan = ((await ask('amanhã é feriado')).body as AgentReply).plan!;
+      expect(plan.changes).toEqual([
+        {
+          kind: 'set_rhythm',
+          title: 'Folga em 11/03 · Feriado',
+          minutes: 0,
+          routine: false,
+        },
+      ]);
+      // The dry run already sees it: Revisão goes on to Thursday.
+      expect(plan.pushed).toMatchObject([{ title: 'Revisão' }]);
+      expect(plan.pushed[0].at.startsWith('2026-03-12')).toBe(true);
+
+      expect((await post(`/agent/plans/${plan.id}/apply`)).status).toBe(201);
+      expect((await rhythm.read(USER)).daysOff).toMatchObject([
+        { day: '2026-03-11', kind: 'off', title: 'Feriado' },
+      ]);
+      const after = await day();
+      expect(after.days).toMatchObject([
+        { day: '2026-03-11', kind: 'off', reason: 'day_off' },
+      ]);
+
+      expect((await post(`/agent/plans/${plan.id}/undo`)).status).toBe(201);
+      expect((await rhythm.read(USER)).daysOff).toEqual([]);
+    });
+
+    it('refuses a delivery’s task at an hour on a light day, and tells the model to ask', async () => {
+      await rhythm.addStart(USER, '2026-03-10');
+      const artifactStore = app.get(ArtifactStore);
+      const taskStore = app.get(TaskStore);
+      const artifact = await artifactStore.insert(USER, {
+        title: 'Mapa da Ana',
+        deadline: '2026-03-20',
+      });
+      await taskStore.insert(USER, {
+        title: 'Mapa da Ana · leitura',
+        minutes: 60,
+        position: 0,
+        artifactId: artifact.id,
+      });
+      model.steps = [
+        (messages) =>
+          propose({
+            changes: [
+              {
+                do: 'at_hour',
+                ref: refOf(messages, 'Mapa da Ana · leitura'),
+                day: 'hoje',
+                time: '15:00',
+              },
+            ],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toContain('is a light day (period)');
+          return say('Hoje é um dia leve: deixo o mapa para depois?')(messages);
+        },
+      ];
+
+      const turn = await ask('põe o mapa da Ana hoje às 15h');
+      expect((turn.body as AgentReply).plan).toBeUndefined();
     });
   });
 });

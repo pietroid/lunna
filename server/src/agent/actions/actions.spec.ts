@@ -74,11 +74,18 @@ describe('the registry', () => {
       properties: Obj;
     };
     delete fresh.properties.artifact;
+    // Added since, with the light days: the schema before it, plus this.
+    const { rest_day: restDay, ...before } = props;
+    expect(restDay).toEqual({
+      type: 'boolean',
+      description:
+        'Only after the person confirmed a delivery’s task on a day off or a light day.',
+    });
 
     expect(
       JSON.stringify({
         ...flat,
-        items: { ...flat.items, properties: { ...props, new: fresh } },
+        items: { ...flat.items, properties: { ...before, new: fresh } },
       }),
     ).toBe(JSON.stringify(TODAY));
   });

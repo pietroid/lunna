@@ -11,6 +11,7 @@ import { EventsModule } from './events/events.module';
 import { LinksModule } from './links/links.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ArtifactsModule } from './artifacts/artifacts.module';
+import { RhythmModule } from './rhythm/rhythm.module';
 import { RoutinesModule } from './routines/routines.module';
 import { UsersModule } from './users/users.module';
 
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module';
     LinksModule,
     NotificationsModule,
     ArtifactsModule,
+    RhythmModule,
     RoutinesModule,
     UsersModule,
   ],

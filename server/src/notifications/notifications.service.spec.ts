@@ -1,3 +1,4 @@
+import { NO_MARKS } from '../time/day-kinds';
 import { CalendarEvent } from '../calendar/calendar.types';
 import { Day, TimelineService } from '../events/timeline.service';
 import { Task } from '../tasks/task.types';
@@ -36,6 +37,8 @@ function serviceWith(
     placed: new Map(queue.map((it) => [it.task.id, it.slot])),
     routines: new Map(),
     artifacts: new Map(),
+    marks: NO_MARKS,
+    days: 2,
   };
   const timeline = {
     day: () => Promise.resolve(day),
@@ -393,6 +396,8 @@ describe('the next suggestion', () => {
           placed: new Map(),
           routines: new Map(),
           artifacts: new Map(),
+          marks: NO_MARKS,
+          days: 2,
         }),
       zone: () => zone,
     }) as unknown as TimelineService;

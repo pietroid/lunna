@@ -94,6 +94,7 @@ app/
     l10n/               every user-facing string (pt-BR)
     notifications/      local reminder queue, clearing what was shown, background refresh
     artifacts/          Entregas and Objetivos: queue, catalogue, goals, sheets, the delivery's page
+    cycle/              Ciclo and Folgas: the cycle, the weekend's rule, the dates off (pages, cubit)
     timeline/           the day: bloc, repositories, timeline list, event page
 server/
   src/
@@ -114,8 +115,9 @@ server/
     tasks/              TaskStore (Postgres) over the task table
     notifications/      the reminder plan (asks per edge), derived from the calendar
     artifacts/          ArtifactStore (+ its module): deliveries, catalogue, goals, the schedule
+    rhythm/             RhythmStore (+ its module), the /rhythm routes: cycle, weekend, dates off
     routines/           routine CRUD and day expansion
-    time/               work hours, zones, the scheduler
+    time/               work hours, zones, the scheduler, the kind of each day (day-kinds.ts)
   drizzle/              generated SQL migrations (committed)
   tool/coverage.mjs     which routes the agent reaches; every handler hands to a service
 deploy/                 docker-compose.yml, nginx.conf, web.Dockerfile
@@ -574,6 +576,22 @@ in, red what its days ask by now, 15 % slack. Every delivery has an
 editable **Valor**. Routes and rules in
 [product/spec/goals.md](./product/spec/goals.md): read it before touching
 goals on either side.
+
+### Ciclo e folgas (the rhythm)
+
+**Every date is work, light or off**, worked out on the server
+(`time/day-kinds.ts`): a date written down in Folgas wins (a holiday, or
+a weekend day put back to work); otherwise the strictest of the weekend
+(**off by default**) and the cycle's period (**light by default**). The
+queue puts nothing on a day off and, on a light day, only loose tasks up
+to its budget (3 h): **a delivery's task hops to the next working day**.
+Anchored tasks, events and routines keep their hours. A delivery's and a
+goal's time, and the month's free minutes, **count working days only**
+(`capacityShare`, `timeGone`). The timeline carries each such day as
+`days`; Ciclo (`/ciclo`) and Folgas (`/folgas`) are under Menu's Ritmo,
+over `/api/rhythm`. The cycle is health data: never sent to PostHog. See
+[product/spec/cycle.md](./product/spec/cycle.md): read it before touching
+`time/day-kinds.ts`, `server/src/rhythm/` or `app/packages/cycle/`.
 
 ### Reminders
 

@@ -6,6 +6,8 @@ import {
   RoutineDays,
 } from '../calendar/calendar.types';
 import { ArtifactStore } from '../artifacts/artifact.store';
+import { RhythmStore } from '../rhythm/rhythm.store';
+import { Marks, marksFor, marksOf, NO_MARKS, Rhythm } from '../time/day-kinds';
 import { relayout } from '../time/scheduling';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
@@ -19,7 +21,7 @@ import {
   minutesOf,
   WorkDay,
 } from '../time/work-hours';
-import { addDaysIn, startOfDayIn, Zone } from '../time/zone';
+import { addDaysIn, isoDayIn, startOfDayIn, Zone } from '../time/zone';
 import {
   BacklogCard,
   CardArtifact,
@@ -78,6 +80,15 @@ export interface Day {
   routines: Map<string, RoutineDays>;
   /** The title of each of the person's artifacts, by artifact id. */
   artifacts: Map<string, string>;
+  /**
+   * The weekend's rule, the cycle and the dates written down. Absent where
+   * nothing keeps them (the older tests), and every day is a working one.
+   */
+  rhythm?: Rhythm;
+  /** The kind of every date, worked out from [rhythm]. */
+  marks: Marks;
+  /** How many days [until] draws, counting today. */
+  days: number;
 }
 
 /**
@@ -95,6 +106,9 @@ export class TimelineService {
     private readonly _tasks: TaskStore,
     // Absent on a sandbox copy of the day, whose cards then name no artifact.
     @Optional() private readonly _artifacts?: ArtifactStore,
+    // Absent in the tests that predate it, whose every day is a working
+    // one. Production always has it, and its default is the weekend off.
+    @Optional() private readonly _rhythm?: RhythmStore,
   ) {}
 
   /** The zone every hour on this person's day is measured in. */
@@ -130,6 +144,8 @@ export class TimelineService {
     let events: CalendarEvent[] = [];
     let live = new Map<string, CalendarEvent>();
     let placed = new Map<string, Interval>();
+    const rhythm = await this._rhythm?.read(user);
+    const marks = rhythm === undefined ? NO_MARKS : marksOf(rhythm);
     const stored = await this._tasks.pending(user);
     const tasks = stored.filter((task) => !task.backlog);
     const backlog = stored.filter((task) => task.backlog);
@@ -161,11 +177,13 @@ export class TimelineService {
           minutes: task.minutes,
           anchor:
             task.notBefore === undefined ? undefined : new Date(task.notBefore),
+          artifact: task.artifactId !== undefined,
         })),
         events.flatMap((event) => intervalOf(event) ?? []),
         cursorOf(events, now),
         zone,
         workDay,
+        marks,
       );
 
       const last = Math.max(
@@ -190,6 +208,9 @@ export class TimelineService {
       placed,
       routines,
       artifacts,
+      rhythm,
+      marks,
+      days,
     };
   }
 
@@ -222,6 +243,7 @@ export class TimelineService {
         start: formatMinuteOfDay(day.workDay.start),
         end: formatMinuteOfDay(day.workDay.end),
       },
+      days: marksFor(day.marks, isoDayIn(day.now, day.zone), day.days),
     };
   }
 }

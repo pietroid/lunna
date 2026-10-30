@@ -1,3 +1,4 @@
+import type { DayMark } from '../../time/day-kinds';
 import { ChecklistItem, RoutineDays } from '../../calendar/calendar.types';
 import { StartNowGuard } from '../timing';
 
@@ -190,6 +191,12 @@ export class Timeline {
    * laid out in.
    */
   workDay: { start: string; end: string };
+  /**
+   * What kind each day drawn is, for every day that is not a plain
+   * working day or that has a cycle to tell: the calendar's headings, the
+   * Feed's tag and its rest rows read it.
+   */
+  days: DayMark[];
   /**
    * The question a move raised, when it raised one. While it is here
    * nothing about the move has happened.

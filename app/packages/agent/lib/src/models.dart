@@ -89,7 +89,11 @@ enum PlanChangeKind {
   editRoutine,
 
   /// The working day given other hours.
-  setWorkDay;
+  setWorkDay,
+
+  /// The cycle, the weekend or a date off changed: the line is the
+  /// server's title ("Folga em 20/11").
+  setRhythm;
 
   static PlanChangeKind fromWire(String? value) => switch (value) {
     'add_task' => addTask,
@@ -113,6 +117,7 @@ enum PlanChangeKind {
     'add_routine' => addRoutine,
     'edit_routine' => editRoutine,
     'set_work_day' => setWorkDay,
+    'set_rhythm' => setRhythm,
     _ => moveTask,
   };
 

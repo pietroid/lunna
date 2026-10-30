@@ -55,6 +55,13 @@ const EVENTS: Record<string, string> = {
   'POST /agent/suggestion/:id/dismiss': 'suggestion_dismissed',
 
   'PATCH /users/me': 'settings_changed',
+
+  // Health data: the event says only that the rhythm changed, never to what.
+  'PUT /rhythm/cycle': 'rhythm_changed',
+  'POST /rhythm/cycle/start': 'rhythm_changed',
+  'PATCH /rhythm/rest': 'rhythm_changed',
+  'POST /rhythm/days-off': 'rhythm_changed',
+  'DELETE /rhythm/days-off/:id': 'rhythm_changed',
 };
 
 /** The route a request matched, without the `/api` prefix (`/tasks/:id`). */

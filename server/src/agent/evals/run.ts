@@ -16,6 +16,8 @@
  * OpenRouter reports for it reaches --budget (USD). Several models run side
  * by side, one process each.
  */
+import { MemoryRhythmStore } from '../../rhythm/rhythm.store';
+import { RhythmService } from '../../rhythm/rhythm.service';
 import { spawn } from 'child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
@@ -154,7 +156,14 @@ async function runCase(
   const tasks = new MemoryTaskStore();
   const artifacts = new MemoryArtifactStore();
   const calendar = new CalendarService(new MemoryCalendarStore(), config);
-  const timeline = new TimelineService(calendar, tasks);
+  // The cases' weekends are working days, as they were written before
+  // the rhythm; a case changes it through the world.
+  const rhythm = new MemoryRhythmStore();
+  rhythm.seed(USER, {
+    rest: { saturday: 'work', sunday: 'work', lightMinutes: 180 },
+    daysOff: [],
+  });
+  const timeline = new TimelineService(calendar, tasks, undefined, rhythm);
   const layout = new EventLayoutService(timeline, calendar, tasks, artifacts);
   const deliveries = new ArtifactsService(artifacts, tasks, timeline, layout);
   const agent = new AgentService(
@@ -167,6 +176,10 @@ async function runCase(
     new MemoryConversationStore(),
     undefined,
     config,
+    undefined,
+    undefined,
+    undefined,
+    new RhythmService(rhythm),
   );
   const trace = Trace.start(USER.id, 'eval');
 
@@ -209,6 +222,9 @@ async function runCase(
     },
     async goal(target, deadline) {
       await deliveries.addGoal(USER, { target, deadline }, now);
+    },
+    async periodStarted(day) {
+      await new RhythmService(rhythm).periodStarted(USER, day, now);
     },
     async event(title, at, minutes = 60) {
       await layout.createEvent(

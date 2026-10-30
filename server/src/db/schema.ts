@@ -595,6 +595,66 @@ export const linkPreview = pgTable('link_preview', {
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull(),
 });
 
+/**
+ * What decides the kind of each day (`time/day-kinds.ts`): the weekend's
+ * rule, the light day's budget and the cycle's lengths. One row per
+ * person, written on their first change; without it the weekend is off.
+ *
+ * Health data: it stays here, behind the session, and never reaches
+ * PostHog.
+ */
+export const rhythm = pgTable('rhythm', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  /** `work`, `light` or `off`. */
+  saturdayKind: text('saturday_kind').notNull().default('off'),
+  sundayKind: text('sunday_kind').notNull().default('off'),
+  /** Minutes of loose tasks a light day takes. */
+  lightMinutes: integer('light_minutes').notNull().default(180),
+  cycleLength: integer('cycle_length').notNull().default(28),
+  periodLength: integer('period_length').notNull().default(5),
+  /** What a day of the period is: `light` unless changed. */
+  periodKind: text('period_kind').notNull().default('light'),
+  /** The next period's first day, as the person corrected the prediction. */
+  nextStart: date('next_start', { mode: 'string' }),
+  updatedAt: updatedAt(),
+});
+
+/** Every first day of a period the person wrote down; the last is the cycle's. */
+export const cycleStart = pgTable(
+  'cycle_start',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [
+    uniqueIndex('cycle_start_user_day_idx').on(table.userId, table.day),
+  ],
+);
+
+/**
+ * A date written down in Folgas: a day off (`off`), or a weekend day put
+ * back to work (`work`). One per person and date; it wins over the weekend.
+ */
+export const dayOff = pgTable(
+  'day_off',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    day: date('day', { mode: 'string' }).notNull(),
+    title: text('title').notNull().default(''),
+    kind: text('kind').notNull().default('off'),
+    createdAt: createdAt(),
+  },
+  (table) => [uniqueIndex('day_off_user_day_idx').on(table.userId, table.day)],
+);
+
 export const schema = {
   user,
   session,
@@ -611,6 +671,9 @@ export const schema = {
   agentPlan,
   agentSuggestion,
   linkPreview,
+  rhythm,
+  cycleStart,
+  dayOff,
 };
 
 export type EventRow = typeof event.$inferSelect;
@@ -625,3 +688,5 @@ export type AgentSuggestionRow = typeof agentSuggestion.$inferSelect;
 export type AgentMessageRow = typeof agentMessage.$inferSelect;
 export type AgentPlanRow = typeof agentPlan.$inferSelect;
 export type LinkPreviewRow = typeof linkPreview.$inferSelect;
+export type RhythmRow = typeof rhythm.$inferSelect;
+export type DayOffRow = typeof dayOff.$inferSelect;

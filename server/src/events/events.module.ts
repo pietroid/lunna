@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { CalendarModule } from '../calendar/calendar.module';
 import { ArtifactStoreModule } from '../artifacts/artifact-store.module';
+import { RhythmStoreModule } from '../rhythm/rhythm-store.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { EventLayoutService } from './event-layout.service';
 import { EventsController } from './events.controller';
@@ -11,7 +12,13 @@ import { TimelineService } from './timeline.service';
 
 /** The day: the tasks, the events, and where the one falls among the other. */
 @Module({
-  imports: [ConfigModule, CalendarModule, TasksModule, ArtifactStoreModule],
+  imports: [
+    ConfigModule,
+    CalendarModule,
+    TasksModule,
+    ArtifactStoreModule,
+    RhythmStoreModule,
+  ],
   controllers: [TimelineController, EventsController, TasksController],
   providers: [TimelineService, EventLayoutService],
   exports: [TimelineService, EventLayoutService],

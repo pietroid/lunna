@@ -101,7 +101,14 @@ export const QUEUE: Action[] = [
     name: 'at_hour',
     domain: 'queue',
     does: 'An hour of its own for a task or an event, on a day.',
-    args: { ref: true, new: true, day: true, time: true, duplicate: true },
+    args: {
+      ref: true,
+      new: true,
+      day: true,
+      time: true,
+      duplicate: true,
+      rest_day: true,
+    },
     required: ['day', 'time'],
     resolve(r, item) {
       const { board, now } = r;
@@ -143,6 +150,22 @@ export const QUEUE: Action[] = [
       ) {
         throw new Refusal(
           `${board.when(at)} is outside the working day (${formatTimeIn(window.start, board.zone)}–${formatTimeIn(window.end, board.zone)}): nothing is scheduled there. Ask the person.`,
+        );
+      }
+
+      const mark = board.mark(day);
+      const delivery =
+        card?.artifactId !== undefined ||
+        thing?.artifactId !== undefined ||
+        thing?.artifactAs !== undefined;
+      if (
+        !fixed &&
+        delivery &&
+        mark.kind !== 'work' &&
+        item.rest_day !== true
+      ) {
+        throw new Refusal(
+          `${day} is ${mark.kind === 'off' ? 'a day off' : 'a light day'} (${mark.reason ?? 'rest'}): a delivery's task never goes there unless the person asked for that day. Ask the person, or set rest_day once they confirmed.`,
         );
       }
 

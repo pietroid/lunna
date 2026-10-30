@@ -53,8 +53,7 @@ class Cycle extends Equatable {
   final DateTime? nextStart;
 
   /// When the next period is expected: [nextStart], or the prediction.
-  DateTime get predictedStart =>
-      nextStart ?? _plus(lastStart, length);
+  DateTime get predictedStart => nextStart ?? _plus(lastStart, length);
 
   /// Which day of its cycle [day] is, from 1, or null before [lastStart].
   int? dayOn(DateTime day) => _place(day)?.$1;

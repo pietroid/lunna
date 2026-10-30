@@ -39,6 +39,49 @@ void main() {
     });
   });
 
+  test('a 35-day cycle moves ovulation and the next period', () {
+    final long = Cycle(lastStart: DateTime(2026, 10, 28), length: 35);
+    // Ovulation is fourteen days before the next period: day 21.
+    expect(long.phaseOn(DateTime(2026, 11, 14)), CyclePhase.follicular);
+    expect(long.phaseOn(DateTime(2026, 11, 17)), CyclePhase.ovulatory);
+    expect(long.phaseOn(DateTime(2026, 11, 20)), CyclePhase.luteal);
+    expect(long.predictedStart, DateTime(2026, 12, 2));
+  });
+
+  test('reads the rhythm the server answers', () {
+    final rhythm = Rhythm.fromJson(const {
+      'cycle': {
+        'lastStart': '2026-10-28',
+        'length': 30,
+        'periodLength': 4,
+        'periodKind': 'off',
+        'nextStart': '2026-11-25',
+        'predictedStart': '2026-11-25',
+      },
+      'rest': {'saturday': 'work', 'sunday': 'off', 'lightMinutes': 120},
+      'daysOff': [
+        {'id': 'a', 'day': '2026-11-20', 'title': 'Feriado', 'kind': 'off'},
+        {'id': 'b', 'day': '2026-11-07', 'title': '', 'kind': 'work'},
+      ],
+    });
+    expect(
+      rhythm.cycle,
+      Cycle(
+        lastStart: DateTime(2026, 10, 28),
+        length: 30,
+        periodLength: 4,
+        periodKind: DayKind.off,
+        nextStart: DateTime(2026, 11, 25),
+      ),
+    );
+    expect(
+      rhythm.rules,
+      const RestRules(saturday: DayKind.work, lightMinutes: 120),
+    );
+    expect(rhythm.daysOff.map((it) => it.kind), [DayKind.off, DayKind.work]);
+    expect(Rhythm.fromJson(const {'cycle': null}).cycle, isNull);
+  });
+
   test('weekends are days off until the person says otherwise', () {
     expect(const RestRules().saturday, DayKind.off);
     expect(const RestRules().sunday, DayKind.off);

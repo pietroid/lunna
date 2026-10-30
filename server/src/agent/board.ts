@@ -10,6 +10,7 @@ import {
 import { measureGoals } from '../artifacts/artifacts.service';
 import { CalendarRoutine, RoutineDays } from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
+import { Cycle, DayMark, nextPeriodOf } from '../time/day-kinds';
 import {
   addMinutes,
   BLOCK_GAP_MINUTES,
@@ -274,6 +275,9 @@ export class Board {
       options.artifacts ?? [],
       this.today,
       zone,
+      day.now,
+      day.marks,
+      day.workDay,
     );
     this.goals = measured.map((view) => ({
       ref: this._assign(view.id, 'g'),
@@ -298,6 +302,34 @@ export class Board {
 
   get zone(): Zone {
     return this.day.zone;
+  }
+
+  /** The cycle, when the person keeps one. Its past dates are never shown. */
+  get cycle(): Cycle | undefined {
+    return this.day.rhythm?.cycle;
+  }
+
+  /** What kind of day [day] is: work, light or off, and why. */
+  mark(day: string): DayMark {
+    return this.day.marks(day);
+  }
+
+  /** What the model reads of [day]'s kind and phase, or ''. */
+  private _markNote(day: string): string {
+    const mark = this.mark(day);
+    const parts: string[] = [];
+    if (mark.kind === 'off') parts.push(`DAY OFF (${mark.reason})`);
+    if (mark.kind === 'light') {
+      parts.push(
+        `LIGHT DAY (${mark.reason}): up to ${formatSpan((mark.budgetMinutes ?? 0) * 60_000)} of loose tasks, no delivery tasks`,
+      );
+    }
+    if (mark.cycle !== undefined) {
+      parts.push(
+        `cycle day ${mark.cycle.day} of ${mark.cycle.length}, ${mark.cycle.phase}`,
+      );
+    }
+    return parts.length === 0 ? '' : ` — ${parts.join('; ')}`;
   }
 
   ref(ref: string): BoardCard | undefined {
@@ -540,7 +572,20 @@ export class Board {
           ? ' — working day OVER: nothing more fits today'
           : ` — ${formatSpan(Math.min(left, this.window(day).end.getTime() - this.window(day).start.getTime()))} of working day left`;
       }
-      lines.push(`- ${name} = ${WEEKDAYS_EN[weekdayOf(day)]} ${day}${note}`);
+      lines.push(
+        `- ${name} = ${WEEKDAYS_EN[weekdayOf(day)]} ${day}${note}${this._markNote(day)}`,
+      );
+    }
+    const rhythm = this.day.rhythm;
+    if (rhythm !== undefined) {
+      const cycle = rhythm.cycle;
+      lines.push(
+        '',
+        `Rhythm (Ciclo and Folgas): Saturdays ${rhythm.rest.saturday}, Sundays ${rhythm.rest.sunday}; a light day takes up to ${formatSpan(rhythm.rest.lightMinutes * 60_000)} of loose tasks.`,
+        cycle === undefined
+          ? 'No cycle kept: period_started writes the first one down when the person says when their last period began.'
+          : `Cycle: ${cycle.length} days, period ${cycle.periodLength} days (period days are ${cycle.periodKind}); next period ${nextPeriodOf(cycle, this.today)}${cycle.nextStart === undefined ? ' (predicted)' : ' (corrected by the person)'}.`,
+      );
     }
 
     const shown = new Set([

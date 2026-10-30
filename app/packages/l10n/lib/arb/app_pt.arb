@@ -1682,18 +1682,6 @@
   "@cycleWeekdays": {
     "description": "The initials of the weekdays, Sunday first, over the 30-day grid."
   },
-  "demoSuggestionLightDay": "Hoje é dia leve. Passo o roteiro da Acme para segunda e deixo só tarefas soltas, 2h30 no total?",
-  "@demoSuggestionLightDay": {
-    "description": "The agent's offer on a light day, in the cycle preview."
-  },
-  "demoDayOffSouls": "Finados",
-  "@demoDayOffSouls": {
-    "description": "A holiday written down as a day off, in the demo."
-  },
-  "demoDayOffRepublic": "Proclamação da República",
-  "@demoDayOffRepublic": {
-    "description": "A holiday written down as a day off, in the demo."
-  },
   "dayLightShort": "dia leve",
   "@dayLightShort": {
     "description": "What a light day is, after the cycle's day in the Feed's tag."
@@ -1811,5 +1799,45 @@
   "daysOffUndo": "Desfazer",
   "@daysOffUndo": {
     "description": "Button on a weekend put back to work: makes it a day off again."
+  },
+  "pickerDateTitle": "Que dia?",
+  "@pickerDateTitle": {
+    "description": "The title of the sheet that asks for a date."
+  },
+  "cyclePickLength": "Quantos dias dura o ciclo?",
+  "@cyclePickLength": {
+    "description": "The wheel that sets the cycle's length."
+  },
+  "cyclePickPeriod": "Quantos dias dura a menstruação?",
+  "@cyclePickPeriod": {
+    "description": "The wheel that sets the period's length."
+  },
+  "daysOffAddTitle": "Nova folga",
+  "@daysOffAddTitle": {
+    "description": "The sheet that writes a date off down."
+  },
+  "daysOffAddName": "Nome (opcional): feriado, viagem",
+  "@daysOffAddName": {
+    "description": "The hint of the date off's name."
+  },
+  "daysOffAddConfirm": "Marcar folga",
+  "@daysOffAddConfirm": {
+    "description": "The sheet's button that writes the date off down."
+  },
+  "daysOffRemove": "Tirar esta folga",
+  "@daysOffRemove": {
+    "description": "The button that takes a date off away."
+  },
+  "daysOffRemoveHelp": "O dia volta a ser o que o fim de semana e o ciclo fazem dele.",
+  "@daysOffRemoveHelp": {
+    "description": "Under the button that takes a date off away."
+  },
+  "daysOffFailure": "Não deu para salvar. Tente de novo.",
+  "@daysOffFailure": {
+    "description": "When a write on Ciclo or Folgas failed."
+  },
+  "agentChangeRhythm": "Ciclo e folgas",
+  "@agentChangeRhythm": {
+    "description": "A plan's line that changes the cycle, the weekend or a date off."
   }
 }

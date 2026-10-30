@@ -99,6 +99,7 @@ void main() {
     List<TimelineEvent> cards = const [],
     ArtifactsData? data,
     bool shown = true,
+    List<DayMark> marks = const [],
   }) async {
     // Wide: the test font draws every letter as a square, and the offer's
     // two buttons would not fit side by side on a phone in it.
@@ -106,7 +107,9 @@ void main() {
       ..physicalSize = const Size(600, 1600)
       ..devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    when(() => timeline.state).thenReturn(TimelineState(cards: cards));
+    when(
+      () => timeline.state,
+    ).thenReturn(TimelineState(cards: cards, marks: marks));
 
     await tester.pumpWidget(
       RepositoryProvider<AgentRepository>.value(
@@ -260,13 +263,70 @@ void main() {
   testAt('draws the offer above Agora', (tester) async {
     when(() => agent.suggestion()).thenAnswer(
       (_) async => const AgentSuggestion(
+        id: 's',
         text: 'Encaixo 45 min do mapa às 11:10?',
-        plan: AgentPlan(id: 'p', changes: []),
       ),
     );
     await pump(tester);
     await tester.pump();
 
     expect(find.text('Encaixo 45 min do mapa às 11:10?'), findsOneWidget);
+  });
+
+  group('the day’s tag', () {
+    final today = DateTime(2026, 10, 28);
+
+    testAt('says the cycle’s day and that the day is light', (tester) async {
+      await pump(
+        tester,
+        marks: [
+          DayMark(
+            day: today,
+            kind: DayKind.light,
+            reason: DayReason.period,
+            budgetMinutes: 180,
+            cycleDay: 2,
+            cycleLength: 28,
+            phase: CyclePhase.menstrual,
+          ),
+        ],
+      );
+
+      expect(find.text('Dia 2 do ciclo · dia leve'), findsOneWidget);
+    });
+
+    testAt('names the phase on a working day', (tester) async {
+      await pump(
+        tester,
+        marks: [
+          DayMark(
+            day: today,
+            cycleDay: 9,
+            cycleLength: 28,
+            phase: CyclePhase.follicular,
+          ),
+        ],
+      );
+
+      expect(find.text('Dia 9 do ciclo · Folicular'), findsOneWidget);
+    });
+
+    testAt('says a day off without a cycle', (tester) async {
+      await pump(
+        tester,
+        marks: [
+          DayMark(day: today, kind: DayKind.off, reason: DayReason.dayOff),
+        ],
+      );
+
+      expect(find.text(l10n.dayOffTag), findsOneWidget);
+    });
+
+    testAt('draws nothing on a plain working day', (tester) async {
+      await pump(tester);
+
+      expect(find.textContaining('do ciclo'), findsNothing);
+      expect(find.text(l10n.dayOffTag), findsNothing);
+    });
   });
 }
