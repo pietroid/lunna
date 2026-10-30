@@ -1,0 +1,53 @@
+{
+  "title": "Ciclo e folgas: the cycle and days off shape the day",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Feed",
+      "why": "Today's cycle day and phase at a glance, and what it does to the day.",
+      "pins": [
+        {"id": "A", "x": 262, "y": 112, "label": "Today", "text": "Under the date: CycleTag (phase colour + icon: drop, plant, sun, moon) and DayMarkTag (Dia leve · 3h). Nothing without a cycle on a working day."},
+        {"id": "B", "x": 300, "y": 194, "label": "Agent", "text": "The suggestion and every turn read the day's kind and phase: on a light day it moves a delivery's task to the next working day."}
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Menu",
+      "why": "Where the cycle and the days off are set: a new section, Ritmo.",
+      "pins": [
+        {"id": "C", "x": 340, "y": 290, "label": "Ritmo", "text": "Ciclo (today's phase icon, Dia 2 · Menstruação; without one, a line asking for it) and Folgas (couch). Each opens its page."}
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Ciclo",
+      "why": "Where the cycle stands, the next 30 days by phase, and the one thing to do each month.",
+      "pins": [
+        {"id": "D", "x": 345, "y": 112, "label": "Today", "text": "In the phase's fill: Dia 2 de 28, Menstruação até 1 de nov., and what it does to the day."},
+        {"id": "E", "x": 368, "y": 257, "label": "Next cycle", "text": "The one primary button: Menstruação começou hoje. A new cycle starts today; every prediction moves."},
+        {"id": "F", "x": 360, "y": 309, "label": "30 days", "text": "Sunday-first grid, each day in its phase's colours, today ringed; the four phases keyed under it."},
+        {"id": "G", "x": 200, "y": 658, "label": "Settings", "text": "Below: last period's start, cycle length (28), period length (5), and Na menstruação Normal / Leve / Folga (default Leve)."}
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Folgas",
+      "why": "Every day the queue keeps off or goes easy on, whatever set it.",
+      "pins": [
+        {"id": "H", "x": 368, "y": 128, "label": "Weekend", "text": "Saturday and Sunday each Normal / Leve / Folga, the control the cycle uses. Default Normal: nothing moves until set."},
+        {"id": "I", "x": 300, "y": 338, "label": "Light day", "text": "How much a light day takes (3h of loose tasks). Delivery tasks wait for a working day; deadlines count working days."},
+        {"id": "J", "x": 368, "y": 480, "label": "Dates", "text": "Dates off (couch) and the cycle's next period with its kind, in date order, then + Adicionar."}
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · Calendário",
+      "why": "The queue honours the kind of each day, and the heading says it.",
+      "pins": [
+        {"id": "K", "x": 222, "y": 294, "label": "Heading", "text": "The same DayMarkTag after the day's name, in Lista and Calendário: Dia leve · 3h (drop: the period), Folga (couch)."},
+        {"id": "M", "x": 30, "y": 441, "label": "Fixed stays", "text": "A fixed block on a day off stays; no free stretches are drawn around it, and no task is queued there."},
+        {"id": "L", "x": 30, "y": 552, "label": "Day off", "text": "A day off with nothing on it is one quiet row (RestDayTile), not 15 hours of room. A tap still writes there."}
+      ]
+    }
+  ]
+}

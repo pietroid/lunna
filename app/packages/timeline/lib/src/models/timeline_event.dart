@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
+import 'package:timeline/src/models/day_mark.dart';
 import 'package:timeline/src/models/work_day.dart';
 
 /// The step of every "not yet" and "more time": the ± on a running card,
@@ -513,6 +514,7 @@ class Timeline extends Equatable {
     this.backlog = const [],
     this.cards = const [],
     this.workDay = WorkDay.standard,
+    this.marks = const [],
     this.guard,
   });
 
@@ -525,6 +527,10 @@ class Timeline extends Equatable {
       backlog: _cards(json['backlog']),
       cards: _cards(json['cards']),
       workDay: WorkDay.fromJson(json['workDay']),
+      marks: [
+        for (final mark in json['days'] as List<dynamic>? ?? <dynamic>[])
+          DayMark.fromJson(mark as Map<String, dynamic>),
+      ],
       guard: rawGuard == null ? null : StartNowGuard.fromJson(rawGuard),
     );
   }
@@ -542,6 +548,9 @@ class Timeline extends Equatable {
   /// The hours the day is laid out in.
   final WorkDay workDay;
 
+  /// The days drawn that are light, off or in a cycle, earliest first.
+  final List<DayMark> marks;
+
   /// The question to put to the user, when a move raised one.
   final StartNowGuard? guard;
 
@@ -552,5 +561,5 @@ class Timeline extends Equatable {
   }
 
   @override
-  List<Object?> get props => [tasks, backlog, cards, workDay, guard];
+  List<Object?> get props => [tasks, backlog, cards, workDay, marks, guard];
 }

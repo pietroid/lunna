@@ -26,6 +26,7 @@ final class TimelineState extends Equatable {
     this.tasks = const [],
     this.backlog = const [],
     this.workDay = WorkDay.standard,
+    this.marks = const [],
     this.days = initialDays,
     this.extending = false,
     this.guard,
@@ -65,6 +66,9 @@ final class TimelineState extends Equatable {
   /// The hours of the day, as the server last said: the free stretches are
   /// cut from these, and nothing is proposed outside them.
   final WorkDay workDay;
+
+  /// The days drawn that are light, off or in a cycle ([DayMark]).
+  final List<DayMark> marks;
 
   /// How many days the calendar draws, counting today.
   final int days;
@@ -133,6 +137,7 @@ final class TimelineState extends Equatable {
     List<TimelineEvent>? tasks,
     List<TimelineEvent>? backlog,
     WorkDay? workDay,
+    List<DayMark>? marks,
     int? days,
     bool? extending,
     StartNowGuard? guard,
@@ -149,6 +154,7 @@ final class TimelineState extends Equatable {
       tasks: tasks ?? this.tasks,
       backlog: backlog ?? this.backlog,
       workDay: workDay ?? this.workDay,
+      marks: marks ?? this.marks,
       days: days ?? this.days,
       extending: extending ?? this.extending,
       guard: clearGuard ? null : guard ?? this.guard,
@@ -165,6 +171,7 @@ final class TimelineState extends Equatable {
     tasks,
     backlog,
     workDay,
+    marks,
     days,
     extending,
     guard,

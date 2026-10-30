@@ -186,6 +186,9 @@ class _Header extends StatelessWidget {
     final workDay = context.select<TimelineBloc, WorkDay>(
       (bloc) => bloc.state.workDay,
     );
+    final marks = context.select<TimelineBloc, List<DayMark>>(
+      (bloc) => bloc.state.marks,
+    );
     final menu = this.menu;
 
     return Padding(
@@ -227,6 +230,7 @@ class _Header extends StatelessWidget {
                       longDate(context.l10n, now),
                       style: AppTypography.label,
                     ),
+                    _TodayMarks(mark: marks.on(now)),
                   ],
                 ),
               ),
@@ -413,6 +417,37 @@ class _Quiet extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
       ),
       child: Text(text, style: AppTypography.label),
+    );
+  }
+}
+
+/// What today is beyond its hours, under the date: the day of the cycle
+/// and its phase, and whether the day is light or off. Nothing when the
+/// day is a plain working day with no cycle written down.
+class _TodayMarks extends StatelessWidget {
+  const _TodayMarks({required this.mark});
+
+  final DayMark? mark;
+
+  @override
+  Widget build(BuildContext context) {
+    final mark = this.mark;
+    final day = mark?.cycleDay;
+    final phase = mark?.phase;
+    if (mark == null || (!mark.restricted && phase == null)) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s2),
+      child: Wrap(
+        spacing: AppSpacing.s2,
+        runSpacing: AppSpacing.s1,
+        children: [
+          if (day != null && phase != null) CycleTag(day: day, phase: phase),
+          if (mark.restricted) DayMarkTag(mark: mark),
+        ],
+      ),
     );
   }
 }

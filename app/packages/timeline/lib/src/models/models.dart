@@ -1,3 +1,4 @@
+export 'day_mark.dart';
 export 'delivery_run.dart';
 export 'placement.dart';
 export 'routine.dart';

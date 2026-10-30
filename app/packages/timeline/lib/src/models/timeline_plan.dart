@@ -1,5 +1,6 @@
 import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
+import 'package:timeline/src/models/day_mark.dart';
 import 'package:timeline/src/models/timeline_event.dart';
 import 'package:timeline/src/models/work_day.dart';
 
@@ -18,6 +19,7 @@ class FreeSlot extends Equatable {
     required this.earliest,
     required this.index,
     this.beforeBlock = false,
+    this.rest,
   });
 
   /// Where the stretch begins: the end of the block before it, now, or the
@@ -39,6 +41,10 @@ class FreeSlot extends Equatable {
   /// so something dropped here has to end a pause before [end].
   final bool beforeBlock;
 
+  /// The day off this stretch is, drawn as one quiet row rather than to
+  /// scale; null on a working day's room.
+  final DayMark? rest;
+
   /// The latest a block of [minutes] dropped here could start and still end
   /// in time, pause included. Never before [earliest].
   DateTime latestStart(int minutes) {
@@ -54,7 +60,7 @@ class FreeSlot extends Equatable {
   bool contains(DateTime at) => !at.isBefore(start) && at.isBefore(end);
 
   @override
-  List<Object?> get props => [start, end, earliest, index, beforeBlock];
+  List<Object?> get props => [start, end, earliest, index, beforeBlock, rest];
 }
 
 /// Where something new would land, worked out on the phone.
@@ -92,6 +98,7 @@ abstract final class TimelinePlan {
     Duration duration, {
     DateTime? now,
     WorkDay workDay = WorkDay.standard,
+    List<DayMark> marks = const [],
   }) {
     final present = now ?? clock.now();
     final last = tasks.isEmpty ? null : tasks.last.endTime.add(gap);
@@ -160,6 +167,7 @@ abstract final class TimelinePlan {
     DateTime? now,
     int days = 2,
     WorkDay workDay = WorkDay.standard,
+    List<DayMark> marks = const [],
   }) {
     final present = now ?? clock.now();
     final sorted = [...cards]
@@ -174,6 +182,26 @@ abstract final class TimelinePlan {
           ? _toMinute(present)
           : dayStart;
       if (!cursor.isBefore(dayEnd)) continue;
+
+      // A day off has no room: the queue sends nothing there. With nothing
+      // on it at all it is drawn as one row that says so.
+      final mark = marks.on(date);
+      if (mark?.kind == DayKind.off) {
+        final before = sorted.where((card) => card.startTime.isBefore(dayEnd));
+        final on = before.where((card) => card.endTime.isAfter(dayStart));
+        if (on.isEmpty) {
+          slots.add(
+            FreeSlot(
+              start: cursor,
+              end: dayEnd,
+              earliest: cursor,
+              index: before.length,
+              rest: mark,
+            ),
+          );
+        }
+        continue;
+      }
 
       // Whether the cursor sits at the end of a block, which is what decides
       // whether something dropped here owes a pause first.

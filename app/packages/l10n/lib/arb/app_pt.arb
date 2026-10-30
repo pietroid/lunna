@@ -1416,5 +1416,286 @@
   "feedMainGoal": "Objetivo",
   "feedNoGoal": "Nenhum objetivo agora",
   "feedSeeGoals": "Objetivos",
-  "demoSuggestionRenata": "O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?"
+  "demoSuggestionRenata": "O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?",
+  "cyclePhaseMenstrual": "Menstruação",
+  "@cyclePhaseMenstrual": {
+    "description": "The period phase of the menstrual cycle."
+  },
+  "cyclePhaseFollicular": "Folicular",
+  "@cyclePhaseFollicular": {
+    "description": "The follicular phase of the menstrual cycle."
+  },
+  "cyclePhaseOvulatory": "Ovulação",
+  "@cyclePhaseOvulatory": {
+    "description": "The ovulatory phase of the menstrual cycle."
+  },
+  "cyclePhaseLuteal": "Lútea",
+  "@cyclePhaseLuteal": {
+    "description": "The luteal phase of the menstrual cycle."
+  },
+  "cycleDayPhase": "Dia {day} do ciclo · {phase}",
+  "@cycleDayPhase": {
+    "description": "Tag under the date on the Feed: the day of the cycle and its phase.",
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "phase": {
+        "type": "String"
+      }
+    }
+  },
+  "dayLightTag": "Dia leve · {hours}",
+  "@dayLightTag": {
+    "description": "Tag on a light day (heading, Feed): how much of the queue it takes.",
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "dayOffTag": "Folga",
+  "@dayOffTag": {
+    "description": "Tag on a day off."
+  },
+  "dayOffWeekend": "Fim de semana. Nada da fila vem para cá.",
+  "@dayOffWeekend": {
+    "description": "Row drawn for a whole day off on the calendar, when it is a weekend."
+  },
+  "dayOffPeriod": "Menstruação. Nada da fila vem para cá.",
+  "@dayOffPeriod": {
+    "description": "Row drawn for a whole day off on the calendar, when the period makes it one."
+  },
+  "dayOffDate": "Folga marcada. Nada da fila vem para cá.",
+  "@dayOffDate": {
+    "description": "Row drawn for a whole day off on the calendar, written down in Folgas."
+  },
+  "menuCycle": "Ciclo",
+  "@menuCycle": {
+    "description": "Menu row opening the cycle page."
+  },
+  "menuCycleHint": "Registre a menstruação para o app acompanhar as fases",
+  "@menuCycleHint": {
+    "description": "Menu row subtitle when there is no cycle yet."
+  },
+  "menuCycleToday": "Dia {day} · {phase}",
+  "@menuCycleToday": {
+    "description": "Menu row subtitle with the cycle: the day and its phase.",
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "phase": {
+        "type": "String"
+      }
+    }
+  },
+  "menuDaysOff": "Folgas",
+  "@menuDaysOff": {
+    "description": "Menu row opening the days off page."
+  },
+  "menuDaysOffHint": "Fins de semana, feriados e dias leves",
+  "@menuDaysOffHint": {
+    "description": "Menu row subtitle for Folgas."
+  },
+  "menuRestSection": "Ritmo",
+  "@menuRestSection": {
+    "description": "Heading over the cycle and days off rows in the Menu."
+  },
+  "cycleTitle": "Ciclo",
+  "@cycleTitle": {
+    "description": "Title of the cycle page."
+  },
+  "cycleTodayOf": "Dia {day} de {length}",
+  "@cycleTodayOf": {
+    "description": "Big line on the cycle page: the day of the cycle out of its length.",
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "length": {
+        "type": "int"
+      }
+    }
+  },
+  "cyclePhaseUntil": "{phase} até {date}",
+  "@cyclePhaseUntil": {
+    "description": "Line on the cycle page: the phase now and the day it ends.",
+    "placeholders": {
+      "phase": {
+        "type": "String"
+      },
+      "date": {
+        "type": "DateTime",
+        "format": "d 'de' MMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "cycleEffectLight": "Dia leve: até {hours} de tarefas, nenhuma entrega.",
+  "@cycleEffectLight": {
+    "description": "What the period does to the day, on the cycle page.",
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "cycleEffectOff": "Folga: nada da fila vem para cá.",
+  "@cycleEffectOff": {
+    "description": "What the period does to the day when set to off."
+  },
+  "cycleEffectWork": "Dia normal de trabalho.",
+  "@cycleEffectWork": {
+    "description": "What the day is when the phase changes nothing."
+  },
+  "cycleNext30": "Próximos 30 dias",
+  "@cycleNext30": {
+    "description": "Heading over the 30-day grid of phases."
+  },
+  "cycleSettings": "Seu ciclo",
+  "@cycleSettings": {
+    "description": "Heading over the cycle settings."
+  },
+  "cycleLastStart": "Início da última menstruação",
+  "@cycleLastStart": {
+    "description": "Setting row: the first day of the last period."
+  },
+  "cycleLength": "Duração do ciclo",
+  "@cycleLength": {
+    "description": "Setting row: how long a cycle lasts."
+  },
+  "cyclePeriodLength": "Duração da menstruação",
+  "@cyclePeriodLength": {
+    "description": "Setting row: how long the period lasts."
+  },
+  "cycleDays": "{count} dias",
+  "@cycleDays": {
+    "description": "A number of days.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cyclePeriodKind": "Na menstruação",
+  "@cyclePeriodKind": {
+    "description": "Label over the choice of what a period day is."
+  },
+  "dayKindWork": "Normal",
+  "@dayKindWork": {
+    "description": "Choice: a working day."
+  },
+  "dayKindLight": "Leve",
+  "@dayKindLight": {
+    "description": "Choice: a light day."
+  },
+  "dayKindOff": "Folga",
+  "@dayKindOff": {
+    "description": "Choice: a day off."
+  },
+  "cycleStarted": "Menstruação começou hoje",
+  "@cycleStarted": {
+    "description": "Primary button on the cycle page: starts a new cycle today."
+  },
+  "cycleHelp": "As fases seguem a duração do ciclo a partir do início da última menstruação. Registre cada início para a previsão acertar.",
+  "@cycleHelp": {
+    "description": "Help under the cycle settings."
+  },
+  "daysOffTitle": "Folgas",
+  "@daysOffTitle": {
+    "description": "Title of the days off page."
+  },
+  "daysOffWeekend": "Fim de semana",
+  "@daysOffWeekend": {
+    "description": "Heading over Saturday and Sunday kinds."
+  },
+  "daysOffSaturday": "Sábado",
+  "@daysOffSaturday": {
+    "description": "Saturday."
+  },
+  "daysOffSunday": "Domingo",
+  "@daysOffSunday": {
+    "description": "Sunday."
+  },
+  "daysOffLight": "Dia leve",
+  "@daysOffLight": {
+    "description": "Heading over the light day budget."
+  },
+  "daysOffLightBudget": "Tarefas num dia leve",
+  "@daysOffLightBudget": {
+    "description": "Row: how many hours of tasks a light day takes."
+  },
+  "daysOffLightHelp": "Num dia leve a fila põe só tarefas soltas, até esse limite. As tarefas de entregas esperam o próximo dia de trabalho, e o prazo delas conta só os dias de trabalho.",
+  "@daysOffLightHelp": {
+    "description": "Help under the light day budget."
+  },
+  "daysOffDates": "Folgas marcadas",
+  "@daysOffDates": {
+    "description": "Heading over the dates off."
+  },
+  "daysOffFromCycle": "Do ciclo",
+  "@daysOffFromCycle": {
+    "description": "Tag on a day set by the cycle, in the dates list."
+  },
+  "cycleDate": "{date}",
+  "@cycleDate": {
+    "description": "A day on the cycle page: \"28 de out.\".",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "d 'de' MMM",
+        "isCustomDateFormat": "true"
+      }
+    }
+  },
+  "daysOffEntry": "{date} · {title}",
+  "@daysOffEntry": {
+    "description": "A date off in Folgas: the day and what it is.",
+    "placeholders": {
+      "date": {
+        "type": "DateTime",
+        "format": "EEE, d 'de' MMM",
+        "isCustomDateFormat": "true"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "daysOffRange": "{from} a {to} · {title}",
+  "@daysOffRange": {
+    "description": "A run of days off in Folgas.",
+    "placeholders": {
+      "from": {
+        "type": "DateTime",
+        "format": "d",
+        "isCustomDateFormat": "true"
+      },
+      "to": {
+        "type": "DateTime",
+        "format": "d 'de' MMM",
+        "isCustomDateFormat": "true"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "cycleWeekdays": "D,S,T,Q,Q,S,S",
+  "@cycleWeekdays": {
+    "description": "The initials of the weekdays, Sunday first, over the 30-day grid."
+  },
+  "demoSuggestionLightDay": "Hoje é dia leve. Passo o roteiro da Acme para segunda e deixo só tarefas soltas, 2h30 no total?",
+  "@demoSuggestionLightDay": {
+    "description": "The agent's offer on a light day, in the cycle preview."
+  },
+  "demoDayOffSouls": "Finados",
+  "@demoDayOffSouls": {
+    "description": "A holiday written down as a day off, in the demo."
+  },
+  "demoDayOffRepublic": "Proclamação da República",
+  "@demoDayOffRepublic": {
+    "description": "A holiday written down as a day off, in the demo."
+  }
 }

@@ -2872,6 +2872,306 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?'**
   String get demoSuggestionRenata;
+
+  /// The period phase of the menstrual cycle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Menstruação'**
+  String get cyclePhaseMenstrual;
+
+  /// The follicular phase of the menstrual cycle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folicular'**
+  String get cyclePhaseFollicular;
+
+  /// The ovulatory phase of the menstrual cycle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ovulação'**
+  String get cyclePhaseOvulatory;
+
+  /// The luteal phase of the menstrual cycle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Lútea'**
+  String get cyclePhaseLuteal;
+
+  /// Tag under the date on the Feed: the day of the cycle and its phase.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia {day} do ciclo · {phase}'**
+  String cycleDayPhase(int day, String phase);
+
+  /// Tag on a light day (heading, Feed): how much of the queue it takes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia leve · {hours}'**
+  String dayLightTag(String hours);
+
+  /// Tag on a day off.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folga'**
+  String get dayOffTag;
+
+  /// Row drawn for a whole day off on the calendar, when it is a weekend.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fim de semana. Nada da fila vem para cá.'**
+  String get dayOffWeekend;
+
+  /// Row drawn for a whole day off on the calendar, when the period makes it one.
+  ///
+  /// In pt, this message translates to:
+  /// **'Menstruação. Nada da fila vem para cá.'**
+  String get dayOffPeriod;
+
+  /// Row drawn for a whole day off on the calendar, written down in Folgas.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folga marcada. Nada da fila vem para cá.'**
+  String get dayOffDate;
+
+  /// Menu row opening the cycle page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ciclo'**
+  String get menuCycle;
+
+  /// Menu row subtitle when there is no cycle yet.
+  ///
+  /// In pt, this message translates to:
+  /// **'Registre a menstruação para o app acompanhar as fases'**
+  String get menuCycleHint;
+
+  /// Menu row subtitle with the cycle: the day and its phase.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia {day} · {phase}'**
+  String menuCycleToday(int day, String phase);
+
+  /// Menu row opening the days off page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folgas'**
+  String get menuDaysOff;
+
+  /// Menu row subtitle for Folgas.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fins de semana, feriados e dias leves'**
+  String get menuDaysOffHint;
+
+  /// Heading over the cycle and days off rows in the Menu.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ritmo'**
+  String get menuRestSection;
+
+  /// Title of the cycle page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ciclo'**
+  String get cycleTitle;
+
+  /// Big line on the cycle page: the day of the cycle out of its length.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia {day} de {length}'**
+  String cycleTodayOf(int day, int length);
+
+  /// Line on the cycle page: the phase now and the day it ends.
+  ///
+  /// In pt, this message translates to:
+  /// **'{phase} até {date}'**
+  String cyclePhaseUntil(String phase, DateTime date);
+
+  /// What the period does to the day, on the cycle page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia leve: até {hours} de tarefas, nenhuma entrega.'**
+  String cycleEffectLight(String hours);
+
+  /// What the period does to the day when set to off.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folga: nada da fila vem para cá.'**
+  String get cycleEffectOff;
+
+  /// What the day is when the phase changes nothing.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia normal de trabalho.'**
+  String get cycleEffectWork;
+
+  /// Heading over the 30-day grid of phases.
+  ///
+  /// In pt, this message translates to:
+  /// **'Próximos 30 dias'**
+  String get cycleNext30;
+
+  /// Heading over the cycle settings.
+  ///
+  /// In pt, this message translates to:
+  /// **'Seu ciclo'**
+  String get cycleSettings;
+
+  /// Setting row: the first day of the last period.
+  ///
+  /// In pt, this message translates to:
+  /// **'Início da última menstruação'**
+  String get cycleLastStart;
+
+  /// Setting row: how long a cycle lasts.
+  ///
+  /// In pt, this message translates to:
+  /// **'Duração do ciclo'**
+  String get cycleLength;
+
+  /// Setting row: how long the period lasts.
+  ///
+  /// In pt, this message translates to:
+  /// **'Duração da menstruação'**
+  String get cyclePeriodLength;
+
+  /// A number of days.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count} dias'**
+  String cycleDays(int count);
+
+  /// Label over the choice of what a period day is.
+  ///
+  /// In pt, this message translates to:
+  /// **'Na menstruação'**
+  String get cyclePeriodKind;
+
+  /// Choice: a working day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Normal'**
+  String get dayKindWork;
+
+  /// Choice: a light day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Leve'**
+  String get dayKindLight;
+
+  /// Choice: a day off.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folga'**
+  String get dayKindOff;
+
+  /// Primary button on the cycle page: starts a new cycle today.
+  ///
+  /// In pt, this message translates to:
+  /// **'Menstruação começou hoje'**
+  String get cycleStarted;
+
+  /// Help under the cycle settings.
+  ///
+  /// In pt, this message translates to:
+  /// **'As fases seguem a duração do ciclo a partir do início da última menstruação. Registre cada início para a previsão acertar.'**
+  String get cycleHelp;
+
+  /// Title of the days off page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folgas'**
+  String get daysOffTitle;
+
+  /// Heading over Saturday and Sunday kinds.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fim de semana'**
+  String get daysOffWeekend;
+
+  /// Saturday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sábado'**
+  String get daysOffSaturday;
+
+  /// Sunday.
+  ///
+  /// In pt, this message translates to:
+  /// **'Domingo'**
+  String get daysOffSunday;
+
+  /// Heading over the light day budget.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia leve'**
+  String get daysOffLight;
+
+  /// Row: how many hours of tasks a light day takes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefas num dia leve'**
+  String get daysOffLightBudget;
+
+  /// Help under the light day budget.
+  ///
+  /// In pt, this message translates to:
+  /// **'Num dia leve a fila põe só tarefas soltas, até esse limite. As tarefas de entregas esperam o próximo dia de trabalho, e o prazo delas conta só os dias de trabalho.'**
+  String get daysOffLightHelp;
+
+  /// Heading over the dates off.
+  ///
+  /// In pt, this message translates to:
+  /// **'Folgas marcadas'**
+  String get daysOffDates;
+
+  /// Tag on a day set by the cycle, in the dates list.
+  ///
+  /// In pt, this message translates to:
+  /// **'Do ciclo'**
+  String get daysOffFromCycle;
+
+  /// A day on the cycle page: "28 de out.".
+  ///
+  /// In pt, this message translates to:
+  /// **'{date}'**
+  String cycleDate(DateTime date);
+
+  /// A date off in Folgas: the day and what it is.
+  ///
+  /// In pt, this message translates to:
+  /// **'{date} · {title}'**
+  String daysOffEntry(DateTime date, String title);
+
+  /// A run of days off in Folgas.
+  ///
+  /// In pt, this message translates to:
+  /// **'{from} a {to} · {title}'**
+  String daysOffRange(DateTime from, DateTime to, String title);
+
+  /// The initials of the weekdays, Sunday first, over the 30-day grid.
+  ///
+  /// In pt, this message translates to:
+  /// **'D,S,T,Q,Q,S,S'**
+  String get cycleWeekdays;
+
+  /// The agent's offer on a light day, in the cycle preview.
+  ///
+  /// In pt, this message translates to:
+  /// **'Hoje é dia leve. Passo o roteiro da Acme para segunda e deixo só tarefas soltas, 2h30 no total?'**
+  String get demoSuggestionLightDay;
+
+  /// A holiday written down as a day off, in the demo.
+  ///
+  /// In pt, this message translates to:
+  /// **'Finados'**
+  String get demoDayOffSouls;
+
+  /// A holiday written down as a day off, in the demo.
+  ///
+  /// In pt, this message translates to:
+  /// **'Proclamação da República'**
+  String get demoDayOffRepublic;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

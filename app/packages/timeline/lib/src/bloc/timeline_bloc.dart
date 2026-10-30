@@ -63,6 +63,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           tasks: timeline.tasks,
           backlog: timeline.backlog,
           workDay: timeline.workDay,
+          marks: timeline.marks,
           clearFailure: true,
         ),
       );
@@ -95,6 +96,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           tasks: timeline.tasks,
           backlog: timeline.backlog,
           workDay: timeline.workDay,
+          marks: timeline.marks,
         ),
       );
     } on Object catch (error) {
@@ -116,6 +118,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         tasks: timeline.tasks,
         backlog: timeline.backlog,
         workDay: timeline.workDay,
+        marks: timeline.marks,
         undoable: event.undoable,
         clearUndoable: event.undoable == null,
         clearGuard: true,
@@ -144,6 +147,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
         tasks: timeline.tasks,
         backlog: timeline.backlog,
         workDay: timeline.workDay,
+        marks: timeline.marks,
         guard: timeline.guard,
         clearFailure: true,
         // Written by hand: the agent's last plan can no longer be taken back
@@ -274,6 +278,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           tasks: timeline.tasks,
           backlog: timeline.backlog,
           workDay: timeline.workDay,
+          marks: timeline.marks,
           guard: timeline.guard,
           clearGuard: timeline.guard == null,
           guardBusy: false,
