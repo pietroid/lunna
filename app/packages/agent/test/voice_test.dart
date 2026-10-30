@@ -9,7 +9,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeline/timeline.dart';
 
 /// A recognizer the test speaks through.
@@ -1015,52 +1014,72 @@ void _suggestionCardTests() {
       await tester.pump();
     }
 
-    testWidgets('about the goal, it only talks', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+    testWidgets('the welcome asks with amounts, and an amount is said in '
+        'the conversation', (tester) async {
       await pumpCard(
         tester,
-        AgentSuggestion(
-          id: 's1',
-          text: 'Você ainda não tem um objetivo.',
-          focus: SuggestionFocus.goal,
-          validUntil: DateTime(2100),
+        const AgentSuggestion(
+          id: 'w1',
+          text: 'Quanto você quer faturar este mês?',
+          welcome: true,
         ),
       );
 
-      expect(find.text('Objetivo'), findsOneWidget);
-      expect(find.text('Conversar'), findsOneWidget);
-      expect(find.byType(AppButton), findsOneWidget);
+      expect(find.text('Quanto você quer faturar este mês?'), findsOneWidget);
+      expect(find.text('Outro valor'), findsOneWidget);
+      // No plan: no Aplicar, and no Work Quality anywhere.
+      expect(find.text('Aplicar'), findsNothing);
+      expect(find.textContaining('/7'), findsNothing);
+
+      await tester.tap(find.text(r'R$ 5.000'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AgentSheet), findsOneWidget);
+      expect(find.text(r'Quero faturar R$ 5.000 este mês.'), findsOneWidget);
     });
 
-    testWidgets('with an action, Conversar opens the page on its opening, '
-        'plan and all', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+    testWidgets('a turn with a plan is its words, its preview and its '
+        'actions; Ajustar opens it, plan and all', (tester) async {
       await pumpCard(
         tester,
         AgentSuggestion(
           id: 's1',
-          text: 'Encaixo hoje às 14:00?',
-          focus: SuggestionFocus.delivery,
-          validUntil: DateTime(2100),
-          action: const SuggestionAction(
-            label: 'Encaixar às 14:00',
+          text: r'Faltam R$ 2.400. Encaixo hoje às 14:00?',
+          nextAt: DateTime(2100),
+          action: const SuggestionAction(label: 'Aplicar', plan: plan),
+          opening: AgentReply(
+            text: r'Faltam R$ 2.400.',
             plan: plan,
-          ),
-          opening: const AgentReply(
-            text: 'Faltam R\$ 2.400.',
-            plan: plan,
-            blocks: [CaptionBlock('Faltam R\$ 2.400.'), PlanBlock()],
+            blocks: [
+              const CaptionBlock(r'Faltam R$ 2.400.'),
+              PreviewBlock(
+                items: [
+                  ArtifactPreview(
+                    title: 'Mapa da Ana',
+                    minutes: 240,
+                    deadline: DateTime(2100, 10, 27),
+                    value: 3200,
+                  ),
+                ],
+                applies: 'Aplicar anota a entrega.',
+              ),
+              const PlanBlock(),
+            ],
           ),
         ),
       );
 
-      expect(find.text('Encaixar às 14:00'), findsOneWidget);
-      await tester.tap(find.text('Conversar'));
-      await tester.pumpAndSettle();
+      expect(find.text(r'Faltam R$ 2.400. Encaixo hoje às 14:00?'), findsOne);
+      // With no tab to draw it, the agent draws the delivery itself.
+      expect(find.textContaining('Mapa da Ana'), findsWidgets);
+      expect(find.text('Aplicar anota a entrega.'), findsOneWidget);
+      expect(find.text('Aplicar'), findsOneWidget);
+      // The focus tag of #67 is gone.
+      expect(find.text('Entrega'), findsNothing);
 
+      await tester.tap(find.text('Ajustar'));
+      await tester.pumpAndSettle();
       expect(find.byType(AgentSheet), findsOneWidget);
-      expect(find.text('Faltam R\$ 2.400.'), findsOneWidget);
-      expect(find.text('Escrever a leitura'), findsWidgets);
+      expect(find.text(r'Faltam R$ 2.400.'), findsOneWidget);
     });
   });
 }
@@ -1073,6 +1092,7 @@ AgentRepository _answering() {
       conversationId: any(named: 'conversationId'),
       day: any(named: 'day'),
       about: any(named: 'about'),
+      suggestionId: any(named: 'suggestionId'),
     ),
   ).thenAnswer(
     (_) async =>

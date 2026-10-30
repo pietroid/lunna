@@ -131,6 +131,9 @@ class DemoAgentRepository implements AgentRepository {
     }
     return offer;
   }
+
+  @override
+  Future<void> dismissSuggestion(String id) async {}
 }
 
 /// What the agent answers to [said] in the demo: the delivery for its ask,

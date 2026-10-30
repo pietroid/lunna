@@ -1,10 +1,9 @@
 import 'package:agent/agent.dart';
 import 'package:api_client/api_client.dart';
 import 'package:bloc_test/bloc_test.dart';
-import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:timeline/timeline.dart' show RoutineDays;
 
 class _MockRepository extends Mock implements AgentRepository {}
 
@@ -478,15 +477,16 @@ void main() {
     final suggestion = AgentSuggestion(
       id: 's1',
       text: 'Quer encaixar?',
-      focus: SuggestionFocus.delivery,
-      validUntil: DateTime(2026, 10, 16, 9),
-      action: const SuggestionAction(label: 'Encaixar', plan: _plan),
+      nextAt: DateTime(2026, 10, 16, 9),
+      action: const SuggestionAction(label: 'Aplicar', plan: _plan),
     );
 
     setUp(() {
       repository = _MockRepository();
-      SharedPreferences.setMockInitialValues({});
       when(() => repository.suggestion()).thenAnswer((_) async => suggestion);
+      when(
+        () => repository.dismissSuggestion(any()),
+      ).thenAnswer((_) async {});
     });
 
     test('offers what the server suggests', () async {
@@ -496,36 +496,132 @@ void main() {
       expect(cubit.state, suggestion);
     });
 
-    test('rests for a day after "Agora não", then offers again', () async {
-      final start = DateTime(2026, 10, 15, 9);
+    test('"Agora não" tells the server, which puts it away', () async {
       final cubit = SuggestionCubit(repository: repository);
+      await cubit.load();
+      await cubit.dismiss();
 
-      await withClock(Clock.fixed(start), () async {
-        await cubit.load();
-        await cubit.dismiss();
-        expect(cubit.state, isNull);
-
-        await cubit.load();
-        expect(cubit.state, isNull);
-      });
-
-      await withClock(
-        Clock.fixed(start.add(SuggestionCubit.quiet)),
-        cubit.load,
-      );
-      expect(cubit.state, suggestion);
+      expect(cubit.state, isNull);
+      verify(() => repository.dismissSuggestion('s1')).called(1);
     });
 
-    test('keeps the one held until it runs out, asking nothing', () async {
+    test('asks the server on every load: it holds the suggestion', () async {
       final cubit = SuggestionCubit(repository: repository);
-      await withClock(Clock.fixed(DateTime(2026, 10, 16, 8)), () async {
-        await cubit.load();
-        await cubit.load();
-      });
-      verify(() => repository.suggestion()).called(1);
+      await cubit.load();
+      await cubit.load();
+      verify(() => repository.suggestion()).called(2);
+    });
 
-      await withClock(Clock.fixed(DateTime(2026, 10, 16, 9)), cubit.load);
-      verify(() => repository.suggestion()).called(1);
+    test('reads the welcome and the next hour off the wire', () {
+      final welcome = AgentSuggestion.fromJson(const {
+        'id': 'w1',
+        'kind': 'welcome',
+        'text': 'Quanto você quer faturar este mês?',
+        'nextAt': null,
+        'validUntil': '2026-10-17T12:00:00.000Z',
+      });
+      expect(welcome.welcome, isTrue);
+      expect(welcome.nextAt, isNull);
+
+      final turn = AgentSuggestion.fromJson(const {
+        'id': 't1',
+        'kind': 'turn',
+        'text': r'Faltam R$ 800.',
+        'nextAt': '2026-10-16T12:00:00.000Z',
+      });
+      expect(turn.welcome, isFalse);
+      expect(turn.nextAt, DateTime.utc(2026, 10, 16, 12).toLocal());
+    });
+
+    test('decodes a preview: a goal, a delivery and a routine, skipping the '
+        'unknown', () {
+      final reply = AgentReply.fromJson(const {
+        'reply': r'Faltam R$ 800.',
+        'ui': [
+          {
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 's',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['b1'],
+                },
+                {
+                  'id': 'b1',
+                  'component': 'Preview',
+                  'items': {'path': '/b1'},
+                  'applies': 'Aplicar anota a entrega.',
+                },
+              ],
+            },
+          },
+          {
+            'version': 'v0.9',
+            'updateDataModel': {
+              'surfaceId': 's',
+              'path': '/',
+              'value': {
+                'b1': [
+                  {
+                    'type': 'goal',
+                    'target': 5000,
+                    'start': '2026-10-01',
+                    'end': '2026-11-01',
+                    'queued': 5000,
+                    'queuedCount': 2,
+                  },
+                  {
+                    'type': 'artifact',
+                    'title': 'Mapa da Ana',
+                    'minutes': 240,
+                    'deadline': '2026-10-27',
+                    'value': 3200,
+                  },
+                  {
+                    'type': 'routine',
+                    'title': 'Manhã de mapas',
+                    'start': 480,
+                    'minutes': 90,
+                    'days': 'weekdays',
+                    'checklist': ['Café', 'Revisar'],
+                  },
+                  {'type': 'sticker'},
+                ],
+              },
+            },
+          },
+        ],
+      });
+
+      expect(reply.blocks, [
+        PreviewBlock(
+          items: [
+            GoalPreview(
+              target: 5000,
+              start: DateTime(2026, 10),
+              end: DateTime(2026, 11),
+              queued: 5000,
+              queuedCount: 2,
+            ),
+            ArtifactPreview(
+              title: 'Mapa da Ana',
+              minutes: 240,
+              deadline: DateTime(2026, 10, 27),
+              value: 3200,
+            ),
+            const RoutinePreview(
+              title: 'Manhã de mapas',
+              startMinute: 480,
+              minutes: 90,
+              days: RoutineDays.weekdays,
+              checklist: ['Café', 'Revisar'],
+            ),
+          ],
+          applies: 'Aplicar anota a entrega.',
+        ),
+      ]);
     });
 
     test('a conversation opened from it starts on its opening, and names '
@@ -534,8 +630,7 @@ void main() {
       final offered = AgentSuggestion(
         id: 's1',
         text: 'Quer encaixar?',
-        focus: SuggestionFocus.delivery,
-        validUntil: DateTime(2026, 10, 16, 9),
+        nextAt: DateTime(2026, 10, 16, 9),
         opening: opening,
       );
       when(

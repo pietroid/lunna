@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:l10n/l10n.dart';
 import 'package:notifications/src/data/notifications_repository.dart';
 import 'package:notifications/src/models/notification_answer.dart';
 import 'package:notifications/src/models/notification_plan.dart';
@@ -69,6 +71,7 @@ class NotificationScheduler {
     Future<SharedPreferences> Function()? preferences,
     DateTime Function()? now,
     bool? supported,
+    this.brand,
   }) : _queue = queue ?? LocalNotificationQueue(),
        _preferences = preferences ?? SharedPreferences.getInstance,
        _now = now ?? DateTime.now,
@@ -82,6 +85,11 @@ class NotificationScheduler {
 
   /// Whether the user has been asked for permission, so they never are twice.
   static const askedKey = 'notifications.permissionAsked';
+
+  /// The build's brand (`AppBrand.id`), which the suggestion's notification
+  /// names: the server knows no brand, so its copy is rewritten here. Null
+  /// keeps the server's words.
+  final String? brand;
 
   final NotificationsRepository _repository;
   final NotificationQueue _queue;
@@ -239,16 +247,18 @@ class NotificationScheduler {
     }
 
     for (final item in diff.schedule) {
+      final (title, body) = _copyOf(item);
       await _queue.schedule(
         QueuedNotification(
           id: queueIdOf(item.id),
           fireAt: tz.TZDateTime.from(item.fireAt, location),
-          title: item.title,
-          body: item.body,
+          title: title,
+          body: body,
           timeSensitive: item.timeSensitive,
           daily:
               item.kind == NotificationKind.morning ||
-              item.kind == NotificationKind.evening,
+              item.kind == NotificationKind.evening ||
+              item.kind == NotificationKind.suggestion,
           thread: item.eventId,
           timeout: next[item.id],
           payload: payloadOf(item),
@@ -259,6 +269,20 @@ class NotificationScheduler {
     log(
       'synced: ${diff.schedule.length} added, ${diff.cancel.length} removed',
       name: 'notifications',
+    );
+  }
+
+  /// What [item] says: the server's words, but for the suggestion, which
+  /// the brand's agent sends.
+  (String, String) _copyOf(PlannedNotification item) {
+    final brand = this.brand;
+    if (brand == null || item.kind != NotificationKind.suggestion) {
+      return (item.title, item.body);
+    }
+    final l10n = lookupAppLocalizations(const Locale('pt'));
+    return (
+      l10n.notificationSuggestionTitle(brand),
+      l10n.notificationSuggestionBody,
     );
   }
 

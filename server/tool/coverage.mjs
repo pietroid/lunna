@@ -50,6 +50,8 @@ const HANDS = {
   tasks: 'TaskStore',
   artifacts: 'ArtifactStore',
   deliveries: 'ArtifactsService',
+  routines: 'RoutinesService',
+  users: 'UsersService',
 };
 const agent = new Set(
   walk(join(src, 'agent/actions'))
@@ -68,8 +70,8 @@ const READS = {
   'GET /timeline': 'yes',
   'GET /artifacts': 'yes',
   'GET /tasks/done': 'no',
-  'GET /routines': 'no',
-  'GET /users/me': 'partial',
+  'GET /routines': 'yes',
+  'GET /users/me': 'yes',
   // Calls moveTask, but answers the start_now guard, which the agent never
   // raises: a running task is never moved by a plan.
   'POST /tasks/timing': 'no',

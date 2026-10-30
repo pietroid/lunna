@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { DB } from '../db/db';
 import type { Database } from '../db/db';
 import { agentSuggestion, AgentSuggestionRow } from '../db/schema';
@@ -7,7 +7,8 @@ import {
   NewSuggestion,
   Opening,
   StoredSuggestion,
-  SuggestionFocus,
+  SuggestionAnswer,
+  SuggestionKind,
   SuggestionStore,
 } from './suggestion.store';
 
@@ -33,14 +34,19 @@ export class PgSuggestionStore extends SuggestionStore {
     now: Date,
   ): Promise<StoredSuggestion> {
     const values = {
+      kind: made.kind,
       focus: made.focus,
       text: made.text,
       actionLabel: made.action?.label ?? null,
       planId: made.action?.planId ?? null,
       opening: made.opening,
       basis: made.basis,
-      validUntil: made.validUntil,
+      workQuality: made.workQuality ?? null,
+      followUp: made.followUp ?? null,
+      nextAt: made.nextAt ?? null,
       takenAt: null,
+      dismissedAt: null,
+      answeredAt: null,
       createdAt: now,
     };
     // A new suggestion is a new id, so a conversation opened from the last
@@ -56,33 +62,56 @@ export class PgSuggestionStore extends SuggestionStore {
     return suggestionOf(row);
   }
 
-  async takeByPlan(userId: string, planId: string, now: Date): Promise<void> {
+  async answer(
+    userId: string,
+    id: string,
+    answer: SuggestionAnswer,
+  ): Promise<void> {
     await this._db
       .update(agentSuggestion)
-      .set({ takenAt: now })
+      .set(answer)
       .where(
-        and(
-          eq(agentSuggestion.userId, userId),
-          eq(agentSuggestion.planId, planId),
-          isNull(agentSuggestion.takenAt),
-        ),
+        and(eq(agentSuggestion.userId, userId), eq(agentSuggestion.id, id)),
       );
+  }
+
+  async pending(now: Date): Promise<{ userId: string; nextAt: Date }[]> {
+    const rows = await this._db
+      .select({
+        userId: agentSuggestion.userId,
+        nextAt: agentSuggestion.nextAt,
+      })
+      .from(agentSuggestion)
+      .where(gt(agentSuggestion.nextAt, now));
+
+    return rows.map((it) => ({ userId: it.userId, nextAt: it.nextAt! }));
   }
 }
 
 function suggestionOf(row: AgentSuggestionRow): StoredSuggestion {
-  return {
+  const when = (it: Date | null) => it ?? undefined;
+  const kept: StoredSuggestion = {
     id: row.id,
     userId: row.userId,
-    focus: row.focus as SuggestionFocus,
+    kind: row.kind as SuggestionKind,
+    focus: row.focus,
     text: row.text,
     ...(row.planId === null
       ? {}
       : { action: { label: row.actionLabel ?? '', planId: row.planId } }),
     opening: row.opening as Opening,
     basis: row.basis,
-    validUntil: row.validUntil,
-    ...(row.takenAt === null ? {} : { takenAt: row.takenAt }),
+    workQuality: row.workQuality ?? undefined,
+    followUp: row.followUp ?? undefined,
+    nextAt: when(row.nextAt),
+    takenAt: when(row.takenAt),
+    dismissedAt: when(row.dismissedAt),
+    answeredAt: when(row.answeredAt),
     createdAt: row.createdAt,
   };
+  // Absent rather than undefined, as the memory store keeps them.
+  for (const key of Object.keys(kept) as (keyof StoredSuggestion)[]) {
+    if (kept[key] === undefined) delete kept[key];
+  }
+  return kept;
 }

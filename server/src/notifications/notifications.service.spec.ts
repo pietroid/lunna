@@ -5,6 +5,7 @@ import { DEFAULT_WORK_DAY, Interval } from '../time/work-hours';
 import { NotificationItem } from './dto/notification-plan.dto';
 import { EVENING_MESSAGES, MORNING_MESSAGES } from './notification-copy';
 import { NotificationsService } from './notifications.service';
+import { MemorySuggestionStore } from '../agent/suggestion.store';
 
 const SAO_PAULO = 'America/Sao_Paulo';
 const USER = { id: 'test-user' };
@@ -373,6 +374,73 @@ describe('the daily reminders', () => {
       expect(item.timeSensitive).toBe(false);
       expect(item.eventId).toBeUndefined();
     }
+  });
+});
+
+describe('the next suggestion', () => {
+  const timeline = (zone = SAO_PAULO) =>
+    ({
+      day: () =>
+        Promise.resolve({
+          now: NOW,
+          zone,
+          workDay: DEFAULT_WORK_DAY,
+          until: new Date(NOW.getTime() + 86_400_000),
+          events: [],
+          tasks: [],
+          backlog: [],
+          live: new Map(),
+          placed: new Map(),
+          routines: new Map(),
+          artifacts: new Map(),
+        }),
+      zone: () => zone,
+    }) as unknown as TimelineService;
+
+  it('is asked a minute after its next one is written', async () => {
+    const suggestions = new MemorySuggestionStore();
+    await suggestions.put(
+      USER.id,
+      {
+        kind: 'turn',
+        focus: 'reach',
+        text: 'Faltam R$ 800.',
+        opening: { ui: [], reply: '', steps: [], options: [] },
+        basis: 'b',
+        // 15:00 in São Paulo.
+        nextAt: new Date('2026-09-21T18:00:00.000Z'),
+      },
+      NOW,
+    );
+    const service = new NotificationsService(timeline(), suggestions);
+
+    const [item] = ofKind(
+      (await service.plan(USER, 1, NOW)).items,
+      'suggestion',
+    );
+    expect(item).toMatchObject({
+      fireAt: '2026-09-21T15:01:00-03:00',
+      title: 'Uma sugestão para o seu mês',
+      timeSensitive: false,
+    });
+  });
+
+  it('is not asked for a welcome, which has no next one', async () => {
+    const suggestions = new MemorySuggestionStore();
+    await suggestions.put(
+      USER.id,
+      {
+        kind: 'welcome',
+        focus: 'goal',
+        text: '',
+        opening: { ui: [], reply: '', steps: [], options: [] },
+        basis: 'b',
+      },
+      NOW,
+    );
+    const service = new NotificationsService(timeline(), suggestions);
+    const { items } = await service.plan(USER, 1, NOW);
+    expect(ofKind(items, 'suggestion')).toEqual([]);
   });
 });
 

@@ -91,6 +91,23 @@ five delivered:
 | `edit_goal` | `ref`, `target`, `deadline` | the goal's sheet, saved: another amount or last day (its first day stays; refused on a goal gone by, or a day reaching the next goal's first) |
 | `remove_goal` | `ref` | the goal deleted; the deliveries stay |
 
+Rotina's gestures and the Menu's working day (`actions/routines.ts`), as
+Rotina makes them (`RoutinesService`) and the Menu sets the day
+(`UsersService.setWorkDay`). The board lists the routines under refs
+(`r1 · Academia · 18:00–19:00 · weekdays · checklist: …`) beside the
+working day it already names:
+
+| Change | Arguments | What the server does |
+|--------|-----------|----------------------|
+| `new_routine` | `title`, `time` (HH:mm), `minutes`, `days` (`daily`/`weekdays`/`weekend`), `checklist`, `duplicate` | a routine, fixed, its days written as the timeline reaches them; refused on a routine of the same name (unless `duplicate`) or one it would sit on, on a day both fall on |
+| `edit_routine` | `ref`, `title`, `time`, `minutes`, `days`, `checklist` (`[]` takes it away) | the routine's sheet, saved: its days not begun change with it |
+| `set_work_day` | `opens`, `closes` (HH:mm, `24:00` for midnight) | the Menu's hours; at least an hour long. The changes after it in the plan, and the dry run's day, are laid out inside them |
+
+The card draws a routine's line with Rotina's fill and the repeat mark
+("nova rotina · 07:00–08:00 · Todo dia · 3 itens na lista"; a change
+strikes the old hours or days), and the working day as "Dia de trabalho ·
+~~07:00–22:00~~ → 08:00–19:00".
+
 A kind named loosely resolves to the catalogue's by its words; a value, a
 price or a time is only ever what the person said. **A delete is asked
 once when it takes more than three tasks along**: the reply says how many
@@ -98,11 +115,16 @@ and offers "Apagar as N" and "Só a entrega", each its own plan.
 
 **Undo is a snapshot.** Aplicar reads every row a plan can touch (the
 tasks still to do and every task of a delivery, the events in reach, the
-deliveries, the catalogue, the goals) before and after making it, and keeps
-the difference: each row changed or gone is written back as it was
-(`revive` puts a deleted row back with its own id, `ON CONFLICT DO
-NOTHING`), each row made is taken out. A day of a routine the read wrote is
-left. So Desfazer undoes any action, with no inverse written for each.
+deliveries, the catalogue, the goals, the routines and the working day)
+before and after making it, and keeps the difference: each row changed or
+gone is written back as it was (`revive` puts a deleted row back with its
+own id, `ON CONFLICT DO NOTHING`), each row made is taken out. A day of a
+routine the read wrote is left. **A routine the plan wrote or changed
+takes its days with it**: its days are left out of the difference both
+ways, and putting the routine back (`updateRoutine`) or taking it out
+(`removeRoutine`) drops its days not begun, which the next read writes
+again as they were. So Desfazer undoes any action, with no inverse written
+for each.
 
 **Plans are kept in Postgres** (`agent_plan`, `PlanStore`, two hours), so
 a plan, its quick replies and its undo survive a restart.
@@ -221,46 +243,96 @@ were before the plan.
 
 ### The suggestion
 
-**The goal first, then the deliveries that reach it, then the day.** One
-thing is offered on the Feed without being asked, at its top
-(`SuggestionCard`), worked out by arithmetic in `AgentService._offer`,
-never by the model; how the agent chooses better is research of its own.
-In order:
+**A suggestion is a turn the agent asks itself, about Work Quality.** One
+thing is offered at the top of the Feed without being asked
+(`SuggestionCard`). **Code picks the topic, the model writes the turn**
+([RFC](../research/2026-10-29-agentic-suggestions/README.md),
+[delivery](../delivery/2026-10-29-agentic-suggestions/README.md)).
 
-1. **Goal** (`focus: goal`): no goal running today → "Quanto quer faturar
-   até …?" (the end of the month, or of the next with under a week left),
-   with choices that say an amount (the last goal's, and 20 % more; R$
-   5.000 and R$ 10.000 with none before). A goal short of its target with
-   no open delivery due inside it → "nenhuma entrega aberta vence até lá",
-   with choices naming the catalogue's priced kinds. **No action**: only
-   the person can say the number.
-2. **Delivery** (`focus: delivery`): the running goal's green is behind
-   its red (strictly: `done < target × time gone`, no slack) → the open
-   delivery worth something and due inside it, soonest first, then the
-   most valuable, whose open tasks are not already on today: its next task
-   (by hour, then the backlog) placed in today's first free room (`at_hour`,
-   "Encaixar às 14:00"). A delivery with no open tasks is offered with no
-   action, to be split in the conversation.
-3. **Routine** (`focus: routine`): one of the first three tasks of Para
-   depois that fits today, as before.
+**Work Quality** (`agent/work-quality.ts`) is seven levels of a defined
+plan, each arithmetic on what Entregas and Objetivos already answer
+(`ArtifactsService.answer`), checked top to bottom:
 
-Nothing fits (a goal reached, an empty backlog) → `null`.
+| # | Level | Met when |
+|---|-------|----------|
+| 1 | `goal` | a money goal runs today |
+| 2 | `reach` | its done + queued reach its target |
+| 3 | `shape` | every open delivery has a deadline, a value and a length |
+| 4 | `tasks` | the main delivery (the first that counts, else Entregas' first) has an open task |
+| 5 | `fits` | the work owed by the month's end fits its free hours (`schedule`) |
+| 6 | `routine` | a routine is written |
+| 7 | `pace` | the goal's done is within 15 % of what its days ask by now |
 
-**It holds** (`agent_suggestion`, one row per person, `SuggestionStore`):
-the same one is answered while `now < validUntil`, the hash of what it read
-(`basis`: goals, open deliveries with deadline, value and open tasks,
-routines, the backlog, today's tasks) is the same, it is not taken, and its
-plan is still fresh. `validUntil` is the end of today without an action,
-and the action's hour with one (at least five minutes, at most the plan's
-two hours). Applying its plan, from the card or the conversation, marks it
-taken (`takeByPlan`). On the device, `SuggestionCubit.load` asks nothing
-while the one held is valid, and the ✕ rests suggestions for 24 hours.
+The first level not met is the **topic**; the count met is the score,
+sent to PostHog as `work_quality` (`suggestion_written`, with the topic
+and whether it has a plan) each time one is written. **It is internal**:
+no screen draws a level or a score.
+
+**The turn.** `AgentService._write` runs an ordinary turn (`_answer`, the
+same tools and dry run) on a request the server writes (`requestOf`: the
+topic, its facts, what to propose) and files its reply as the suggestion:
+the caption is the card's words (`text`), the reply is the conversation's
+`opening`, its plan is the card's Aplicar. With no model, or when the turn
+fails, the arithmetic **template** of #67 (`_offer`, `kind: template`) is
+written instead.
+
+**The preview.** A `preview` block (no arguments) with a plan that makes a
+goal, deliveries or a routine draws them as their tabs will: the dry run's sandbox is
+asked `ArtifactsService.answer`, so a new goal's `queued` (or the running
+goal's, when the plan adds a delivery due inside it) counts the plan's
+deliveries. Items are `{ type: 'goal', target, start, end, done, queued,
+queuedCount }`, `{ type: 'artifact', title, minutes, deadline?, value? }`
+and `{ type: 'routine', title, start (minutes after midnight), minutes,
+days, checklist }` (each routine written or changed, as Rotina will have it),
+the A2UI component `Preview` with `applies`, the server's line for what
+Aplicar makes ("Aplicar anota a entrega."). The app draws a goal with
+`GoalCard`, a delivery with `ArtifactRow` (`AgentLinks.preview`,
+`drawAgentPreview`) and a routine with `RoutinePreviewRow` (Rotina's fill,
+its hours, its days, its checklist as empty boxes), on the page's
+background; a new working day is told in `applies` ("Aplicar anota a
+rotina e o novo horário do dia."); the plan under it is
+`OfferActions` (the line, Ajustar, Aplicar), on the card and in the chat.
+
+**When the next one comes: `nextAt`.** The answer tool's `followUp`
+(hours) is held to 3–24, 24 when absent; `nextAt` is the last answer (or
+the writing) plus it, moved to the next working day's start when it falls
+outside one (`nextAtOf`, `intoWorkDay`). **Every answer moves it**:
+Aplicar on its plan (`takenAt`), the ✕ (`POST
+/agent/suggestion/:id/dismiss`, `dismissedAt`; keeps `nextAt`), and each
+message in the conversation it opened (`answeredAt`, from that turn's
+`followUp`). An answered one is hidden until `nextAt`, and so is one whose
+`basis` (the hash of its topic and facts) changed; a plan past its two
+hours makes the turn be asked again on the next read. At `nextAt` the next
+read writes a new turn of the day as it is.
+
+**The welcome.** A person with no suggestion row and no goal finds
+`kind: welcome`: no model, `nextAt: null`, never expires. The app draws its
+fixed words (`agentWelcome`, `agentWelcomeQuestion`) and the amounts R$
+3.000, 5.000, 8.000 (each sends "Quero faturar R$ … este mês.") and Outro
+valor (opens the chat empty). A message in its conversation answers it;
+✕ puts it away 24 h; a goal made by hand skips it.
+
+**One timer per person** (`SuggestionTimer`): armed at each `nextAt`
+written, re-armed at boot from `pending`, firing once: catch-up, then
+`suggestion()`. The one exception to "nothing on a timer touches
+Postgres", and never periodic; a lost timer costs seconds, since the read
+writes a passed one. The reminder plan (`NotificationsService.plan`) has
+a `suggestion` item a minute after `nextAt`. The server names no brand
+("Uma sugestão para o seu mês"), so the phone rewrites it
+(`NotificationScheduler.brand`, `AppBrand.id`): "A Lunna te mandou uma
+mensagem" / "O Focus te mandou uma mensagem"
+(`notificationSuggestionTitle`).
+
+**It holds** in `agent_suggestion`, one row per person (`SuggestionStore`).
+`GET /agent/suggestion` answers `{ id, kind, focus, text, nextAt,
+validUntil (= nextAt, for older builds), action?, opening }` or `null`.
+The app asks on every load (`SuggestionCubit`), which costs no model while
+one is held.
 
 **Its conversation starts where it left off.** `opening` is a turn's reply
-(`ui`, `reply`, `plan?`): a caption, the delivery's peek, the plan (the
-action's own) and the choices. The page draws it as the first message;
-every turn of that conversation carries `suggestionId`, and the server puts
-the opening's words in front of what the model reads, in place of what the
+(`ui`, `reply`, `plan?`). The page draws it as the first message; every
+turn of that conversation carries `suggestionId`, and the server puts the
+opening's words in front of what the model reads, in place of what the
 app sent, and writes them first in the conversation.
 
 ## The answer is a surface

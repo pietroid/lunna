@@ -264,6 +264,69 @@ void main() {
         expect(find.text('Apagar'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'draws Rotina’s changes and the working day, the old hours struck',
+      (tester) async {
+        final plan = AgentPlan.fromJson(const {
+          'id': 'p4',
+          'changes': [
+            {
+              'kind': 'add_routine',
+              'title': 'Manhã de mapas',
+              'minutes': 90,
+              'routine': true,
+              'hours': '08:00–09:30',
+              'days': 'weekdays',
+              'checklist': ['Café', 'Abrir o mapa', 'Revisar'],
+            },
+            {
+              'kind': 'edit_routine',
+              'id': 'r1',
+              'title': 'Academia',
+              'minutes': 60,
+              'routine': true,
+              'hours': '07:00–08:00',
+              'wasHours': '18:00–19:00',
+              'days': 'daily',
+              'wasDays': 'weekdays',
+            },
+            {
+              'kind': 'set_work_day',
+              'title': 'Dia de trabalho',
+              'minutes': 480,
+              'hours': '08:00–18:00',
+              'wasHours': '07:00–22:00',
+            },
+          ],
+        });
+
+        await tester.pumpWidget(
+          _app(
+            SingleChildScrollView(
+              child: PlanCard(
+                plan: plan,
+                status: PlanStatus.pending,
+                onApply: () {},
+                onAdjust: () {},
+              ),
+            ),
+          ),
+        );
+
+        for (final detail in [
+          'nova rotina · 08:00–09:30 · Dias úteis · 3 itens na lista',
+          'rotina · 18:00–19:00 → 07:00–08:00 · Dias úteis → Todo dia',
+          '07:00–22:00 → 08:00–18:00',
+        ]) {
+          expect(
+            find.textContaining(detail, findRichText: true),
+            findsOneWidget,
+          );
+        }
+        expect(find.text('Dia de trabalho'), findsOneWidget);
+      },
+    );
   });
 
   group('UndoChip', () {

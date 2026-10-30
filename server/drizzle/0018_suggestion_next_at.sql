@@ -1,0 +1,1 @@
+ALTER TABLE "agent_suggestion" DROP COLUMN "valid_until";

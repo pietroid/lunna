@@ -1,21 +1,33 @@
 import 'dart:async';
 
+import 'package:agent/src/agent_cubit.dart';
 import 'package:agent/src/models.dart';
 import 'package:agent/src/suggestion_cubit.dart';
+import 'package:agent/src/surface.dart';
+import 'package:agent/src/view/agent_preview.dart';
 import 'package:agent/src/view/agent_sheet.dart';
 import 'package:agent/src/view/apply_plan.dart';
+import 'package:agent/src/view/offer_actions.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template suggestion_card}
-/// The agent's one unasked-for offer, drawn at the top of the Feed.
+/// The agent's one unasked-for offer, drawn at the top of the Feed, in
+/// three parts:
 ///
-/// It is quieter than any card: a wash of the accent, the agent's mark and
-/// what it is about (the goal, a delivery, the routine), a sentence, and
-/// at most two buttons. The suggestion's own action, when it has one, is
-/// made from here; Conversar opens the conversation on the suggestion,
-/// plan and all. The ✕ puts suggestions away for a day.
+/// - a **header** in the agent's wash: its mark, "Sugestão da Lunna", the
+///   ✕, and the turn's words, which are all the agent says here;
+/// - the **preview** on the page's own background: what the plan would
+///   make, drawn by the tabs' widgets (`GoalCard`, `ArtifactRow`, a
+///   routine's block), or the answers to tap when the turn asks instead;
+/// - the **actions**, in the wash again: what Aplicar makes that the
+///   preview can't show, Ajustar (the conversation, opened on this turn)
+///   and Aplicar.
+///
+/// A new person's is the welcome: fixed words and the amounts to bill,
+/// and no actions, since it has no plan. The ✕ puts a suggestion away until
+/// the next one is due.
 /// {@endtemplate}
 class SuggestionCard extends StatelessWidget {
   /// {@macro suggestion_card}
@@ -31,52 +43,144 @@ class SuggestionCard extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: suggestion == null
           ? const SizedBox(width: double.infinity)
-          : _Card(suggestion: suggestion),
+          : _Offer(suggestion: suggestion),
     );
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.suggestion});
+/// What the welcome offers to bill, in reais; "Outro valor" follows.
+const kWelcomeAmounts = [3000, 5000, 8000];
+
+class _Offer extends StatelessWidget {
+  const _Offer({required this.suggestion});
 
   final AgentSuggestion suggestion;
 
-  /// The conversation, starting from what the card said.
+  /// The conversation, starting from the turn the card draws.
   void _talk(BuildContext context) => unawaited(
     showAgentSheet(context, suggestion: suggestion),
   );
 
+  /// The conversation, opened on [said] as the person's first message.
+  void _say(BuildContext context, String said) {
+    final agent = context.read<AgentCubit>();
+    final suggestions = context.read<SuggestionCubit>();
+    unawaited(showAgentSheet(context, suggestion: suggestion));
+    unawaited(agent.send(said));
+    // Answered: the server puts it away until the next one.
+    suggestions.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final action = suggestion.action;
-    final (icon, focus) = switch (suggestion.focus) {
-      SuggestionFocus.goal => (AppIcons.goal, l10n.agentSuggestionGoal),
-      SuggestionFocus.delivery => (
-        AppIcons.artifacts,
-        l10n.agentSuggestionDelivery,
-      ),
-      SuggestionFocus.routine => (AppIcons.repeat, l10n.agentSuggestionRoutine),
-    };
-    final caption = AppTypography.caption.copyWith(color: AppColors.accent);
+    final opening = suggestion.opening;
+    final preview = opening?.blocks.whereType<PreviewBlock>().firstOrNull;
+    final plan = opening?.plan;
+    final options = opening?.options ?? const <QuickReply>[];
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(
+    final body = suggestion.welcome
+        ? _Answers(
+            labels: [
+              for (final amount in kWelcomeAmounts)
+                l10n.agentWelcomeAmount(amount),
+              l10n.agentWelcomeOther,
+            ],
+            onPick: (i) => i < kWelcomeAmounts.length
+                ? _say(context, l10n.agentWelcomeSay(kWelcomeAmounts[i]))
+                : _talk(context),
+          )
+        : preview != null
+        ? AgentPreview(block: preview)
+        : options.isEmpty
+        ? null
+        : _Answers(
+            labels: [for (final it in options) it.label],
+            onPick: (i) => switch (options[i]) {
+              QuickReply(:final plan?) => unawaited(
+                applyAgentPlan(context, plan).then((done) {
+                  if (done && context.mounted) {
+                    context.read<SuggestionCubit>().clear();
+                  }
+                }),
+              ),
+              QuickReply(:final say?) => _say(context, say),
+              _ => _talk(context),
+            },
+          );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
         AppSpacing.s6,
         0,
         AppSpacing.s6,
         AppSpacing.s3,
       ),
-      decoration: BoxDecoration(
-        color: AppColors.accentWash,
-        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(
+            onTap: () => _talk(context),
+            onDismiss: () => context.read<SuggestionCubit>().dismiss(),
+            children: suggestion.welcome
+                ? [
+                    Text(
+                      l10n.agentWelcome(AppBrand.id),
+                      style: AppTypography.body,
+                    ),
+                    const SizedBox(height: AppSpacing.s3),
+                    Text(
+                      l10n.agentWelcomeQuestion,
+                      style: AppTypography.bodyStrong,
+                    ),
+                  ]
+                : [Text(suggestion.text, style: AppTypography.body)],
+          ),
+          if (body != null) ...[
+            const SizedBox(height: AppSpacing.s4),
+            body,
+          ],
+          if (plan != null && !suggestion.welcome) ...[
+            const SizedBox(height: AppSpacing.s3),
+            OfferActions(
+              applies: preview?.applies,
+              status: PlanStatus.pending,
+              onAdjust: () => _talk(context),
+              onApply: () async {
+                final cubit = context.read<SuggestionCubit>();
+                if (await applyAgentPlan(context, plan)) cubit.clear();
+              },
+            ),
+          ],
+        ],
       ),
+    );
+  }
+}
+
+/// The agent's mark, its label and the ✕, over its words. A tap on it
+/// opens the conversation.
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.children,
+    required this.onTap,
+    required this.onDismiss,
+  });
+
+  final List<Widget> children;
+  final VoidCallback onTap;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return AgentWash(
+      padding: EdgeInsets.zero,
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          // The whole card talks; only the action makes something.
-          onTap: () => _talk(context),
+          onTap: onTap,
           borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -97,16 +201,10 @@ class _Card extends StatelessWidget {
                     const SizedBox(width: AppSpacing.s2),
                     Text(
                       l10n.agentSuggestionLabel(AppBrand.id),
-                      style: caption,
+                      style: AppTypography.caption.copyWith(
+                        color: AppColors.accent,
+                      ),
                     ),
-                    Text('  ·  ', style: caption),
-                    AppIcon(
-                      iconData: icon,
-                      size: 14,
-                      color: AppColors.accent,
-                    ),
-                    const SizedBox(width: AppSpacing.s1),
-                    Text(focus, style: caption),
                     const Spacer(),
                     Tooltip(
                       message: l10n.agentSuggestionDismiss,
@@ -114,48 +212,16 @@ class _Card extends StatelessWidget {
                         iconData: AppIcons.close,
                         size: AppSpacing.s4,
                         color: AppColors.ink3,
-                        onPressed: () =>
-                            context.read<SuggestionCubit>().dismiss(),
+                        onPressed: onDismiss,
                       ),
                     ),
                   ],
                 ),
                 Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.s3),
-                  child: Text(suggestion.text, style: AppTypography.body),
-                ),
-                const SizedBox(height: AppSpacing.s3),
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.s3),
-                  child: Row(
-                    children: [
-                      if (action != null) ...[
-                        AppButton(
-                          text: action.label,
-                          onPressed: () async {
-                            final cubit = context.read<SuggestionCubit>();
-                            if (await applyAgentPlan(context, action.plan)) {
-                              cubit.clear();
-                            }
-                          },
-                        ),
-                        const SizedBox(width: AppSpacing.s2),
-                      ],
-                      AppButton.icon(
-                        icon: AppIcon(
-                          iconData: AppIcons.chat,
-                          size: 18,
-                          color: action == null
-                              ? AppColors.onAccent
-                              : AppColors.accent,
-                        ),
-                        text: l10n.agentSuggestionTalk,
-                        variant: action == null
-                            ? AppButtonVariant.primary
-                            : AppButtonVariant.secondary,
-                        onPressed: () => _talk(context),
-                      ),
-                    ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: children,
                   ),
                 ),
               ],
@@ -165,4 +231,27 @@ class _Card extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The answers a turn with no plan offers, on the page: the welcome's
+/// amounts, or the turn's own choices.
+class _Answers extends StatelessWidget {
+  const _Answers({required this.labels, required this.onPick});
+
+  final List<String> labels;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) => Wrap(
+    spacing: AppSpacing.s2,
+    runSpacing: AppSpacing.s2,
+    children: [
+      for (final (i, label) in labels.indexed)
+        AppButton(
+          text: label,
+          variant: AppButtonVariant.secondary,
+          onPressed: () => onPick(i),
+        ),
+    ],
+  );
 }

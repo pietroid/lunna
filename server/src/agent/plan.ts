@@ -1,6 +1,10 @@
 import { randomUUID } from 'crypto';
 import { GoalKind, StoredRow } from '../artifacts/artifact.types';
-import { CalendarEvent } from '../calendar/calendar.types';
+import {
+  CalendarEvent,
+  CalendarRoutine,
+  RoutineDays,
+} from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
 
 /**
@@ -21,7 +25,10 @@ export type ChangeKind =
   | 'add_kind'
   | 'add_goal'
   | 'edit_goal'
-  | 'remove_goal';
+  | 'remove_goal'
+  | 'add_routine'
+  | 'edit_routine'
+  | 'set_work_day';
 
 /** One line of a plan, as the app draws it. */
 export interface PlanChange {
@@ -64,6 +71,19 @@ export interface PlanChange {
   goal?: { kind: GoalKind; target: number; deadline: string };
   /** For a goal changed: how much and by which day it was before. */
   wasGoal?: { kind: GoalKind; target: number; deadline: string };
+  /**
+   * For a routine, its hours as the change leaves them ("07:00–07:45");
+   * for the working day, its opening and close ("08:00–18:00").
+   */
+  hours?: string;
+  /** The hours it had, when the change gives it others. */
+  wasHours?: string;
+  /** For a routine: the days it repeats on. */
+  days?: RoutineDays;
+  /** For a routine: the days it repeated on, when the change gives others. */
+  wasDays?: RoutineDays;
+  /** For a routine: its checklist as the change leaves it. */
+  checklist?: string[];
 }
 
 /** Something new a gesture writes down. */
@@ -149,7 +169,33 @@ export type Gesture =
       id: string;
       edit: { target?: number; deadline?: string };
     }
-  | { do: 'remove_goal'; id: string };
+  | { do: 'remove_goal'; id: string }
+  | {
+      do: 'new_routine';
+      title: string;
+      /** `HH:mm`, every day's hour in the person's zone. */
+      time: string;
+      minutes: number;
+      days: RoutineDays;
+      checklist: string[];
+    }
+  | {
+      do: 'edit_routine';
+      id: string;
+      edit: {
+        title?: string;
+        time?: string;
+        minutes?: number;
+        days?: RoutineDays;
+        checklist?: string[];
+      };
+    }
+  | {
+      do: 'set_work_day';
+      /** Minutes after midnight. */
+      start: number;
+      end: number;
+    };
 
 /** The something new a gesture writes down, when it writes a card. */
 export function newOf(gesture: Gesture): NewThing | undefined {
@@ -180,6 +226,9 @@ export interface Pushed {
 export type Row =
   | { kind: 'task'; row: Task }
   | { kind: 'event'; row: CalendarEvent }
+  | { kind: 'routine'; row: CalendarRoutine }
+  /** The person's working day, minutes after midnight; `id` is theirs. */
+  | { kind: 'workDay'; row: { id: string; start: number; end: number } }
   | StoredRow;
 
 /**

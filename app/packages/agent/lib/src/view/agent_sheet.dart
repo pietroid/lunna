@@ -5,11 +5,13 @@ import 'package:agent/src/agent_links.dart';
 import 'package:agent/src/agent_repository.dart';
 import 'package:agent/src/models.dart';
 import 'package:agent/src/surface.dart';
+import 'package:agent/src/view/agent_preview.dart';
 import 'package:agent/src/view/apply_plan.dart';
 import 'package:agent/src/view/artifact_peek.dart';
 import 'package:agent/src/view/cards_peek.dart';
 import 'package:agent/src/view/day_peek.dart';
 import 'package:agent/src/view/failure_note.dart';
+import 'package:agent/src/view/offer_actions.dart';
 import 'package:agent/src/view/plan_card.dart';
 import 'package:agent/src/view/quick_replies.dart';
 import 'package:agent/src/view/voice_bar.dart';
@@ -625,10 +627,22 @@ class _Answer extends StatelessWidget {
     final open = AgentLinks.of(context).openArtifact;
     final about = context.read<AgentCubit>().about;
 
+    // With a preview, the plan is drawn as its actions alone, under it.
+    final preview = reply.blocks.whereType<PreviewBlock>().firstOrNull;
+
     Widget? planned() => switch (plan) {
       null => null,
       _ when past => PlanLine(plan: plan, status: entry.status),
       _ when tookOption => null,
+      _ when preview != null => OfferActions(
+        applies: preview.applies,
+        status: entry.status,
+        onAdjust: () => onAdjust!(plan),
+        onApply: () async {
+          final navigator = Navigator.of(context);
+          if (await applyAgentPlan(context, plan)) navigator.pop();
+        },
+      ),
       _ => PlanCard(
         plan: plan,
         status: entry.status,
@@ -679,6 +693,8 @@ class _Answer extends StatelessWidget {
                 CaptionBlock(:final text) => caption(text),
                 PlanBlock() => planned(),
                 ChoicesBlock() => choices(),
+                final PreviewBlock block =>
+                  past ? null : AgentPreview(block: block),
                 DayBlock() => DayPeek(block: block),
                 CardsBlock() => CardsPeek(block: block),
                 ArtifactBlock(:final artifact) => ArtifactPeek(

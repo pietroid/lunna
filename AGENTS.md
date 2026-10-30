@@ -101,7 +101,8 @@ server/
                         (refs, dates, artifacts), actions/ (the registry:
                         one Action per verb), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
-                        the suggestion (SuggestionStore),
+                        the suggestion (SuggestionStore, work-quality.ts,
+                        SuggestionTimer),
                         conversations (ConversationStore), plans
                         (PlanStore), evals/
     analytics/          PostHog: the provider, the route → event table
@@ -451,7 +452,10 @@ settled on that person's next request: `CatchUpInterceptor`
 with `@UseInterceptors` on every controller that reads the day (timeline,
 tasks, events, notifications, agent, artifacts). A new controller that
 reads the day takes the same decorator. See
-[the RFC](./product/research/2026-10-23-neon-compute/README.md).
+[the RFC](./product/research/2026-10-23-neon-compute/README.md). **The one
+exception is a one-shot at an hour someone was told to look**, never
+periodic: `SuggestionTimer` fires once per person at their suggestion's
+`nextAt` (re-armed at boot), and a read past it writes the turn anyway.
 
 Adding a task (`POST /tasks`) puts it where it was asked for (see above).
 Adding a fixed block (`POST /events`) puts it at its hour. Dragging
@@ -622,12 +626,19 @@ person reads carries a ref (`speakable`). **Each verb is one `Action` in
 button calls, the card's line); the schema, the dry run, Aplicar and the
 card all read the registry, and Desfazer restores a snapshot of the rows
 the plan touched, so a new control is one entry. Today it moves cards on
-the day and makes, edits, delivers, moves and deletes deliveries, kinds
-and goals; plans are kept in Postgres. **The suggestion on the Feed looks at
-the goal first** (none, or nothing open towards it), then the delivery
-that reaches a goal behind, then Para depois; it is arithmetic, kept in
-`agent_suggestion` until its `validUntil` or a change to what it read, and
-its conversation opens on its first message. The conversation is a
+the day; makes, edits, delivers, moves and deletes deliveries, kinds
+and goals; writes and changes routines and sets the working day
+(`actions/routines.ts`); plans are kept in Postgres. **The suggestion on the Feed is a
+turn the agent asks itself about the person's first unmet Work Quality
+level** (`agent/work-quality.ts`: goal, reach, shape, tasks, fits,
+routine, pace; the score goes to PostHog as `work_quality`, never on
+screen): code picks the topic, the model writes the words, the plan (drawn
+as a `preview` by the tabs' own widgets, then Ajustar and Aplicar) and
+when to look again (`followUp`, 3–24 h). It is kept in `agent_suggestion`
+until its `nextAt` (moved by every answer: Aplicar, ✕, a message in its
+conversation); a new person finds the fixed welcome, which never expires,
+and a failed turn falls back to #67's arithmetic template. Its
+conversation opens on its first message. The conversation is a
 full-screen page, and stopping a recording there sends it.
 Agent changes are measured with `npm run eval:agent`
 (real model, costs money, never in CI). The tools, the plan rules, the

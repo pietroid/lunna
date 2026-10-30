@@ -538,6 +538,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationChannelDailyDescription => 'Um recado no começo e no fim do dia.';
 
   @override
+  String notificationSuggestionTitle(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'A Lunna te mandou uma mensagem',
+        'other': 'O Focus te mandou uma mensagem',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationSuggestionBody => 'Tenho uma ideia para o próximo passo. Vem ver?';
+
+  @override
   String get remindersAskTitle => 'Quer lembretes?';
 
   @override
@@ -926,16 +941,49 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSuggestionDismiss => 'Agora não';
 
   @override
-  String get agentSuggestionTalk => 'Conversar';
+  String agentWelcome(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.',
+        'other': 'Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.',
+      },
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get agentSuggestionGoal => 'Objetivo';
+  String get agentWelcomeQuestion => 'Quanto você quer faturar este mês?';
 
   @override
-  String get agentSuggestionDelivery => 'Entrega';
+  String agentWelcomeAmount(int amount) {
+    final intl.NumberFormat amountNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String amountString = amountNumberFormat.format(amount);
+
+    return 'R\$ $amountString';
+  }
 
   @override
-  String get agentSuggestionRoutine => 'Rotina';
+  String agentWelcomeSay(int amount) {
+    final intl.NumberFormat amountNumberFormat = intl.NumberFormat.decimalPattern(localeName);
+    final String amountString = amountNumberFormat.format(amount);
+
+    return 'Quero faturar R\$ $amountString este mês.';
+  }
+
+  @override
+  String get agentWelcomeOther => 'Outro valor';
+
+  @override
+  String agentPreviewItems(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count itens na lista',
+      one: '1 item na lista',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get agentFailure => 'Algo deu errado. Tente de novo.';
@@ -1289,6 +1337,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentChangeNewGoal => 'novo objetivo';
+
+  @override
+  String get agentChangeNewRoutine => 'nova rotina';
+
+  @override
+  String get agentChangeEditRoutine => 'rotina';
+
+  @override
+  String get agentChangeWorkDay => 'Dia de trabalho';
 
   @override
   String get agentChangeEditGoal => 'objetivo';

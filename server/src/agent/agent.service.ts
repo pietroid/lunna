@@ -1,13 +1,16 @@
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import {
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   Optional,
 } from '@nestjs/common';
+import { ANALYTICS, NoAnalytics } from '../analytics/analytics';
+import type { Analytics } from '../analytics/analytics';
 import { ConfigService } from '@nestjs/config';
 import { CalendarService } from '../calendar/calendar.service';
-import { CalendarRoutine, CalendarUser } from '../calendar/calendar.types';
+import { CalendarUser } from '../calendar/calendar.types';
 import { Timeline } from '../events/entities/event.entity';
 import { Goal } from '../artifacts/artifact.types';
 import { Trace } from '../common/trace';
@@ -16,12 +19,16 @@ import { TimelineService } from '../events/timeline.service';
 import { ArtifactStore } from '../artifacts/artifact.store';
 import { ArtifactsService } from '../artifacts/artifacts.service';
 import { addDays, daysBetween, endOfMonth } from '../artifacts/stretch';
+import { RoutinesService } from '../routines/routines.service';
 import { TaskStore } from '../tasks/task.store';
+import { UsersService } from '../users/users.service';
 import {
   addMinutes,
   DEFAULT_WORK_DAY,
   nextFreeSlot,
+  parseMinuteOfDay,
   roundUpToFiveMinutes,
+  workWindowFor,
 } from '../time/work-hours';
 import {
   addDaysIn,
@@ -41,6 +48,7 @@ import {
   peekCard,
   peekDay,
   peekArtifact,
+  PreviewItem,
   summary,
   toA2ui,
 } from './answer';
@@ -63,11 +71,13 @@ import {
   handsOver,
   Made,
   make,
+  NO_WORK_DAYS,
   sandbox,
   Seed,
   snapshot,
   takeBack,
   undoOf,
+  WorkDays,
 } from './gestures';
 import {
   ChatMessage,
@@ -84,7 +94,6 @@ import {
   NewPlan,
   newOf,
   Plan,
-  PLAN_TTL_MS,
   PlanChange,
   PlanStore,
   Pushed,
@@ -92,11 +101,14 @@ import {
 import { ToolDefinition } from './openrouter.client';
 import {
   MemorySuggestionStore,
+  NewSuggestion,
   Opening,
   StoredSuggestion,
-  SuggestionFocus,
+  SuggestionKind,
   SuggestionStore,
 } from './suggestion.store';
+import { appliesOf } from './speech';
+import { basisOf, requestOf, workQuality, WorkQuality } from './work-quality';
 
 export type { Subject } from './actions';
 
@@ -153,20 +165,30 @@ export interface TurnResult extends AgentReply {
   leaks: number;
   /** What the model wrote for the person, before `speakable`. */
   raw: string[];
+  /** The hours the model said to look again after this turn, as it said them. */
+  followUp?: number;
 }
 
 /** The one thing the agent offers without being asked, as the app reads it. */
 export interface Suggestion {
   id: string;
-  focus: SuggestionFocus;
+  /** `welcome` is drawn by the app's own words; the others by [text]. */
+  kind: SuggestionKind;
+  /** Its Work Quality topic, or a template's focus. Never drawn. */
+  focus: string;
   text: string;
-  /** ISO 8601: when another is made, unless what it read changes first. */
+  /** ISO 8601: when the next one is made. Null for the welcome. */
+  nextAt: string | null;
+  /** [nextAt] for builds before it, never null. */
   validUntil: string;
   /** Made from the card, with no conversation. */
   action?: { label: string; plan: PlanView };
   /** The agent's first message in a conversation opened from it. */
   opening: Opening;
 }
+
+/** What a template is about, in the order it looks. */
+type SuggestionFocus = 'goal' | 'delivery' | 'routine';
 
 /** What `_offer` works out, before anything is filed. */
 interface Offer {
@@ -196,6 +218,8 @@ interface Turn {
   usage: ModelUsage;
   leaks: number;
   raw: string[];
+  /** What each plan rehearsed would make, as its tabs draw it, by plan id. */
+  previews: Map<string, PreviewItem[]>;
 }
 
 /** What a plan block came to. */
@@ -207,6 +231,7 @@ type Proposal =
 interface Answered {
   blocks: Block[];
   plan?: Plan;
+  followUp?: number;
 }
 
 /** At most this many blocks in one answer. */
@@ -253,6 +278,9 @@ export class AgentService {
   /** The tools, a plan's changes in the shape `AGENT_SCHEMA` names. */
   private readonly _tools: ToolDefinition[];
   private readonly _deliveries: ArtifactsService;
+  private readonly _routines: RoutinesService;
+  /** Where the working day is kept; nowhere in the tests that leave it out. */
+  private readonly _users: WorkDays;
   /**
    * The doubt each conversation was last left with, by one of its answers'
    * plans: answered by typing rather than a tap, the options missed.
@@ -272,7 +300,12 @@ export class AgentService {
     @Optional() plans?: PlanStore,
     @Optional() config?: ConfigService,
     @Optional() suggestions?: SuggestionStore,
+    @Optional()
+    @Inject(ANALYTICS)
+    private readonly _analytics: Analytics = new NoAnalytics(),
+    @Optional() users?: UsersService,
   ) {
+    this._users = users ?? NO_WORK_DAYS;
     this._plans = plans ?? new MemoryPlanStore();
     this._suggestions = suggestions ?? new MemorySuggestionStore();
     this._tools = toolsFor(schemaShapeOf(config?.get<string>('AGENT_SCHEMA')));
@@ -283,6 +316,7 @@ export class AgentService {
       _timeline,
       _layout,
     ).deliveries;
+    this._routines = new RoutinesService(_calendar);
   }
 
   get configured(): boolean {
@@ -297,6 +331,8 @@ export class AgentService {
       tasks: this._tasks,
       artifacts: this._artifacts,
       deliveries: this._deliveries,
+      routines: this._routines,
+      users: this._users,
     };
   }
 
@@ -382,6 +418,11 @@ export class AgentService {
         at: new Date(now.getTime() + 1),
       },
     ]);
+
+    // Talked about: the next suggestion counts from this message.
+    if (held !== undefined && opening !== undefined) {
+      await this._answered(user, held, 'answeredAt', answer.followUp, now);
+    }
 
     return { conversationId: conversation, ...answer };
   }
@@ -502,7 +543,7 @@ export class AgentService {
     trace: Trace,
     now: Date,
   ): Promise<Omit<TurnResult, 'conversationId'>> {
-    const [day, artifacts, artifactTasks, categories, types, goals] =
+    const [day, artifacts, artifactTasks, categories, types, goals, routines] =
       await Promise.all([
         this._timeline.day(user, HORIZON_DAYS, now),
         this._artifacts.list(user),
@@ -510,6 +551,7 @@ export class AgentService {
         this._artifacts.categories(user),
         this._artifacts.types(user),
         this._artifacts.goals(user),
+        this._calendar.routines(user),
       ]);
     const seed: Seed = {
       day,
@@ -518,6 +560,7 @@ export class AgentService {
       categories,
       types,
       goals,
+      routines,
     };
     const board = new Board(day, this._timeline.view(day), {
       refs: this._refsOf(conversationId),
@@ -540,6 +583,7 @@ export class AgentService {
       usage: { promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0 },
       leaks: 0,
       raw: [],
+      previews: new Map(),
     };
     const said = history[history.length - 1].text;
 
@@ -623,7 +667,7 @@ export class AgentService {
     turn: Turn,
     answered: Answered,
   ): Omit<TurnResult, 'conversationId'> {
-    const { blocks, plan } = answered;
+    const { blocks, plan, followUp } = answered;
     const choices = blocks.flatMap((it) =>
       it.kind === 'choices' ? it.options : [],
     );
@@ -637,6 +681,7 @@ export class AgentService {
       blocks,
       leaks: turn.leaks,
       raw: turn.raw,
+      ...(followUp === undefined ? {} : { followUp }),
     };
   }
 
@@ -733,6 +778,7 @@ export class AgentService {
         hands,
         user,
         undoOf(before, await snapshot(hands, user, now)),
+        now,
       );
       throw new AgentError(
         'drift',
@@ -748,7 +794,10 @@ export class AgentService {
     await this._plans.save(plan);
     await this._mark(user, plan.group ?? planId, 'applied', trace);
     // From the card or from the conversation, the suggestion is taken.
-    await this._suggestions.takeByPlan(user.id, planId, now);
+    const held = await this._suggestions.current(user.id);
+    if (held?.action?.planId === planId) {
+      await this._answered(user, held, 'takenAt', undefined, now);
+    }
     trace.log('agent.applied', {
       planId,
       changes: plan.gestures.length,
@@ -798,20 +847,23 @@ export class AgentService {
   }
 
   /**
-   * The one thing worth offering without being asked, kept until it runs
-   * out: the same one while it is valid, nothing it read has changed and
-   * it was not taken; otherwise a new one, which replaces it.
+   * The one thing worth offering without being asked: a turn the agent
+   * asks itself about the person's first unmet Work Quality level, kept
+   * until its `nextAt`.
    *
-   * No model: Tempo asks every time it opens, and the thin layer here is
-   * arithmetic. It looks at the goal first, then the deliveries that reach
-   * it, then the day (`offerOf`). Its action, when it has one, is the same
-   * plan a turn would make, so the app applies and undoes it the same way.
+   * Code picks the topic (`workQuality`); the model writes the words, the
+   * plan and when to look again. A person who never had one finds the
+   * welcome, fixed words that never expire. Once answered (Aplicar, ✕, a
+   * message in the conversation it opened) or once what it is about
+   * changes, it hides until `nextAt`, when the next turn reads the day as it
+   * is then. A turn that cannot be had falls back to the arithmetic
+   * template (`_offer`).
    */
   async suggestion(
     user: CalendarUser,
     now = new Date(),
   ): Promise<Suggestion | undefined> {
-    const [day, artifacts, artifactTasks, types, goals, routines] =
+    const [day, artifacts, artifactTasks, types, goals, routines, answer] =
       await Promise.all([
         this._timeline.day(user, HORIZON_DAYS, now),
         this._artifacts.list(user),
@@ -819,6 +871,7 @@ export class AgentService {
         this._artifacts.types(user),
         this._artifacts.goals(user),
         this._calendar.routines(user),
+        this._deliveries.answer(user, now),
       ]);
     const view = this._timeline.view(day);
     const board = new Board(day, view, {
@@ -826,26 +879,227 @@ export class AgentService {
       artifactTasks,
       types,
       goals,
+      routines,
     });
-    const basis = basisOf(board, view, routines);
+    const running = board.goals.find(
+      (it) => it.goal.starts <= board.today && board.today <= it.goal.deadline,
+    );
+    const quality = workQuality({
+      today: board.today,
+      answer,
+      routines: routines.length,
+      timeGone:
+        running === undefined ? 0 : goalTimeAt(running.goal, now, board.zone),
+    });
+    const basis = basisOf(quality);
 
     const held = await this._suggestions.current(user.id);
-    if (
-      held !== undefined &&
-      held.takenAt === undefined &&
-      held.basis === basis &&
-      now < held.validUntil
-    ) {
-      const plan =
-        held.action === undefined
-          ? undefined
-          : await this._plans.get(user.id, held.action.planId);
-      // Its plan expired or was applied some other way: it is spent.
-      if (held.action === undefined || (plan && plan.applied === undefined)) {
+    if (held === undefined) {
+      // Someone who already set a goal by hand is past the welcome.
+      return quality.topic === 'goal'
+        ? this._welcome(user, quality, basis, now)
+        : this._write(user, board, view, quality, basis, now);
+    }
+
+    if (held.kind === 'welcome' && held.answeredAt === undefined) {
+      if (quality.topic !== 'goal') {
+        return this._write(user, board, view, quality, basis, now);
+      }
+      if (held.dismissedAt !== undefined && now < held.nextAt!) {
+        return undefined;
+      }
+      return suggestionView(held, undefined);
+    }
+
+    if (held.nextAt !== undefined && now < held.nextAt) {
+      if (
+        held.takenAt !== undefined ||
+        held.dismissedAt !== undefined ||
+        held.answeredAt !== undefined ||
+        held.basis !== basis
+      ) {
+        return undefined;
+      }
+      if (held.action === undefined) return suggestionView(held, undefined);
+      const plan = await this._plans.get(user.id, held.action.planId);
+      // Its plan lived its two hours, or was applied some other way: the
+      // turn is asked again, of the day as it is now.
+      if (plan !== undefined && plan.applied === undefined) {
         return suggestionView(held, plan);
       }
     }
 
+    return this._write(user, board, view, quality, basis, now);
+  }
+
+  /** Puts away [suggestionId], the ✕: the welcome for a day, a turn until its `nextAt`. */
+  async dismiss(
+    user: CalendarUser,
+    suggestionId: string,
+    now = new Date(),
+  ): Promise<void> {
+    const held = await this._suggestions.current(user.id);
+    if (held?.id !== suggestionId) {
+      throw new AgentError(
+        'refused',
+        'Essa sugestão já mudou.',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+    const nextAt =
+      held.nextAt ??
+      intoWorkDay(
+        new Date(now.getTime() + DEFAULT_FOLLOW_UP * 3_600_000),
+        user,
+        this._timeline.zone(user),
+      );
+    await this._suggestions.answer(user.id, held.id, {
+      dismissedAt: now,
+      nextAt,
+    });
+    this.onNextAt?.(user.id, nextAt);
+  }
+
+  /**
+   * Called with each `nextAt` written: the timer (`SuggestionTimer`) arms
+   * itself there, so the next suggestion is ready when the phone rings.
+   */
+  onNextAt?: (userId: string, at: Date) => void;
+
+  /** Every suggestion's next turn still to come, for the timer to re-arm at boot. */
+  pendingSuggestions(now: Date) {
+    return this._suggestions.pending(now);
+  }
+
+  /** [held] answered at [now]: the next one comes [followUp] hours later. */
+  private async _answered(
+    user: CalendarUser,
+    held: StoredSuggestion,
+    answer: 'takenAt' | 'answeredAt',
+    followUp: number | undefined,
+    now: Date,
+  ): Promise<void> {
+    const nextAt = nextAtOf(
+      now,
+      followUp ?? held.followUp,
+      user,
+      this._timeline.zone(user),
+    );
+    await this._suggestions.answer(user.id, held.id, {
+      [answer]: now,
+      nextAt,
+    });
+    this.onNextAt?.(user.id, nextAt);
+  }
+
+  /** The welcome, filed: no model, no expiry, the app draws its words. */
+  private async _welcome(
+    user: CalendarUser,
+    quality: WorkQuality,
+    basis: string,
+    now: Date,
+  ): Promise<Suggestion> {
+    const blocks: Block[] = [{ kind: 'caption', text: WELCOME_QUESTION }];
+    const kept = await this._suggestions.put(
+      user.id,
+      {
+        kind: 'welcome',
+        focus: quality.topic,
+        text: WELCOME_QUESTION,
+        opening: {
+          ui: toA2ui(`welcome-${randomUUID().slice(0, 8)}`, blocks),
+          reply: WELCOME_QUESTION,
+          steps: [],
+          options: [],
+        },
+        basis,
+        workQuality: quality.score,
+      },
+      now,
+    );
+    this._measure(user, kept);
+    return suggestionView(kept, undefined);
+  }
+
+  /**
+   * A new suggestion about [quality]: the turn the agent asks itself, or the
+   * template when there is no model or the turn fails.
+   */
+  private async _write(
+    user: CalendarUser,
+    board: Board,
+    view: Timeline,
+    quality: WorkQuality,
+    basis: string,
+    now: Date,
+  ): Promise<Suggestion | undefined> {
+    const zone = board.zone;
+    let made: NewSuggestion | undefined;
+    let plan: Plan | undefined;
+
+    if (this._model.configured) {
+      const trace = Trace.start(user.id, 'suggestion');
+      try {
+        const turn = await this._answer(
+          user,
+          randomUUID(),
+          [{ role: 'user', text: requestOf(quality) }],
+          undefined,
+          undefined,
+          trace,
+          now,
+        );
+        plan =
+          turn.plan === undefined
+            ? undefined
+            : await this._plans.get(user.id, turn.plan.id);
+        const caption = turn.blocks.find((it) => it.kind === 'caption');
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { blocks, leaks, raw, followUp, ...opening } = turn;
+        made = {
+          kind: 'turn',
+          focus: quality.topic,
+          text: caption?.text ?? turn.reply,
+          ...(plan === undefined
+            ? {}
+            : { action: { label: 'Aplicar', planId: plan.id } }),
+          opening,
+          basis,
+          workQuality: quality.score,
+          followUp: clampFollowUp(followUp),
+          nextAt: nextAtOf(now, followUp, user, zone),
+        };
+      } catch (error) {
+        trace.warn('agent.suggestionFailed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    made ??= await this._template(user, board, view, quality, basis, now);
+    if (made === undefined) return undefined;
+    if (made.kind === 'template') {
+      plan =
+        made.action === undefined
+          ? undefined
+          : await this._plans.get(user.id, made.action.planId);
+    }
+
+    const kept = await this._suggestions.put(user.id, made, now);
+    this._measure(user, kept);
+    if (kept.nextAt !== undefined) this.onNextAt?.(user.id, kept.nextAt);
+    return suggestionView(kept, plan);
+  }
+
+  /** The arithmetic suggestion of #67, written when the turn cannot be had. */
+  private async _template(
+    user: CalendarUser,
+    board: Board,
+    view: Timeline,
+    quality: WorkQuality,
+    basis: string,
+    now: Date,
+  ): Promise<NewSuggestion | undefined> {
     const offer = this._offer(user, board, view, now);
     if (offer === undefined) return undefined;
 
@@ -870,41 +1124,35 @@ export class AgentService {
         ? []
         : [{ kind: 'choices' as const, options: offer.choices }]),
     ];
-    const kept = await this._suggestions.put(
-      user.id,
-      {
-        focus: offer.focus,
-        text: offer.text,
-        ...(plan === undefined || offer.action === undefined
-          ? {}
-          : { action: { label: offer.action.label, planId: plan.id } }),
-        opening: {
-          ui: toA2ui(`suggestion-${randomUUID().slice(0, 8)}`, blocks),
-          reply: summary(board, blocks),
-          steps: [],
-          ...(plan === undefined ? {} : { plan: planView(plan) }),
-          options: [],
-        },
-        basis,
-        // An offer of 14:00 is stale at 14:00 (one of now lasts five
-        // minutes), and its plan lives two hours.
-        validUntil:
-          offer.action === undefined
-            ? addDaysIn(startOfDayIn(now, board.zone), 1, board.zone)
-            : new Date(
-                Math.min(
-                  Math.max(
-                    new Date(offer.action.at).getTime(),
-                    now.getTime() + 5 * 60_000,
-                  ),
-                  now.getTime() + PLAN_TTL_MS,
-                ),
-              ),
-      },
-      now,
-    );
 
-    return suggestionView(kept, plan);
+    return {
+      kind: 'template',
+      focus: offer.focus,
+      text: offer.text,
+      ...(plan === undefined || offer.action === undefined
+        ? {}
+        : { action: { label: offer.action.label, planId: plan.id } }),
+      opening: {
+        ui: toA2ui(`suggestion-${randomUUID().slice(0, 8)}`, blocks),
+        reply: summary(board, blocks),
+        steps: [],
+        ...(plan === undefined ? {} : { plan: planView(plan) }),
+        options: [],
+      },
+      basis,
+      workQuality: quality.score,
+      nextAt: nextAtOf(now, undefined, user, board.zone),
+    };
+  }
+
+  /** Phase 0 of the RFC: the score, as a number, each time one is written. */
+  private _measure(user: CalendarUser, kept: StoredSuggestion): void {
+    this._analytics.capture(user.id, SUGGESTION_EVENT, {
+      work_quality: kept.workQuality,
+      topic: kept.focus,
+      kind: kept.kind,
+      plan: kept.action !== undefined,
+    });
   }
 
   /** What to offer now, in the order the agent looks. */
@@ -1256,6 +1504,22 @@ export class AgentService {
           }
           break;
         }
+        case 'preview': {
+          const items =
+            plan === undefined ? undefined : turn.previews.get(plan.id);
+          if (plan === undefined || items === undefined || items.length === 0) {
+            dropped.push(
+              'a preview needs a plan that makes a goal or a delivery',
+            );
+          } else {
+            block = {
+              kind: 'preview',
+              items,
+              applies: appliesOf(plan.changes),
+            };
+          }
+          break;
+        }
         default:
           dropped.push(`unknown block type ${String(item.type)}`);
       }
@@ -1300,13 +1564,23 @@ export class AgentService {
       this._asked.set(turn.conversationId, offered.plan.id);
     }
 
+    // A preview is read before the plan it shows, which it then stands for.
+    const ordered = [
+      ...(focus === undefined ? [] : [focus]),
+      ...blocks.filter((it) => it !== focus),
+    ];
+    const preview = ordered.findIndex((it) => it.kind === 'preview');
+    const planAt = ordered.findIndex((it) => it.kind === 'plan');
+    if (preview > planAt && planAt >= 0) {
+      ordered.splice(planAt, 0, ...ordered.splice(preview, 1));
+    }
+    const followUp =
+      typeof args.followUp === 'number' ? args.followUp : undefined;
+
     return {
-      blocks: [
-        ...(caption === undefined ? [] : [caption]),
-        ...(focus === undefined ? [] : [focus]),
-        ...blocks.filter((it) => it !== focus),
-      ],
+      blocks: [...(caption === undefined ? [] : [caption]), ...ordered],
       plan,
+      ...(followUp === undefined ? {} : { followUp }),
     };
   }
 
@@ -1575,9 +1849,15 @@ export class AgentService {
     drafts: Draft[],
     group?: string,
   ): Promise<Plan> {
-    const { user, board, now, trace } = turn;
+    const { board, now, trace } = turn;
+    // A copy: set_work_day gives the sandbox's person other hours.
+    const user = { ...turn.user };
     const before = board.day;
-    const hands = sandbox(user, turn.seed);
+    const hands = sandbox(
+      user,
+      turn.seed,
+      drafts.some((it) => it.gesture.do.endsWith('_routine')),
+    );
     const ids: string[] = [];
     const made: Made = new Map();
 
@@ -1658,7 +1938,7 @@ export class AgentService {
       });
     }
 
-    return this._plans.put(user.id, {
+    const plan = await this._plans.put(user.id, {
       gestures: drafts.map((it) => it.gesture),
       changes,
       pushed: pushed
@@ -1667,6 +1947,8 @@ export class AgentService {
       assumed: dedupeAssumed(drafts.flatMap((it) => it.assumed)),
       group,
     });
+    turn.previews.set(plan.id, await previewsOf(hands, user, drafts, ids, now));
+    return plan;
   }
 
   /**
@@ -1974,9 +2256,14 @@ function suggestionView(
 ): Suggestion {
   return {
     id: held.id,
+    kind: held.kind,
     focus: held.focus,
     text: held.text,
-    validUntil: held.validUntil.toISOString(),
+    nextAt: held.nextAt?.toISOString() ?? null,
+    // Builds before `nextAt` read this, and cannot read a null.
+    validUntil: (
+      held.nextAt ?? new Date(held.createdAt.getTime() + 24 * 3_600_000)
+    ).toISOString(),
     ...(held.action === undefined || plan === undefined
       ? {}
       : { action: { label: held.action.label, plan: planView(plan) } }),
@@ -1984,40 +2271,48 @@ function suggestionView(
   };
 }
 
-/**
- * What a suggestion is made from, hashed: the goals, the open deliveries
- * with their deadlines, values and tasks, the routines, and where the
- * tasks are today. A change to any of them makes another.
- */
-function basisOf(
-  board: Board,
-  view: Timeline,
-  routines: CalendarRoutine[],
-): string {
-  const read = {
-    today: board.today,
-    goals: board.goals.map(({ goal }) => [
-      goal.id,
-      goal.target,
-      goal.starts,
-      goal.deadline,
-    ]),
-    deliveries: board.artifacts
-      .filter((it) => it.artifact.doneAt === undefined)
-      .map((it) => [
-        it.artifact.id,
-        it.artifact.deadline,
-        it.artifact.value,
-        it.tasks.filter((task) => task.doneAt === undefined).length,
-      ]),
-    routines: routines.map((it) => [it.id, it.title, it.startTime, it.days]),
-    backlog: view.backlog.map((it) => it.id),
-    onToday: view.tasks
-      .filter((it) => it.day === board.today)
-      .map((it) => it.id),
-  };
+/** The welcome's question: the chat opens on it. The card draws its own words. */
+const WELCOME_QUESTION = 'Quanto você quer faturar este mês?';
 
-  return createHash('sha256').update(JSON.stringify(read)).digest('hex');
+/** The hours until the next suggestion when a turn says nothing. */
+export const DEFAULT_FOLLOW_UP = 24;
+
+/** What a turn may say about its follow-up, in hours. */
+const FOLLOW_UP_RANGE = { min: 3, max: 24 };
+
+/** Captured each time a suggestion is written, with `work_quality`. */
+export const SUGGESTION_EVENT = 'suggestion_written';
+
+/** [hours] held to 3–24, or 24 when none was given. */
+export function clampFollowUp(hours: number | undefined): number {
+  if (hours === undefined || !Number.isFinite(hours)) return DEFAULT_FOLLOW_UP;
+  return Math.min(
+    FOLLOW_UP_RANGE.max,
+    Math.max(FOLLOW_UP_RANGE.min, Math.round(hours)),
+  );
+}
+
+/**
+ * When the next suggestion comes: [followUp] hours (3–24, 24 by default)
+ * after [answered], moved into the working day, so none lands at 23:00.
+ */
+export function nextAtOf(
+  answered: Date,
+  followUp: number | undefined,
+  user: CalendarUser,
+  zone: Zone,
+): Date {
+  return intoWorkDay(
+    new Date(answered.getTime() + clampFollowUp(followUp) * 3_600_000),
+    user,
+    zone,
+  );
+}
+
+/** [at], or the start of the next working day when it falls outside one. */
+export function intoWorkDay(at: Date, user: CalendarUser, zone: Zone): Date {
+  const window = workWindowFor(at, zone, user.workDay ?? DEFAULT_WORK_DAY);
+  return at < window.start ? window.start : at;
 }
 
 /**
@@ -2059,4 +2354,75 @@ function reais(value: number): string {
 /** `2026-11-30` as a person reads it: 30/11. */
 function ddmm(day: string): string {
   return `${day.slice(8, 10)}/${day.slice(5, 7)}`;
+}
+
+/**
+ * What [drafts] made on the sandbox [hands], as the tabs will draw it: each
+ * new goal, and the goal running today when a new delivery counts towards
+ * it, with what its open deliveries bring (the plan's included); then each
+ * new delivery; then each routine written or changed, as Rotina will have
+ * it. Nothing when the plan makes none of them.
+ */
+async function previewsOf(
+  hands: Hands,
+  user: CalendarUser,
+  drafts: Draft[],
+  ids: string[],
+  now: Date,
+): Promise<PreviewItem[]> {
+  const made = (kind: string) =>
+    ids.filter((_, i) => drafts[i].gesture.do === kind);
+  const newGoals = made('new_goal');
+  const newArtifacts = made('new_artifact');
+  const routineIds = [...made('new_routine'), ...made('edit_routine')];
+  const routines = (
+    routineIds.length === 0 ? [] : await hands.routines.list(user)
+  )
+    .filter((it) => routineIds.includes(it.id))
+    .map((it): PreviewItem => ({
+      type: 'routine',
+      title: it.title,
+      start: parseMinuteOfDay(it.time) ?? 0,
+      minutes: it.durationMinutes,
+      days: it.days,
+      checklist: it.checklist,
+    }));
+  if (newGoals.length === 0 && newArtifacts.length === 0) return routines;
+
+  const answer = await hands.deliveries.answer(user, now);
+  const today = isoDayIn(now, hands.timeline.zone(user));
+  const artifacts = answer.artifacts.filter((it) =>
+    newArtifacts.includes(it.id),
+  );
+  const running = answer.goals.find(
+    (it) =>
+      it.start <= today &&
+      today < it.end &&
+      artifacts.some(
+        (a) => a.deadline !== null && a.deadline < it.end && (a.value ?? 0) > 0,
+      ),
+  );
+  const goals = answer.goals.filter(
+    (it) => newGoals.includes(it.id) || it === running,
+  );
+
+  return [
+    ...goals.map((it): PreviewItem => ({
+      type: 'goal',
+      target: it.target,
+      start: it.start,
+      end: it.end,
+      done: it.done,
+      queued: it.queued,
+      queuedCount: it.queuedCount,
+    })),
+    ...artifacts.map((it): PreviewItem => ({
+      type: 'artifact',
+      title: it.title,
+      minutes: it.minutes,
+      ...(it.deadline === null ? {} : { deadline: it.deadline }),
+      ...(it.value === null ? {} : { value: it.value }),
+    })),
+    ...routines,
+  ];
 }

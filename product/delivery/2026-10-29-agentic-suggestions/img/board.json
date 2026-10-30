@@ -1,0 +1,166 @@
+{
+ "title": "A suggestion is a turn the agent asks itself, about Work Quality",
+ "screens": [
+  {
+   "png": "img/mockup-1.png",
+   "title": "1 · A new person: the welcome",
+   "why": "Nobody has had a suggestion yet: fixed words that never expire, and the first level's question.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 16,
+     "y": 206,
+     "label": "Fixed copy",
+     "text": "In app_pt.arb, no model call, never expires (server sends kind: welcome)."
+    },
+    {
+     "id": "B",
+     "x": 340,
+     "y": 149,
+     "label": "✕",
+     "text": "Puts the welcome away for 24 h; then the first generated turn, about the goal anyway."
+    },
+    {
+     "id": "C",
+     "x": 300,
+     "y": 322,
+     "label": "Amounts on the page",
+     "text": "R$ 3.000 · 5.000 · 8.000 open the chat with 'Quero faturar R$ 5.000 este mês.' sent; Outro valor opens it empty."
+    },
+    {
+     "id": "D",
+     "x": 350,
+     "y": 262,
+     "label": "No Work Quality drawn",
+     "text": "Only the first level's question; no levels, no score, no actions card (no plan)."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-2.png",
+   "title": "2 · R$ 5.000 tapped: an ordinary turn",
+   "why": "The amount is her first message; the answer comes in the same three parts as on Feed.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 70,
+     "y": 378,
+     "label": "Her message",
+     "text": "The tapped amount, sent at once. From this answer on, next_at runs."
+    },
+    {
+     "id": "B",
+     "x": 380,
+     "y": 430,
+     "label": "Header = the words",
+     "text": "In the chat the agent's message is the header; nothing else it says."
+    },
+    {
+     "id": "C",
+     "x": 380,
+     "y": 560,
+     "label": "Preview",
+     "text": "New preview block: GoalCard as Objetivos draws it, numbers from the dry run, never typed by the model."
+    },
+    {
+     "id": "D",
+     "x": 40,
+     "y": 714,
+     "label": "Actions card",
+     "text": "Replaces the plan card when there is a preview: the 'Aplicar …' line, Ajustar, Aplicar. Aplicar lets the next level's turn arrive here at once."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-3.png",
+   "title": "3 · Three hours later, on Feed",
+   "why": "At next_at the server asks itself the first unmet level (reach) and stores the turn as the suggestion.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 365,
+     "y": 195,
+     "label": "The turn's caption",
+     "text": "Written by the model; Feed shows only the label and the ✕ beside it (no Objetivo/Entrega tag)."
+    },
+    {
+     "id": "B",
+     "x": 16,
+     "y": 417,
+     "label": "Forecast",
+     "text": "GoalCard with the plan's deliveries in 'queued': reaching R$ 4.200 of 5.000 is visible before Aplicar."
+    },
+    {
+     "id": "C",
+     "x": 370,
+     "y": 522,
+     "label": "ArtifactRow",
+     "text": "Each delivery as Entregas draws it, on the page's own background, out of the wash."
+    },
+    {
+     "id": "D",
+     "x": 370,
+     "y": 616,
+     "label": "What Aplicar makes",
+     "text": "The server's line for what the preview can't draw (a task's hour, a removal)."
+    },
+    {
+     "id": "E",
+     "x": 40,
+     "y": 655,
+     "label": "Ajustar · Aplicar",
+     "text": "Ajustar opens the chat on this turn (replaces Conversar); Aplicar applies its plan, Desfazer as today."
+    },
+    {
+     "id": "F",
+     "x": 340,
+     "y": 125,
+     "label": "✕ until next_at",
+     "text": "Put away until the next one is due; every answer (✕, Aplicar, a message) sets next_at = now + follow-up, 3–24 h."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-4.png",
+   "title": "4 · Level 6: the routine",
+   "why": "Once the month's work fits, the turn proposes a routine and a working day: new actions in the registry.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 370,
+     "y": 245,
+     "label": "Topic by code",
+     "text": "Work Quality picks the level; the model writes the words, the plan and the follow-up."
+    },
+    {
+     "id": "B",
+     "x": 16,
+     "y": 306,
+     "label": "Routine preview",
+     "text": "Rotina's fill and hour, the days and the checklist: new_routine with its checklist."
+    },
+    {
+     "id": "C",
+     "x": 370,
+     "y": 451,
+     "label": "Weekdays",
+     "text": "edit_routine changes hour, rule, checklist of one already there."
+    },
+    {
+     "id": "D",
+     "x": 370,
+     "y": 540,
+     "label": "set_work_day",
+     "text": "The working day changes by the same Aplicar; said in the actions line."
+    },
+    {
+     "id": "E",
+     "x": 98,
+     "y": 806,
+     "label": "Phone at next_at",
+     "text": "A local notification 'A Lunna te mandou uma mensagem' at next_at + 1 min, from the reminder plan; no push server."
+    }
+   ]
+  }
+ ]
+}

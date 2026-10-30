@@ -983,6 +983,18 @@ abstract class AppLocalizations {
   /// **'Um recado no começo e no fim do dia.'**
   String get notificationChannelDailyDescription;
 
+  /// The local notification when the agent's next suggestion is on the Feed.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{A Lunna te mandou uma mensagem} other{O Focus te mandou uma mensagem}}'**
+  String notificationSuggestionTitle(String brand);
+
+  /// No description provided for @notificationSuggestionBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tenho uma ideia para o próximo passo. Vem ver?'**
+  String get notificationSuggestionBody;
+
   /// No description provided for @remindersAskTitle.
   ///
   /// In pt, this message translates to:
@@ -1547,29 +1559,41 @@ abstract class AppLocalizations {
   /// **'Agora não'**
   String get agentSuggestionDismiss;
 
-  /// No description provided for @agentSuggestionTalk.
+  /// No description provided for @agentWelcome.
   ///
   /// In pt, this message translates to:
-  /// **'Conversar'**
-  String get agentSuggestionTalk;
+  /// **'{brand, select, lunna{Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.} other{Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.}}'**
+  String agentWelcome(String brand);
 
-  /// No description provided for @agentSuggestionGoal.
+  /// No description provided for @agentWelcomeQuestion.
   ///
   /// In pt, this message translates to:
-  /// **'Objetivo'**
-  String get agentSuggestionGoal;
+  /// **'Quanto você quer faturar este mês?'**
+  String get agentWelcomeQuestion;
 
-  /// No description provided for @agentSuggestionDelivery.
+  /// No description provided for @agentWelcomeAmount.
   ///
   /// In pt, this message translates to:
-  /// **'Entrega'**
-  String get agentSuggestionDelivery;
+  /// **'R\$ {amount}'**
+  String agentWelcomeAmount(int amount);
 
-  /// No description provided for @agentSuggestionRoutine.
+  /// No description provided for @agentWelcomeSay.
   ///
   /// In pt, this message translates to:
-  /// **'Rotina'**
-  String get agentSuggestionRoutine;
+  /// **'Quero faturar R\$ {amount} este mês.'**
+  String agentWelcomeSay(int amount);
+
+  /// No description provided for @agentWelcomeOther.
+  ///
+  /// In pt, this message translates to:
+  /// **'Outro valor'**
+  String get agentWelcomeOther;
+
+  /// No description provided for @agentPreviewItems.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 item na lista} other{{count} itens na lista}}'**
+  String agentPreviewItems(int count);
 
   /// No description provided for @agentFailure.
   ///
@@ -2062,6 +2086,24 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'novo objetivo'**
   String get agentChangeNewGoal;
+
+  /// No description provided for @agentChangeNewRoutine.
+  ///
+  /// In pt, this message translates to:
+  /// **'nova rotina'**
+  String get agentChangeNewRoutine;
+
+  /// No description provided for @agentChangeEditRoutine.
+  ///
+  /// In pt, this message translates to:
+  /// **'rotina'**
+  String get agentChangeEditRoutine;
+
+  /// No description provided for @agentChangeWorkDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia de trabalho'**
+  String get agentChangeWorkDay;
 
   /// No description provided for @agentChangeEditGoal.
   ///
