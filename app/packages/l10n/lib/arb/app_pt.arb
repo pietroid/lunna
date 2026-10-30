@@ -1408,7 +1408,19 @@
   "planTasks": "Tarefas",
   "feedNow": "Agora",
   "feedNext": "Em seguida",
-  "feedBreak": "Nada em andamento",
+  "feedNextOn": "Em seguida · {day}",
+  "@feedNextOn": {
+    "description": "Over the first card after Agora when it is on another day: the day, as Tempo heads it (Amanhã, sábado, 31 de outubro).",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "feedQueueEmpty": "Nada na fila. Toque no + para anotar algo.",
+  "@feedQueueEmpty": {
+    "description": "Under Agora on the Feed when nothing is queued after it, today or on any day ahead."
+  },
   "feedSeeDay": "Ver o dia",
   "feedMainDelivery": "Entrega principal",
   "feedNoDelivery": "Nenhuma entrega em andamento",

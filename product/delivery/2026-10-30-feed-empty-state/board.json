@@ -1,0 +1,82 @@
+{
+  "title": "Feed: Agora como no Tempo, e a fila vazia dita",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Pausa, com a próxima",
+      "why": "Nada rodando: Agora é a pausa do Tempo, não uma caixa cinza.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 350,
+          "y": 232,
+          "label": "Pausa",
+          "text": "Nada rodando: Agora é a pausa do Tempo (FreeTile), com a frase de descanso. Antes era “Nada em andamento” numa caixa cinza."
+        },
+        {
+          "id": "B",
+          "x": 114,
+          "y": 306,
+          "label": "Em seguida",
+          "text": "Igual a hoje: a primeira coisa depois de Agora, tarefa ou bloco fixo."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Fila vazia",
+      "why": "Nada na fila: uma linha diz isso onde estaria a próxima.",
+      "pins": [
+        {
+          "id": "C",
+          "x": 352,
+          "y": 320,
+          "label": "Fila vazia",
+          "text": "Nada na fila, hoje ou adiante: “Nada na fila. Toque no + para anotar algo.” no lugar de Em seguida, na caixa das outras seções vazias."
+        },
+        {
+          "id": "D",
+          "x": 346,
+          "y": 728,
+          "label": "O +",
+          "text": "O + que a frase cita é o da tela: anota no dia que o Tempo mostra. Nenhum botão novo."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Dia encerrado",
+      "why": "Fora do expediente, o mesmo aviso do Tempo, e a próxima com o dia.",
+      "pins": [
+        {
+          "id": "E",
+          "x": 352,
+          "y": 212,
+          "label": "Dia encerrado",
+          "text": "Fora do expediente, o mesmo DayOverTile do Tempo; sem “Ajustar horário” aqui (está no Menu)."
+        },
+        {
+          "id": "F",
+          "x": 160,
+          "y": 309,
+          "label": "Dia da próxima",
+          "text": "“Em seguida · Amanhã”: o dia da próxima quando não é hoje (depois, “sábado, 31 de outubro”)."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Dia encerrado, fila vazia",
+      "why": "Os dois estados juntos: nada começa agora e nada está marcado.",
+      "pins": [
+        {
+          "id": "G",
+          "x": 352,
+          "y": 322,
+          "label": "Os dois",
+          "text": "Dia encerrado e fila vazia: os dois avisos, um sob o outro."
+        }
+      ]
+    }
+  ]
+}

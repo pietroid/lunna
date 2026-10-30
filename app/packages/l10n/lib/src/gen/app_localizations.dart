@@ -2819,11 +2819,17 @@ abstract class AppLocalizations {
   /// **'Em seguida'**
   String get feedNext;
 
-  /// No description provided for @feedBreak.
+  /// Over the first card after Agora when it is on another day: the day, as Tempo heads it (Amanhã, sábado, 31 de outubro).
   ///
   /// In pt, this message translates to:
-  /// **'Nada em andamento'**
-  String get feedBreak;
+  /// **'Em seguida · {day}'**
+  String feedNextOn(String day);
+
+  /// Under Agora on the Feed when nothing is queued after it, today or on any day ahead.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada na fila. Toque no + para anotar algo.'**
+  String get feedQueueEmpty;
 
   /// No description provided for @feedSeeDay.
   ///
