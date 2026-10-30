@@ -12,12 +12,15 @@ const NOW = new Date('2026-03-10T13:00:00Z');
 const PLAN = '0b8f2c1e-8a3f-4c1d-9a51-3f3c9e2d1a10';
 
 const made = (text: string): NewSuggestion => ({
-  focus: 'delivery',
+  kind: 'turn',
+  focus: 'pace',
   text,
   action: { label: 'Encaixar às 14:00', planId: PLAN },
   opening: { ui: [], reply: text, steps: [], options: [] },
   basis: 'abc',
-  validUntil: new Date('2026-03-10T17:00:00Z'),
+  workQuality: 6,
+  followUp: 3,
+  nextAt: new Date('2026-03-10T17:00:00Z'),
 });
 
 describe('suggestions in Postgres', () => {
@@ -56,12 +59,26 @@ describe('suggestions in Postgres', () => {
     expect(await store.current('u2')).toBeUndefined();
   });
 
-  it('is taken by its plan, and only its own person’s', async () => {
-    await store.put('u1', made('Encaixo?'), NOW);
-    await store.takeByPlan('u2', PLAN, NOW);
+  it('writes an answer on its own person’s suggestion, and lists what is due', async () => {
+    const held = await store.put('u1', made('Encaixo?'), NOW);
+    const later = new Date('2026-03-11T13:00:00Z');
+    await store.answer('u2', held.id, { takenAt: NOW, nextAt: later });
     expect((await store.current('u1'))?.takenAt).toBeUndefined();
 
-    await store.takeByPlan('u1', PLAN, NOW);
-    expect((await store.current('u1'))?.takenAt).toEqual(NOW);
+    await store.answer('u1', held.id, { takenAt: NOW, nextAt: later });
+    expect(await store.current('u1')).toMatchObject({
+      takenAt: NOW,
+      nextAt: later,
+    });
+    expect(await store.pending(NOW)).toEqual([{ userId: 'u1', nextAt: later }]);
+    expect(await store.pending(later)).toEqual([]);
+  });
+
+  it('keeps a welcome with no next one', async () => {
+    const welcome: NewSuggestion = { ...made(''), kind: 'welcome' };
+    delete welcome.nextAt;
+    await store.put('u1', welcome, NOW);
+    expect((await store.current('u1'))?.nextAt).toBeUndefined();
+    expect(await store.pending(NOW)).toEqual([]);
   });
 });

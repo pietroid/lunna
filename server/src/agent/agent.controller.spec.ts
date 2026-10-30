@@ -789,8 +789,10 @@ describe('the agent', () => {
   describe('the suggestion', () => {
     interface Offered {
       id: string;
+      kind: string;
       focus: string;
       text: string;
+      nextAt: string | null;
       validUntil: string;
       action?: { label: string; plan: NonNullable<AgentReply['plan']> };
       opening: AgentReply;
@@ -831,18 +833,180 @@ describe('the agent', () => {
 
     const surface = (offered: Offered) => JSON.stringify(offered.opening.ui);
 
-    it('asks for a goal first, with no action, even with a backlog', async () => {
+    const dismiss = (offered: Offered) =>
+      post(`/agent/suggestion/${offered.id}/dismiss`);
+
+    /** The model's turn about the first unmet level, as scripted. */
+    const answers = (args: object) => {
+      model.steps = [() => call('answer', args)];
+    };
+
+    it('welcomes a new person, with no model and no expiry, even with a backlog', async () => {
       await task('Relatório mensal', 90, true);
 
       const offered = (await suggestion())!;
+      expect(offered.kind).toBe('welcome');
       expect(offered.focus).toBe('goal');
-      expect(offered.text).toContain('não tem um objetivo');
-      expect(offered.text).toContain('31/03');
+      expect(offered.nextAt).toBeNull();
       expect(offered.action).toBeUndefined();
-      // The chat opens on choices that say an amount.
-      expect(surface(offered)).toContain('Quero faturar R$ 5.000 até 31/03.');
-      // No action, so it holds to the end of her day.
-      expect(offered.validUntil).toBe('2026-03-11T03:00:00.000Z');
+      expect(offered.opening.reply).toBe('Quanto você quer faturar este mês?');
+      expect(model.seen).toHaveLength(0);
+
+      // Days later, still the same welcome.
+      jest.setSystemTime(new Date('2026-03-20T13:00:00Z'));
+      try {
+        expect((await suggestion())!.id).toBe(offered.id);
+      } finally {
+        jest.setSystemTime(NOW);
+      }
+    });
+
+    it('puts the welcome away for a day with its ✕', async () => {
+      const offered = (await suggestion())!;
+      expect((await dismiss(offered)).status).toBe(201);
+      expect(await suggestion()).toBeNull();
+      expect((await dismiss(offered)).status).toBe(201);
+
+      jest.setSystemTime(new Date('2026-03-11T13:00:00Z'));
+      try {
+        expect((await suggestion())!.id).toBe(offered.id);
+      } finally {
+        jest.setSystemTime(NOW);
+      }
+      expect(
+        (await post(`/agent/suggestion/${NOW.getTime()}/dismiss`)).status,
+      ).toBe(400);
+    });
+
+    it('asks the agent about the first unmet level, and shows its plan as the tabs will', async () => {
+      await goal(5000);
+      await app.get(ArtifactStore).insert(USER, {
+        title: 'Mapa da Renata',
+        value: 1800,
+        minutes: 180,
+        deadline: '2026-03-20',
+      });
+      answers({
+        caption: 'Faltam R$ 3.200. Que tal o mapa da Ana?',
+        followUp: 3,
+        blocks: [
+          { type: 'preview' },
+          {
+            type: 'plan',
+            changes: [
+              {
+                do: 'new_artifact',
+                title: 'Mapa da Ana',
+                deadline: '2026-03-27',
+                value: 3200,
+                minutes: 240,
+              },
+            ],
+          },
+        ],
+      });
+
+      const offered = (await suggestion())!;
+      // Code picked the topic; the request says it, and never to the person.
+      const request = model.seen[0].at(-1)!.content;
+      expect(request).toContain('Topic (Work Quality level 2 of 7');
+      expect(request).toContain(': reach.');
+      expect(offered).toMatchObject({
+        kind: 'turn',
+        focus: 'reach',
+        text: 'Faltam R$ 3.200. Que tal o mapa da Ana?',
+        action: { label: 'Aplicar' },
+        // Three hours on, inside the working day.
+        nextAt: '2026-03-10T16:00:00.000Z',
+      });
+      // The goal as Objetivos will draw it, the plan's delivery counted.
+      const [caption, preview, plan] = drawn(offered.opening);
+      expect(caption.component).toBe('Caption');
+      expect(preview).toMatchObject({
+        component: 'Preview',
+        applies: 'Aplicar anota a entrega.',
+        data: [
+          {
+            type: 'goal',
+            target: 5000,
+            queued: 5000,
+            queuedCount: 2,
+          },
+          {
+            type: 'artifact',
+            title: 'Mapa da Ana',
+            deadline: '2026-03-27',
+            value: 3200,
+            minutes: 240,
+          },
+        ],
+      });
+      expect(plan.component).toBe('Plan');
+
+      // Held, with no model, while it is good.
+      expect((await suggestion())!.id).toBe(offered.id);
+      expect(model.seen).toHaveLength(1);
+
+      // Aplicar answers it: hidden, and the next comes 3 h later.
+      jest.setSystemTime(new Date('2026-03-10T14:00:00Z'));
+      try {
+        expect(
+          (await post(`/agent/plans/${offered.action!.plan.id}/apply`)).status,
+        ).toBe(201);
+        expect(await suggestion()).toBeNull();
+
+        jest.setSystemTime(new Date('2026-03-10T17:00:00Z'));
+        answers({ caption: 'Agora divida o mapa em tarefas.', blocks: [] });
+        const next = (await suggestion())!;
+        expect(next.id).not.toBe(offered.id);
+        expect(next.focus).toBe('tasks');
+        expect(next.text).toBe('Agora divida o mapa em tarefas.');
+        // No follow-up said: a day.
+        expect(next.nextAt).toBe('2026-03-11T17:00:00.000Z');
+      } finally {
+        jest.setSystemTime(NOW);
+      }
+    });
+
+    it('hides a turn with its ✕ until its next one, and counts a chat message as an answer', async () => {
+      await goal(5000);
+      answers({ caption: 'Que entrega fecha o mês?', followUp: 5, blocks: [] });
+      const offered = (await suggestion())!;
+      expect(offered.nextAt).toBe('2026-03-10T18:00:00.000Z');
+
+      // Talked about: the next one counts from the message.
+      jest.setSystemTime(new Date('2026-03-10T15:00:00Z'));
+      try {
+        model.steps = [say('Anotado.')];
+        await post('/agent/turn', {
+          suggestionId: offered.id,
+          messages: [{ role: 'user', text: 'Uma consultoria.' }],
+        });
+        expect(await suggestion()).toBeNull();
+        const held = await app
+          .get(AgentService)
+          .pendingSuggestions(new Date('2026-03-10T15:00:00Z'));
+        // Five hours as the turn said, from the message.
+        expect(held).toEqual([
+          { userId: USER.id, nextAt: new Date('2026-03-10T20:00:00Z') },
+        ]);
+      } finally {
+        jest.setSystemTime(NOW);
+      }
+    });
+
+    it('writes the template when the turn fails', async () => {
+      await goal();
+      model.steps = [
+        () => {
+          throw new ModelUnavailableError('down');
+        },
+      ];
+
+      const offered = (await suggestion())!;
+      expect(offered.kind).toBe('template');
+      expect(offered.text).toContain('nenhuma entrega aberta');
+      expect(offered.nextAt).toBe('2026-03-11T13:00:00.000Z');
     });
 
     it('asks for a delivery when nothing open counts towards the goal', async () => {
@@ -874,8 +1038,9 @@ describe('the agent', () => {
         title: 'Escrever a leitura',
         at: '2026-03-10T13:00:00.000Z',
       });
-      // An offer of now holds five minutes.
-      expect(offered.validUntil).toBe('2026-03-10T13:05:00.000Z');
+      // A template looks again in a day.
+      expect(offered.nextAt).toBe('2026-03-11T13:00:00.000Z');
+      expect(offered.validUntil).toBe(offered.nextAt);
       // The opening draws the delivery and the same plan.
       expect(surface(offered)).toContain('ArtifactPeek');
       expect(offered.opening.plan?.id).toBe(offered.action?.plan.id);
@@ -887,12 +1052,8 @@ describe('the agent', () => {
         'Escrever a leitura',
       ]);
 
-      // Taken: the next ask is about something else.
-      const next = (await suggestion())!;
-      expect(next.id).not.toBe(offered.id);
-      expect(next.focus).toBe('routine');
-      expect(next.text).toContain('Relatório mensal');
-
+      // Taken: nothing until its next one is due.
+      expect(await suggestion()).toBeNull();
       expect((await post(`/agent/plans/${planId}/undo`)).status).toBe(201);
     });
 
@@ -954,6 +1115,8 @@ describe('the agent', () => {
         'Quero faturar R$ 5.000 até 31/03.',
         'Anotado.',
       ]);
+      // The welcome is answered: it goes.
+      expect(await suggestion()).toBeNull();
     });
 
     it('has nothing to offer when the goal is reached and nothing waits', async () => {

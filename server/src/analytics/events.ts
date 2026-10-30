@@ -52,6 +52,7 @@ const EVENTS: Record<string, string> = {
   'POST /agent/turn': 'agent_turn',
   'POST /agent/plans/:id/apply': 'plan_applied',
   'POST /agent/plans/:id/undo': 'plan_undone',
+  'POST /agent/suggestion/:id/dismiss': 'suggestion_dismissed',
 
   'PATCH /users/me': 'settings_changed',
 };

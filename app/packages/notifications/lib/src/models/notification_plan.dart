@@ -4,7 +4,7 @@ import 'package:equatable/equatable.dart';
 ///
 /// [askStart], [askEnd] and [headsUp] follow a block, and ask: their
 /// buttons answer for it. [morning] and [evening] follow the clock, once
-/// each every day.
+/// each every day. [suggestion] comes when the agent's next one is written.
 enum NotificationKind {
   /// A block's hour came: a task waits to be begun, a fixed block started.
   askStart,
@@ -20,7 +20,10 @@ enum NotificationKind {
   morning,
 
   /// The day is nearly over.
-  evening;
+  evening,
+
+  /// The agent's next suggestion is written: the Feed has it.
+  suggestion;
 
   /// The kind named [name] on the wire, or null for one this build does not
   /// know, which is skipped rather than guessed at.

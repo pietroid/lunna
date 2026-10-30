@@ -1547,30 +1547,6 @@ abstract class AppLocalizations {
   /// **'Agora não'**
   String get agentSuggestionDismiss;
 
-  /// No description provided for @agentSuggestionTalk.
-  ///
-  /// In pt, this message translates to:
-  /// **'Conversar'**
-  String get agentSuggestionTalk;
-
-  /// No description provided for @agentSuggestionGoal.
-  ///
-  /// In pt, this message translates to:
-  /// **'Objetivo'**
-  String get agentSuggestionGoal;
-
-  /// No description provided for @agentSuggestionDelivery.
-  ///
-  /// In pt, this message translates to:
-  /// **'Entrega'**
-  String get agentSuggestionDelivery;
-
-  /// No description provided for @agentSuggestionRoutine.
-  ///
-  /// In pt, this message translates to:
-  /// **'Rotina'**
-  String get agentSuggestionRoutine;
-
   /// No description provided for @agentWelcome.
   ///
   /// In pt, this message translates to:

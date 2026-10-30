@@ -164,6 +164,14 @@ class AgentRepository {
     return suggestion == null ? null : AgentSuggestion.fromJson(suggestion);
   });
 
+  /// Puts the suggestion [id] away (its ✕): the welcome for a day, any
+  /// other until the next one is due.
+  Future<void> dismissSuggestion(String id) => _guard(() async {
+    await apiClient.post<Map<String, dynamic>>(
+      '/agent/suggestion/$id/dismiss',
+    );
+  });
+
   /// Makes every change of [planId]. Answers with the day it leaves.
   Future<Timeline> apply(
     String planId, {

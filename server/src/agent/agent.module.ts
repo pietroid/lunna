@@ -13,6 +13,7 @@ import { PlanStore } from './plan';
 import { PgPlanStore } from './pg-plan.store';
 import { PgSuggestionStore } from './pg-suggestion.store';
 import { SuggestionStore } from './suggestion.store';
+import { SuggestionTimer } from './suggestion.timer';
 
 /** Lunna, the agent: reads the day, proposes changes, applies them. */
 @Module({
@@ -30,6 +31,8 @@ import { SuggestionStore } from './suggestion.store';
     { provide: ConversationStore, useClass: PgConversationStore },
     { provide: PlanStore, useClass: PgPlanStore },
     { provide: SuggestionStore, useClass: PgSuggestionStore },
+    SuggestionTimer,
   ],
+  exports: [SuggestionStore],
 })
 export class AgentModule {}

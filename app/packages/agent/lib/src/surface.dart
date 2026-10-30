@@ -72,6 +72,29 @@ final class PreviewBlock extends AnswerBlock {
 sealed class PreviewItem extends Equatable {
   /// {@macro preview_item}
   const PreviewItem();
+
+  /// The item the server wrote, or null for a type this build does not draw.
+  static PreviewItem? fromJson(Map<String, dynamic> json) {
+    int whole(Object? it) => (it as num?)?.round() ?? 0;
+    DateTime? day(Object? it) => it is String ? DateTime.parse(it) : null;
+    return switch (json['type']) {
+      'goal' => GoalPreview(
+        target: whole(json['target']),
+        start: day(json['start'])!,
+        end: day(json['end'])!,
+        done: whole(json['done']),
+        queued: whole(json['queued']),
+        queuedCount: whole(json['queuedCount']),
+      ),
+      'artifact' => ArtifactPreview(
+        title: json['title'] as String? ?? '',
+        minutes: whole(json['minutes']),
+        deadline: day(json['deadline']),
+        value: json['value'] == null ? null : whole(json['value']),
+      ),
+      _ => null,
+    };
+  }
 }
 
 /// A goal, with what the open deliveries due by its end would bring in.
@@ -81,6 +104,7 @@ final class GoalPreview extends PreviewItem {
     required this.target,
     required this.start,
     required this.end,
+    this.done = 0,
     this.queued = 0,
     this.queuedCount = 0,
   });
@@ -93,13 +117,16 @@ final class GoalPreview extends PreviewItem {
   /// The day after its last.
   final DateTime end;
 
+  /// What was delivered in it so far.
+  final int done;
+
   /// What the open deliveries due by [end] are worth, the plan's included.
   final int queued;
 
   final int queuedCount;
 
   @override
-  List<Object?> get props => [target, start, end, queued, queuedCount];
+  List<Object?> get props => [target, start, end, done, queued, queuedCount];
 }
 
 /// A delivery.
@@ -470,6 +497,18 @@ class AgentSurface {
                 cards: (bound(it['cards'])! as List<dynamic>)
                     .map((it) => PeekCard.fromJson(it as Map<String, dynamic>))
                     .toList(),
+              ),
+            );
+          case 'Preview':
+            blocks.add(
+              PreviewBlock(
+                items: (bound(it['items'])! as List<dynamic>)
+                    .map(
+                      (it) => PreviewItem.fromJson(it as Map<String, dynamic>),
+                    )
+                    .nonNulls
+                    .toList(),
+                applies: it['applies'] as String?,
               ),
             );
           // Conversations kept from before deliveries were projects still

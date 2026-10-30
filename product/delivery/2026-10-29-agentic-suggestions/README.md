@@ -1,6 +1,6 @@
 # A suggestion is a turn the agent asks itself, about Work Quality
 
-Draft, design session ([issue #71](https://github.com/pietroid/lunna/issues/71)).
+Delivered ([issue #71](https://github.com/pietroid/lunna/issues/71)).
 **Mockup track**: the suggestion changes shape (a header, a preview drawn
 by the tabs' own widgets, an actions card), a new person meets a welcome,
 and the chat draws a turn the same way. The research is
@@ -16,6 +16,12 @@ approved in #69 and merged in #70.
 > - Read it as the research (see "From an RFC" in the /create skill): what it recommends, in its priority order, and its Rollout are the spec.
 > - A `> **Decision**` note in it is binding; every other decision takes the option marked *(recommended)*.
 > - The plan (or the board, if it changes what the person sees) says which rollout phases this PR ships, Phase 0 first.
+
+On the issue, after the design: **"Approve"**. The build was then run with:
+
+> build agentic-suggestions
+>
+> The design was approved on the issue. Do Phases 3 and 4 unattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. In section 5 write "Measured by the queue: see the pull request." instead of .tool/cost tables.
 
 ## 2. The design
 
@@ -44,7 +50,7 @@ RFC's order, are the phases:
 | 3 · The three parts | header card, the preview on the page, actions card, on Feed and in the chat (board) | ✓ |
 | 4 · The welcome | fixed copy, never expires, for whoever never had a suggestion | ✓ |
 | 5 · `next_at` | the follow-up (3–24 h, default 24 h) counted from the last answer, moved into the working day, replacing `validUntil`; a timer per person, settled on read as catch-up; the phone's local notification; the morning reminder names an unseen suggestion | ✓ |
-| 6 · Routines in the registry | `new_routine`, `edit_routine`, `set_work_day` (15 → 18 of 42 routes) | ✓ |
+| 6 · Routines in the registry | `new_routine`, `edit_routine`, `set_work_day` (15 → 18 of 42 routes) | **split off** (see 3.6) |
 
 All of it ships in this PR because the welcome hands over to turns that
 reach level 6, and level 6 needs the routine actions. If the build runs
@@ -112,113 +118,141 @@ From the RFC, still the person's:
   it enough for the agent to place blocks by day? The build assumes by
   day (today's `daily` / `weekdays` / `weekend`).
 
-## Build brief
+## 3. What was built
 
-Phase 3 starts here and Phase 4 removes this section.
+### 3.1 The prints
 
-### Files the design session wrote (uncommitted until the queue commits them)
+The real build, through `app/lib/agentic_suggestions_preview.dart` (the
+real `SuggestionCard`, `AgentSheet`, `GoalCard` and `ArtifactRow` on
+canned replies; deleted afterwards). Scenes: 1 the welcome, 2 the chat
+after R$ 5.000, 3 the `reach` turn with its preview and actions, 4 the
+`routine` turn as this build ships it (words only, see 3.6).
 
-- `app/lib/agentic_suggestions_preview.dart`: the preview entry point
-  (`?s=1..4`, the clock fixed at Sat 31 Oct 10:00, `_Agent` over
-  `DemoAgentRepository`). **Delete it at the end of Phase 4.**
-- `app/packages/agent/lib/src/surface.dart`: `PreviewBlock` and the
-  `PreviewItem`s (`GoalPreview`, `ArtifactPreview`, `RoutinePreview`).
-  **Not decoded yet**: `AgentSurface.decode` needs the A2UI component.
-- `app/packages/agent/lib/src/view/agent_preview.dart`: `AgentPreview`,
-  `RoutinePreviewRow`.
-- `app/packages/agent/lib/src/view/offer_actions.dart`: `AgentWash`,
-  `OfferActions`.
-- `app/packages/agent/lib/src/view/suggestion_card.dart`: rewritten in
-  three parts, the welcome, the choices on the page.
-- `app/packages/agent/lib/src/view/agent_sheet.dart`: `_Answer` draws
-  `PreviewBlock`, and a plan under a preview as `OfferActions`.
-- `app/packages/agent/lib/src/models.dart`: `AgentSuggestion.welcome`
-  (`kind: 'welcome'`); `agent_links.dart`: `AgentLinks.preview`;
-  `agent.dart` exports.
-- `app/packages/artifacts/lib/src/view/agent_previews.dart`:
-  `drawAgentPreview` (GoalCard / ArtifactRow); exported from `view.dart`.
-- `app/lib/shell/view/shell_page.dart`: `AgentLinks(preview:
-  drawAgentPreview)`.
-- `app_pt.arb` (+ gen): `agentWelcome`, `agentWelcomeQuestion`,
-  `agentWelcomeAmount`, `agentWelcomeSay`, `agentWelcomeOther`,
-  `agentPreviewItems`. `agentSuggestionTalk`, `agentSuggestionGoal`,
-  `agentSuggestionDelivery` and `agentSuggestionRoutine` are unused now:
-  remove them if nothing else reads them.
+**Lunna**
 
-`flutter analyze` is clean on these. The tests have **not** been run; the
-existing `suggestion_card` tests (Conversar, the focus tag) will need
-rewriting.
+![Lunna](img/build-lunna.png)
 
-### Server
+**Focus**
 
-- **Work Quality** (`agent/work-quality.ts`): the seven checks from
-  `code/ladder.mjs` (goal running → deliveries reach it → each has day,
-  value, length → the main delivery has a next task → work fits the free
-  hours (`Schedule.needMinutes` / `freeMinutes`) → routine and working day
-  set → on pace), giving the score 0–7 and the first unmet level with its
-  facts. Unit specs over the five states of `data/ladder.csv`.
-- **Phase 0**: send `work_quality` to PostHog as a number when a
-  suggestion is written (an analytics event row in
-  `analytics/events.ts`); nothing the person wrote.
-- **The stored turn**: replace the arithmetic in `SuggestionStore`'s
-  producer with a `turn()` on a system-written request ("Topic: reach.
-  Goal R$ 5.000 by 30/11; open deliveries worth R$ 4.200. Propose the next
-  step.") through the same tools and dry run. Store its reply as the
-  suggestion's `opening`, with `text` as the caption. If the turn fails,
-  fall back to #67's template text.
-- **`preview` in the `answer` tool**: the model names which plan creations
-  to preview; the server fills `GoalPreview.queued`/`queuedCount` (the
-  goal's own arithmetic plus the plan's deliveries), the delivery and
-  routine fields, and `applies` (speech.ts) from the dry run. It is an
-  A2UI component, decoded in `AgentSurface.decode`, `speakable`.
-- **`followUp`** (hours) in the answer: clamp 3–24, default 24.
-  `next_at = last answer + followUp`, moved to the next working day's
-  start when it falls outside it. It replaces `validUntil`, and the wire
-  keeps `validUntil` = `next_at` for the app until it reads `nextAt`.
-  Every answer moves it: Aplicar on the suggestion's plan, ✕ (a new
-  `POST /agent/suggestion/:id/dismiss`, which replaces the device-only
-  24 h rest in `SuggestionCubit`), and each message in a conversation
-  opened with `suggestionId`.
-- **The welcome**: a person with no suggestion row ever gets
-  `{ kind: 'welcome', validUntil: null }` (the app draws the copy). It goes
-  once answered, or for 24 h on ✕.
-- **The timer**: `Map<userId, Timeout>` armed when `next_at` is written,
-  re-armed at boot by one query, firing one-shot. On read, a passed
-  `next_at` writes the turn then. **Update AGENTS.md's rule "Nothing on
-  the server runs on a timer that touches Postgres"** to allow one-shots
-  at an hour someone was told to look, never periodic (RFC decision,
-  decided).
-- **Notifications**: `NotificationsService.plan` gets a `suggestion` item
-  at `next_at` + 1 min, "A Lunna te mandou uma mensagem". The morning
-  message (`MORNING_MESSAGES`) names an unseen suggestion.
-- **Routines in the registry**: `new_routine` (title, hour, rule, length,
-  checklist), `edit_routine`, `set_work_day`, each one `Action` through
-  `RoutinesService` / the users route, with Desfazer from the snapshot.
-  Run `tool/coverage.mjs`: 15 → 18. Add `PlanChangeKind`s and plan-card
-  lines in the app for them.
-- **In the same conversation**: after Aplicar in a conversation opened
-  from a suggestion, the next level's turn is asked into it at once.
-- Specs: end-to-end with the memory stores and a frozen clock (follow-up
-  clamping, the working-day shift, every answer moving `next_at`, the
-  welcome, the catch-up on read, the timer re-armed at boot). Add an
-  eval case per level (`npm run eval:agent`, by hand).
+![Focus](img/build-focus.png)
 
-### App
+### 3.2 The contract
 
-- `SuggestionCubit`: hold until `nextAt` (or forever for the welcome); ✕
-  posts the dismiss; drop the SharedPreferences rest.
-- `AgentSuggestion.nextAt` (nullable) replaces `validUntil`.
-- `PlanChangeKind.addRoutine` / `editRoutine` / `setWorkDay`, with their
-  `PlanCard` lines; `applyAgentPlan` reloads Rotina's data and `workDay`.
-- Notifications package: the `suggestion` item and its copy (from the
-  server, as the reminders' copy is).
-- Specs: the card's three parts, the welcome's amounts sending their
-  message, `OfferActions` in the chat, the preview's fallback with no
-  `AgentLinks`. Both brands.
-- Specs for the agent: `product/spec/agent.md` *The suggestion* rewritten,
-  and the AGENTS.md pointer.
+**Code picks the topic, the model writes the turn, and `nextAt` says when
+the next one comes.** The first unmet Work Quality level is the topic; the
+server asks the agent an ordinary turn about it and files the reply as the
+suggestion; every answer (Aplicar, ✕, a message in its chat) hides it
+and sets `nextAt` = answer + `followUp` (3–24 h, 24 by default), moved
+into the working day. The full rules are in
+[product/spec/agent.md](../../spec/agent.md#the-suggestion).
 
-### Design session's cost
+### 3.3 Server
 
-Not recorded: the queue measures every run and writes the figures in the
-PR (its instructions skip `.tool/cost` here).
+| File | What |
+|------|------|
+| `agent/work-quality.ts` | the seven levels over `ArtifactsService.answer`, the score, the topic's facts, `basisOf` (topic + facts), `requestOf` (the system-written request) |
+| `agent/agent.service.ts` | `suggestion()` rewritten: welcome → held → `_write` (the turn) → `_template` (#67's arithmetic, when the turn fails); `dismiss`; `_answered` on Aplicar and on each chat message; `previewsOf` from the dry run's sandbox; `clampFollowUp`, `nextAtOf`, `intoWorkDay`; `_measure` (PostHog) |
+| `agent/answer.ts`, `agent.prompt.ts`, `speech.ts` | the `preview` block (A2UI `Preview`), `followUp` on the answer tool, `appliesOf` |
+| `agent/suggestion.store.ts`, `pg-suggestion.store.ts` | `kind`, `workQuality`, `followUp`, `nextAt` (replaces `validUntil`), `dismissedAt`, `answeredAt`; `answer()`, `pending()` |
+| `agent/suggestion.timer.ts` | one `setTimeout` per person at `nextAt`, re-armed at boot, `unref`'d; fires catch-up then `suggestion()` |
+| `notifications/` | a `suggestion` item a minute after `nextAt` |
+| `drizzle/0017`, `0018` | the new columns (existing rows carry `valid_until` into `next_at`), then `valid_until` dropped |
+| `analytics/events.ts` | `POST /agent/suggestion/:id/dismiss` → `suggestion_dismissed`; `suggestion_written` with `work_quality` is captured by the service |
+
+Routes: `GET /agent/suggestion` now answers `{ id, kind, focus, text,
+nextAt, validUntil, action?, opening }`; new `POST
+/agent/suggestion/:id/dismiss`.
+
+### 3.4 App
+
+- `AgentSuggestion`: `nextAt` (nullable) and `welcome` replace
+  `validUntil` and `focus`; `SuggestionFocus` is gone.
+- `PreviewItem.fromJson` and the `Preview` component in
+  `AgentSurface.decode` (an unknown item type is skipped); `GoalPreview`
+  carries `done`.
+- `SuggestionCubit` asks the server on every load and posts the ✕
+  (`AgentRepository.dismissSuggestion`); the SharedPreferences rest and the
+  package's `shared_preferences` dependency are gone. A welcome amount
+  clears the card (answered).
+- The preview with no `AgentLinks` draws a line per item instead of
+  nothing.
+- Notifications: `NotificationKind.suggestion`, filed with the daily
+  ones.
+- `agentSuggestionTalk`, `…Goal`, `…Delivery`, `…Routine` removed from
+  `app_pt.arb`.
+
+### 3.5 Tests
+
+- Server: **114** specs in `src/agent` and `src/notifications` pass
+  (`npm test -- src/agent src/notifications`), among them
+  `work-quality.spec.ts` (the RFC's five people of `data/ladder.csv`, the
+  routine after the work, `keep`, the basis, the follow-up clamp and the
+  working-day shift), `suggestion.timer.spec.ts` (re-armed at boot, one
+  per person), the end-to-end suggestion specs in
+  `agent.controller.spec.ts` (the welcome and its ✕, the turn with its
+  preview and `nextAt`, Aplicar hiding it and the next turn 3 h later, a
+  chat message moving `nextAt`, the template when the model fails), the
+  Postgres store on PGlite with the new migrations, and the notification
+  item.
+- App: the `agent` package, **75** tests, pass under Focus, and the two
+  suggestion files under Lunna too (the welcome's amounts sending their
+  message, the three parts with Ajustar opening the chat, the cubit
+  posting the ✕, `Preview` decoding).
+- `.tool/check`: see 3.7.
+
+### 3.6 Where the build differs from the design
+
+- **Phase 6 (routines in the registry) is split off**, as the design
+  allowed. The `routine` level's turn is told it cannot write a routine
+  and points to Rotina, with no plan (scene 4); the `RoutinePreview` widget
+  stays for that PR. Level 6 is met by **a routine written**: the working
+  day has a default (07:00–22:00) that cannot be told apart from one
+  chosen, so "working day set" is not checked.
+- **The model doesn't name what to preview**: a `preview` block takes no
+  arguments and the server draws every goal and delivery the plan makes
+  (plus the running goal a new delivery counts towards). The model can't
+  name a wrong one, and the numbers are the sandbox's.
+- **A turn's plan lives two hours** (`PLAN_TTL_MS`): past it, the next read
+  asks the turn again of the day as it is, rather than drawing a card
+  whose Aplicar would fail.
+- **The notification names no brand**: "Uma sugestão para o seu mês /
+  Tenho uma ideia para o próximo passo. Vem ver?", since the server knows
+  no brand. The morning reminder does **not** yet name an unseen
+  suggestion: nothing records "seen".
+- **Not built**: asking the next level's turn into the same conversation
+  right after Aplicar, and an eval case per level (`npm run eval:agent`
+  costs money and is run by hand).
+- The welcome is skipped for someone who already has a goal, and comes
+  back after its 24 h ✕ until it is answered.
+
+### Decided unattended (build)
+
+- Phase 6 split off (above); the decisions in 3.6.
+- The welcome is a stored row (`kind: welcome`, `nextAt: null`), so its
+  conversation carries `suggestionId` and a message there answers it.
+- An answered or dismissed suggestion hides until `nextAt`; so does one
+  whose topic facts changed (`basis`), as the RFC says.
+- `focus` on the wire now carries the topic (`reach`, …) or the
+  template's focus; the app no longer reads it.
+
+### 3.7 `.tool/check`
+
+**Passes.** Every step is green: `app-analyze`, the tests of `agent`, `analytics`,
+`api_client`, `app_ui`, `artifacts`, `notifications` and `timeline` under
+Focus and Lunna, `server-eslint`, `server-tsc` and `server-test`. A first
+run failed only `app-analyze`, on lint notes in the preview entry point
+(`app/lib/agentic_suggestions_preview.dart`), which Phase 4 deletes. With
+it deleted, the second run passed.
+
+## 4. How to turn it on
+
+Nothing new to set. The migrations run on boot. With `OPENROUTER_API_KEY`
+unset (or the model down) every suggestion is #67's template, and the
+welcome needs no model at all. `work_quality` reaches PostHog only with
+`POSTHOG_KEY`. The timer arms itself in the server; there is no cron.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. The build made no model
+calls outside Claude: every spec runs on a scripted model, and nothing was
+run against OpenRouter.

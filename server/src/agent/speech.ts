@@ -45,3 +45,31 @@ export function speakable(
 export function leaksRef(text: string): boolean {
   return new RegExp(REF.source, 'i').test(text);
 }
+
+/**
+ * What Aplicar makes, in one line, for what a preview can't draw: "Aplicar
+ * anota o objetivo e 2 entregas."
+ */
+export function appliesOf(changes: { kind: string }[]): string {
+  const count = (kind: string) =>
+    changes.filter((it) => it.kind === kind).length;
+  const goals = count('add_goal');
+  const deliveries = count('add_artifact');
+  const tasks = count('add_task') + count('add_event');
+  const others = changes.length - goals - deliveries - tasks;
+  const parts = [
+    ...(goals === 0 ? [] : [goals === 1 ? 'o objetivo' : `${goals} objetivos`]),
+    ...(deliveries === 0
+      ? []
+      : [deliveries === 1 ? 'a entrega' : `${deliveries} entregas`]),
+    ...(tasks === 0 ? [] : [tasks === 1 ? '1 tarefa' : `${tasks} tarefas`]),
+    ...(others === 0
+      ? []
+      : [others === 1 ? '1 mudança' : `${others} mudanças`]),
+  ];
+  const said =
+    parts.length <= 1
+      ? (parts[0] ?? 'o plano')
+      : `${parts.slice(0, -1).join(', ')} e ${parts[parts.length - 1]}`;
+  return `Aplicar anota ${said}.`;
+}

@@ -74,9 +74,10 @@ export class AgentController {
         );
       }
 
-      // The blocks are what `ui` encodes; leaks and raw are for evals.
+      // The blocks are what `ui` encodes; leaks and raw are for evals, and
+      // the follow-up is the suggestion's.
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { blocks, leaks, raw, ...reply } = await this.agent.turn(
+      const { blocks, leaks, raw, followUp, ...reply } = await this.agent.turn(
         owner(user),
         optionalConversation(dto.conversationId),
         requireMessages(dto.messages),
@@ -123,6 +124,24 @@ export class AgentController {
     @CurrentUser() user: AuthUser,
   ): Promise<{ suggestion: Suggestion | null }> {
     return { suggestion: (await this.agent.suggestion(owner(user))) ?? null };
+  }
+
+  /**
+   * The ✕: puts the suggestion away, the welcome for a day and any other
+   * until its next one is due.
+   */
+  @Post('suggestion/:id/dismiss')
+  async dismiss(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<{ suggestion: null }> {
+    const trace = Trace.start(user.id, 'suggestion');
+    try {
+      await this.agent.dismiss(owner(user), optionalUuid(id, 'id')!);
+      return { suggestion: null };
+    } catch (error) {
+      throw failure(error, trace);
+    }
   }
 
   /** Makes a plan. Answers with the day and the cards the plan touched. */

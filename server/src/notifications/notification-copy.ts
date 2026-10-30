@@ -11,6 +11,10 @@ export const MORNING_TITLE = 'Bom dia';
 /** The title of the reminder near the end of it. */
 export const EVENING_TITLE = 'Boa noite';
 
+/** The next suggestion is written: the Feed has it. */
+export const SUGGESTION_TITLE = 'Uma sugestão para o seu mês';
+export const SUGGESTION_BODY = 'Tenho uma ideia para o próximo passo. Vem ver?';
+
 /** One of these opens the day. Light, short, nothing to do yet. */
 export const MORNING_MESSAGES: readonly string[] = [
   'Um dia novinho em folha. Bora?',

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentModule } from '../agent/agent.module';
 import { EventsModule } from '../events/events.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
@@ -10,7 +11,7 @@ import { NotificationsService } from './notifications.service';
  * ask, so there is nothing here that can disagree with the timeline.
  */
 @Module({
-  imports: [EventsModule],
+  imports: [EventsModule, AgentModule],
   controllers: [NotificationsController],
   providers: [NotificationsService],
 })

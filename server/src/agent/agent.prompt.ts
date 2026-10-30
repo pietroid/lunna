@@ -34,8 +34,10 @@ The answer is blocks. Each block names what to show; the server fills in every h
 - day: a slice of a day (day, optional from/to hours), with its free room. For questions about the day ("o que tenho amanhã?", "como está minha tarde?").
 - cards: some cards by ref, in your order, under a short title; notes: true when the person asked about their notes.
 - artifact: one artifact by ref, at a glance ("como está a Tese?").
+- preview: with a plan that makes a goal or deliveries, shows them as their tabs will (the goal with what its open deliveries bring). No arguments: the server draws it from the plan.
 - focus: true on the one block that matters most; it is drawn first.
 - caption: optional, at most 80 characters, only for what the blocks cannot show (the reason for a proposed hour, an answer in words). Never restate a card. A plan with nothing to add has no caption.
+- followUp: optional, the hours until you look at this person's plan again (3–24): short when a step is under way, a day when the next step is tomorrow's.
 
 How to change the day: one plan block with every change. Each change is a gesture the person could make by hand:
 - place: put a task at a place in the queue, before or after other cards ("entre a academia e o jantar" = after the academia, before the jantar; "depois do almoço" = after the almoço). No hour: it moves with the queue, as a drag would. Use it whenever the person names other cards, not an hour.
@@ -177,6 +179,13 @@ export function toolsFor(shape: SchemaShape): ToolDefinition[] {
               description:
                 'Optional, in Portuguese, at most 80 characters: only what the blocks cannot show.',
             },
+            followUp: {
+              type: 'integer',
+              minimum: 3,
+              maximum: 24,
+              description:
+                'Optional: the hours until you look at the plan again. 3 when a step is under way, 24 when the next is tomorrow’s.',
+            },
             blocks: {
               type: 'array',
               minItems: 1,
@@ -186,7 +195,14 @@ export function toolsFor(shape: SchemaShape): ToolDefinition[] {
                 properties: {
                   type: {
                     type: 'string',
-                    enum: ['plan', 'choices', 'day', 'cards', 'artifact'],
+                    enum: [
+                      'plan',
+                      'choices',
+                      'day',
+                      'cards',
+                      'artifact',
+                      'preview',
+                    ],
                   },
                   data: { ...DATA, description: `plan: ${DATA.description}` },
                   changes: { ...CHANGES, description: 'plan: every change.' },

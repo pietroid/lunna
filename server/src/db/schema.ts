@@ -538,9 +538,9 @@ export const agentPlan = pgTable(
 
 /**
  * The one thing the agent offers each person without being asked, kept so
- * that opening the app does not make another: it holds until
- * [validUntil], until what it was made from changes ([basis]), or until
- * it is taken. One row per person; a new one replaces it.
+ * that opening the app does not make another: it holds until [nextAt],
+ * hidden once answered or when what it is about changes ([basis]). One row
+ * per person; a new one replaces it.
  */
 export const agentSuggestion = pgTable('agent_suggestion', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -548,7 +548,7 @@ export const agentSuggestion = pgTable('agent_suggestion', {
     .notNull()
     .unique()
     .references(() => user.id, { onDelete: 'cascade' }),
-  /** `goal`, `delivery` or `routine`: what it is about. */
+  /** Its Work Quality topic (`goal` … `pace`, `keep`), or a template's focus. */
   focus: text('focus').notNull(),
   text: text('text').notNull(),
   /** The action's button, and its plan (`agent_plan`), when it has one. */
@@ -558,9 +558,23 @@ export const agentSuggestion = pgTable('agent_suggestion', {
   opening: jsonb('opening').$type<unknown>().notNull(),
   /** A hash of the goals, deliveries, routines and queue it read. */
   basis: text('basis').notNull(),
-  validUntil: timestamp('valid_until', { withTimezone: true }).notNull(),
+  /** `welcome`, `turn` (the agent's) or `template` (when a turn failed). */
+  kind: text('kind').notNull().default('template'),
+  /** Its Work Quality score when it was made, 0–7. */
+  workQuality: integer('work_quality'),
+  /** The hours the turn said to look again after an answer, 3–24. */
+  followUp: integer('follow_up'),
+  /**
+   * When the next one is made: its last answer plus [followUp], inside the
+   * working day. Null for a welcome nobody answered, which never expires.
+   */
+  nextAt: timestamp('next_at', { withTimezone: true }),
   /** Its action made, or its plan applied from the conversation. */
   takenAt: timestamp('taken_at', { withTimezone: true }),
+  /** Put away with its ✕. */
+  dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
+  /** Talked about, in a conversation opened from it. */
+  answeredAt: timestamp('answered_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
 

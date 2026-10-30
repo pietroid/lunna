@@ -54,6 +54,31 @@ export interface Choice {
 }
 
 /**
+ * One thing a plan would make, as the tab it lands on draws it: a goal as
+ * Objetivos (with what the open deliveries due by its end bring, the plan's
+ * own included), a delivery as Entregas. Every number is the dry run's.
+ */
+export type PreviewItem =
+  | {
+      type: 'goal';
+      target: number;
+      /** `YYYY-MM-DD`, its first day. */
+      start: string;
+      /** `YYYY-MM-DD`, the day after its last. */
+      end: string;
+      done: number;
+      queued: number;
+      queuedCount: number;
+    }
+  | {
+      type: 'artifact';
+      title: string;
+      minutes: number;
+      deadline?: string;
+      value?: number;
+    };
+
+/**
  * One block of an answer, every fact filled in by the server: what the
  * model chose to show, bound to the day.
  */
@@ -63,7 +88,13 @@ export type Block =
   | { kind: 'choices'; options: Choice[] }
   | { kind: 'day'; day: string; from: string; to: string; items: PeekItem[] }
   | { kind: 'cards'; title?: string; cards: PeekCard[] }
-  | { kind: 'artifact'; artifact: PeekArtifact };
+  | { kind: 'artifact'; artifact: PeekArtifact }
+  | {
+      kind: 'preview';
+      items: PreviewItem[];
+      /** What Aplicar makes, in a line, for what the items can't draw. */
+      applies?: string;
+    };
 
 /** How many next tasks an artifact shows. */
 const MAX_NEXT = 3;
@@ -217,6 +248,7 @@ const COMPONENT: Record<Block['kind'], string> = {
   day: 'DayPeek',
   cards: 'Cards',
   artifact: 'ArtifactPeek',
+  preview: 'Preview',
 };
 
 /** What tapping a choice sends back: its plan to apply, or its words. */
@@ -292,6 +324,14 @@ export function toA2ui(surfaceId: string, blocks: Block[]): A2uiMessage[] {
         value[id] = block.artifact;
         components.push({ ...component, artifact: { path: `/${id}` } });
         return;
+      case 'preview':
+        value[id] = block.items;
+        components.push({
+          ...component,
+          items: { path: `/${id}` },
+          ...(block.applies === undefined ? {} : { applies: block.applies }),
+        });
+        return;
     }
   });
 
@@ -348,6 +388,8 @@ export function summary(board: Board, blocks: Block[]): string {
         return `${block.title ?? 'Cartões'}: ${block.cards.map((it) => it.title).join(', ')}.`;
       case 'artifact':
         return `Entrega ${block.artifact.title}: ${block.artifact.done} de ${block.artifact.total} feitas.`;
+      case 'preview':
+        return block.applies;
       default:
         return undefined;
     }

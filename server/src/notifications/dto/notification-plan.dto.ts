@@ -11,7 +11,7 @@
  * the start of the day and one near its end, every day, whatever is booked.
  */
 export type NotificationKind =
-  'askStart' | 'askEnd' | 'headsUp' | 'morning' | 'evening';
+  'askStart' | 'askEnd' | 'headsUp' | 'morning' | 'evening' | 'suggestion';
 
 /** Which end of the block an ask is about, so the buttons know what to write. */
 export type NotificationEdge = 'start' | 'end';

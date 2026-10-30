@@ -48,7 +48,12 @@ class _Fallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (item) {
     final RoutinePreview routine => RoutinePreviewRow(routine: routine),
-    GoalPreview() || ArtifactPreview() => const SizedBox.shrink(),
+    // Where no tab draws them (a test, a page with no links), a line each.
+    GoalPreview(:final target) => Text(
+      context.l10n.agentWelcomeAmount(target),
+      style: AppTypography.bodyStrong,
+    ),
+    ArtifactPreview(:final title) => Text(title, style: AppTypography.body),
   };
 }
 

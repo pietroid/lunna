@@ -1,8 +1,12 @@
 import { randomUUID } from 'crypto';
 import type { AgentReply } from './agent.service';
 
-/** What a suggestion is about, in the order the agent looks. */
-export type SuggestionFocus = 'goal' | 'delivery' | 'routine';
+/**
+ * How a suggestion was written: the fixed `welcome` a new person finds, a
+ * `turn` the agent asked itself, or the arithmetic `template` written when
+ * that turn could not be had.
+ */
+export type SuggestionKind = 'welcome' | 'turn' | 'template';
 
 /** The agent's first message in a conversation opened from a suggestion. */
 export type Opening = Omit<AgentReply, 'conversationId'>;
@@ -11,23 +15,37 @@ export type Opening = Omit<AgentReply, 'conversationId'>;
 export interface StoredSuggestion {
   id: string;
   userId: string;
-  focus: SuggestionFocus;
+  kind: SuggestionKind;
+  /** Its Work Quality topic, or a template's focus. */
+  focus: string;
   text: string;
-  /** The button and its plan, when it can be taken from the card. */
+  /** The plan Aplicar makes, when it has one. */
   action?: { label: string; planId: string };
   opening: Opening;
-  /** What it was made from, hashed: a change to it makes another. */
+  /** What it is about, hashed: a change to it hides it. */
   basis: string;
-  validUntil: Date;
+  /** The Work Quality score it was made at, 0–7. */
+  workQuality?: number;
+  /** The hours to look again after an answer, 3–24. */
+  followUp?: number;
+  /** When the next one is made. Absent for a welcome nobody answered. */
+  nextAt?: Date;
   takenAt?: Date;
+  dismissedAt?: Date;
+  answeredAt?: Date;
   createdAt: Date;
 }
 
 /** What a suggestion is filed with. */
 export type NewSuggestion = Omit<
   StoredSuggestion,
-  'id' | 'userId' | 'takenAt' | 'createdAt'
+  'id' | 'userId' | 'takenAt' | 'dismissedAt' | 'answeredAt' | 'createdAt'
 >;
+
+/** An answer to a suggestion: what was said, and when the next one comes. */
+export type SuggestionAnswer = Partial<
+  Pick<StoredSuggestion, 'takenAt' | 'dismissedAt' | 'answeredAt'>
+> & { nextAt: Date };
 
 /**
  * The suggestion each person was last offered: one each, a new one
@@ -35,7 +53,7 @@ export type NewSuggestion = Omit<
  * the tests ([MemorySuggestionStore]).
  */
 export abstract class SuggestionStore {
-  /** [userId]'s suggestion, taken or not, whenever it was made. */
+  /** [userId]'s suggestion, answered or not, whenever it was made. */
   abstract current(userId: string): Promise<StoredSuggestion | undefined>;
 
   /** Files [made] as [userId]'s suggestion, in place of the last one. */
@@ -45,8 +63,15 @@ export abstract class SuggestionStore {
     now: Date,
   ): Promise<StoredSuggestion>;
 
-  /** Marks taken the suggestion whose action is [planId], if one is. */
-  abstract takeByPlan(userId: string, planId: string, now: Date): Promise<void>;
+  /** Writes [answer] down on [userId]'s suggestion [id], if it is still theirs. */
+  abstract answer(
+    userId: string,
+    id: string,
+    answer: SuggestionAnswer,
+  ): Promise<void>;
+
+  /** Every suggestion whose next one is due after [now]: what the timers wait for. */
+  abstract pending(now: Date): Promise<{ userId: string; nextAt: Date }[]>;
 }
 
 /** The suggestions, in memory. Behaves like the Postgres store. */
@@ -54,7 +79,8 @@ export class MemorySuggestionStore extends SuggestionStore {
   private readonly _held = new Map<string, StoredSuggestion>();
 
   current(userId: string): Promise<StoredSuggestion | undefined> {
-    return Promise.resolve(this._held.get(userId));
+    const held = this._held.get(userId);
+    return Promise.resolve(held === undefined ? undefined : { ...held });
   }
 
   put(
@@ -70,15 +96,21 @@ export class MemorySuggestionStore extends SuggestionStore {
     };
     this._held.set(userId, kept);
 
-    return Promise.resolve(kept);
+    return Promise.resolve({ ...kept });
   }
 
-  takeByPlan(userId: string, planId: string, now: Date): Promise<void> {
+  answer(userId: string, id: string, answer: SuggestionAnswer): Promise<void> {
     const held = this._held.get(userId);
-    if (held?.action?.planId === planId && held.takenAt === undefined) {
-      held.takenAt = now;
-    }
+    if (held?.id === id) Object.assign(held, answer);
 
     return Promise.resolve();
+  }
+
+  pending(now: Date): Promise<{ userId: string; nextAt: Date }[]> {
+    return Promise.resolve(
+      [...this._held.values()]
+        .filter((it) => it.nextAt !== undefined && it.nextAt > now)
+        .map((it) => ({ userId: it.userId, nextAt: it.nextAt! })),
+    );
   }
 }

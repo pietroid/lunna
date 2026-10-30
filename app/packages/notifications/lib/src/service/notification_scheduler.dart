@@ -248,7 +248,8 @@ class NotificationScheduler {
           timeSensitive: item.timeSensitive,
           daily:
               item.kind == NotificationKind.morning ||
-              item.kind == NotificationKind.evening,
+              item.kind == NotificationKind.evening ||
+              item.kind == NotificationKind.suggestion,
           thread: item.eventId,
           timeout: next[item.id],
           payload: payloadOf(item),

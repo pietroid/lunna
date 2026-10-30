@@ -64,8 +64,11 @@ class _Offer extends StatelessWidget {
   /// The conversation, opened on [said] as the person's first message.
   void _say(BuildContext context, String said) {
     final agent = context.read<AgentCubit>();
+    final suggestions = context.read<SuggestionCubit>();
     unawaited(showAgentSheet(context, suggestion: suggestion));
     unawaited(agent.send(said));
+    // Answered: the server puts it away until the next one.
+    suggestions.clear();
   }
 
   @override

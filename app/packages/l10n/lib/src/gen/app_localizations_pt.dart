@@ -926,18 +926,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSuggestionDismiss => 'Agora não';
 
   @override
-  String get agentSuggestionTalk => 'Conversar';
-
-  @override
-  String get agentSuggestionGoal => 'Objetivo';
-
-  @override
-  String get agentSuggestionDelivery => 'Entrega';
-
-  @override
-  String get agentSuggestionRoutine => 'Rotina';
-
-  @override
   String agentWelcome(String brand) {
     String _temp0 = intl.Intl.selectLogic(
       brand,

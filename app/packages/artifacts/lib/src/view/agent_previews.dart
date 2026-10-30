@@ -19,6 +19,7 @@ Widget? drawAgentPreview(BuildContext context, PreviewItem item) {
         target: item.target,
         start: item.start,
         end: item.end,
+        done: item.done,
         queued: item.queued,
         queuedCount: item.queuedCount,
       ),

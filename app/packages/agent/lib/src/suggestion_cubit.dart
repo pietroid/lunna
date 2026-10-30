@@ -1,15 +1,14 @@
 import 'package:agent/src/agent_repository.dart';
 import 'package:agent/src/models.dart';
 import 'package:bloc/bloc.dart';
-import 'package:clock/clock.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// {@template suggestion_cubit}
-/// The one thing the agent offers on Tempo without being asked.
+/// The one thing the agent offers on the Feed without being asked.
 ///
-/// The ✕ puts suggestions away for a day, on this device: an offer turned
-/// down and made again an hour later is nagging. One held is kept until its
-/// `validUntil`, so loading again asks nothing.
+/// The server keeps it and decides when the next one comes (`nextAt`), so
+/// loading asks every time and costs no model: a held suggestion is read
+/// back as it was written. The ✕ tells the server, which puts it away
+/// until the next one (the welcome, for a day) on every device.
 /// {@endtemplate}
 class SuggestionCubit extends Cubit<AgentSuggestion?> {
   /// {@macro suggestion_cubit}
@@ -17,20 +16,8 @@ class SuggestionCubit extends Cubit<AgentSuggestion?> {
 
   final AgentRepository _repository;
 
-  static const _dismissedKey = 'agent.suggestion.dismissedAt';
-  static const quiet = Duration(hours: 24);
-
-  /// Asks for a suggestion, unless they were put away or the one held is
-  /// still good.
+  /// Asks for the suggestion the server holds.
   Future<void> load() async {
-    if (state case final held? when held.validUntil.isAfter(clock.now())) {
-      return;
-    }
-    if (await _resting()) {
-      emit(null);
-      return;
-    }
-
     try {
       emit(await _repository.suggestion());
     } on AgentFailure {
@@ -41,33 +28,16 @@ class SuggestionCubit extends Cubit<AgentSuggestion?> {
 
   /// The ✕.
   Future<void> dismiss() async {
+    final held = state;
     emit(null);
+    if (held == null) return;
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(
-        _dismissedKey,
-        clock.now().millisecondsSinceEpoch,
-      );
-    } on Object {
-      // Not remembered, then: it comes back on the next load.
+      await _repository.dismissSuggestion(held.id);
+    } on AgentFailure {
+      // Not put away, then: it comes back on the next load.
     }
   }
 
-  /// Taken: the suggestion is a plan now, and goes away.
+  /// Answered (taken, or talked about): it goes until the next one.
   void clear() => emit(null);
-
-  Future<bool> _resting() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final at = prefs.getInt(_dismissedKey);
-      if (at == null) return false;
-
-      return clock.now().difference(
-            DateTime.fromMillisecondsSinceEpoch(at),
-          ) <
-          quiet;
-    } on Object {
-      return false;
-    }
-  }
 }

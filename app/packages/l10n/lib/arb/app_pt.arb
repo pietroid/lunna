@@ -651,10 +651,6 @@
   "agentOtherTime": "Outro horário",
   "agentOtherTimeDraft": "Prefiro outro horário: ",
   "agentSuggestionDismiss": "Agora não",
-  "agentSuggestionTalk": "Conversar",
-  "agentSuggestionGoal": "Objetivo",
-  "agentSuggestionDelivery": "Entrega",
-  "agentSuggestionRoutine": "Rotina",
   "agentWelcome": "{brand, select, lunna{Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.} other{Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.}}",
   "@agentWelcome": {
     "placeholders": {

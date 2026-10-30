@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { StoredSuggestion, SuggestionStore } from '../agent/suggestion.store';
 import { CalendarEvent, CalendarUser } from '../calendar/calendar.types';
 import { intervalOf } from '../events/event-sections';
 import { Day, inOrder, TimelineService } from '../events/timeline.service';
@@ -34,6 +35,8 @@ import {
   headsUpBody,
   lateBody,
   MORNING_MESSAGES,
+  SUGGESTION_BODY,
+  SUGGESTION_TITLE,
   MORNING_TITLE,
   STARTING_BODY,
 } from './notification-copy';
@@ -88,7 +91,11 @@ export const EVENING_HOUR = 21;
  */
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly _timeline: TimelineService) {}
+  constructor(
+    private readonly _timeline: TimelineService,
+    /** Where the next suggestion's hour is read; absent where none is made. */
+    @Optional() private readonly _suggestions?: SuggestionStore,
+  ) {}
 
   async plan(
     user: CalendarUser,
@@ -98,9 +105,13 @@ export class NotificationsService {
     const zone = this._timeline.zone(user);
     const until = addDaysIn(now, horizonDays, zone);
     const reask = now.getTime() + REASK_HOURS * 3_600_000;
-    const day = await this._timeline.day(user, horizonDays + 1, now);
+    const [day, suggestion] = await Promise.all([
+      this._timeline.day(user, horizonDays + 1, now),
+      this._suggestions?.current(user.id),
+    ]);
 
     const planned: Planned[] = [
+      ...suggestionItems(suggestion, zone),
       ...day.events.flatMap((event) => blockItems(day, event)),
       ...nextTaskItems(day),
       ...dailyItems(now, horizonDays, zone, day.workDay),
@@ -280,6 +291,29 @@ function asks(
     }),
     ...(i === 0 ? {} : { repeat: true }),
   }));
+}
+
+/**
+ * The next suggestion's: a minute after its `nextAt`, when the server's
+ * timer has written it. The server knows no brand, so the words name none.
+ */
+function suggestionItems(
+  suggestion: StoredSuggestion | undefined,
+  zone: Zone,
+): NotificationItem[] {
+  if (suggestion?.nextAt === undefined) return [];
+
+  return [
+    itemOf({
+      kind: 'suggestion',
+      source: suggestion.id,
+      at: new Date(suggestion.nextAt.getTime() + 60_000),
+      zone,
+      title: SUGGESTION_TITLE,
+      body: SUGGESTION_BODY,
+      timeSensitive: false,
+    }),
+  ];
 }
 
 /** The morning and evening reminders for each day from today on. */
