@@ -146,6 +146,26 @@ class AppIcons {
     PhosphorIconsRegular.chatsCircle,
   );
 
+  /// The period, on the cycle and on a day it makes light.
+  static const cycleMenstrual = AppIconData.phosphor(PhosphorIconsFill.drop);
+
+  /// The follicular phase: something growing back.
+  static const cycleFollicular = AppIconData.phosphor(
+    PhosphorIconsRegular.plant,
+  );
+
+  /// Ovulation: the peak of the cycle.
+  static const cycleOvulatory = AppIconData.phosphor(PhosphorIconsRegular.sun);
+
+  /// The luteal phase: winding down, the brand's own moon.
+  static const cycleLuteal = AppIconData.phosphor(PhosphorIconsRegular.moon);
+
+  /// A day off: nothing of the queue comes to it.
+  static const dayOff = AppIconData.phosphor(PhosphorIconsRegular.couch);
+
+  /// A light day: a little work, never a delivery's.
+  static const dayLight = AppIconData.phosphor(PhosphorIconsRegular.feather);
+
   /// A routine, a block that comes back every day.
   static const repeat = AppIconData.phosphor(PhosphorIconsRegular.repeat);
 

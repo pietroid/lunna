@@ -113,6 +113,8 @@ class _Threads extends StatelessWidget {
           ),
           // Once the day is over, Agora offers to change when it ends.
           onAdjustDay: context.read<OpenDayHours>().open,
+          // A weekend day off can be put back to work from the calendar.
+          onWorkOn: context.read<WorkOnDay>().workOn,
         ),
         // The guard is drawn over the timeline rather than pushed as a route:
         // the question is about a card that is still on screen, and the
@@ -150,4 +152,16 @@ final class OpenDayHours {
 
   /// Goes there.
   final VoidCallback open;
+}
+
+/// {@template work_on_day}
+/// Puts one day of the weekend back to work, which a weekend's rest row
+/// offers on the calendar. The shell answers it with the rhythm's cubit.
+/// {@endtemplate}
+final class WorkOnDay {
+  /// {@macro work_on_day}
+  const WorkOnDay(this.workOn);
+
+  /// Puts the day back to work.
+  final ValueChanged<DateTime> workOn;
 }

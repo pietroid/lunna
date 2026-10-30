@@ -38,8 +38,10 @@ dates alone.
   queued for one goal at most. The whole value counts, however much of
   its work is done.
 - **The bar** is a delivery's (`PaceBar`): green is `done / target`, red is
-  the share of calendar time gone from the start of its first day to the
-  end of its last (`Goal.timeAt`, nights count). The key says
+  the share of **working** time gone from the start of its first day to
+  the end of its last (`timeGone` on the wire, `Goal.timeAt`: each working
+  day's hours, while nights, days off and light days count nothing; see
+  [cycle.md](./cycle.md)). The key says
   "R$ X faturados" and "R$ Y até hoje" (`target × time gone`).
 - **The tag**: *R$ X abaixo do ritmo* (danger) when what the days ask leads
   what is in by more than 15 % of the target (`paceSlack`, the same slack

@@ -335,6 +335,17 @@ turn of that conversation carries `suggestionId`, and the server puts the
 opening's words in front of what the model reads, in place of what the
 app sent, and writes them first in the conversation.
 
+## Light days and days off
+
+The board's date table marks each day off and each light day (why, and the
+light budget) and the cycle's day and phase; a line says the weekend's rule
+and the next period. `at_hour` refuses a delivery's task on such a day
+unless `rest_day` (the person confirmed it), and the suggestion's turn is
+told when today is one. The verbs `period_started`, `predict_period`,
+`set_weekend` and `day_off` are Ciclo's and Folgas' gestures, drawn as
+`set_rhythm` lines and undone by restoring the rhythm whole. See
+[cycle.md](./cycle.md).
+
 ## The answer is a surface
 
 **The model composes, the server binds.** `answer { caption?, blocks[] }`

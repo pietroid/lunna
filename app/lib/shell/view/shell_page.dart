@@ -4,6 +4,7 @@ import 'package:agent/agent.dart';
 import 'package:analytics/analytics.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:cycle/cycle.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -68,6 +69,12 @@ class _ShellPageState extends State<ShellPage> {
 
   /// What Agora's "Mudar horário" does: brings Menu forward.
   late final _openDayHours = OpenDayHours(() => _onSelected(_menuIndex));
+
+  /// What a weekend day's rest row on the calendar does: that one day back
+  /// to work, through the rhythm's cubit.
+  late final _workOn = WorkOnDay(
+    (day) => unawaited(context.read<CycleCubit>().workOn([day])),
+  );
 
   @override
   void initState() {
@@ -149,6 +156,7 @@ class _ShellPageState extends State<ShellPage> {
       providers: [
         RepositoryProvider<TimelineAim>.value(value: _aim),
         RepositoryProvider<OpenDayHours>.value(value: _openDayHours),
+        RepositoryProvider<WorkOnDay>.value(value: _workOn),
         // What the agent's answers open (an artifact's page, from Tempo) and
         // how its previews draw a goal or a delivery.
         RepositoryProvider<AgentLinks>.value(

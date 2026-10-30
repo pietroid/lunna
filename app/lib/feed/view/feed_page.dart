@@ -186,6 +186,9 @@ class _Header extends StatelessWidget {
     final workDay = context.select<TimelineBloc, WorkDay>(
       (bloc) => bloc.state.workDay,
     );
+    final marks = context.select<TimelineBloc, List<DayMark>>(
+      (bloc) => bloc.state.marks,
+    );
     final menu = this.menu;
 
     return Padding(
@@ -227,6 +230,7 @@ class _Header extends StatelessWidget {
                       longDate(context.l10n, now),
                       style: AppTypography.label,
                     ),
+                    _TodayMarks(mark: marks.on(now)),
                   ],
                 ),
               ),
@@ -413,6 +417,47 @@ class _Quiet extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
       ),
       child: Text(text, style: AppTypography.label),
+    );
+  }
+}
+
+/// What today is beyond its hours, under the date, as one tag: the day of
+/// the cycle and then what the day is ("Dia 2 do ciclo · dia leve"), or
+/// its phase on a working day ("Dia 9 do ciclo · Folicular"), in the
+/// phase's colours. Without a cycle, the day's own tag ("Folga"); on a
+/// plain working day with no cycle, nothing.
+class _TodayMarks extends StatelessWidget {
+  const _TodayMarks({required this.mark});
+
+  final DayMark? mark;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final mark = this.mark;
+    final day = mark?.cycleDay;
+    final phase = mark?.phase;
+    final Widget tag;
+    if (mark != null && day != null && phase != null) {
+      tag = AppTag(
+        text: l10n.cycleDayPhase(day, switch (mark.kind) {
+          DayKind.light => l10n.dayLightShort,
+          DayKind.off => l10n.dayOffShort,
+          DayKind.work => phase.label(l10n),
+        }),
+        iconData: phase.icon,
+        fill: phase.fill,
+        ink: phase.ink,
+      );
+    } else if (mark != null && mark.restricted) {
+      tag = DayMarkTag(mark: mark);
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.s2),
+      child: tag,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -84,6 +85,9 @@ class _MenuPageState extends State<MenuPage> {
       (bloc) => bloc.state.workDay,
     );
     final failure = _failure;
+    final today = context
+        .select<TimelineBloc, List<DayMark>>((bloc) => bloc.state.marks)
+        .on(clock.now());
 
     return SafeArea(
       bottom: false,
@@ -114,6 +118,30 @@ class _MenuPageState extends State<MenuPage> {
                 subtitle: l10n.menuArchiveHint,
                 iconData: AppIcons.archive,
                 onTap: () => unawaited(context.push<void>('/feitas')),
+              ),
+              const SizedBox(height: AppSpacing.s6),
+              Text(
+                l10n.menuRestSection,
+                style: AppTypography.label.copyWith(color: AppColors.ink3),
+              ),
+              const SizedBox(height: AppSpacing.s2),
+              AppListItem(
+                title: l10n.menuCycle,
+                subtitle: today?.phase == null || today?.cycleDay == null
+                    ? l10n.menuCycleHint
+                    : l10n.menuCycleToday(
+                        today!.cycleDay!,
+                        today.phase!.label(l10n),
+                      ),
+                iconData: today?.phase?.icon ?? AppIcons.cycleMenstrual,
+                color: today?.phase?.ink ?? AppColors.ink2,
+                onTap: () => unawaited(context.push<void>('/ciclo')),
+              ),
+              AppListItem(
+                title: l10n.menuDaysOff,
+                subtitle: l10n.menuDaysOffHint,
+                iconData: AppIcons.dayOff,
+                onTap: () => unawaited(context.push<void>('/folgas')),
               ),
               const SizedBox(height: AppSpacing.s6),
               Text(

@@ -4,6 +4,7 @@ import type {
   ArtifactView,
   GoalView,
 } from '../artifacts/artifact.types';
+import type { DayMark } from '../time/day-kinds';
 
 /**
  * Work Quality: how defined a person's plan is, in seven levels, each one
@@ -38,8 +39,10 @@ export interface QualityState {
   answer: Pick<ArtifactsAnswer, 'artifacts' | 'goals' | 'schedule'>;
   /** How many routines the person has written. */
   routines: number;
-  /** The share of the running goal's days gone, 0–1. */
+  /** The share of the running goal's working time gone, 0–1. */
   timeGone: number;
+  /** What kind of day today is, when the person keeps a rhythm. */
+  mark?: DayMark;
 }
 
 /** A person's Work Quality: the score, the topic, and its facts. */
@@ -56,6 +59,8 @@ export interface WorkQuality {
    * writes for the turn, and (hashed) its basis.
    */
   facts: Record<string, unknown>;
+  /** Today's kind, when it is not a working day: the turn is told. */
+  rest?: DayMark;
 }
 
 /** The pace a goal may fall behind its days before it is behind: 15 %. */
@@ -84,6 +89,10 @@ export function workQuality(state: QualityState): WorkQuality {
       it.deadline === null || (it.value ?? 0) <= 0 || (it.minutes ?? 0) <= 0,
   );
   const { needMinutes, freeMinutes } = answer.schedule;
+  const rest =
+    state.mark === undefined || state.mark.kind === 'work'
+      ? {}
+      : { rest: state.mark };
 
   const checks: [Level, () => boolean, () => Record<string, unknown>][] = [
     ['goal', () => goal !== undefined, () => ({ goals: answer.goals.length })],
@@ -145,11 +154,11 @@ export function workQuality(state: QualityState): WorkQuality {
   let score = 0;
   for (const [level, met, facts] of checks) {
     if (!met()) {
-      return { score, topic: level, goal, counted, facts: facts() };
+      return { score, topic: level, goal, counted, facts: facts(), ...rest };
     }
     score++;
   }
-  return { score, topic: 'keep', goal, counted, facts: {} };
+  return { score, topic: 'keep', goal, counted, facts: {}, ...rest };
 }
 
 /**
@@ -169,8 +178,18 @@ export function requestOf(quality: WorkQuality): string {
     'Nobody asked: this is the suggestion the app shows on its home, written by the server for the person.',
     `Topic (Work Quality level ${quality.score + 1} of 7, never named to the person): ${quality.topic}. ${TOPICS[quality.topic]}`,
     `Facts: ${JSON.stringify(quality.facts)}`,
+    ...(quality.rest === undefined ? [] : [restOf(quality.rest)]),
     'Propose the one next step: a plan when one fits (with a preview block when it makes a goal, a delivery or a routine), choices when the person must say something first. The caption is the whole message on the card, at most 80 characters, speaking to the person. Set followUp to the hours until you look again: 3 when a step is under way today, 24 when the next step is tomorrow’s.',
   ].join('\n');
+}
+
+/**
+ * What the turn is told of a day that is not a working one: no delivery's
+ * task belongs on it, and offering to move one off it comes first.
+ */
+function restOf(mark: DayMark): string {
+  const kind = mark.kind === 'off' ? 'a day off' : 'a light day';
+  return `Today is ${kind} (${mark.reason ?? 'rest'}${mark.cycle === undefined ? '' : `, cycle day ${mark.cycle.day}, ${mark.cycle.phase}`}): no delivery's task belongs on it. When one of the main delivery's tasks sits on today, propose moving it to the next working day before anything else, and keep the words gentle.`;
 }
 
 /** What each topic asks of the turn. */

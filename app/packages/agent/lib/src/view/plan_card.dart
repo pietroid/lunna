@@ -396,6 +396,12 @@ class _ChangeRow extends StatelessWidget {
             ).skip(1).toList(),
           ),
         );
+      case PlanChangeKind.setRhythm:
+        return AnswerRow(
+          mark: const AnswerMark(icon: AppIcons.dayOff),
+          title: change.title,
+          detail: TextSpan(text: l10n.agentChangeRhythm),
+        );
       case PlanChangeKind.addTask ||
           PlanChangeKind.moveTask ||
           PlanChangeKind.addEvent ||

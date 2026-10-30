@@ -76,7 +76,7 @@ export interface Drawing {
 export interface Action {
   /** The `do` of a change. */
   name: string;
-  domain: 'queue' | 'artifact' | 'routine';
+  domain: 'queue' | 'artifact' | 'routine' | 'rhythm';
   /** What it does, in a line, for the model. */
   does: string;
   /**
@@ -163,6 +163,11 @@ export const ARGS = {
     description:
       'Only after the person confirmed a new card with the same name as an existing one is really another one.',
   },
+  rest_day: {
+    type: 'boolean',
+    description:
+      'Only after the person confirmed a delivery’s task on a day off or a light day.',
+  },
   as: {
     type: 'string',
     description:
@@ -240,6 +245,22 @@ export const ARGS = {
   closes: {
     type: 'string',
     description: 'set_work_day: when it closes, HH:mm (24:00 for midnight).',
+  },
+  saturday: {
+    type: 'string',
+    enum: ['work', 'light', 'off'],
+    description: 'set_weekend: what every Saturday is.',
+  },
+  sunday: {
+    type: 'string',
+    enum: ['work', 'light', 'off'],
+    description: 'set_weekend: what every Sunday is.',
+  },
+  day_kind: {
+    type: 'string',
+    enum: ['off', 'work'],
+    description:
+      'day_off: off (a holiday, a trip) or work (a weekend day put back to work).',
   },
 } as const;
 

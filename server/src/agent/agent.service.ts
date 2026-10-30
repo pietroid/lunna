@@ -12,10 +12,11 @@ import { ConfigService } from '@nestjs/config';
 import { CalendarService } from '../calendar/calendar.service';
 import { CalendarUser } from '../calendar/calendar.types';
 import { Timeline } from '../events/entities/event.entity';
-import { Goal } from '../artifacts/artifact.types';
 import { Trace } from '../common/trace';
 import { EventLayoutService } from '../events/event-layout.service';
 import { TimelineService } from '../events/timeline.service';
+import { MemoryRhythmStore } from '../rhythm/rhythm.store';
+import { RhythmService } from '../rhythm/rhythm.service';
 import { ArtifactStore } from '../artifacts/artifact.store';
 import { ArtifactsService } from '../artifacts/artifacts.service';
 import { addDays, daysBetween, endOfMonth } from '../artifacts/stretch';
@@ -281,6 +282,7 @@ export class AgentService {
   private readonly _routines: RoutinesService;
   /** Where the working day is kept; nowhere in the tests that leave it out. */
   private readonly _users: WorkDays;
+  private readonly _rhythm: RhythmService;
   /**
    * The doubt each conversation was last left with, by one of its answers'
    * plans: answered by typing rather than a tap, the options missed.
@@ -304,8 +306,10 @@ export class AgentService {
     @Inject(ANALYTICS)
     private readonly _analytics: Analytics = new NoAnalytics(),
     @Optional() users?: UsersService,
+    @Optional() rhythm?: RhythmService,
   ) {
     this._users = users ?? NO_WORK_DAYS;
+    this._rhythm = rhythm ?? new RhythmService(new MemoryRhythmStore());
     this._plans = plans ?? new MemoryPlanStore();
     this._suggestions = suggestions ?? new MemorySuggestionStore();
     this._tools = toolsFor(schemaShapeOf(config?.get<string>('AGENT_SCHEMA')));
@@ -333,6 +337,7 @@ export class AgentService {
       deliveries: this._deliveries,
       routines: this._routines,
       users: this._users,
+      rhythm: this._rhythm,
     };
   }
 
@@ -888,8 +893,8 @@ export class AgentService {
       today: board.today,
       answer,
       routines: routines.length,
-      timeGone:
-        running === undefined ? 0 : goalTimeAt(running.goal, now, board.zone),
+      timeGone: running === undefined ? 0 : running.view.timeGone,
+      mark: day.rhythm === undefined ? undefined : board.mark(board.today),
     });
     const basis = basisOf(quality);
 
@@ -1259,7 +1264,7 @@ export class AgentService {
     }
 
     // 2. A delivery: the goal is behind what its days ask by now.
-    const asked = target * goalTimeAt(goal.goal, now, zone);
+    const asked = target * goal.view.timeGone;
     if (done < target && done < asked) {
       const short = reais(target - done);
       const counted = board.artifacts
@@ -2322,21 +2327,6 @@ export function intoWorkDay(at: Date, user: CalendarUser, zone: Zone): Date {
 function goalDeadline(today: string): string {
   const end = endOfMonth(today);
   return daysBetween(today, end) < 7 ? endOfMonth(addDays(end, 1)) : end;
-}
-
-/**
- * The share of [goal]'s days gone at [now], from the start of its first
- * day to the end of its last: the red of its bar (`Goal.timeAt`).
- */
-function goalTimeAt(goal: Goal, now: Date, zone: Zone): number {
-  const start = startOfDayIn(noonOf(goal.starts, zone), zone).getTime();
-  const end = startOfDayIn(
-    noonOf(addDays(goal.deadline, 1), zone),
-    zone,
-  ).getTime();
-  if (end <= start) return 1;
-
-  return Math.min(1, Math.max(0, (now.getTime() - start) / (end - start)));
 }
 
 /** [value] rounded to the nearest [step]. */

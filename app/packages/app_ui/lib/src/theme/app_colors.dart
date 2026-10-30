@@ -181,6 +181,48 @@ abstract final class AppColors {
       ? Color(0xFFEEE7E8)
       : Color(0x00000000);
 
+  /// The period on the cycle: Lunna's own red, the phase that asks for the
+  /// least work. Marks and text; its fill is [cycleMenstrualFill].
+  static const cycleMenstrual = AppBrand.isLunna
+      ? Color(0xFFE2394F)
+      : Color(0xFFF07A8A);
+
+  /// The fill behind [cycleMenstrual].
+  static const cycleMenstrualFill = AppBrand.isLunna
+      ? Color(0xFFFDEDEF)
+      : Color(0xFF2A1418);
+
+  /// The follicular phase, energy coming back: a rose, between the period's
+  /// red and the luteal lilac.
+  static const cycleFollicular = AppBrand.isLunna
+      ? Color(0xFFB4467F)
+      : Color(0xFFE59BC4);
+
+  /// The fill behind [cycleFollicular].
+  static const cycleFollicularFill = AppBrand.isLunna
+      ? Color(0xFFF9ECF3)
+      : Color(0xFF2A1422);
+
+  /// Ovulation, the peak: a warm amber, the sun of its icon.
+  static const cycleOvulatory = AppBrand.isLunna
+      ? Color(0xFFB86A12)
+      : Color(0xFFF2B567);
+
+  /// The fill behind [cycleOvulatory].
+  static const cycleOvulatoryFill = AppBrand.isLunna
+      ? Color(0xFFFFF3E2)
+      : Color(0xFF2B1F0E);
+
+  /// The luteal phase, winding down: a lilac, the moon of its icon.
+  static const cycleLuteal = AppBrand.isLunna
+      ? Color(0xFF6B57B0)
+      : Color(0xFFB3A3EE);
+
+  /// The fill behind [cycleLuteal].
+  static const cycleLutealFill = AppBrand.isLunna
+      ? Color(0xFFF1EEF9)
+      : Color(0xFF1D1830);
+
   /// Positive / success. Retained as the semantic name used by older widgets.
   static const Color positive = success;
 

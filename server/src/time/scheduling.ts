@@ -6,7 +6,8 @@ import {
   nextFreeSlot,
   WorkDay,
 } from './work-hours';
-import { Zone } from './zone';
+import { DayMark, Marks, NO_MARKS } from './day-kinds';
+import { addDaysIn, isoDayIn, startOfDayIn, Zone } from './zone';
 
 /** One task, as the layout sees it. */
 export interface QueuedBlock {
@@ -23,6 +24,11 @@ export interface QueuedBlock {
    * pushed, pushes it later, and an hour the clock has passed is now.
    */
   anchor?: Date;
+  /**
+   * Whether it is a delivery's task: client work, which the queue never
+   * puts on a light day.
+   */
+  artifact?: boolean;
 }
 
 /**
@@ -46,6 +52,12 @@ export interface QueuedBlock {
  * lays it out again. The queue has no end, and neither does the layout: a
  * task that does not fit today goes to tomorrow, and the one after it to the
  * day after that.
+ *
+ * [marks] say what kind each date is. The queue puts nothing on a day off,
+ * and on a light day only loose tasks, up to its budget; a delivery's task
+ * hops over it to the next working day, the way it hops over a fixed block.
+ * An anchored task keeps its hour whatever the day: the person put it
+ * there.
  */
 export function relayout(
   blocks: QueuedBlock[],
@@ -53,9 +65,16 @@ export function relayout(
   from: Date,
   zone: Zone,
   day?: WorkDay,
+  marks: Marks = NO_MARKS,
 ): Map<string, Interval> {
   const placed = new Map<string, Interval>();
   const busy = [...anchors];
+  // Minutes of tasks already on each light day, against its budget.
+  const used = new Map<string, number>();
+  const take = (slot: Interval, minutes: number) => {
+    const date = isoDayIn(slot.start, zone);
+    used.set(date, (used.get(date) ?? 0) + minutes);
+  };
 
   const anchored = blocks
     .filter((block) => block.anchor !== undefined)
@@ -67,14 +86,31 @@ export function relayout(
     const slot = nextFreeSlot(floor, block.minutes, busy, zone, day);
     placed.set(block.id, slot);
     busy.push(slot);
+    take(slot, block.minutes);
   }
 
   let cursor = from;
   for (const block of blocks) {
     if (block.anchor !== undefined) continue;
 
-    const slot = nextFreeSlot(cursor, block.minutes, busy, zone, day);
+    const { slot, hopped } = queueSlot(
+      cursor,
+      block,
+      busy,
+      zone,
+      day,
+      marks,
+      used,
+    );
     placed.set(block.id, slot);
+    take(slot, block.minutes);
+    if (hopped) {
+      // It hopped a day that would not take it, and stands in the way there
+      // like an anchor. The cursor stays: the loose tasks after it still
+      // fill the light day it hopped.
+      busy.push(slot);
+      continue;
+    }
     // Five minutes apart, and not snapped to a grid of five. The day slides
     // a minute at a time while something is paused, and a grid would turn
     // that slide into jumps.
@@ -82,4 +118,37 @@ export function relayout(
   }
 
   return placed;
+}
+
+/**
+ * The first slot [block] may take in its turn: [nextFreeSlot]'s, on a day
+ * that takes it. A day that does not is skipped whole, from its midnight.
+ */
+function queueSlot(
+  from: Date,
+  block: QueuedBlock,
+  busy: Interval[],
+  zone: Zone,
+  day: WorkDay | undefined,
+  marks: Marks,
+  used: Map<string, number>,
+): { slot: Interval; hopped: boolean } {
+  let slot = nextFreeSlot(from, block.minutes, busy, zone, day);
+  // A year of days, the most a rhythm could ever skip in a row.
+  for (let attempt = 0; attempt < 366; attempt++) {
+    const date = isoDayIn(slot.start, zone);
+    if (takes(marks(date), block, used.get(date) ?? 0)) {
+      return { slot, hopped: attempt > 0 };
+    }
+    const next = startOfDayIn(addDaysIn(slot.start, 1, zone), zone);
+    slot = nextFreeSlot(next, block.minutes, busy, zone, day);
+  }
+  return { slot, hopped: true };
+}
+
+/** Whether a day marked [mark], with [used] minutes on it, takes [block]. */
+function takes(mark: DayMark, block: QueuedBlock, used: number): boolean {
+  if (mark.kind === 'work') return true;
+  if (mark.kind === 'off' || block.artifact === true) return false;
+  return used + block.minutes <= (mark.budgetMinutes ?? 0);
 }

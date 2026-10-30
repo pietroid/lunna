@@ -16,6 +16,7 @@ const goal = (target: number, done: number, queued: number): GoalView => ({
   done,
   queued,
   queuedCount: 0,
+  timeGone: 0,
 });
 
 const delivery = (
@@ -37,6 +38,7 @@ const delivery = (
   createdAt: '2026-11-01T10:00:00Z',
   startedAt: null,
   doneAt: null,
+  timeGone: null,
   tasks: Array.from({ length: openTasks }, (_, i) => ({
     id: `${title}-${i}`,
     title: `Parte ${i + 1}`,

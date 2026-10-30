@@ -139,6 +139,36 @@ void main() {
       expect(artifact.daysLeftAt(DateTime(2026, 6, 8, 23)), 2);
       expect(artifact.daysLeftAt(DateTime(2026, 6, 12)), -2);
     });
+
+    test('takes the working time the server measured, until it changes', () {
+      final json = {
+        'id': 'p',
+        'title': 'Curso',
+        'minutes': 60,
+        'createdAt': '2026-10-01T10:00:00Z',
+        'startedAt': '2026-10-30T13:00:00Z',
+        'deadline': '2026-11-02',
+        'timeGone': 0.44,
+      };
+      final artifact = Artifact.fromJson(json);
+      // Calendar time would say three quarters on Saturday afternoon.
+      expect(artifact.progressAt(DateTime(2026, 10, 31, 15)), 0.44);
+      // A new deadline is not what the server measured.
+      final moved = artifact.copyWith(deadline: () => DateTime(2026, 11, 9));
+      expect(moved.timeGone, isNull);
+      expect(moved.progressAt(DateTime(2026, 10, 31, 15)), lessThan(0.3));
+
+      final goal = Goal.fromJson({
+        'id': 'g',
+        'kind': 'money',
+        'target': 10000,
+        'start': '2026-10-01',
+        'end': '2026-11-01',
+        'timeGone': 0.8,
+      });
+      expect(goal.timeAt(DateTime(2026, 10, 31)), 0.8);
+      expect(goal.expectedAt(DateTime(2026, 10, 31)), 8000);
+    });
   });
 
   group('Shelf', () {

@@ -1,3 +1,4 @@
+import { marksOf } from './day-kinds';
 import { QueuedBlock, relayout } from './scheduling';
 import { Interval } from './work-hours';
 import { formatDayIn, formatTimeIn, instantOf } from './zone';
@@ -136,5 +137,75 @@ describe('laying the queue out', () => {
     expect(formatDayIn(placed.get('t1')!.start, ZONE)).toBe('22-09-2026');
     expect(reads(placed, 't1')).toBe('07:00-07:55');
     expect(formatDayIn(placed.get('t19')!.start, ZONE)).toBe('23-09-2026');
+  });
+});
+
+/** An hour of a day of October 2026: Friday the 30th has the weekend after it. */
+function oct(day: number, hour: number): Date {
+  return instantOf(
+    { year: 2026, month: 10, day, hour, minute: 0, second: 0 },
+    ZONE,
+  );
+}
+
+describe('laying the queue out over the kinds of day', () => {
+  // Friday 30 October 2026, 09:00; the weekend after it is off.
+  const from = oct(30, 9);
+  const kinds = (light: boolean, budget = 180) =>
+    marksOf({
+      rest: { saturday: 'off', sunday: 'off', lightMinutes: budget },
+      daysOff: [],
+      ...(light
+        ? {
+            cycle: {
+              lastStart: '2026-10-30',
+              length: 28,
+              periodLength: 1,
+              periodKind: 'light' as const,
+            },
+          }
+        : {}),
+    });
+  const dayOf = (placed: Map<string, Interval>, id: string) =>
+    formatDayIn(placed.get(id)!.start, ZONE);
+
+  it('puts nothing on a day off: what does not fit Friday goes to Monday', () => {
+    const queue = [task('a', 600), task('b', 300)];
+    const placed = relayout(queue, [], from, ZONE, undefined, kinds(false));
+    expect(dayOf(placed, 'a')).toBe('30-10-2026');
+    expect(dayOf(placed, 'b')).toBe('02-11-2026');
+    expect(reads(placed, 'b')).toBe('07:00-12:00');
+  });
+
+  it('keeps a delivery’s task off a light day, and lets a loose one stay', () => {
+    const queue = [
+      { ...task('client', 60), artifact: true },
+      task('loose', 60),
+    ];
+    const placed = relayout(queue, [], from, ZONE, undefined, kinds(true));
+    expect(dayOf(placed, 'client')).toBe('02-11-2026');
+    expect(reads(placed, 'loose')).toBe('09:00-10:00');
+  });
+
+  it('stops a light day at its budget', () => {
+    const queue = [task('a', 120), task('b', 60), task('c', 30)];
+    const placed = relayout(queue, [], from, ZONE, undefined, kinds(true, 180));
+    expect(reads(placed, 'a')).toBe('09:00-11:00');
+    expect(reads(placed, 'b')).toBe('11:05-12:05');
+    // Three hours are taken: the next goes to the next working day.
+    expect(dayOf(placed, 'c')).toBe('02-11-2026');
+  });
+
+  it('leaves an anchored task at its hour on a day off', () => {
+    const saturday = oct(31, 10);
+    const placed = relayout(
+      [{ ...task('a', 60), anchor: saturday }],
+      [],
+      from,
+      ZONE,
+      undefined,
+      kinds(false),
+    );
+    expect(placed.get('a')!.start).toEqual(saturday);
   });
 });

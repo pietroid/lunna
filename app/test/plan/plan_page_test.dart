@@ -63,6 +63,7 @@ void main() {
         providers: [
           RepositoryProvider(create: (_) => TimelineAim()),
           RepositoryProvider(create: (_) => OpenDayHours(() {})),
+          RepositoryProvider(create: (_) => WorkOnDay((_) {})),
         ],
         child: MultiBlocProvider(
           providers: [

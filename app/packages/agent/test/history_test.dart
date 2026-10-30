@@ -298,6 +298,11 @@ void main() {
               'hours': '08:00–18:00',
               'wasHours': '07:00–22:00',
             },
+            {
+              'kind': 'set_rhythm',
+              'title': 'Folga em 20/11 · Feriado',
+              'minutes': 0,
+            },
           ],
         });
 
@@ -325,6 +330,11 @@ void main() {
           );
         }
         expect(find.text('Dia de trabalho'), findsOneWidget);
+        expect(find.text('Folga em 20/11 · Feriado'), findsOneWidget);
+        expect(
+          find.textContaining('Ciclo e folgas', findRichText: true),
+          findsOneWidget,
+        );
       },
     );
   });

@@ -31,6 +31,11 @@ export interface World {
   goal(target: number, deadline: string): Promise<void>;
   /** A fixed block at "YYYY-MM-DD HH:mm". */
   event(title: string, at: string, minutes?: number): Promise<void>;
+  /**
+   * A period that began on "YYYY-MM-DD": its days are light. The cases'
+   * weekends are working days unless one says otherwise.
+   */
+  periodStarted(day: string): Promise<void>;
 }
 
 /** One card of the day the agent left, as a check reads it. */
@@ -154,6 +159,29 @@ function inOrder(...titles: string[]) {
 }
 
 export const CASES: Case[] = [
+  // ---- The rhythm: light days and days off -----------------------------
+  {
+    id: 'light-day-delivery-task',
+    why: '#73: a period day is light, and a delivery’s task does not belong on it',
+    now: `${FRIDAY} 10:00`,
+    setup: async (w) => {
+      await w.periodStarted(FRIDAY);
+      const id = await w.artifact('Mapa da Ana', '2026-10-28', { value: 400 });
+      await w.task('Mapa da Ana · leitura', 90, {
+        at: `${FRIDAY} 14:00`,
+        artifact: id,
+      });
+    },
+    said: 'hoje tô menstruada e cansada, o que faço com o mapa da Ana?',
+    expect: 'either',
+    check: (state) => {
+      const [it] = state.named('Mapa da Ana · leitura');
+      if (it === undefined) return 'the task is gone';
+      return it.at !== undefined && it.at.startsWith(FRIDAY)
+        ? `still on the light day, at ${it.at}`
+        : true;
+    },
+  },
   // ---- The reported bugs, as regressions --------------------------------
   {
     id: 'move-event-tomorrow',

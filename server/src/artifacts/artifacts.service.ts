@@ -10,6 +10,7 @@ import { Day, TimelineService } from '../events/timeline.service';
 import { TaskStore } from '../tasks/task.store';
 import { Task } from '../tasks/task.types';
 import { DEFAULT_WORK_DAY, Interval, WorkDay } from '../time/work-hours';
+import { deliveryShare, goalShare, Marks, NO_MARKS } from '../time/day-kinds';
 import { atMinuteIn, instantOf, isoDayIn, Zone } from '../time/zone';
 import { ArtifactStore } from './artifact.store';
 import {
@@ -73,11 +74,13 @@ export class ArtifactsService {
       ],
     );
 
+    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
     const views = artifacts.map((artifact) =>
       viewOf(
         artifact,
         tasks.filter((task) => task.artifactId === artifact.id),
         day,
+        workDay,
       ),
     );
     const open = views.filter((it) => it.doneAt === null);
@@ -105,13 +108,14 @@ export class ArtifactsService {
     }));
 
     const left = (it: ArtifactView) => Math.max(0, it.minutes - it.doneMinutes);
-    const workDay = user.workDay ?? DEFAULT_WORK_DAY;
+    const share = (goal: Goal) =>
+      goalShare(goal.starts, goal.deadline, now, day.marks, zone, workDay);
 
     return {
       artifacts: [...open, ...done],
       catalog,
       goals: goals
-        .map((goal) => measure(goal, today, open, done, doneDay))
+        .map((goal) => measure(goal, today, open, done, doneDay, share(goal)))
         .sort((a, b) => a.start.localeCompare(b.start)),
       schedule: {
         needMinutes: open
@@ -423,7 +427,12 @@ export class ArtifactsService {
 }
 
 /** [artifact] as the app draws it, with [tasks], its own, on [day]. */
-function viewOf(artifact: Artifact, tasks: Task[], day: Day): ArtifactView {
+function viewOf(
+  artifact: Artifact,
+  tasks: Task[],
+  day: Day,
+  workDay: WorkDay,
+): ArtifactView {
   const total = tasks.reduce((sum, task) => sum + task.minutes, 0);
   const done = tasks
     .filter((task) => task.doneAt !== undefined)
@@ -442,6 +451,18 @@ function viewOf(artifact: Artifact, tasks: Task[], day: Day): ArtifactView {
     createdAt: artifact.createdAt,
     startedAt: artifact.startedAt ?? null,
     doneAt: artifact.doneAt ?? null,
+    timeGone:
+      artifact.startedAt === undefined || artifact.deadline === undefined
+        ? null
+        : deliveryShare(
+            new Date(artifact.startedAt),
+            artifact.deadline,
+            day.now,
+            day.marks,
+            day.zone,
+            workDay,
+            isoDayIn(new Date(artifact.startedAt), day.zone),
+          ),
     tasks: tasks.map((task) => taskViewOf(task, day)),
   };
 }
@@ -455,6 +476,9 @@ export function measureGoals(
   artifacts: Artifact[],
   today: string,
   zone: Zone,
+  now = new Date(),
+  marks: Marks = NO_MARKS,
+  workDay: WorkDay = DEFAULT_WORK_DAY,
 ): GoalView[] {
   const views = artifacts.map((it) => ({
     id: it.id,
@@ -476,6 +500,7 @@ export function measureGoals(
         views.filter((it) => it.doneAt === null),
         views.filter((it) => it.doneAt !== null),
         doneDay,
+        goalShare(goal.starts, goal.deadline, now, marks, zone, workDay),
       ),
     )
     .sort((a, b) => a.start.localeCompare(b.start));
@@ -498,6 +523,7 @@ function measure(
   open: ArtifactView[],
   done: ArtifactView[],
   doneDay: Map<string, string>,
+  timeGone: number,
 ): GoalView {
   const start = goal.starts;
   const end = addDays(goal.deadline, 1);
@@ -532,6 +558,7 @@ function measure(
     ),
     queued: sum(queued),
     queuedCount: queued.length,
+    timeGone,
   };
 }
 
@@ -550,7 +577,7 @@ function ddmm(day: string): string {
 /**
  * The working time not taken by anything on [day], from [now] to the end
  * of [until]: each working day's hours, less every event and every task
- * the layout placed.
+ * the layout placed. Days off and light days have none for a delivery.
  */
 function freeMinutes(
   day: Day,
@@ -570,6 +597,8 @@ function freeMinutes(
 
   let free = 0;
   for (let date = today; date <= until; date = addDays(date, 1)) {
+    // A delivery's work never goes on a day off or a light one.
+    if (day.marks(date).kind !== 'work') continue;
     const [year, month, dayOfMonth] = date.split('-').map(Number);
     const noon = instantOf(
       { year, month, day: dayOfMonth, hour: 12, minute: 0, second: 0 },

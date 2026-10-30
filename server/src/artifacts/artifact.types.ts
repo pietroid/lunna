@@ -158,6 +158,12 @@ export interface ArtifactView {
   /** When it was begun; null while it waits in Não iniciadas. */
   startedAt: string | null;
   doneAt: string | null;
+  /**
+   * The share of its working time gone, 0–1, from when it was begun to
+   * the end of its deadline's day: days off and light days count nothing
+   * (`time/day-kinds.ts`). Null with no deadline or not begun.
+   */
+  timeGone: number | null;
   /** Its tasks, in their order. */
   tasks: ArtifactTaskView[];
 }
@@ -197,6 +203,11 @@ export interface GoalView {
   queued: number;
   /** How many open deliveries [queued] adds up. */
   queuedCount: number;
+  /**
+   * The share of its working time gone, 0–1: what its days ask by now is
+   * [target] times it. Days off and light days count nothing.
+   */
+  timeGone: number;
 }
 
 /**

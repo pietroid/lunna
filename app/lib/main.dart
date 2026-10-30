@@ -7,6 +7,7 @@ import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:auth/auth.dart';
 import 'package:clock/clock.dart';
+import 'package:cycle/cycle.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lunna/app/app.dart';
@@ -66,6 +67,7 @@ Future<void> _main() async {
   final agentRepository = AgentRepository(apiClient: apiClient);
   final routinesRepository = RoutinesRepository(apiClient: apiClient);
   final artifactsRepository = ArtifactsRepository(apiClient: apiClient);
+  final cycleRepository = CycleRepository(apiClient: apiClient);
   final linkPreviews = ApiLinkPreviews(
     apiClient: apiClient,
     apiBaseUrl: kApiBaseUrl,
@@ -97,6 +99,7 @@ Future<void> _main() async {
         RepositoryProvider<ArtifactsRepository>(
           create: (_) => artifactsRepository,
         ),
+        RepositoryProvider<CycleRepository>(create: (_) => cycleRepository),
         RepositoryProvider<NotificationScheduler>(
           create: (_) => notificationScheduler,
         ),
@@ -138,6 +141,17 @@ Future<void> _main() async {
               repository: artifactsRepository,
               onDayChanged: () =>
                   context.read<TimelineBloc>().add(const TimelineRequested()),
+            ),
+          ),
+          // Ciclo and Folgas change the kind of a day, which moves the
+          // queue and what the deadlines count: both are read again.
+          BlocProvider<CycleCubit>(
+            create: (context) => CycleCubit(
+              repository: cycleRepository,
+              onChanged: () {
+                context.read<TimelineBloc>().add(const TimelineRequested());
+                unawaited(context.read<ArtifactsCubit>().load());
+              },
             ),
           ),
         ],

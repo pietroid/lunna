@@ -61,7 +61,8 @@ have a tab of their own, Objetivos: see [goals.md](./goals.md).
 - **Schedule**: `needMinutes` is the time still owed (`minutes − doneMinutes`)
   by open deliveries due by the end of this month; `freeMinutes` is the
   working time from now to the end of the month not taken by any event or
-  laid-out task (`TimelineService.day`). Both are approximate on purpose: a
+  laid-out task (`TimelineService.day`), on working days only (a day off
+  or a light day has none for a delivery). Both are approximate on purpose: a
   delivery's queued tasks count in both.
 - **Most used kinds** (`topTypes`): deliveries per kind, open and delivered,
   all time, at most three, the catalogue's order breaking ties; a kind never
@@ -113,8 +114,10 @@ have a tab of their own, Objetivos: see [goals.md](./goals.md).
   not begun, no bar (no clock runs), and at the end of the name's line its
   time and its day (*3h · até ter, 3 nov*). Delivered, the day it was.
 - **One bar, two fills** (`PaceBars`): red (`AppColors.paceTime`) to the
-  share of the time from **when it was begun** to the end of the deadline
-  day (calendar time: nights count, as the deadline is a day), and over it
+  share of the **working** time from **when it was begun** to the end of
+  the deadline day (`timeGone`, worked out on the server: each working
+  day's hours count, nights, days off and light days do not; see
+  [cycle.md](./cycle.md)), and over it
   green (`AppColors.paceDone`) to the share of its **minutes** done
   (`workDone`: `doneMinutes / minutes`, so a three-hour task weighs twelve
   fifteen-minute ones). Green covering the red is on pace; red showing

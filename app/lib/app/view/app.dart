@@ -4,6 +4,7 @@ import 'package:agent/agent.dart';
 import 'package:analytics/analytics.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
+import 'package:cycle/cycle.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -50,6 +51,23 @@ class App extends StatelessWidget {
              path: '/rotina',
              name: 'Rotina',
              builder: (context, state) => const RoutinesPage(),
+           ),
+           // The cycle and the days off, opened from Menu's Ritmo. The
+           // rhythm's cubit is the app's, so a weekend put back to work on
+           // the calendar and here are one.
+           GoRoute(
+             path: '/ciclo',
+             name: 'Ciclo',
+             builder: (context, state) => _Rhythm(
+               child: CyclePage(dock: _dockOnTheDay(context)),
+             ),
+           ),
+           GoRoute(
+             path: '/folgas',
+             name: 'Folgas',
+             builder: (context, state) => _Rhythm(
+               child: DaysOffPage(dock: _dockOnTheDay(context)),
+             ),
            ),
            // Everything done, opened from Menu.
            GoRoute(
@@ -99,6 +117,15 @@ class App extends StatelessWidget {
          ],
        );
 
+  /// The agent's bar on a page with nothing of its own to write: the +
+  /// writes something down on the day, as from anywhere.
+  static Widget _dockOnTheDay(BuildContext context) => AskDock(
+    fab: AppFab(
+      tooltip: context.l10n.shellWriteDown,
+      onPressed: () => unawaited(writeDownOnTimeline(context)),
+    ),
+  );
+
   /// Where screens are reported, and what wraps the app for replays.
   final Analytics analytics;
 
@@ -137,4 +164,26 @@ class App extends StatelessWidget {
       ),
     );
   }
+}
+
+/// [child], with the rhythm read again as it opens: Ciclo and Folgas draw
+/// what the server has now.
+class _Rhythm extends StatefulWidget {
+  const _Rhythm({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_Rhythm> createState() => _RhythmState();
+}
+
+class _RhythmState extends State<_Rhythm> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(context.read<CycleCubit>().load());
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

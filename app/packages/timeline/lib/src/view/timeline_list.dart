@@ -169,9 +169,14 @@ class TimelineList extends StatefulWidget {
     this.onAdjustDay,
     this.mode = TimelineMode.calendar,
     this.onDeliveryTap,
+    this.onWorkOn,
     this.only,
     super.key,
   });
+
+  /// Puts a day of the weekend back to work, from its rest row on the
+  /// calendar. Null offers nothing.
+  final ValueChanged<DateTime>? onWorkOn;
 
   /// The tasks the list draws, by id, when it is not the whole day: a
   /// artifact's. Null draws every task.
@@ -747,6 +752,7 @@ class _TimelineListState extends State<TimelineList> {
       rest.nonNulls.toList(),
       days: _state.days,
       workDay: _state.workDay,
+      marks: _state.marks,
     );
     for (final room in _shownRooms) {
       final shown = room.slot;
@@ -852,10 +858,13 @@ class _TimelineListState extends State<TimelineList> {
     final shown = anchor.shown;
     final area = anchor.area;
     final origin = _originRect;
+    // A day off is one row, not its hours to scale: a drop on it lands at
+    // the day's start, and the server keeps it there, since by hand wins.
     if (shown != null &&
         area != null &&
         origin != null &&
-        anchor.row?.$2 != null) {
+        anchor.row?.$2 != null &&
+        slot.rest == null) {
       final aimed = TimelineScale.timeAt(
         shown,
         origin.top + _travel.dy - area.top,
@@ -1578,7 +1587,7 @@ class _TimelineListState extends State<TimelineList> {
       if (rect.top >= view.bottom) continue;
 
       final dy = (seen - rect.top).clamp(0.0, rect.height);
-      final at = dy <= 0
+      final at = dy <= 0 || room.slot.rest != null
           ? room.slot.earliest
           : _upToStep(TimelineScale.timeAt(room.slot, dy, rect.height));
       if (!at.isBefore(room.slot.end.subtract(TimelinePlan.gap))) continue;
@@ -1654,6 +1663,7 @@ class _TimelineListState extends State<TimelineList> {
         now: now,
         days: state.days,
         workDay: state.workDay,
+        marks: state.marks,
       ),
       cards,
       now,
@@ -1717,7 +1727,11 @@ class _TimelineListState extends State<TimelineList> {
           _Slid(
             key: key,
             dy: dy,
-            child: _HeadingRow(label: _label(entrySection, now), first: first),
+            child: _HeadingRow(
+              label: _label(entrySection, now),
+              first: first,
+              mark: entrySection == null ? null : state.marks.on(entrySection),
+            ),
           ),
         );
         first = false;
@@ -1780,6 +1794,16 @@ class _TimelineListState extends State<TimelineList> {
                     ? null
                     : () =>
                           widget.onWriteDown!(Placement.at(room.slot.earliest)),
+              ),
+              // A whole day off: one row, not its hours to scale.
+              (null, _) when room!.slot.rest != null => RestDayTile(
+                mark: room.slot.rest!,
+                onWork: widget.onWorkOn == null
+                    ? null
+                    : () => widget.onWorkOn!(room.slot.rest!.day),
+                onTap: widget.onWriteDown == null
+                    ? null
+                    : () => widget.onWriteDown!(Placement.at(room.slot.start)),
               ),
               (null, _) => FreeStretch(
                 slot: room!.slot,
@@ -1963,7 +1987,12 @@ class _TimelineListState extends State<TimelineList> {
           ? whereIs(next)
           : _state.tasks.length;
 
-      void heading(Object section, String label, {double? dy}) {
+      void heading(
+        Object section,
+        String label, {
+        double? dy,
+        DayMark? mark,
+      }) {
         final key = _headingKey(section);
         drawn.add((
           key: key,
@@ -1974,11 +2003,16 @@ class _TimelineListState extends State<TimelineList> {
         ));
         rows.add(
           dy == null
-              ? _HeadingRow(key: key, label: label, first: drawn.length == 1)
+              ? _HeadingRow(
+                  key: key,
+                  label: label,
+                  first: drawn.length == 1,
+                  mark: mark,
+                )
               : _Slid(
                   key: key,
                   dy: dy,
-                  child: _HeadingRow(label: label, first: false),
+                  child: _HeadingRow(label: label, first: false, mark: mark),
                 ),
         );
       }
@@ -1987,7 +2021,7 @@ class _TimelineListState extends State<TimelineList> {
         heading(_agora, l10n.sectionNow);
         addRuns(agora, _agora);
       }
-      heading(day, _label(day, now));
+      heading(day, _label(day, now), mark: _state.marks.on(day));
       if (!shown.any((card) => !card.day.isAfter(day))) {
         rows.add(
           _Slid(
@@ -2789,9 +2823,17 @@ class _AddRow extends StatelessWidget {
 /// One heading, which is a line and not a container: a day of the
 /// calendar, or one of the list's two stages, set alike.
 class _HeadingRow extends StatelessWidget {
-  const _HeadingRow({required this.label, required this.first, super.key});
+  const _HeadingRow({
+    required this.label,
+    required this.first,
+    this.mark,
+    super.key,
+  });
 
   final String label;
+
+  /// The day's mark, drawn after the label when the day is light or off.
+  final DayMark? mark;
 
   /// Whether it is the first thing on the screen, and so needs no room above.
   final bool first;
@@ -2803,7 +2845,13 @@ class _HeadingRow extends StatelessWidget {
         top: first ? AppSpacing.s2 : AppSpacing.s6,
         bottom: AppSpacing.s1,
       ),
-      child: Text(label, style: AppTypography.title),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: AppTypography.title)),
+          if (mark case final mark? when mark.restricted)
+            DayMarkTag(mark: mark),
+        ],
+      ),
     );
   }
 }

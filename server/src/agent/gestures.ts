@@ -25,6 +25,8 @@ import { addDaysIn } from '../time/zone';
 import type { UsersService } from '../users/users.service';
 import { actionOf } from './actions';
 import { HORIZON_DAYS } from './board';
+import { MemoryRhythmStore } from '../rhythm/rhythm.store';
+import { RhythmService } from '../rhythm/rhythm.service';
 import { Gesture, Row, Undo } from './plan';
 
 /**
@@ -44,6 +46,8 @@ export interface Hands {
   routines: RoutinesService;
   /** Where the working day is kept: the menu's own service. */
   users: WorkDays;
+  /** Ciclo and Folgas' own service. */
+  rhythm: RhythmService;
 }
 
 /** What sets a person's working day: `UsersService`, or nothing in a sandbox. */
@@ -116,7 +120,25 @@ export function sandbox(
     events,
     new ConfigService({ LUNNA_TIMEZONE: day.zone }),
   );
-  return handsOver(calendar, tasks, artifacts);
+  // The day's kinds as the real day read them: a copy with none where the
+  // real one had none, so the dry run lays the queue out the same way.
+  const rhythm = new MemoryRhythmStore();
+  if (day.rhythm !== undefined) rhythm.seed(user, day.rhythm);
+  const timeline = new TimelineService(
+    calendar,
+    tasks,
+    undefined,
+    day.rhythm === undefined ? undefined : rhythm,
+  );
+  return handsOver(
+    calendar,
+    tasks,
+    artifacts,
+    timeline,
+    undefined,
+    NO_WORK_DAYS,
+    new RhythmService(rhythm),
+  );
 }
 
 /** The services a gesture is made with, over these stores. */
@@ -127,6 +149,7 @@ export function handsOver(
   timeline = new TimelineService(calendar, tasks),
   layout = new EventLayoutService(timeline, calendar, tasks, artifacts),
   users: WorkDays = NO_WORK_DAYS,
+  rhythm = new RhythmService(new MemoryRhythmStore()),
 ): Hands {
   return {
     timeline,
@@ -137,6 +160,7 @@ export function handsOver(
     deliveries: new ArtifactsService(artifacts, tasks, timeline, layout),
     routines: new RoutinesService(calendar),
     users,
+    rhythm,
   };
 }
 
@@ -211,6 +235,8 @@ export async function snapshot(
   for (const row of routines) keep({ kind: 'routine', row });
   const workDay = user.workDay ?? DEFAULT_WORK_DAY;
   keep({ kind: 'workDay', row: { id: user.id, ...workDay } });
+  const rhythm = await hands.rhythm.read(user);
+  keep({ kind: 'rhythm', row: { id: user.id, ...rhythm } });
 
   return { rows };
 }
@@ -281,6 +307,7 @@ export async function takeBack(
     'event',
     'routine',
     'workDay',
+    'rhythm',
   ])) {
     await put(hands, user, step.it, now);
   }
@@ -305,6 +332,15 @@ async function put(
         { title, startTime, endTime, days, checklist, fixed: true },
         now,
       );
+      return;
+    }
+    case 'rhythm': {
+      const { cycle, rest, daysOff } = it.row;
+      await hands.rhythm.restore(user, {
+        rest,
+        daysOff,
+        ...(cycle === undefined ? {} : { cycle }),
+      });
       return;
     }
     case 'workDay': {
@@ -360,6 +396,7 @@ async function drop(
       await hands.calendar.removeRoutine(user, it.row.id, now);
       return;
     case 'workDay':
+    case 'rhythm':
       // Never made, only changed.
       return;
     case 'task':

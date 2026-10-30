@@ -183,6 +183,7 @@ class Artifact extends Equatable {
     this.blockMinutes,
     this.doneAt,
     this.tasks = const [],
+    this.timeGone,
   });
 
   /// Reads a delivery off the wire, finding its kind and shelf in
@@ -220,6 +221,7 @@ class Artifact extends Equatable {
         for (final task in json['tasks'] as List<dynamic>? ?? const [])
           ArtifactTask.fromJson(task as Map<String, dynamic>),
       ],
+      timeGone: (json['timeGone'] as num?)?.toDouble(),
     );
   }
 
@@ -266,6 +268,12 @@ class Artifact extends Equatable {
   /// Its tasks, in their order.
   final List<ArtifactTask> tasks;
 
+  /// The share of its working time gone, 0 to 1, as the server measured
+  /// it on its last read: days off and light days count nothing. Null
+  /// where nobody measured it (a delivery changed here since), and then
+  /// [progressAt] counts calendar time.
+  final double? timeGone;
+
   /// Whether it has been delivered.
   bool get isDone => doneAt != null;
 
@@ -282,13 +290,16 @@ class Artifact extends Equatable {
     return DateTime(day.year, day.month, day.day + 1);
   }
 
-  /// How much of its time has gone by, from 0 to 1: the time since it was
-  /// begun out of the time from then to the end of its deadline's day.
-  /// Null with no deadline or not begun, since no clock runs then.
+  /// How much of its time has gone by, from 0 to 1: the share of its
+  /// working time the server measured ([timeGone]), or else the time since
+  /// it was begun out of the time from then to the end of its deadline's
+  /// day. Null with no deadline or not begun, since no clock runs then.
   double? progressAt(DateTime now) {
     final due = dueAt;
     final start = startedAt;
     if (due == null || start == null) return null;
+    final measured = timeGone;
+    if (measured != null) return measured.clamp(0, 1);
 
     final total = due.difference(start).inMinutes;
     if (total <= 0) return 1;
@@ -332,6 +343,8 @@ class Artifact extends Equatable {
       deadline: deadline == null ? this.deadline : deadline(),
       doneAt: doneAt == null ? this.doneAt : doneAt(),
       tasks: tasks ?? this.tasks,
+      // A new day or a new start is not what the server measured.
+      timeGone: deadline == null && startedAt == null ? timeGone : null,
     );
   }
 
@@ -351,6 +364,7 @@ class Artifact extends Equatable {
     blockMinutes,
     doneAt,
     tasks,
+    timeGone,
   ];
 }
 
@@ -382,6 +396,7 @@ class Goal extends Equatable {
     this.queued = 0,
     this.queuedCount = 0,
     this.type,
+    this.timeGone,
   });
 
   /// Reads a goal off the wire, finding the kind it counts in [catalog].
@@ -399,6 +414,7 @@ class Goal extends Equatable {
       done: (json['done'] as num?)?.toInt() ?? 0,
       queued: (json['queued'] as num?)?.toInt() ?? 0,
       queuedCount: (json['queuedCount'] as num?)?.toInt() ?? 0,
+      timeGone: (json['timeGone'] as num?)?.toDouble(),
       type: catalog
           .expand((c) => c.types)
           .where((t) => t.id == typeId)
@@ -434,6 +450,10 @@ class Goal extends Equatable {
   /// The kind counted, for a [GoalKind.count] goal.
   final CatalogType? type;
 
+  /// The share of its working time gone, 0 to 1, as the server measured
+  /// it: days off and light days count nothing. Null where nobody did.
+  final double? timeGone;
+
   /// Whether it is being measured on [now], rather than waiting to start.
   bool isActiveAt(DateTime now) => !now.isBefore(start);
 
@@ -443,9 +463,12 @@ class Goal extends Equatable {
   /// The day it is to be reached by: the last it counts.
   DateTime get lastDay => DateTime(end.year, end.month, end.day - 1);
 
-  /// The share of its time gone at [now], from 0 to 1: calendar time, from
-  /// the start of its first day to the end of its last.
+  /// The share of its time gone at [now], from 0 to 1: the working time
+  /// the server measured ([timeGone]), or else calendar time, from the
+  /// start of its first day to the end of its last.
   double timeAt(DateTime now) {
+    final measured = timeGone;
+    if (measured != null) return measured.clamp(0, 1);
     final whole = end.difference(start).inMinutes;
     if (whole <= 0) return 1;
     return (now.difference(start).inMinutes / whole).clamp(0, 1);
@@ -466,6 +489,7 @@ class Goal extends Equatable {
     queued,
     queuedCount,
     type,
+    timeGone,
   ];
 }
 

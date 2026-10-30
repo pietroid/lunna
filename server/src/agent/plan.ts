@@ -6,6 +6,7 @@ import {
   RoutineDays,
 } from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
+import type { DayKind, Rhythm } from '../time/day-kinds';
 
 /**
  * How a change reads on the plan card. What the agent may do is [Gesture]:
@@ -28,7 +29,8 @@ export type ChangeKind =
   | 'remove_goal'
   | 'add_routine'
   | 'edit_routine'
-  | 'set_work_day';
+  | 'set_work_day'
+  | 'set_rhythm';
 
 /** One line of a plan, as the app draws it. */
 export interface PlanChange {
@@ -195,7 +197,14 @@ export type Gesture =
       /** Minutes after midnight. */
       start: number;
       end: number;
-    };
+    }
+  /** Ciclo's button, or a day of its grid ahead: a period began, or will. */
+  | { do: 'period_started'; day: string }
+  | { do: 'predict_period'; day: string | null }
+  /** Folgas' weekend rows. */
+  | { do: 'set_weekend'; saturday?: DayKind; sunday?: DayKind }
+  /** Folgas' list: a date off, or a weekend day put back to work. */
+  | { do: 'day_off'; day: string; kind: 'off' | 'work'; title: string };
 
 /** The something new a gesture writes down, when it writes a card. */
 export function newOf(gesture: Gesture): NewThing | undefined {
@@ -229,6 +238,8 @@ export type Row =
   | { kind: 'routine'; row: CalendarRoutine }
   /** The person's working day, minutes after midnight; `id` is theirs. */
   | { kind: 'workDay'; row: { id: string; start: number; end: number } }
+  /** Ciclo and Folgas, whole; `id` is the person's. */
+  | { kind: 'rhythm'; row: { id: string } & Rhythm }
   | StoredRow;
 
 /**

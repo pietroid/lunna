@@ -1857,4 +1857,286 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get demoSuggestionRenata => 'O mapa da Renata é para depois de amanhã e ainda faltam 2 h. Encaixo 45 min às 11:10, antes do standup?';
+
+  @override
+  String get cyclePhaseMenstrual => 'Menstruação';
+
+  @override
+  String get cyclePhaseFollicular => 'Folicular';
+
+  @override
+  String get cyclePhaseOvulatory => 'Ovulação';
+
+  @override
+  String get cyclePhaseLuteal => 'Lútea';
+
+  @override
+  String cycleDayPhase(int day, String phase) {
+    return 'Dia $day do ciclo · $phase';
+  }
+
+  @override
+  String dayLightTag(String hours) {
+    return 'Dia leve · $hours';
+  }
+
+  @override
+  String get dayOffTag => 'Folga';
+
+  @override
+  String get dayOffWeekend => 'Fim de semana · folga';
+
+  @override
+  String get dayOffPeriod => 'Menstruação · folga';
+
+  @override
+  String get dayOffDate => 'Folga marcada';
+
+  @override
+  String get menuCycle => 'Ciclo';
+
+  @override
+  String get menuCycleHint => 'Registre a menstruação para o app acompanhar as fases';
+
+  @override
+  String menuCycleToday(int day, String phase) {
+    return 'Dia $day · $phase';
+  }
+
+  @override
+  String get menuDaysOff => 'Folgas';
+
+  @override
+  String get menuDaysOffHint => 'Fins de semana, feriados e dias leves';
+
+  @override
+  String get menuRestSection => 'Ritmo';
+
+  @override
+  String get cycleTitle => 'Ciclo';
+
+  @override
+  String cycleTodayOf(int day, int length) {
+    return 'Dia $day de $length';
+  }
+
+  @override
+  String cyclePhaseUntil(String phase, DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$phase até $dateString';
+  }
+
+  @override
+  String cycleEffectLight(String hours) {
+    return 'Dia leve: até $hours de tarefas, nenhuma entrega.';
+  }
+
+  @override
+  String get cycleEffectOff => 'Folga: nada da fila vem para cá.';
+
+  @override
+  String get cycleEffectWork => 'Dia normal de trabalho.';
+
+  @override
+  String get cycleNext30 => 'Próximos 30 dias';
+
+  @override
+  String get cycleSettings => 'Seu ciclo';
+
+  @override
+  String get cycleLastStart => 'Início da última menstruação';
+
+  @override
+  String get cycleLength => 'Duração do ciclo';
+
+  @override
+  String get cyclePeriodLength => 'Duração da menstruação';
+
+  @override
+  String cycleDays(int count) {
+    return '$count dias';
+  }
+
+  @override
+  String get cyclePeriodKind => 'Na menstruação';
+
+  @override
+  String get dayKindWork => 'Normal';
+
+  @override
+  String get dayKindLight => 'Leve';
+
+  @override
+  String get dayKindOff => 'Folga';
+
+  @override
+  String get cycleStarted => 'Menstruação começou hoje';
+
+  @override
+  String get cycleHelp => 'A previsão conta a duração do ciclo a partir do início da última menstruação. Toque num dia da grade para corrigi-la.';
+
+  @override
+  String get daysOffTitle => 'Folgas';
+
+  @override
+  String get daysOffWeekend => 'Fim de semana';
+
+  @override
+  String get daysOffSaturday => 'Sábado';
+
+  @override
+  String get daysOffSunday => 'Domingo';
+
+  @override
+  String get daysOffLight => 'Dia leve';
+
+  @override
+  String get daysOffLightBudget => 'Tarefas num dia leve';
+
+  @override
+  String get daysOffLightHelp => 'Num dia leve a fila põe só tarefas soltas, até esse limite. As tarefas de entregas esperam o próximo dia de trabalho, e o prazo delas conta só os dias de trabalho.';
+
+  @override
+  String get daysOffDates => 'Próximas folgas';
+
+  @override
+  String cycleDate(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString';
+  }
+
+  @override
+  String daysOffEntry(DateTime date, String title) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('EEE, d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString · $title';
+  }
+
+  @override
+  String daysOffRange(DateTime from, DateTime to, String title) {
+    final intl.DateFormat fromDateFormat = intl.DateFormat.d(localeName);
+    final String fromString = fromDateFormat.format(from);
+    final intl.DateFormat toDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String toString = toDateFormat.format(to);
+
+    return '$fromString a $toString · $title';
+  }
+
+  @override
+  String get cycleWeekdays => 'D,S,T,Q,Q,S,S';
+
+  @override
+  String get dayLightShort => 'dia leve';
+
+  @override
+  String get dayOffShort => 'folga';
+
+  @override
+  String get dayOffWorkHere => 'Trabalhar';
+
+  @override
+  String get cycleTapHint => 'Toque num dia para corrigir';
+
+  @override
+  String get cycleNextStart => 'Próxima menstruação';
+
+  @override
+  String cycleNextPredicted(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString · prevista';
+  }
+
+  @override
+  String cycleNextCorrected(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString · corrigida por você';
+  }
+
+  @override
+  String cycleDayTitle(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat('EEEE, d \'de\' MMMM', localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    return '$dateString';
+  }
+
+  @override
+  String cycleDayPredicted(int day, String phase) {
+    return 'Previsto: dia $day do ciclo · $phase';
+  }
+
+  @override
+  String get cycleDayStarted => 'A menstruação começou neste dia';
+
+  @override
+  String get cycleDayWillStart => 'A menstruação vai começar neste dia';
+
+  @override
+  String get cycleDayHelp => 'A previsão dos dias seguintes passa a contar daqui, e os dias leves andam junto.';
+
+  @override
+  String get cycleBackToPrediction => 'Voltar à previsão';
+
+  @override
+  String get daysOffWeekendHelp => 'Todo fim de semana é folga. Para trabalhar num deles, toque em Trabalhar na lista abaixo.';
+
+  @override
+  String daysOffWeekendEntry(DateTime saturday, DateTime sunday) {
+    final intl.DateFormat saturdayDateFormat = intl.DateFormat('d/M', localeName);
+    final String saturdayString = saturdayDateFormat.format(saturday);
+    final intl.DateFormat sundayDateFormat = intl.DateFormat('d/M', localeName);
+    final String sundayString = sundayDateFormat.format(sunday);
+
+    return '$saturdayString e $sundayString';
+  }
+
+  @override
+  String get daysOffWork => 'Trabalhar';
+
+  @override
+  String daysOffWorking(String dates) {
+    return '$dates · você vai trabalhar';
+  }
+
+  @override
+  String get daysOffUndo => 'Desfazer';
+
+  @override
+  String get pickerDateTitle => 'Que dia?';
+
+  @override
+  String get cyclePickLength => 'Quantos dias dura o ciclo?';
+
+  @override
+  String get cyclePickPeriod => 'Quantos dias dura a menstruação?';
+
+  @override
+  String get daysOffAddTitle => 'Nova folga';
+
+  @override
+  String get daysOffAddName => 'Nome (opcional): feriado, viagem';
+
+  @override
+  String get daysOffAddConfirm => 'Marcar folga';
+
+  @override
+  String get daysOffRemove => 'Tirar esta folga';
+
+  @override
+  String get daysOffRemoveHelp => 'O dia volta a ser o que o fim de semana e o ciclo fazem dele.';
+
+  @override
+  String get daysOffFailure => 'Não deu para salvar. Tente de novo.';
+
+  @override
+  String get agentChangeRhythm => 'Ciclo e folgas';
 }

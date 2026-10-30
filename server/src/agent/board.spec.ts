@@ -1,3 +1,4 @@
+import { NO_MARKS } from '../time/day-kinds';
 import { Day } from '../events/timeline.service';
 import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import { Board, sameTitle } from './board';
@@ -16,6 +17,8 @@ function boardAt(now: string, zone = 'America/Sao_Paulo'): Board {
     placed: new Map(),
     routines: new Map(),
     artifacts: new Map(),
+    marks: NO_MARKS,
+    days: 2,
   };
 
   return new Board(day, {
@@ -23,6 +26,7 @@ function boardAt(now: string, zone = 'America/Sao_Paulo'): Board {
     backlog: [],
     cards: [],
     workDay: { start: '07:00', end: '22:00' },
+    days: [],
   });
 }
 
