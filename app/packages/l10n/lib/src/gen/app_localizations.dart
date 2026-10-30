@@ -983,6 +983,18 @@ abstract class AppLocalizations {
   /// **'Um recado no começo e no fim do dia.'**
   String get notificationChannelDailyDescription;
 
+  /// The local notification when the agent's next suggestion is on the Feed.
+  ///
+  /// In pt, this message translates to:
+  /// **'{brand, select, lunna{A Lunna te mandou uma mensagem} other{O Focus te mandou uma mensagem}}'**
+  String notificationSuggestionTitle(String brand);
+
+  /// No description provided for @notificationSuggestionBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tenho uma ideia para o próximo passo. Vem ver?'**
+  String get notificationSuggestionBody;
+
   /// No description provided for @remindersAskTitle.
   ///
   /// In pt, this message translates to:
@@ -2074,6 +2086,24 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'novo objetivo'**
   String get agentChangeNewGoal;
+
+  /// No description provided for @agentChangeNewRoutine.
+  ///
+  /// In pt, this message translates to:
+  /// **'nova rotina'**
+  String get agentChangeNewRoutine;
+
+  /// No description provided for @agentChangeEditRoutine.
+  ///
+  /// In pt, this message translates to:
+  /// **'rotina'**
+  String get agentChangeEditRoutine;
+
+  /// No description provided for @agentChangeWorkDay.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia de trabalho'**
+  String get agentChangeWorkDay;
 
   /// No description provided for @agentChangeEditGoal.
   ///

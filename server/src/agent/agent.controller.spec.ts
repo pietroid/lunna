@@ -21,7 +21,11 @@ import {
   ArtifactStore,
 } from '../artifacts/artifact.store';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
-import { DEFAULT_WORK_DAY } from '../time/work-hours';
+import { Trace } from '../common/trace';
+import { RoutinesService } from '../routines/routines.service';
+import { DEFAULT_WORK_DAY, WorkDay } from '../time/work-hours';
+import { formatTimeIn } from '../time/zone';
+import { UsersService } from '../users/users.service';
 import { AgentController } from './agent.controller';
 import { AgentReply, AgentService } from './agent.service';
 import {
@@ -48,6 +52,20 @@ const USER = {
   timeZone: ZONE,
   dayStart: DEFAULT_WORK_DAY.start,
   dayEnd: DEFAULT_WORK_DAY.end,
+};
+
+/**
+ * The working day kept as the database would: on the signed-in person, so
+ * the next request reads it. Every day set is noted.
+ */
+const workDays = {
+  set: [] as WorkDay[],
+  setWorkDay(_userId: string, day: WorkDay): Promise<void> {
+    workDays.set.push(day);
+    USER.dayStart = day.start;
+    USER.dayEnd = day.end;
+    return Promise.resolve();
+  },
 };
 
 class StubSessionGuard implements CanActivate {
@@ -192,6 +210,7 @@ describe('the agent', () => {
         { provide: TaskStore, useClass: MemoryTaskStore },
         { provide: ArtifactStore, useClass: MemoryArtifactStore },
         { provide: ConversationStore, useClass: MemoryConversationStore },
+        { provide: UsersService, useValue: workDays },
       ],
     })
       .overrideGuard(SessionGuard)
@@ -207,6 +226,9 @@ describe('the agent', () => {
 
   afterEach(async () => {
     await app.close();
+    workDays.set = [];
+    USER.dayStart = DEFAULT_WORK_DAY.start;
+    USER.dayEnd = DEFAULT_WORK_DAY.end;
   });
 
   const post = (path: string, payload?: object) =>
@@ -2042,6 +2064,215 @@ describe('the agent', () => {
       const turn = await ask('Entrega a tese às 10');
       expect(turn.status).toBe(201);
       expect((turn.body as AgentReply).plan).toBeUndefined();
+    });
+  });
+
+  describe('Rotina and the working day', () => {
+    const routines = () => app.get(CalendarService).routines(USER);
+
+    /** A routine as Rotina writes one. */
+    const routine = (title: string, time: string, minutes: number) =>
+      new RoutinesService(app.get(CalendarService)).create(
+        USER,
+        { title, time, durationMinutes: minutes, days: 'weekdays' },
+        Trace.start(USER.id),
+        NOW,
+      );
+
+    /** The cards of tomorrow titled [title], as hours "HH:mm" in São Paulo. */
+    const tomorrowAt = async (title: string) =>
+      (await day()).cards
+        .filter((it) => it.title === title && it.day === TOMORROW)
+        .map((it) => formatTimeIn(new Date(it.startTime), ZONE));
+
+    /** The ref the board gave the routine titled [title]. */
+    const routineRef = (messages: ChatMessage[], title: string) => {
+      const read = messages.map((it) => it.content).join('\n');
+      const found = new RegExp(`\\b(r\\d+) · ${title} ·`).exec(read);
+      if (found === null) throw new Error(`No routine "${title}"`);
+      return found[1];
+    };
+
+    it('writes a routine with its checklist, draws it as Rotina, and takes it back', async () => {
+      model.steps = [
+        () =>
+          call('answer', {
+            caption: 'Uma manhã para o mapa, antes de tudo.',
+            blocks: [
+              { type: 'preview' },
+              {
+                type: 'plan',
+                changes: [
+                  {
+                    do: 'new_routine',
+                    title: 'Manhã de mapas',
+                    time: '08:00',
+                    minutes: 90,
+                    days: 'weekdays',
+                    checklist: ['Café', 'Abrir o mapa do dia', 'Revisar'],
+                  },
+                ],
+              },
+            ],
+          }),
+      ];
+
+      const asked = await ask('Monta uma rotina de manhã para os mapas');
+      expect(asked.status).toBe(201);
+      const reply = asked.body as AgentReply;
+      const [, preview] = drawn(reply);
+      expect(preview).toMatchObject({
+        component: 'Preview',
+        applies: 'Aplicar anota a rotina.',
+        data: [
+          {
+            type: 'routine',
+            title: 'Manhã de mapas',
+            start: 8 * 60,
+            minutes: 90,
+            days: 'weekdays',
+            checklist: ['Café', 'Abrir o mapa do dia', 'Revisar'],
+          },
+        ],
+      });
+      const plan = reply.plan!;
+      expect(plan.changes).toEqual([
+        {
+          kind: 'add_routine',
+          title: 'Manhã de mapas',
+          minutes: 90,
+          routine: true,
+          hours: '08:00–09:30',
+          days: 'weekdays',
+          checklist: ['Café', 'Abrir o mapa do dia', 'Revisar'],
+        },
+      ]);
+      // Proposed only.
+      expect(await routines()).toEqual([]);
+
+      expect((await post(`/agent/plans/${plan.id}/apply`)).status).toBe(201);
+      expect(await routines()).toMatchObject([
+        {
+          title: 'Manhã de mapas',
+          days: 'weekdays',
+          checklist: ['Café', 'Abrir o mapa do dia', 'Revisar'],
+        },
+      ]);
+      expect(await tomorrowAt('Manhã de mapas')).toEqual(['08:00']);
+
+      expect((await post(`/agent/plans/${plan.id}/undo`)).status).toBe(201);
+      expect(await routines()).toEqual([]);
+      expect(await tomorrowAt('Manhã de mapas')).toEqual([]);
+    });
+
+    it('gives a routine another hour and list by its ref, and puts it back', async () => {
+      await routine('Academia', '18:00', 60);
+      expect(await tomorrowAt('Academia')).toEqual(['18:00']);
+      model.steps = [
+        (messages) =>
+          propose({
+            changes: [
+              {
+                do: 'edit_routine',
+                ref: routineRef(messages, 'Academia'),
+                time: '07:00',
+                checklist: ['Alongar'],
+              },
+            ],
+          }),
+      ];
+
+      const asked = await ask('Passa a academia para as 7');
+      expect(asked.status).toBe(201);
+      const plan = (asked.body as AgentReply).plan!;
+      expect(plan.changes).toEqual([
+        {
+          kind: 'edit_routine',
+          id: (await routines())[0].id,
+          title: 'Academia',
+          minutes: 60,
+          routine: true,
+          hours: '07:00–08:00',
+          wasHours: '18:00–19:00',
+          days: 'weekdays',
+          checklist: ['Alongar'],
+        },
+      ]);
+      // The dry run left the real day alone.
+      expect(await tomorrowAt('Academia')).toEqual(['18:00']);
+
+      expect((await post(`/agent/plans/${plan.id}/apply`)).status).toBe(201);
+      expect(await tomorrowAt('Academia')).toEqual(['07:00']);
+      expect((await routines())[0].checklist).toEqual(['Alongar']);
+
+      expect((await post(`/agent/plans/${plan.id}/undo`)).status).toBe(201);
+      expect(await tomorrowAt('Academia')).toEqual(['18:00']);
+      expect((await routines())[0].checklist).toEqual([]);
+    });
+
+    it('refuses a routine on another one, so the model asks', async () => {
+      await routine('Almoço', '12:00', 60);
+      model.steps = [
+        () =>
+          propose({
+            changes: [
+              {
+                do: 'new_routine',
+                title: 'Leitura',
+                time: '12:30',
+                minutes: 30,
+                days: 'daily',
+              },
+            ],
+          }),
+        (messages) => {
+          expect(lastTool(messages).error).toContain(
+            'would sit on r1 "Almoço" (12:00–13:00, weekdays), a routine',
+          );
+          return say('Que tal às 13:00?')(messages);
+        },
+      ];
+
+      const turn = await ask('Quero ler meia hora ao meio-dia e meia');
+      expect((turn.body as AgentReply).plan).toBeUndefined();
+      expect(await routines()).toHaveLength(1);
+    });
+
+    it('sets the working day, lays the dry run out in it, and takes it back', async () => {
+      await task('Revisar contrato', 60, false);
+      model.steps = [
+        () =>
+          propose({
+            changes: [{ do: 'set_work_day', opens: '12:00', closes: '20:00' }],
+          }),
+      ];
+
+      const asked = await ask('Hoje só começo ao meio-dia');
+      expect(asked.status).toBe(201);
+      const plan = (asked.body as AgentReply).plan!;
+      expect(plan.changes).toEqual([
+        {
+          kind: 'set_work_day',
+          title: 'Dia de trabalho',
+          minutes: 8 * 60,
+          routine: false,
+          hours: '12:00–20:00',
+          wasHours: '07:00–22:00',
+        },
+      ]);
+      // The queue the dry run laid out waits for the new opening.
+      expect(plan.pushed).toMatchObject([
+        { title: 'Revisar contrato', at: '2026-03-10T15:00:00.000Z' },
+      ]);
+
+      expect((await post(`/agent/plans/${plan.id}/apply`)).status).toBe(201);
+      expect(workDays.set).toEqual([{ start: 12 * 60, end: 20 * 60 }]);
+      expect((await post(`/agent/plans/${plan.id}/undo`)).status).toBe(201);
+      expect(workDays.set.at(-1)).toEqual(DEFAULT_WORK_DAY);
+      expect([USER.dayStart, USER.dayEnd]).toEqual([
+        DEFAULT_WORK_DAY.start,
+        DEFAULT_WORK_DAY.end,
+      ]);
     });
   });
 });

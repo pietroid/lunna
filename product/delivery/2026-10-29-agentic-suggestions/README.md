@@ -23,6 +23,18 @@ On the issue, after the design: **"Approve"**. The build was then run with:
 >
 > The design was approved on the issue. Do Phases 3 and 4 unattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. In section 5 write "Measured by the queue: see the pull request." instead of .tool/cost tables.
 
+On the issue, after the build, answering its three open questions:
+
+> Please build phase 6 here.
+>
+> Yes it should be Lunna, só branded
+>
+> Yes golden scenario has certain amount of goal
+
+So Phase 6 (the routine actions) is built in this PR (3.8), the
+suggestion's notification names the brand's agent ("A Lunna te mandou uma
+mensagem"), and the golden scenario's goal stays an amount to bill.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -50,7 +62,7 @@ RFC's order, are the phases:
 | 3 · The three parts | header card, the preview on the page, actions card, on Feed and in the chat (board) | ✓ |
 | 4 · The welcome | fixed copy, never expires, for whoever never had a suggestion | ✓ |
 | 5 · `next_at` | the follow-up (3–24 h, default 24 h) counted from the last answer, moved into the working day, replacing `validUntil`; a timer per person, settled on read as catch-up; the phone's local notification; the morning reminder names an unseen suggestion | ✓ |
-| 6 · Routines in the registry | `new_routine`, `edit_routine`, `set_work_day` (15 → 18 of 42 routes) | **split off** (see 3.6) |
+| 6 · Routines in the registry | `new_routine`, `edit_routine`, `set_work_day` | ✓ after review (3.8) |
 
 All of it ships in this PR because the welcome hands over to turns that
 reach level 6, and level 6 needs the routine actions. If the build runs
@@ -113,7 +125,7 @@ From the RFC, still the person's:
 
 - Is the goal in the golden scenario an amount to bill (today's only
   goal), or something else, which would mean opening `count` goals?
-  The build assumes money.
+  **Answered: an amount to bill.**
 - Should "based on her cycle" mean phases the routine knows about, or is
   it enough for the agent to place blocks by day? The build assumes by
   day (today's `daily` / `weekdays` / `weekend`).
@@ -202,10 +214,8 @@ nextAt, validUntil, action?, opening }`; new `POST
 
 ### 3.6 Where the build differs from the design
 
-- **Phase 6 (routines in the registry) is split off**, as the design
-  allowed. The `routine` level's turn is told it cannot write a routine
-  and points to Rotina, with no plan (scene 4); the `RoutinePreview` widget
-  stays for that PR. Level 6 is met by **a routine written**: the working
+- **Phase 6 (routines in the registry) was split off in the first
+  build** and is built after the review: see 3.8. Level 6 is met by **a routine written**: the working
   day has a default (07:00–22:00) that cannot be told apart from one
   chosen, so "working day set" is not checked.
 - **The model doesn't name what to preview**: a `preview` block takes no
@@ -215,10 +225,10 @@ nextAt, validUntil, action?, opening }`; new `POST
 - **A turn's plan lives two hours** (`PLAN_TTL_MS`): past it, the next read
   asks the turn again of the day as it is, rather than drawing a card
   whose Aplicar would fail.
-- **The notification names no brand**: "Uma sugestão para o seu mês /
-  Tenho uma ideia para o próximo passo. Vem ver?", since the server knows
-  no brand. The morning reminder does **not** yet name an unseen
-  suggestion: nothing records "seen".
+- **The server's notification names no brand** ("Uma sugestão para o seu
+  mês"), since the server knows no brand; after the review **the phone
+  rewrites it** per brand (3.8). The morning reminder does **not** yet
+  name an unseen suggestion: nothing records "seen".
 - **Not built**: asking the next level's turn into the same conversation
   right after Aplicar, and an eval case per level (`npm run eval:agent`
   costs money and is run by hand).
@@ -243,6 +253,103 @@ Focus and Lunna, `server-eslint`, `server-tsc` and `server-test`. A first
 run failed only `app-analyze`, on lint notes in the preview entry point
 (`app/lib/agentic_suggestions_preview.dart`), which Phase 4 deletes. With
 it deleted, the second run passed.
+
+### 3.8 Phase 6, after the review: routines in the registry
+
+The reply asked for Phase 6 here, the notification branded, and the goal
+kept as money. **The agent can now write a routine, change one, and set
+the working day**, so the `routine` level's turn ends in a plan with a
+preview instead of words pointing at Rotina.
+
+**The prints** (`?s=4`: Feed at the routine level, the routine drawn as
+Rotina draws it, the line for the working day, Ajustar and Aplicar;
+`?s=5`: the chat after Ajustar, a plan card with a new routine, a routine
+moved, and the working day):
+
+**Lunna**
+
+![Phase 6, Lunna](img/build-phase6-lunna.png)
+
+**Focus**
+
+![Phase 6, Focus](img/build-phase6-focus.png)
+
+**Server**
+
+| File | What |
+|------|------|
+| `agent/actions/routines.ts` | `new_routine` (`title`, `time`, `minutes`, `days`, `checklist`), `edit_routine` (`ref` r1, any of those), `set_work_day` (`opens`, `closes`): resolved, made through `RoutinesService.create`/`update` and `UsersService.setWorkDay`, each with its card line. Refused: a routine with the same name (unless `duplicate`), one sitting on another routine on a day both fall on, a working day under an hour |
+| `agent/actions/action.ts`, `index.ts` | the args `days`, `checklist`, `opens`, `closes`; the `routine` domain in the registry |
+| `agent/board.ts` | routines under refs (`r1 · Academia · 18:00–19:00 · weekdays · checklist: …`) |
+| `agent/gestures.ts` | `Hands.routines` and `Hands.users`; the sandbox seeds the routines (and each routine day under its occurrence) when a plan touches one; the snapshot keeps routines and the working day; Desfazer puts a routine back or removes it, and its days not begun go with it |
+| `agent/agent.service.ts` | the dry run on a copy of the person (`set_work_day` lays the sandbox's queue out in the new hours); `routine` preview items; `UsersService` injected |
+| `agent/plan.ts`, `answer.ts`, `speech.ts` | the gestures, `add_routine` / `edit_routine` / `set_work_day` lines (`hours`, `wasHours`, `days`, `wasDays`, `checklist`), the `routine` preview item, "Aplicar anota a rotina e o novo horário do dia." |
+| `agent/agent.prompt.ts`, `work-quality.ts` | the verbs told to the model; the `routine` topic now asks for `new_routine` (and `set_work_day` when the day's hours should change) with a preview |
+| `calendar/calendar.store.ts` | `MemoryCalendarStore.seedRoutine`, and `seed` with an occurrence key |
+| `tool/coverage.mjs` | the new hands: the agent reaches **20 of 43** routes (was 15, plus one in part) |
+
+**App**
+
+- `PlanChangeKind.addRoutine`, `editRoutine`, `setWorkDay`, and
+  `PlanChange.hours`, `wasHours`, `days`, `wasDays`, `checklist`. The plan
+  card draws a routine with Rotina's fill and `AppIcons.repeat`, the old
+  hours and days struck; the working day with `AppIcons.time`.
+- `PreviewItem.fromJson` reads `routine` into `RoutinePreview`, drawn by
+  the `RoutinePreviewRow` the design wrote.
+- **The notification is branded**: `NotificationScheduler(brand:
+  AppBrand.id)` rewrites the suggestion's copy to "A Lunna te mandou uma
+  mensagem" / "O Focus te mandou uma mensagem" (`notificationSuggestionTitle`)
+  with "Tenho uma ideia para o próximo passo. Vem ver?". Every other
+  notification keeps the server's words.
+- New strings: `agentChangeNewRoutine`, `agentChangeEditRoutine`,
+  `agentChangeWorkDay`, `notificationSuggestionTitle`,
+  `notificationSuggestionBody`.
+
+**Tests**
+
+- Server, end to end (`agent.controller.spec.ts`, "Rotina and the working
+  day", 4 new): a routine with its checklist is proposed, previewed as
+  Rotina, applied (tomorrow at 08:00) and undone to nothing; a routine is
+  moved by its ref (18:00 → 07:00, a checklist) with the real day left
+  alone by the dry run, then undone back to 18:00; a routine on another is
+  refused so the model asks; the working day set to 12:00–20:00 pushes
+  the queue to 12:00 in the dry run, is saved through `UsersService`, and
+  undone to 07:00–22:00. The whole server suite: see 3.9.
+- App: the plan card's three new lines (`history_test.dart`), the
+  `routine` preview decoded (`agent_test.dart`): the `agent` package's 32
+  tests in those two files pass. The notification's copy under both
+  brands, the rest untouched (`notification_scheduler_test.dart`, 26 pass).
+
+**Decided unattended (Phase 6)**
+
+- **`set_work_day` changes the working day for good**, as the Menu does;
+  there is no "only today". A day that starts later just today is a block
+  at its start, which the agent could already write.
+- **A routine may not sit on another** on a day both fall on, the same
+  rule the dry run already applies to fixed events.
+- **No `remove_routine`**: the RFC named three verbs, and deleting a
+  routine is a destructive change the suggestion never needs. Rotina still
+  removes by hand.
+- The plan card's working-day line is titled by the app ("Dia de
+  trabalho"), whatever the server sends.
+- The model gives a routine's checklist in full (`[]` takes it away),
+  never one item added or removed.
+
+**Not run**: the routine level's turn against a real model (`npm run
+eval:agent` costs money and has no routine case yet), and the
+notification on a phone.
+
+### 3.9 `.tool/check` (Phase 6)
+
+**Passes.** Every step is green: `app-analyze`; the tests of `agent`,
+`analytics`, `api_client`, `app_ui`, `artifacts`, `notifications` and
+`timeline` under Focus and Lunna; `server-eslint`, `server-tsc` and
+`server-test` (389 tests in 27 suites). The first run failed only on
+`server-eslint` (Prettier formatting in the new files, and a `this` in the
+specs' fake `UsersService`), and the second on an unneeded import in
+`background_refresh.dart` and two long lines in my tests. All of them were
+fixed, and the last run passed every step. `node tool/coverage.mjs`: every
+handler hands its work to a service.
 
 ## 4. How to turn it on
 

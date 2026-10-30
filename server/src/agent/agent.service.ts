@@ -19,11 +19,14 @@ import { TimelineService } from '../events/timeline.service';
 import { ArtifactStore } from '../artifacts/artifact.store';
 import { ArtifactsService } from '../artifacts/artifacts.service';
 import { addDays, daysBetween, endOfMonth } from '../artifacts/stretch';
+import { RoutinesService } from '../routines/routines.service';
 import { TaskStore } from '../tasks/task.store';
+import { UsersService } from '../users/users.service';
 import {
   addMinutes,
   DEFAULT_WORK_DAY,
   nextFreeSlot,
+  parseMinuteOfDay,
   roundUpToFiveMinutes,
   workWindowFor,
 } from '../time/work-hours';
@@ -68,11 +71,13 @@ import {
   handsOver,
   Made,
   make,
+  NO_WORK_DAYS,
   sandbox,
   Seed,
   snapshot,
   takeBack,
   undoOf,
+  WorkDays,
 } from './gestures';
 import {
   ChatMessage,
@@ -273,6 +278,9 @@ export class AgentService {
   /** The tools, a plan's changes in the shape `AGENT_SCHEMA` names. */
   private readonly _tools: ToolDefinition[];
   private readonly _deliveries: ArtifactsService;
+  private readonly _routines: RoutinesService;
+  /** Where the working day is kept; nowhere in the tests that leave it out. */
+  private readonly _users: WorkDays;
   /**
    * The doubt each conversation was last left with, by one of its answers'
    * plans: answered by typing rather than a tap, the options missed.
@@ -295,7 +303,9 @@ export class AgentService {
     @Optional()
     @Inject(ANALYTICS)
     private readonly _analytics: Analytics = new NoAnalytics(),
+    @Optional() users?: UsersService,
   ) {
+    this._users = users ?? NO_WORK_DAYS;
     this._plans = plans ?? new MemoryPlanStore();
     this._suggestions = suggestions ?? new MemorySuggestionStore();
     this._tools = toolsFor(schemaShapeOf(config?.get<string>('AGENT_SCHEMA')));
@@ -306,6 +316,7 @@ export class AgentService {
       _timeline,
       _layout,
     ).deliveries;
+    this._routines = new RoutinesService(_calendar);
   }
 
   get configured(): boolean {
@@ -320,6 +331,8 @@ export class AgentService {
       tasks: this._tasks,
       artifacts: this._artifacts,
       deliveries: this._deliveries,
+      routines: this._routines,
+      users: this._users,
     };
   }
 
@@ -530,7 +543,7 @@ export class AgentService {
     trace: Trace,
     now: Date,
   ): Promise<Omit<TurnResult, 'conversationId'>> {
-    const [day, artifacts, artifactTasks, categories, types, goals] =
+    const [day, artifacts, artifactTasks, categories, types, goals, routines] =
       await Promise.all([
         this._timeline.day(user, HORIZON_DAYS, now),
         this._artifacts.list(user),
@@ -538,6 +551,7 @@ export class AgentService {
         this._artifacts.categories(user),
         this._artifacts.types(user),
         this._artifacts.goals(user),
+        this._calendar.routines(user),
       ]);
     const seed: Seed = {
       day,
@@ -546,6 +560,7 @@ export class AgentService {
       categories,
       types,
       goals,
+      routines,
     };
     const board = new Board(day, this._timeline.view(day), {
       refs: this._refsOf(conversationId),
@@ -763,6 +778,7 @@ export class AgentService {
         hands,
         user,
         undoOf(before, await snapshot(hands, user, now)),
+        now,
       );
       throw new AgentError(
         'drift',
@@ -863,6 +879,7 @@ export class AgentService {
       artifactTasks,
       types,
       goals,
+      routines,
     });
     const running = board.goals.find(
       (it) => it.goal.starts <= board.today && board.today <= it.goal.deadline,
@@ -1832,9 +1849,15 @@ export class AgentService {
     drafts: Draft[],
     group?: string,
   ): Promise<Plan> {
-    const { user, board, now, trace } = turn;
+    const { board, now, trace } = turn;
+    // A copy: set_work_day gives the sandbox's person other hours.
+    const user = { ...turn.user };
     const before = board.day;
-    const hands = sandbox(user, turn.seed);
+    const hands = sandbox(
+      user,
+      turn.seed,
+      drafts.some((it) => it.gesture.do.endsWith('_routine')),
+    );
     const ids: string[] = [];
     const made: Made = new Map();
 
@@ -2337,7 +2360,8 @@ function ddmm(day: string): string {
  * What [drafts] made on the sandbox [hands], as the tabs will draw it: each
  * new goal, and the goal running today when a new delivery counts towards
  * it, with what its open deliveries bring (the plan's included); then each
- * new delivery. Nothing when the plan makes neither.
+ * new delivery; then each routine written or changed, as Rotina will have
+ * it. Nothing when the plan makes none of them.
  */
 async function previewsOf(
   hands: Hands,
@@ -2350,7 +2374,20 @@ async function previewsOf(
     ids.filter((_, i) => drafts[i].gesture.do === kind);
   const newGoals = made('new_goal');
   const newArtifacts = made('new_artifact');
-  if (newGoals.length === 0 && newArtifacts.length === 0) return [];
+  const routineIds = [...made('new_routine'), ...made('edit_routine')];
+  const routines = (
+    routineIds.length === 0 ? [] : await hands.routines.list(user)
+  )
+    .filter((it) => routineIds.includes(it.id))
+    .map((it): PreviewItem => ({
+      type: 'routine',
+      title: it.title,
+      start: parseMinuteOfDay(it.time) ?? 0,
+      minutes: it.durationMinutes,
+      days: it.days,
+      checklist: it.checklist,
+    }));
+  if (newGoals.length === 0 && newArtifacts.length === 0) return routines;
 
   const answer = await hands.deliveries.answer(user, now);
   const today = isoDayIn(now, hands.timeline.zone(user));
@@ -2386,5 +2423,6 @@ async function previewsOf(
       ...(it.deadline === null ? {} : { deadline: it.deadline }),
       ...(it.value === null ? {} : { value: it.value }),
     })),
+    ...routines,
   ];
 }

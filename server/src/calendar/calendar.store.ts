@@ -135,17 +135,27 @@ export class MemoryCalendarStore extends CalendarStore {
   private readonly _events = new Map<string, StoredEvent>();
   private readonly _routines = new Map<string, StoredRoutine>();
 
-  /** Puts [event] on [user]'s calendar as it is, id and all. */
+  /**
+   * Puts [event] on [user]'s calendar as it is, id and all. A day of a
+   * routine seeded with its [occurrenceKey] is not written again by a read.
+   */
   seed(
     user: CalendarUser,
     event: Omit<CalendarEvent, 'notes'> & { notes?: string },
+    occurrenceKey?: string,
   ): void {
     this._events.set(event.id, {
       ...event,
       notes: event.notes ?? '',
       userId: user.id,
       cancelled: false,
+      ...(occurrenceKey === undefined ? {} : { occurrenceKey }),
     });
+  }
+
+  /** Puts [routine] on [user]'s calendar as it is, id and all. */
+  seedRoutine(user: CalendarUser, routine: CalendarRoutine): void {
+    this._routines.set(routine.id, { ...routine, userId: user.id });
   }
 
   /** Every live event of [user], whatever its hour. */

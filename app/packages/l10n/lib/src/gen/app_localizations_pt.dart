@@ -538,6 +538,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationChannelDailyDescription => 'Um recado no começo e no fim do dia.';
 
   @override
+  String notificationSuggestionTitle(String brand) {
+    String _temp0 = intl.Intl.selectLogic(
+      brand,
+      {
+        'lunna': 'A Lunna te mandou uma mensagem',
+        'other': 'O Focus te mandou uma mensagem',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get notificationSuggestionBody => 'Tenho uma ideia para o próximo passo. Vem ver?';
+
+  @override
   String get remindersAskTitle => 'Quer lembretes?';
 
   @override
@@ -1322,6 +1337,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentChangeNewGoal => 'novo objetivo';
+
+  @override
+  String get agentChangeNewRoutine => 'nova rotina';
+
+  @override
+  String get agentChangeEditRoutine => 'rotina';
+
+  @override
+  String get agentChangeWorkDay => 'Dia de trabalho';
 
   @override
   String get agentChangeEditGoal => 'objetivo';

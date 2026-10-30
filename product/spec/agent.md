@@ -91,6 +91,23 @@ five delivered:
 | `edit_goal` | `ref`, `target`, `deadline` | the goal's sheet, saved: another amount or last day (its first day stays; refused on a goal gone by, or a day reaching the next goal's first) |
 | `remove_goal` | `ref` | the goal deleted; the deliveries stay |
 
+Rotina's gestures and the Menu's working day (`actions/routines.ts`), as
+Rotina makes them (`RoutinesService`) and the Menu sets the day
+(`UsersService.setWorkDay`). The board lists the routines under refs
+(`r1 · Academia · 18:00–19:00 · weekdays · checklist: …`) beside the
+working day it already names:
+
+| Change | Arguments | What the server does |
+|--------|-----------|----------------------|
+| `new_routine` | `title`, `time` (HH:mm), `minutes`, `days` (`daily`/`weekdays`/`weekend`), `checklist`, `duplicate` | a routine, fixed, its days written as the timeline reaches them; refused on a routine of the same name (unless `duplicate`) or one it would sit on, on a day both fall on |
+| `edit_routine` | `ref`, `title`, `time`, `minutes`, `days`, `checklist` (`[]` takes it away) | the routine's sheet, saved: its days not begun change with it |
+| `set_work_day` | `opens`, `closes` (HH:mm, `24:00` for midnight) | the Menu's hours; at least an hour long. The changes after it in the plan, and the dry run's day, are laid out inside them |
+
+The card draws a routine's line with Rotina's fill and the repeat mark
+("nova rotina · 07:00–08:00 · Todo dia · 3 itens na lista"; a change
+strikes the old hours or days), and the working day as "Dia de trabalho ·
+~~07:00–22:00~~ → 08:00–19:00".
+
 A kind named loosely resolves to the catalogue's by its words; a value, a
 price or a time is only ever what the person said. **A delete is asked
 once when it takes more than three tasks along**: the reply says how many
@@ -98,11 +115,16 @@ and offers "Apagar as N" and "Só a entrega", each its own plan.
 
 **Undo is a snapshot.** Aplicar reads every row a plan can touch (the
 tasks still to do and every task of a delivery, the events in reach, the
-deliveries, the catalogue, the goals) before and after making it, and keeps
-the difference: each row changed or gone is written back as it was
-(`revive` puts a deleted row back with its own id, `ON CONFLICT DO
-NOTHING`), each row made is taken out. A day of a routine the read wrote is
-left. So Desfazer undoes any action, with no inverse written for each.
+deliveries, the catalogue, the goals, the routines and the working day)
+before and after making it, and keeps the difference: each row changed or
+gone is written back as it was (`revive` puts a deleted row back with its
+own id, `ON CONFLICT DO NOTHING`), each row made is taken out. A day of a
+routine the read wrote is left. **A routine the plan wrote or changed
+takes its days with it**: its days are left out of the difference both
+ways, and putting the routine back (`updateRoutine`) or taking it out
+(`removeRoutine`) drops its days not begun, which the next read writes
+again as they were. So Desfazer undoes any action, with no inverse written
+for each.
 
 **Plans are kept in Postgres** (`agent_plan`, `PlanStore`, two hours), so
 a plan, its quick replies and its undo survive a restart.
@@ -255,15 +277,20 @@ fails, the arithmetic **template** of #67 (`_offer`, `kind: template`) is
 written instead.
 
 **The preview.** A `preview` block (no arguments) with a plan that makes a
-goal or deliveries draws them as their tabs will: the dry run's sandbox is
+goal, deliveries or a routine draws them as their tabs will: the dry run's sandbox is
 asked `ArtifactsService.answer`, so a new goal's `queued` (or the running
 goal's, when the plan adds a delivery due inside it) counts the plan's
 deliveries. Items are `{ type: 'goal', target, start, end, done, queued,
-queuedCount }` and `{ type: 'artifact', title, minutes, deadline?, value? }`,
+queuedCount }`, `{ type: 'artifact', title, minutes, deadline?, value? }`
+and `{ type: 'routine', title, start (minutes after midnight), minutes,
+days, checklist }` (each routine written or changed, as Rotina will have it),
 the A2UI component `Preview` with `applies`, the server's line for what
 Aplicar makes ("Aplicar anota a entrega."). The app draws a goal with
-`GoalCard` and a delivery with `ArtifactRow` (`AgentLinks.preview`,
-`drawAgentPreview`), on the page's background; the plan under it is
+`GoalCard`, a delivery with `ArtifactRow` (`AgentLinks.preview`,
+`drawAgentPreview`) and a routine with `RoutinePreviewRow` (Rotina's fill,
+its hours, its days, its checklist as empty boxes), on the page's
+background; a new working day is told in `applies` ("Aplicar anota a
+rotina e o novo horário do dia."); the plan under it is
 `OfferActions` (the line, Ajustar, Aplicar), on the card and in the chat.
 
 **When the next one comes: `nextAt`.** The answer tool's `followUp`
@@ -290,8 +317,11 @@ written, re-armed at boot from `pending`, firing once: catch-up, then
 `suggestion()`. The one exception to "nothing on a timer touches
 Postgres", and never periodic; a lost timer costs seconds, since the read
 writes a passed one. The reminder plan (`NotificationsService.plan`) has
-a `suggestion` item a minute after `nextAt` ("Uma sugestão para o seu
-mês"; the server names no brand).
+a `suggestion` item a minute after `nextAt`. The server names no brand
+("Uma sugestão para o seu mês"), so the phone rewrites it
+(`NotificationScheduler.brand`, `AppBrand.id`): "A Lunna te mandou uma
+mensagem" / "O Focus te mandou uma mensagem"
+(`notificationSuggestionTitle`).
 
 **It holds** in `agent_suggestion`, one row per person (`SuggestionStore`).
 `GET /agent/suggestion` answers `{ id, kind, focus, text, nextAt,

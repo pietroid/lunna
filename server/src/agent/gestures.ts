@@ -13,13 +13,16 @@ import {
 import { ArtifactsService } from '../artifacts/artifacts.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { MemoryCalendarStore } from '../calendar/calendar.store';
-import { CalendarUser } from '../calendar/calendar.types';
+import { CalendarRoutine, CalendarUser } from '../calendar/calendar.types';
 import { Trace } from '../common/trace';
 import { EventLayoutService } from '../events/event-layout.service';
 import { Day, TimelineService } from '../events/timeline.service';
 import { MemoryTaskStore, TaskStore } from '../tasks/task.store';
+import { RoutinesService } from '../routines/routines.service';
 import { Task } from '../tasks/task.types';
+import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import { addDaysIn } from '../time/zone';
+import type { UsersService } from '../users/users.service';
 import { actionOf } from './actions';
 import { HORIZON_DAYS } from './board';
 import { Gesture, Row, Undo } from './plan';
@@ -37,7 +40,19 @@ export interface Hands {
   artifacts: ArtifactStore;
   /** Entregas' own service: the deliveries, the catalogue, the goals. */
   deliveries: ArtifactsService;
+  /** Rotina's own service. */
+  routines: RoutinesService;
+  /** Where the working day is kept: the menu's own service. */
+  users: WorkDays;
 }
+
+/** What sets a person's working day: `UsersService`, or nothing in a sandbox. */
+export type WorkDays = Pick<UsersService, 'setWorkDay'>;
+
+/** A working day kept nowhere: the sandbox's, and the tests'. */
+export const NO_WORK_DAYS: WorkDays = {
+  setWorkDay: () => Promise.resolve(),
+};
 
 /** Everything a turn read, which a sandbox is seeded with. */
 export interface Seed {
@@ -48,6 +63,8 @@ export interface Seed {
   categories: CatalogCategory[];
   types: CatalogType[];
   goals: Goal[];
+  /** Every routine. */
+  routines: CalendarRoutine[];
 }
 
 /** The ids the plan's own new things were given, by the name it gave them. */
@@ -58,13 +75,30 @@ export type Made = Map<string, string>;
  * Entregas, over memory stores seeded with them. Nothing made here reaches
  * the database or the calendar's cache.
  *
- * Routines are left out: their days within reach are already rows, and the
- * copy never reads further than the real day did.
+ * Routines are left out unless [routines] (a plan that writes or changes
+ * one): their days within reach are already rows, and the copy never reads
+ * further than the real day did. With them, a day of a routine is seeded
+ * under its occurrence, so a read does not write it twice.
  */
-export function sandbox(user: CalendarUser, seed: Seed): Hands {
+export function sandbox(
+  user: CalendarUser,
+  seed: Seed,
+  routines = false,
+): Hands {
   const { day } = seed;
   const events = new MemoryCalendarStore();
-  for (const event of day.events) events.seed(user, event);
+  for (const event of day.events) {
+    events.seed(
+      user,
+      event,
+      routines && event.routineId !== undefined
+        ? `${event.routineId}@${event.startTime}`
+        : undefined,
+    );
+  }
+  if (routines) {
+    for (const routine of seed.routines) events.seedRoutine(user, routine);
+  }
   const tasks = new MemoryTaskStore();
   for (const task of [...day.tasks, ...day.backlog, ...seed.artifactTasks]) {
     tasks.seed(user, task);
@@ -92,6 +126,7 @@ export function handsOver(
   artifacts: ArtifactStore,
   timeline = new TimelineService(calendar, tasks),
   layout = new EventLayoutService(timeline, calendar, tasks, artifacts),
+  users: WorkDays = NO_WORK_DAYS,
 ): Hands {
   return {
     timeline,
@@ -100,6 +135,8 @@ export function handsOver(
     tasks,
     artifacts,
     deliveries: new ArtifactsService(artifacts, tasks, timeline, layout),
+    routines: new RoutinesService(calendar),
+    users,
   };
 }
 
@@ -139,20 +176,29 @@ export async function snapshot(
   now: Date,
 ): Promise<Snapshot> {
   const zone = hands.timeline.zone(user);
-  const [pending, ofArtifacts, events, artifacts, categories, types, goals] =
-    await Promise.all([
-      hands.tasks.pending(user),
-      hands.tasks.ofArtifacts(user),
-      hands.calendar.between(
-        user,
-        addDaysIn(now, -1, zone),
-        addDaysIn(now, HORIZON_DAYS + 1, zone),
-      ),
-      hands.artifacts.list(user),
-      hands.artifacts.categories(user),
-      hands.artifacts.types(user),
-      hands.artifacts.goals(user),
-    ]);
+  const [
+    pending,
+    ofArtifacts,
+    events,
+    artifacts,
+    categories,
+    types,
+    goals,
+    routines,
+  ] = await Promise.all([
+    hands.tasks.pending(user),
+    hands.tasks.ofArtifacts(user),
+    hands.calendar.between(
+      user,
+      addDaysIn(now, -1, zone),
+      addDaysIn(now, HORIZON_DAYS + 1, zone),
+    ),
+    hands.artifacts.list(user),
+    hands.artifacts.categories(user),
+    hands.artifacts.types(user),
+    hands.artifacts.goals(user),
+    hands.calendar.routines(user),
+  ]);
 
   const rows = new Map<string, Row>();
   const keep = (it: Row) => rows.set(`${it.kind}:${it.row.id}`, it);
@@ -162,6 +208,9 @@ export async function snapshot(
   for (const row of categories) keep({ kind: 'category', row });
   for (const row of types) keep({ kind: 'type', row });
   for (const row of goals) keep({ kind: 'goal', row });
+  for (const row of routines) keep({ kind: 'routine', row });
+  const workDay = user.workDay ?? DEFAULT_WORK_DAY;
+  keep({ kind: 'workDay', row: { id: user.id, ...workDay } });
 
   return { rows };
 }
@@ -170,11 +219,25 @@ export async function snapshot(
  * How to go from [after] back to [before]: each row that changed or went
  * written back as it was, each row that came taken out. A day of a routine
  * that came is left: reading further wrote it, not the plan, and the next
- * read would write it again.
+ * read would write it again. The days of a routine the plan wrote or
+ * changed are left both ways: putting the routine back (or taking it out)
+ * drops its days not begun, and the next read writes them as it was.
  */
 export function undoOf(before: Snapshot, after: Snapshot): Undo[] {
+  const changed = new Set<string>();
+  for (const [key, it] of after.rows) {
+    if (it.kind !== 'routine') continue;
+    const was = before.rows.get(key);
+    if (was === undefined || !same(was.row, it.row)) changed.add(it.row.id);
+  }
+  const ofChanged = (it: Row) =>
+    it.kind === 'event' &&
+    it.row.routineId !== undefined &&
+    changed.has(it.row.routineId);
+
   const undo: Undo[] = [];
   for (const [key, it] of before.rows) {
+    if (ofChanged(it)) continue;
     const now = after.rows.get(key);
     if (now === undefined || !same(now.row, it.row)) {
       undo.push({ op: 'put', it });
@@ -193,20 +256,22 @@ export function undoOf(before: Snapshot, after: Snapshot): Undo[] {
  * Undoes [undo] with [hands]: what the plan made is taken out (the events
  * and tasks first, since they point at deliveries), what it changed or took
  * away written back (shelves before kinds before deliveries before tasks
- * before events), and the deliveries, kinds and shelves it made last.
+ * before events, then routines, whose days not begun go with them, and the
+ * working day), and the deliveries, kinds and shelves it made last.
  */
 export async function takeBack(
   hands: Hands,
   user: CalendarUser,
   undo: Undo[],
+  now = new Date(),
 ): Promise<void> {
   const of = (op: Undo['op'], kinds: Row['kind'][]) =>
     kinds.flatMap((kind) =>
       undo.filter((it) => it.op === op && it.it.kind === kind),
     );
 
-  for (const step of of('drop', ['event', 'task']))
-    await drop(hands, user, step.it);
+  for (const step of of('drop', ['event', 'task', 'routine']))
+    await drop(hands, user, step.it, now);
   for (const step of of('put', [
     'category',
     'type',
@@ -214,17 +279,40 @@ export async function takeBack(
     'goal',
     'task',
     'event',
+    'routine',
+    'workDay',
   ])) {
-    await put(hands, user, step.it);
+    await put(hands, user, step.it, now);
   }
   for (const step of of('drop', ['goal', 'artifact', 'type', 'category'])) {
-    await drop(hands, user, step.it);
+    await drop(hands, user, step.it, now);
   }
 }
 
 /** Makes [it] be as it is: written back over the row, or revived. */
-async function put(hands: Hands, user: CalendarUser, it: Row): Promise<void> {
+async function put(
+  hands: Hands,
+  user: CalendarUser,
+  it: Row,
+  now: Date,
+): Promise<void> {
   switch (it.kind) {
+    case 'routine': {
+      const { title, startTime, endTime, days, checklist } = it.row;
+      await hands.calendar.updateRoutine(
+        user,
+        it.row.id,
+        { title, startTime, endTime, days, checklist, fixed: true },
+        now,
+      );
+      return;
+    }
+    case 'workDay': {
+      const day = { start: it.row.start, end: it.row.end };
+      await hands.users.setWorkDay(user.id, day);
+      user.workDay = day;
+      return;
+    }
     case 'task':
       if ((await hands.tasks.get(user, it.row.id)) !== undefined) {
         await hands.tasks.update(user, it.row);
@@ -261,8 +349,19 @@ async function put(hands: Hands, user: CalendarUser, it: Row): Promise<void> {
 }
 
 /** Takes out [it], which the plan made. */
-async function drop(hands: Hands, user: CalendarUser, it: Row): Promise<void> {
+async function drop(
+  hands: Hands,
+  user: CalendarUser,
+  it: Row,
+  now: Date,
+): Promise<void> {
   switch (it.kind) {
+    case 'routine':
+      await hands.calendar.removeRoutine(user, it.row.id, now);
+      return;
+    case 'workDay':
+      // Never made, only changed.
+      return;
     case 'task':
       return hands.tasks.remove(user, it.row.id);
     case 'event':

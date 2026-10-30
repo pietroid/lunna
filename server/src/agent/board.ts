@@ -8,12 +8,15 @@ import {
   GoalView,
 } from '../artifacts/artifact.types';
 import { measureGoals } from '../artifacts/artifacts.service';
+import { CalendarRoutine, RoutineDays } from '../calendar/calendar.types';
 import { Task } from '../tasks/task.types';
 import {
   addMinutes,
   BLOCK_GAP_MINUTES,
   formatMinuteOfDay,
   Interval,
+  minutesOf,
+  parseMinuteOfDay,
   roundUpToFiveMinutes,
 } from '../time/work-hours';
 import {
@@ -94,6 +97,19 @@ export interface BoardGoal {
   view: GoalView;
 }
 
+/** A routine, as the board names it and Rotina draws it. */
+export interface BoardRoutine {
+  /** `r1`. */
+  ref: string;
+  id: string;
+  title: string;
+  /** Every day's hour, `HH:mm` in the person's zone. */
+  time: string;
+  minutes: number;
+  days: RoutineDays;
+  checklist: string[];
+}
+
 /** What a board is built with besides the day. */
 export interface BoardOptions {
   /**
@@ -108,6 +124,7 @@ export interface BoardOptions {
   categories?: CatalogCategory[];
   types?: CatalogType[];
   goals?: Goal[];
+  routines?: CalendarRoutine[];
 }
 
 const WEEKDAYS_PT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
@@ -156,6 +173,8 @@ export class Board {
   /** The catalogue's kinds, shelf by shelf. */
   readonly kinds: BoardKind[];
   readonly goals: BoardGoal[];
+  /** Rotina, earliest hour first. */
+  readonly routines: BoardRoutine[];
   private readonly _byRef: Map<string, BoardCard>;
   private readonly _refs: Map<string, string>;
   /** The rows the cards were read from, for what the timeline leaves out. */
@@ -261,6 +280,20 @@ export class Board {
       goal: (options.goals ?? []).find((it) => it.id === view.id)!,
       view,
     }));
+    this.routines = (options.routines ?? [])
+      .map((routine) => {
+        const start = new Date(routine.startTime);
+        return {
+          ref: this._assign(routine.id, 'r'),
+          id: routine.id,
+          title: routine.title,
+          time: formatTimeIn(start, zone),
+          minutes: minutesOf({ start, end: new Date(routine.endTime) }),
+          days: routine.days,
+          checklist: routine.checklist ?? [],
+        };
+      })
+      .sort((a, b) => a.time.localeCompare(b.time));
   }
 
   get zone(): Zone {
@@ -291,6 +324,12 @@ export class Board {
     return this.kinds.find((it) => it.ref === said);
   }
 
+  /** The routine under [ref] (`r1`). */
+  routine(ref: string): BoardRoutine | undefined {
+    const said = ref.trim().toLowerCase();
+    return this.routines.find((it) => it.ref === said);
+  }
+
   /** The goal under [ref] (`g1`). */
   goal(ref: string): BoardGoal | undefined {
     const said = ref.trim().toLowerCase();
@@ -303,6 +342,7 @@ export class Board {
       this.ref(ref)?.title ??
       this.artifact(ref)?.artifact.title ??
       this.kind(ref)?.type.name ??
+      this.routine(ref)?.title ??
       (this.goal(ref) === undefined ? undefined : 'o objetivo')
     );
   }
@@ -570,6 +610,12 @@ export class Board {
     if (this.goals.length > 0) {
       lines.push('Goals:', ...this.goals.map((it) => `  ${this.goalLine(it)}`));
     }
+    lines.push(
+      'Routines (every day of one is a fixed event):',
+      ...(this.routines.length === 0
+        ? ['  (none)']
+        : this.routines.map((it) => `  ${this.routineLine(it)}`)),
+    );
     lines.push('', 'Free room:');
     for (const day of [...shown].sort()) {
       const free = this.free(day);
@@ -688,6 +734,20 @@ export class Board {
       money ? 'money' : `count of ${kind?.type.name ?? 'a kind'}`,
       `${amount(view.target)} from ${ddmm(view.start)} to ${ddmm(it.goal.deadline)}${view.end <= this.today ? ' (over)' : view.start > this.today ? ' (to come)' : ''}`,
       `delivered ${amount(view.done)}, open deliveries due by then ${amount(view.queued)} (${view.queuedCount})`,
+    ].join(' · ');
+  }
+
+  /** "r1 · Café da manhã · 07:00–07:30 · weekdays · checklist: café, louça". */
+  routineLine(it: BoardRoutine): string {
+    const start = parseMinuteOfDay(it.time) ?? 0;
+    return [
+      it.ref,
+      it.title,
+      `${it.time}–${formatMinuteOfDay(start + it.minutes)}`,
+      it.days,
+      ...(it.checklist.length === 0
+        ? []
+        : [`checklist: ${it.checklist.join(', ')}`]),
     ].join(' · ');
   }
 

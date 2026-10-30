@@ -2,7 +2,7 @@ import 'package:agent/src/models.dart';
 import 'package:agent/src/view/answer_card.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:l10n/l10n.dart';
-import 'package:timeline/timeline.dart' show durationLabel;
+import 'package:timeline/timeline.dart' show TimelineLabels, durationLabel;
 
 /// {@template plan_card}
 /// A plan, change by change, with the one button that makes it.
@@ -334,6 +334,68 @@ class _ChangeRow extends StatelessWidget {
             ].join(' · '),
           ),
         );
+      case PlanChangeKind.addRoutine:
+        return AnswerRow(
+          mark: const AnswerMark(
+            icon: AppIcons.repeat,
+            fill: AppColors.routineFill,
+            ink: AppColors.routineInk,
+          ),
+          title: change.title,
+          detail: TextSpan(
+            text: [
+              l10n.agentChangeNewRoutine,
+              ?change.hours,
+              if (change.days != null) l10n.routineDaysLabel(change.days!),
+              if (change.checklist.isNotEmpty)
+                l10n.agentPreviewItems(change.checklist.length),
+            ].join(' · '),
+          ),
+        );
+      case PlanChangeKind.editRoutine:
+        final was = change.was;
+        final wasHours = change.wasHours;
+        final wasDays = change.wasDays;
+        final days = change.days;
+        return AnswerRow(
+          mark: const AnswerMark(
+            icon: AppIcons.repeat,
+            fill: AppColors.routineFill,
+            ink: AppColors.routineInk,
+          ),
+          title: change.title,
+          detail: TextSpan(
+            children: [
+              TextSpan(text: l10n.agentChangeEditRoutine),
+              if (was != null) ...[
+                const TextSpan(text: ' · '),
+                TextSpan(text: was, style: struck),
+              ],
+              ..._then(change.hours, wasHours, struck),
+              ..._then(
+                days == null ? null : l10n.routineDaysLabel(days),
+                wasDays == null ? null : l10n.routineDaysLabel(wasDays),
+                struck,
+              ),
+              if (change.checklist.isNotEmpty)
+                TextSpan(
+                  text: ' · ${l10n.agentPreviewItems(change.checklist.length)}',
+                ),
+            ],
+          ),
+        );
+      case PlanChangeKind.setWorkDay:
+        return AnswerRow(
+          mark: const AnswerMark(icon: AppIcons.time),
+          title: l10n.agentChangeWorkDay,
+          detail: TextSpan(
+            children: _then(
+              change.hours,
+              change.wasHours,
+              struck,
+            ).skip(1).toList(),
+          ),
+        );
       case PlanChangeKind.addTask ||
           PlanChangeKind.moveTask ||
           PlanChangeKind.addEvent ||
@@ -396,6 +458,18 @@ class _ChangeRow extends StatelessWidget {
     return at == null ? what : '${_hhmm(at)} · $what';
   }
 }
+
+/// " · [was] → [now]", the old one struck, or " · [now]" when it stayed.
+List<TextSpan> _then(String? now, String? was, TextStyle struck) => [
+  if (now != null) ...[
+    const TextSpan(text: ' · '),
+    if (was != null && was != now) ...[
+      TextSpan(text: was, style: struck),
+      const TextSpan(text: ' → '),
+    ],
+    TextSpan(text: now),
+  ],
+];
 
 /// What a note adds, in full, as it will be written: the person reads their
 /// own notes before Aplicar.

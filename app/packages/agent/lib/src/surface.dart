@@ -92,6 +92,16 @@ sealed class PreviewItem extends Equatable {
         deadline: day(json['deadline']),
         value: json['value'] == null ? null : whole(json['value']),
       ),
+      'routine' => RoutinePreview(
+        title: json['title'] as String? ?? '',
+        startMinute: whole(json['start']),
+        minutes: whole(json['minutes']),
+        days: RoutineDays.fromWire(json['days'] as String?),
+        checklist: [
+          for (final it in json['checklist'] as List<dynamic>? ?? const [])
+            it as String,
+        ],
+      ),
       _ => null,
     };
   }

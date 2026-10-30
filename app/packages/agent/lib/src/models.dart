@@ -1,5 +1,6 @@
 import 'package:agent/src/surface.dart';
 import 'package:equatable/equatable.dart';
+import 'package:timeline/timeline.dart' show RoutineDays;
 
 /// {@template agent_subject}
 /// What a conversation is about, when it is opened from a page rather than
@@ -79,7 +80,16 @@ enum PlanChangeKind {
   editGoal,
 
   /// A goal deleted.
-  removeGoal;
+  removeGoal,
+
+  /// A new routine.
+  addRoutine,
+
+  /// A routine given another name, hour, length, days or checklist.
+  editRoutine,
+
+  /// The working day given other hours.
+  setWorkDay;
 
   static PlanChangeKind fromWire(String? value) => switch (value) {
     'add_task' => addTask,
@@ -100,6 +110,9 @@ enum PlanChangeKind {
     'add_goal' => addGoal,
     'edit_goal' => editGoal,
     'remove_goal' => removeGoal,
+    'add_routine' => addRoutine,
+    'edit_routine' => editRoutine,
+    'set_work_day' => setWorkDay,
     _ => moveTask,
   };
 
@@ -109,7 +122,8 @@ enum PlanChangeKind {
       this == addEvent ||
       this == addArtifact ||
       this == addKind ||
-      this == addGoal;
+      this == addGoal ||
+      this == addRoutine;
 
   /// Whether it deletes something: drawn first, and the plan's button says
   /// so.
@@ -145,6 +159,11 @@ class PlanChange extends Equatable {
     this.shelf,
     this.goal,
     this.wasGoal,
+    this.hours,
+    this.wasHours,
+    this.days,
+    this.wasDays,
+    this.checklist = const [],
   });
 
   factory PlanChange.fromJson(Map<String, dynamic> json) {
@@ -155,6 +174,8 @@ class PlanChange extends Equatable {
     final wasDeadline = json['wasDeadline'] as String?;
     final goal = json['goal'] as Map<String, dynamic>?;
     final wasGoal = json['wasGoal'] as Map<String, dynamic>?;
+    final days = json['days'] as String?;
+    final wasDays = json['wasDays'] as String?;
 
     return PlanChange(
       kind: PlanChangeKind.fromWire(json['kind'] as String?),
@@ -179,6 +200,14 @@ class PlanChange extends Equatable {
       shelf: json['shelf'] as String?,
       goal: goal == null ? null : PlanGoal.fromJson(goal),
       wasGoal: wasGoal == null ? null : PlanGoal.fromJson(wasGoal),
+      hours: json['hours'] as String?,
+      wasHours: json['wasHours'] as String?,
+      days: days == null ? null : RoutineDays.fromWire(days),
+      wasDays: wasDays == null ? null : RoutineDays.fromWire(wasDays),
+      checklist: [
+        for (final it in json['checklist'] as List<dynamic>? ?? const [])
+          it as String,
+      ],
     );
   }
 
@@ -239,6 +268,22 @@ class PlanChange extends Equatable {
   /// What a goal changed counted before.
   final PlanGoal? wasGoal;
 
+  /// A routine's hours as the change leaves them, or the working day's
+  /// ("08:00–18:00"), wall-clock in the person's zone.
+  final String? hours;
+
+  /// The hours it had, when the change gives it others.
+  final String? wasHours;
+
+  /// The days a routine repeats on, as the change leaves them.
+  final RoutineDays? days;
+
+  /// The days it repeated on, when the change gives it others.
+  final RoutineDays? wasDays;
+
+  /// A routine's checklist, as the change leaves it.
+  final List<String> checklist;
+
   DateTime? get end => at?.add(Duration(minutes: minutes));
 
   @override
@@ -262,6 +307,11 @@ class PlanChange extends Equatable {
     shelf,
     goal,
     wasGoal,
+    hours,
+    wasHours,
+    days,
+    wasDays,
+    checklist,
   ];
 }
 

@@ -4,6 +4,7 @@ import { CalendarModule } from '../calendar/calendar.module';
 import { EventsModule } from '../events/events.module';
 import { ArtifactStoreModule } from '../artifacts/artifact-store.module';
 import { TasksModule } from '../tasks/tasks.module';
+import { UsersModule } from '../users/users.module';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
 import { ConversationStore } from './conversation.store';
@@ -23,6 +24,7 @@ import { SuggestionTimer } from './suggestion.timer';
     EventsModule,
     TasksModule,
     ArtifactStoreModule,
+    UsersModule,
   ],
   controllers: [AgentController],
   providers: [

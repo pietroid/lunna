@@ -1,5 +1,5 @@
 /** Anything shaped like a board ref: `t3`, `e1`, `b12`, `d1`, `p2`, `k1`, `g1`. */
-const REF = /\b([tebdpkg]\d{1,3})\b/gi;
+const REF = /\b([tebdpkgr]\d{1,3})\b/gi;
 
 /** The scheduler's word for Para depois. */
 const BACKLOG = /\b(o |no |do |ao )?backlog\b/gi;
@@ -56,13 +56,20 @@ export function appliesOf(changes: { kind: string }[]): string {
   const goals = count('add_goal');
   const deliveries = count('add_artifact');
   const tasks = count('add_task') + count('add_event');
-  const others = changes.length - goals - deliveries - tasks;
+  const routines = count('add_routine');
+  const workDay = count('set_work_day');
+  const others =
+    changes.length - goals - deliveries - tasks - routines - workDay;
   const parts = [
     ...(goals === 0 ? [] : [goals === 1 ? 'o objetivo' : `${goals} objetivos`]),
     ...(deliveries === 0
       ? []
       : [deliveries === 1 ? 'a entrega' : `${deliveries} entregas`]),
     ...(tasks === 0 ? [] : [tasks === 1 ? '1 tarefa' : `${tasks} tarefas`]),
+    ...(routines === 0
+      ? []
+      : [routines === 1 ? 'a rotina' : `${routines} rotinas`]),
+    ...(workDay === 0 ? [] : ['o novo horário do dia']),
     ...(others === 0
       ? []
       : [others === 1 ? '1 mudança' : `${others} mudanças`]),

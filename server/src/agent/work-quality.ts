@@ -169,7 +169,7 @@ export function requestOf(quality: WorkQuality): string {
     'Nobody asked: this is the suggestion the app shows on its home, written by the server for the person.',
     `Topic (Work Quality level ${quality.score + 1} of 7, never named to the person): ${quality.topic}. ${TOPICS[quality.topic]}`,
     `Facts: ${JSON.stringify(quality.facts)}`,
-    'Propose the one next step: a plan when one fits (with a preview block when it makes a goal or a delivery), choices when the person must say something first. The caption is the whole message on the card, at most 80 characters, speaking to the person. Set followUp to the hours until you look again: 3 when a step is under way today, 24 when the next step is tomorrow’s.',
+    'Propose the one next step: a plan when one fits (with a preview block when it makes a goal, a delivery or a routine), choices when the person must say something first. The caption is the whole message on the card, at most 80 characters, speaking to the person. Set followUp to the hours until you look again: 3 when a step is under way today, 24 when the next step is tomorrow’s.',
   ].join('\n');
 }
 
@@ -184,7 +184,7 @@ const TOPICS: Record<Topic, string> = {
     'The main delivery has no open task. Propose its first tasks, on the day or in its backlog.',
   fits: 'The work owed by the end of the month does not fit the free hours. Propose what to move: a later deadline, less time, or a delivery dropped.',
   routine:
-    'There is no routine, and you cannot write one: say in the caption that a routine around the month’s work (an hour, the days, a checklist) goes in Rotina, in the account menu, and propose no plan.',
+    'There is no routine. Propose one around the month’s work with new_routine (an hour, the days, a checklist of its steps) and a preview block; set_work_day in the same plan when the working day should open or close at other hours for it. Ask with choices first when the hour or the days are only the person’s to say.',
   pace: 'The goal is behind its pace. Propose the next task of the delivery that brings in the most, at an hour today.',
   keep: 'Everything is defined and on pace. Propose the next task of the main delivery, or nothing but a short word of encouragement.',
 };

@@ -72,6 +72,7 @@ Future<void> _main() async {
   );
   final notificationScheduler = NotificationScheduler(
     repository: NotificationsRepository(apiClient: apiClient),
+    brand: AppBrand.id,
   );
   await notificationScheduler.initialize();
   unawaited(registerBackgroundRefresh());

@@ -416,6 +416,16 @@
   },
   "notificationChannelDaily": "Bom dia e boa noite",
   "notificationChannelDailyDescription": "Um recado no começo e no fim do dia.",
+  "notificationSuggestionTitle": "{brand, select, lunna{A Lunna te mandou uma mensagem} other{O Focus te mandou uma mensagem}}",
+  "@notificationSuggestionTitle": {
+    "description": "The local notification when the agent's next suggestion is on the Feed.",
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationSuggestionBody": "Tenho uma ideia para o próximo passo. Vem ver?",
   "remindersAskTitle": "Quer lembretes?",
   "remindersAskBody": "Pergunto quando um bloco começa e quando termina, e um toque no lembrete abre a pergunta aqui. E mando um bom dia e um boa noite.",
   "remindersEnable": "Ativar lembretes",
@@ -978,6 +988,9 @@
   },
   "agentChangeNewKind": "novo tipo",
   "agentChangeNewGoal": "novo objetivo",
+  "agentChangeNewRoutine": "nova rotina",
+  "agentChangeEditRoutine": "rotina",
+  "agentChangeWorkDay": "Dia de trabalho",
   "agentChangeEditGoal": "objetivo",
   "agentChangeRemoveGoal": "apagar o objetivo",
   "agentGoalPerWeek": "{amount} por semana",

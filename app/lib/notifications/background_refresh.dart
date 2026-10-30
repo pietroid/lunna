@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:api_client/api_client.dart';
+import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:lunna/auth_token_provider.dart';
 import 'package:lunna/config.dart';
 import 'package:notifications/notifications.dart';
@@ -67,6 +67,7 @@ void notificationsRefreshDispatcher() {
       );
       await NotificationScheduler(
         repository: NotificationsRepository(apiClient: apiClient),
+        brand: AppBrand.id,
       ).sync();
     } on Object catch (error, stackTrace) {
       log(

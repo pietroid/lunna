@@ -76,7 +76,7 @@ export interface Drawing {
 export interface Action {
   /** The `do` of a change. */
   name: string;
-  domain: 'queue' | 'artifact';
+  domain: 'queue' | 'artifact' | 'routine';
   /** What it does, in a line, for the model. */
   does: string;
   /**
@@ -220,6 +220,26 @@ export const ARGS = {
     enum: ['now', 'next'],
     description:
       'Whether it counts from this week or month, or the next. Defaults to now.',
+  },
+  days: {
+    type: 'string',
+    enum: ['daily', 'weekdays', 'weekend'],
+    description: 'The days a routine repeats on.',
+  },
+  checklist: {
+    type: 'array',
+    items: { type: 'string' },
+    maxItems: 30,
+    description:
+      'What each day of a routine is made of, in order (the coffee, the dishes).',
+  },
+  opens: {
+    type: 'string',
+    description: 'set_work_day: when the working day opens, HH:mm.',
+  },
+  closes: {
+    type: 'string',
+    description: 'set_work_day: when it closes, HH:mm (24:00 for midnight).',
   },
 } as const;
 

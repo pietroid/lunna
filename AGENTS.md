@@ -626,8 +626,9 @@ person reads carries a ref (`speakable`). **Each verb is one `Action` in
 button calls, the card's line); the schema, the dry run, Aplicar and the
 card all read the registry, and Desfazer restores a snapshot of the rows
 the plan touched, so a new control is one entry. Today it moves cards on
-the day and makes, edits, delivers, moves and deletes deliveries, kinds
-and goals; plans are kept in Postgres. **The suggestion on the Feed is a
+the day; makes, edits, delivers, moves and deletes deliveries, kinds
+and goals; writes and changes routines and sets the working day
+(`actions/routines.ts`); plans are kept in Postgres. **The suggestion on the Feed is a
 turn the agent asks itself about the person's first unmet Work Quality
 level** (`agent/work-quality.ts`: goal, reach, shape, tasks, fits,
 routine, pace; the score goes to PostHog as `work_quality`, never on

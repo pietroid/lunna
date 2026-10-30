@@ -1,3 +1,4 @@
+import { RoutineDays } from '../calendar/calendar.types';
 import { Interval } from '../time/work-hours';
 import { atMinuteIn, formatTimeIn, isoDayIn } from '../time/zone';
 import { Board, BoardCard, BoardArtifact, formatSpan, noonOf } from './board';
@@ -76,6 +77,15 @@ export type PreviewItem =
       minutes: number;
       deadline?: string;
       value?: number;
+    }
+  | {
+      type: 'routine';
+      title: string;
+      /** Every day's hour, minutes after midnight in the person's zone. */
+      start: number;
+      minutes: number;
+      days: RoutineDays;
+      checklist: string[];
     };
 
 /**

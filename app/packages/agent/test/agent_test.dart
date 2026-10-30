@@ -3,6 +3,7 @@ import 'package:api_client/api_client.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:timeline/timeline.dart' show RoutineDays;
 
 class _MockRepository extends Mock implements AgentRepository {}
 
@@ -532,7 +533,8 @@ void main() {
       expect(turn.nextAt, DateTime.utc(2026, 10, 16, 12).toLocal());
     });
 
-    test('decodes a preview: a goal and a delivery, skipping the unknown', () {
+    test('decodes a preview: a goal, a delivery and a routine, skipping the '
+        'unknown', () {
       final reply = AgentReply.fromJson(const {
         'reply': r'Faltam R$ 800.',
         'ui': [
@@ -577,6 +579,14 @@ void main() {
                     'deadline': '2026-10-27',
                     'value': 3200,
                   },
+                  {
+                    'type': 'routine',
+                    'title': 'Manhã de mapas',
+                    'start': 480,
+                    'minutes': 90,
+                    'days': 'weekdays',
+                    'checklist': ['Café', 'Revisar'],
+                  },
                   {'type': 'sticker'},
                 ],
               },
@@ -600,6 +610,13 @@ void main() {
               minutes: 240,
               deadline: DateTime(2026, 10, 27),
               value: 3200,
+            ),
+            const RoutinePreview(
+              title: 'Manhã de mapas',
+              startMinute: 480,
+              minutes: 90,
+              days: RoutineDays.weekdays,
+              checklist: ['Café', 'Revisar'],
             ),
           ],
           applies: 'Aplicar anota a entrega.',
