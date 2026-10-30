@@ -29,6 +29,10 @@ The reply to the first design, on the issue:
 
 The reply to round 2, on the issue: "Approve".
 
+The reply to the build, on the issue:
+
+> Add spacing on próximas folgas
+
 What round 2 changed for it:
 
 - **The prediction is the person's to change.** Every day of Ciclo's
@@ -334,6 +338,17 @@ No test was flaky in these runs.
   down (scene 7).
 - The rhythm's routes do not take `CatchUpInterceptor`: none reads the
   day.
+
+### After the build's review: spacing on Próximas folgas
+
+The rows of Próximas folgas were packed unevenly: a row with a chevron
+had the tappable row's padding, one with **Trabalhar**, **Desfazer** or
+the period's tag had none, so the weekends sat on top of each other.
+Now every row is at least 56 px tall (a two-line row with its padding),
+centred in it, with 8 px between rows (`DaysOffPage._dates`). The
+strips above are re-shot with it (scene 5; scene 7 is the same page
+under the sheet). `.tool/check` passed: `app-analyze`, the cycle tests
+under Focus and Lunna.
 
 ### Decided in the build, unattended
 

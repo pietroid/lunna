@@ -31,6 +31,10 @@ class DaysOffPage extends StatelessWidget {
   /// Writes a new date off: [showDayOffSheet] unless told otherwise.
   final VoidCallback? onAdd;
 
+  /// The height of a row of Próximas folgas: a two-line one with its
+  /// padding, so one-line rows and buttons don't pack tighter.
+  static const _rowHeight = 56.0;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -254,7 +258,17 @@ class DaysOffPage extends StatelessWidget {
     }
 
     rows.sort((a, b) => a.$1.compareTo(b.$1));
-    return [for (final row in rows) row.$2];
+    // Every row as tall as the next, whatever it ends in (a chevron, a
+    // button, a tag), with air between them.
+    return [
+      for (final (i, row) in rows.indexed) ...[
+        if (i > 0) const SizedBox(height: AppSpacing.s2),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: _rowHeight),
+          child: Align(alignment: Alignment.centerLeft, child: row.$2),
+        ),
+      ],
+    ];
   }
 }
 
