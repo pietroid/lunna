@@ -1847,6 +1847,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{Feitas} other{Feitas · {count}}}'**
   String artifactDoneTab(int count);
 
+  /// A task's own page, Pendentes' Para depois with nothing in it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada esperando. O + escreve uma tarefa desta.'**
+  String get artifactPendingEmpty;
+
   /// No description provided for @artifactDoneEmpty.
   ///
   /// In pt, this message translates to:
@@ -3316,6 +3322,84 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Ciclo e folgas'**
   String get agentChangeRhythm;
+
+  /// Para depois with nothing in it, on Plano and on its own page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada esperando. Escreva algo no +.'**
+  String get homeLaterEmpty;
+
+  /// Menu's row that opens every task of a product (the catalogue), delivered too.
+  ///
+  /// In pt, this message translates to:
+  /// **'Produtos'**
+  String get menuProducts;
+
+  /// No description provided for @menuProductsHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefas por produto, as entregues também'**
+  String get menuProductsHint;
+
+  /// Menu's row that writes a kind into the catalogue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Novo produto'**
+  String get menuNewProduct;
+
+  /// No description provided for @menuNewProductHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Para escolher no + ao criar uma tarefa'**
+  String get menuNewProductHint;
+
+  /// The home's section of tasks begun and not finished.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pendentes'**
+  String get homePending;
+
+  /// Under the home's four first tasks of Para depois: opens the whole queue.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =0{Abrir a lista} other{Abrir a lista · mais {count}}}'**
+  String homeLaterOpen(int count);
+
+  /// The page Ver o dia opens: the calendar alone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Calendário'**
+  String get dayPageTitle;
+
+  /// The creation sheet's choice for something to do, which the queue places.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefa'**
+  String get promptTask;
+
+  /// The creation sheet's choice for a block with an hour of its own.
+  ///
+  /// In pt, this message translates to:
+  /// **'Evento'**
+  String get promptEvent;
+
+  /// The creation sheet's chip that picks the product (a kind of the catalogue) a task is of.
+  ///
+  /// In pt, this message translates to:
+  /// **'Produto'**
+  String get promptProduct;
+
+  /// No description provided for @taskTasksCount.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 tarefa} other{{count} tarefas}}'**
+  String taskTasksCount(int count);
+
+  /// Beside Agora's heading: the day of the cycle and what the day is, short.
+  ///
+  /// In pt, this message translates to:
+  /// **'Dia {day} · {what}'**
+  String homeCycleTag(int day, String what);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

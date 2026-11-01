@@ -203,6 +203,25 @@ export class TasksController {
     return this._answer(user, days, guard);
   }
 
+  /**
+   * Play on a task with tasks of its own: its next task begins, guard and
+   * all. Keyed by the delivery, since what plays is worked out here.
+   */
+  @Post('of/:artifactId/play')
+  async play(
+    @CurrentUser() user: AuthUser,
+    @Param('artifactId') artifactId: string,
+    @Query('days') days?: string,
+  ): Promise<Timeline> {
+    const guard = await this.layout.playArtifact(
+      owner(user),
+      artifactId,
+      Trace.start(user.id, artifactId),
+    );
+
+    return this._answer(user, days, guard);
+  }
+
   /** Not yet: a waiting task waits a few minutes more before asking again. */
   @Post(':id/snooze')
   async snooze(

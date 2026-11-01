@@ -14,6 +14,7 @@ const EVENTS: Record<string, string> = {
   'PATCH /tasks/:id': 'task_edited',
   'POST /tasks/:id/move': 'task_moved',
   'POST /tasks/:id/start': 'task_started',
+  'POST /tasks/of/:artifactId/play': 'artifact_played',
   'POST /tasks/:id/snooze': 'task_snoozed',
   'POST /tasks/:id/done': 'task_done',
   'DELETE /tasks/:id': 'task_deleted',

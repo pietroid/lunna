@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/artifacts.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/app/app.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template menu_page}
@@ -119,6 +121,20 @@ class _MenuPageState extends State<MenuPage> {
                 iconData: AppIcons.archive,
                 onTap: () => unawaited(context.push<void>('/feitas')),
               ),
+              // The catalogue, which the creation sheet's Produto chip
+              // picks from, and every task of a product, delivered too.
+              AppListItem(
+                title: l10n.menuProducts,
+                subtitle: l10n.menuProductsHint,
+                iconData: AppIcons.catalog,
+                onTap: () => unawaited(openAllArtifacts(context)),
+              ),
+              AppListItem(
+                title: l10n.menuNewProduct,
+                subtitle: l10n.menuNewProductHint,
+                iconData: AppIcons.plus,
+                onTap: () => unawaited(showTypeSheet(context)),
+              ),
               const SizedBox(height: AppSpacing.s6),
               Text(
                 l10n.menuRestSection,
@@ -167,6 +183,14 @@ class _MenuPageState extends State<MenuPage> {
                 style: AppTypography.body.copyWith(
                   color: failure == null ? AppColors.ink3 : AppColors.dangerInk,
                 ),
+              ),
+              const SizedBox(height: AppSpacing.s6),
+              // The account, which hung off the greeting.
+              AppListItem(
+                title: l10n.homeSignOut,
+                iconData: AppIcons.logout,
+                onTap: () =>
+                    context.read<AppBloc>().add(const AppLogoutRequested()),
               ),
             ],
           ),

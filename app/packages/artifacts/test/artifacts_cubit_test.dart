@@ -128,6 +128,24 @@ void main() {
   );
 
   blocTest<ArtifactsCubit, ArtifactsState>(
+    'gives a pending task ten minutes more, or less, never under ten',
+    setUp: () => when(
+      () => repository.update(any(), minutes: any(named: 'minutes')),
+    ).thenAnswer((_) async => data),
+    build: () => ArtifactsCubit(repository: repository, initial: ready),
+    act: (cubit) async {
+      await cubit.addMinutes('a', 10);
+      await cubit.addMinutes('b', -10);
+      await cubit.addMinutes('c', -60);
+    },
+    verify: (_) {
+      verify(() => repository.update('a', minutes: 70)).called(1);
+      verify(() => repository.update('b', minutes: 50)).called(1);
+      verifyNever(() => repository.update('c', minutes: any(named: 'minutes')));
+    },
+  );
+
+  blocTest<ArtifactsCubit, ArtifactsState>(
     'keeps what it had and says why when a write is refused',
     setUp: () => when(
       () => repository.update(any(), done: any(named: 'done')),

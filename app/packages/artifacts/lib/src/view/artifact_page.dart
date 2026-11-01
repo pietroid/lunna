@@ -79,10 +79,6 @@ class _ArtifactPageState extends State<ArtifactPage> {
 
   late int _tab = widget.initialTab ?? _notesTab;
 
-  /// Where the + at the foot of the page writes: the stage at the top of
-  /// the list, as on Tempo.
-  final _aim = TimelineAim();
-
   @override
   void initState() {
     super.initState();
@@ -165,69 +161,71 @@ class _ArtifactPageState extends State<ArtifactPage> {
               const SizedBox(width: AppSpacing.s2),
             ],
           ),
-          body: SafeArea(
-            top: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: AppSpacing.maxContentWidth,
-                ),
-                child: artifact == null
-                    ? const SizedBox.shrink()
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _Summary(artifact: artifact),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.s6,
-                              AppSpacing.s2,
-                              AppSpacing.s6,
-                              AppSpacing.s2,
-                            ),
-                            // Three tabs with their counts: on a narrow
-                            // phone, or with large text, they shrink to fit
-                            // rather than run off the edge.
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: AppSegmented(
-                                selected: _tab,
-                                onSelected: _choose,
-                                segments: [
-                                  AppSegment(
-                                    label: context.l10n.artifactNotesTab,
-                                    iconData: AppIcons.pen,
-                                  ),
-                                  AppSegment(
-                                    label: context.l10n.artifactPendingTab(
-                                      artifact.steps - artifact.stepsDone,
+          body: _Guarded(
+            child: SafeArea(
+              top: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppSpacing.maxContentWidth,
+                  ),
+                  child: artifact == null
+                      ? const SizedBox.shrink()
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _Summary(artifact: artifact),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.s6,
+                                AppSpacing.s2,
+                                AppSpacing.s6,
+                                AppSpacing.s2,
+                              ),
+                              // Three tabs with their counts: on a narrow
+                              // phone, or with large text, they shrink to fit
+                              // rather than run off the edge.
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: AppSegmented(
+                                  selected: _tab,
+                                  onSelected: _choose,
+                                  segments: [
+                                    AppSegment(
+                                      label: context.l10n.artifactNotesTab,
+                                      iconData: AppIcons.pen,
                                     ),
-                                    iconData: AppIcons.time,
-                                  ),
-                                  AppSegment(
-                                    label: context.l10n.artifactDoneTab(
-                                      artifact.stepsDone,
+                                    AppSegment(
+                                      label: context.l10n.artifactPendingTab(
+                                        artifact.steps - artifact.stepsDone,
+                                      ),
+                                      iconData: AppIcons.time,
                                     ),
-                                    iconData: AppIcons.check,
-                                  ),
-                                ],
+                                    AppSegment(
+                                      label: context.l10n.artifactDoneTab(
+                                        artifact.stepsDone,
+                                      ),
+                                      iconData: AppIcons.check,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            child: _tab == _tasksTab
-                                ? _Tasks(artifact: artifact, aim: _aim)
-                                : _tab == _doneTab
-                                ? _Done(artifact: artifact)
-                                : _Notes(
-                                    key: ValueKey(artifact.id),
-                                    artifact: artifact,
-                                    voice: widget.dictation,
-                                  ),
-                          ),
-                        ],
-                      ),
+                            Expanded(
+                              child: _tab == _tasksTab
+                                  ? _Tasks(artifact: artifact)
+                                  : _tab == _doneTab
+                                  ? _Done(artifact: artifact)
+                                  : _Notes(
+                                      key: ValueKey(artifact.id),
+                                      artifact: artifact,
+                                      voice: widget.dictation,
+                                    ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
             ),
           ),
@@ -243,7 +241,6 @@ class _ArtifactPageState extends State<ArtifactPage> {
                     onPressed: () => unawaited(
                       writeDownOnTimeline(
                         context,
-                        placement: _aim.value ?? const Placement.backlog(),
                         artifactId: widget.id,
                       ),
                     ),
@@ -255,6 +252,30 @@ class _ArtifactPageState extends State<ArtifactPage> {
           floatingActionButtonAnimator: AskDock.animator,
         ),
       ),
+    );
+  }
+}
+
+/// The page with the guard over it: play while something else runs asks
+/// first, here, where the task played is on screen.
+class _Guarded extends StatelessWidget {
+  const _Guarded({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final guard = context.select<TimelineBloc, StartNowGuard?>(
+      (bloc) => bloc.state.guard,
+    );
+    final busy = context.select<TimelineBloc, bool>(
+      (bloc) => bloc.state.guardBusy,
+    );
+    return Stack(
+      children: [
+        Positioned.fill(child: child),
+        if (guard != null) GuardSheet(guard: guard, busy: busy),
+      ],
     );
   }
 }
@@ -564,42 +585,98 @@ class _Action extends StatelessWidget {
   }
 }
 
-/// The artifact's tasks still to do, drawn by the very list Tempo draws in
-/// Lista, kept to this artifact's: each day it reaches under Tempo's
-/// headings, then Para depois.
+/// The artifact's tasks still to do, in two sections only: **Agora**, its
+/// task running ([NowTaskCard], titled by the task, since the page names
+/// the delivery), when one is; and **Para depois**, the rest, the one the
+/// queue reaches first first and then its backlog, each a [TaskCard] with
+/// its play button, which is letting it go on Agora. A task of a delivery
+/// has no tasks of its own: one level.
 ///
-/// So everything a card does there it does here: held, it moves up, down
-/// and across the line; carried right it is done; carried left it is
-/// deleted once confirmed; tapped, it opens its page and its notes.
+/// Tapped, a task opens its page and its notes.
 class _Tasks extends StatelessWidget {
-  const _Tasks({required this.artifact, required this.aim});
+  const _Tasks({required this.artifact});
 
   final Artifact artifact;
-  final TimelineAim aim;
+
+  void _open(BuildContext context, String id) => unawaited(
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => EventPage(id: id, dock: NotesDock.task),
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
-    return TimelineList(
-      mode: TimelineMode.list,
-      only: {
-        for (final t in artifact.tasks)
-          if (t.place != TaskPlace.done) t.id,
-      },
-      aim: aim,
-      onCardTap: (card) => unawaited(
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => EventPage(id: card.id, dock: NotesDock.task),
+    final l10n = context.l10n;
+    final now = clock.now();
+    final day = context.watch<TimelineBloc>().state;
+    final running = day.cards
+        .where(
+          (card) =>
+              card.section == TimelineSection.agora &&
+              card.artifactId == artifact.id,
+        )
+        .firstOrNull;
+    final open = artifact.tasks.where(
+      (t) => t.place != TaskPlace.done && t.id != running?.id,
+    );
+    final timed = open.where((t) => t.at != null).toList()
+      ..sort((a, b) => a.at!.compareTo(b.at!));
+    final later = [...timed, ...open.where((t) => t.at == null)];
+
+    Widget heading(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s1,
+        AppSpacing.s4,
+        0,
+        AppSpacing.s3,
+      ),
+      child: Text(text, style: AppTypography.title),
+    );
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.s5,
+        0,
+        AppSpacing.s5,
+        kNotesDockClearance,
+      ),
+      children: [
+        if (running != null) ...[
+          heading(l10n.feedNow),
+          NowTaskCard(
+            card: running,
+            now: now,
+            byParent: false,
+            onTap: () => _open(context, running.id),
           ),
-        ),
-      ),
-      onWriteDown: (placement) => unawaited(
-        writeDownOnTimeline(
-          context,
-          placement: placement,
-          artifactId: artifact.id,
-        ),
-      ),
+        ],
+        heading(l10n.stageBacklog),
+        if (later.isEmpty)
+          Text(
+            l10n.artifactPendingEmpty,
+            style: AppTypography.label.copyWith(color: AppColors.ink3),
+          ),
+        for (final task in later)
+          Padding(
+            key: ValueKey(task.id),
+            padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+            child: TaskCard(
+              title: task.title,
+              subtitle: task.at == null
+                  ? null
+                  : AppWheelPicker.dayLabel(l10n, task.at!, now: now),
+              trailing: task.at == null
+                  ? formatMinutes(l10n, task.minutes)
+                  : hhmm(task.at!),
+              onPlay: () => context.read<TimelineBloc>().add(
+                EventMoved(id: task.id, index: 0, start: true),
+              ),
+              onTap: () => _open(context, task.id),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -26,6 +26,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
     on<EventCreated>(_onCreated);
     on<EventMoved>(_onMoved);
     on<EventStarted>(_onStarted);
+    on<ArtifactPlayed>(_onArtifactPlayed);
     on<EventSnoozed>(_onSnoozed);
     on<EventFinished>(_onFinished);
     on<EventDeleted>(_onDeleted);
@@ -206,6 +207,22 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           minutes: event.minutes,
           days: _days,
         ),
+        emit,
+      );
+    } on Object catch (error) {
+      emit(_failed(error));
+    }
+  }
+
+  /// Begins a delivery's next task. The server picks it, so nothing is
+  /// drawn before it answers.
+  Future<void> _onArtifactPlayed(
+    ArtifactPlayed event,
+    Emitter<TimelineState> emit,
+  ) async {
+    try {
+      _land(
+        await _repository.playArtifact(event.artifactId, days: _days),
         emit,
       );
     } on Object catch (error) {

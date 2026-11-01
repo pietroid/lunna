@@ -79,9 +79,10 @@ app/
   ios/BlockActivity/    the running block's Live Activity (Widget Extension,
                         iOS 17): SwiftUI views, intents, the shared state
   tool/brand_web.sh     stamps a brand on a web build
-  lib/                  shell, feed (the home), plan (Tempo, Entregas,
-                        Objetivos under one heading), tempo, routines
-                        page, landing + demo
+  lib/                  shell, plan (Plano, the home: Agora, Pendentes,
+                        Para depois; its LaterPage, writeTask), tempo
+                        (DayPage, the calendar), feed (the demo's
+                        greeting), routines page, landing + demo
                         (the signed-out page, the app on fakes),
                         links (the real LinkPreviews)
   packages/
@@ -277,8 +278,10 @@ with the same shape.
 
 ## The timeline
 
-The app draws the day two ways, switched at the top of Tempo and
-remembered on the device (`TimelineModeCubit`):
+`TimelineList` draws the day two ways. **Since #77 the app shows only
+Calendário** (Ver o dia, `DayPage`): Plano is the list. Lista below is
+still what `TimelineList(mode: list)` and the landing's demo draw
+(`TimelineModeCubit`):
 
 - **Lista**: the tasks alone, each as tall as it needs, in three stages
   that are always drawn, each headed like a day of the calendar: **Agora**
@@ -501,19 +504,26 @@ nothing; the app draws `GuardSheet` and posts the answer to
 
 ### The app shell
 
-Three tabs: **Feed** (`FeedPage`, the home: the agent's one offer,
-Agora with its controls and the one card after it, the main delivery,
-Entregas' first by `progressGroups`, and the goal being measured, each
-section's heading a pill into its level of Plano), **Plano** (`PlanPage`:
-Tempo, Entregas and Objetivos as they were, under a heading whose words are
-the levels, `AppTitleTabs`, `PlanTab`) and **Menu**, which opens Rotina and
-**Feitas** and sets when the day starts and ends. The app opens on Feed;
-its *Ver o dia* opens Tarefas on the calendar (`TimelineModeCubit` lives in
-the shell). The Feed asks for the offer again each time it comes forward
-and when a new day begins. The `AppFab` (a `+`)
-writes down whatever the level in front is about: on Entregas a delivery,
-on Objetivos a goal, anywhere else something on the day Tempo is showing
-(from Menu it brings Tarefas forward). See
+**One kind of task.** To the person a delivery is a task with tasks of
+its own (one level: its tasks have none); the cut is between tasks and
+events. Every task is one card (`TaskCard`): play on its left (pause while
+it runs, none for an event), the task's name as the title (a delivery's
+task at work under it). Play is a drop on Agora (`move { start: true }`;
+a delivery's `POST /tasks/of/:id/play` begins its next task). Storage is
+still `artifact` and `task.artifact_id`.
+
+Three tabs: **Plano** (`HomePage`, the home: the agent's one offer;
+Agora with today's mark and *Ver o dia*, the running task and the one
+after it; **Pendentes**, the deliveries begun, drawn like Agora with ±10,
+✓ and their bar; **Para depois**, the first four of everything not begun
+and *Abrir a lista*), **Objetivos** (`GoalsPage`) and **Menu**, which
+opens Rotina, **Feitas**, **Produtos** (the catalogue), sets when the day
+starts and ends, and signs out. *Ver o dia* pushes `DayPage` (the
+calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano,
+which asks for the offer again each time it comes forward and when a new
+day begins. The `AppFab` (a `+`) writes a goal on Objetivos and a task
+anywhere else (`writeTask`: Tarefa | Evento, and a Produto chip that
+writes a delivery of that kind). See
 [product/spec/home.md](./product/spec/home.md).
 The landing's demo shell keeps
 its old three tabs (Tempo, Entregas, Menu), as the landing has three chapters. It sits in the same spot on
@@ -526,20 +536,19 @@ Nova rotina on Rotina, a task on Feitas, the microphone on notes). A new
 page floats an `AskDock` too and leaves `kNotesDockClearance` under its
 last row (plus `MediaQuery.paddingOf(context).bottom` on a tab, whose body
 runs under the bottom bar); see "The agent" in [product/spec/agent.md](./product/spec/agent.md).
-The
-greeting at the top of Feed is the account menu: **Rotina** and **Sair**.
 
 **Feitas** (`/feitas`, `DoneArchivePage` over `DoneArchiveCubit`) is every
 task ticked off, newest first under the calendar's day headings, searched
 on the server: `GET /api/tasks/done?q=&limit=&before=&beforeId=` answers
 `{ done: [card] }`, each card's `startTime` being its `doneAt`, paged by
 the last one's `doneAt` and id. A tap opens `EventPage(finished:)`. A task
-is ticked off only on Tempo (the running card's ✓, or carried right in
-Lista); its page has no done control.
+is ticked off only from the day (Agora's ✓, or the calendar's running
+card); its page has no done control.
 
 ### Entregas (artifacts)
 
-Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
+Since #77 there is no Entregas tab: a delivery is drawn as a task on
+Plano (above). Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
 code), something owed by a day, with an optional kind from the person's
 **catalogue** (shelves and kinds, empty until they fill it), a total time,
 a value and how the day may cut it. The open ones are a queue of their
@@ -557,7 +566,7 @@ done in green (`paceDone`), keyed with the time done and the day due.
 The line that set the month's deliveries against the agenda's free
 hours is not drawn. A delivery's tasks are ordinary tasks on the day
 (`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
-(Tempo's Lista kept to them, `TimelineList(only:)`) and **Feitas** (what
+(Agora and Para depois of its tasks, play on each) and **Feitas** (what
 was done, newest first under Hoje / Ontem / the date), under the same
 `PaceBars` as its row in Entregas. Tempo opens it on Pendentes. **Money counts when a delivery is
 delivered** (`done_at`). The routes and the rules are in

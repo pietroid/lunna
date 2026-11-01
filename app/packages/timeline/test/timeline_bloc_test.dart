@@ -845,6 +845,28 @@ void main() {
     });
   });
 
+  group('play on a task with tasks', () {
+    blocTest<TimelineBloc, TimelineState>(
+      'lands the day the server answers, guard and all',
+      setUp: () {
+        when(
+          () => repository.playArtifact(any(), days: any(named: 'days')),
+        ).thenAnswer(
+          (_) async => Timeline(tasks: _tasks, cards: _tasks, guard: _guard),
+        );
+      },
+      build: () => TimelineBloc(repository: repository),
+      act: (bloc) => bloc.add(const ArtifactPlayed('p')),
+      verify: (bloc) {
+        verify(
+          () => repository.playArtifact('p', days: TimelineState.initialDays),
+        ).called(1);
+        expect(bloc.state.tasks, _tasks);
+        expect(bloc.state.guard, _guard);
+      },
+    );
+  });
+
   group('a task waiting to be begun', () {
     blocTest<TimelineBloc, TimelineState>(
       'is drawn as begun before the server answers',

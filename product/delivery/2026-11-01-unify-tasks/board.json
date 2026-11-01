@@ -1,0 +1,229 @@
+{
+  "title": "Tarefas e entregas são uma coisa só · Plano é a casa",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Plano, o topo",
+      "why": "Feed renamed Plano: no greeting or clock, the offer first, then Agora.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 46,
+          "y": 42,
+          "label": "Sugestão como está",
+          "text": "The greeting, date and day clock are gone; the agent's offer is the first thing, unchanged. The account (Rotina, Sair) moves to Menu."
+        },
+        {
+          "id": "B",
+          "x": 150,
+          "y": 180,
+          "label": "Marca do dia ao lado",
+          "text": "Beside Agora: the cycle day and the day's kind (\"Dia 2 · dia leve\", phase colours), or Folga / Dia leve with no cycle. Nothing on a plain work day."
+        },
+        {
+          "id": "C",
+          "x": 330,
+          "y": 180,
+          "label": "Ver o dia → página",
+          "text": "Opens the calendar on its own page (screen 3), not a tab."
+        },
+        {
+          "id": "D",
+          "x": 372,
+          "y": 262,
+          "label": "Título é a tarefa",
+          "text": "The title is the task (ex-delivery); the subtask at work is the subtitle."
+        },
+        {
+          "id": "E",
+          "x": 49,
+          "y": 265,
+          "label": "Pause à esquerda",
+          "text": "Every task has a round button on the left: play (fillStrong), or pause in accent while it runs."
+        },
+        {
+          "id": "F",
+          "x": 372,
+          "y": 306,
+          "label": "−10 +10 ✓ e barra",
+          "text": "Agora's controls and its 3 px bar, as today."
+        },
+        {
+          "id": "G",
+          "x": 49,
+          "y": 416,
+          "label": "Em seguida",
+          "text": "The next card as today, now with play: tapping it is dropping it on Agora."
+        },
+        {
+          "id": "H",
+          "x": 372,
+          "y": 600,
+          "label": "Pendentes",
+          "text": "Replaces Entregas em andamento: every task begun and not finished, drawn like Agora (no glow): status, −10 +10 ✓ to the side, bar below at the same 3 px. Red = time gone, green = work done; status in red when behind."
+        },
+        {
+          "id": "I",
+          "x": 196,
+          "y": 803,
+          "label": "Plano · Objetivos · Menu",
+          "text": "Three tabs. Objetivos is its own tab again; Entregas and Tempo's tabs are gone."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Plano, rolado",
+      "why": "Pendentes, then the first four of Para depois.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 372,
+          "y": 252,
+          "label": "Tarefa solta também",
+          "text": "A plain task begun and paused is pending too; with no deadline its bar is the accent alone."
+        },
+        {
+          "id": "B",
+          "x": 372,
+          "y": 384,
+          "label": "Para depois: mesmo cartão",
+          "text": "Same card, no bar, no controls: title, what it is (product · subtasks, or its day), length on the right."
+        },
+        {
+          "id": "C",
+          "x": 46,
+          "y": 384,
+          "label": "Play",
+          "text": "Play on every one: starts it now, as a drop on Agora (the start-now guard still asks if something runs)."
+        },
+        {
+          "id": "D",
+          "x": 200,
+          "y": 646,
+          "label": "Abrir a lista",
+          "text": "Four at most here; this row opens the whole queue (screen 4) and says how many more."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Ver o dia",
+      "why": "The calendar is a page of its own, the same calendar as today.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 200,
+          "y": 33,
+          "label": "Página com voltar",
+          "text": "Pushed from Ver o dia; back returns to Plano. Lista mode is gone: Plano is the list."
+        },
+        {
+          "id": "B",
+          "x": 372,
+          "y": 153,
+          "label": "Calendário igual",
+          "text": "TimelineList(mode: calendar) unchanged: drags, nudges, seams, free stretches, +."
+        },
+        {
+          "id": "C",
+          "x": 188,
+          "y": 420,
+          "label": "Sem play no calendário",
+          "text": "Calendar cards keep their size-to-time look; no play button (no room on a 15-minute card)."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Para depois, inteira",
+      "why": "The queue, every task not begun, in order.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 250,
+          "y": 33,
+          "label": "A fila",
+          "text": "Loose tasks and tasks with subtasks in one order: the old backlog and Não iniciadas merged. Drag to reorder."
+        },
+        {
+          "id": "B",
+          "x": 46,
+          "y": 174,
+          "label": "Play em todas",
+          "text": "Same card and same play as Plano."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · Criar",
+      "why": "The same bottom sheet; Tarefa or Evento, and a product chip.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 113,
+          "y": 778,
+          "label": "Tarefa | Evento",
+          "text": "Replaces Flexível | Fixo. Evento is the fixed block (pin icon); Tarefa takes its turn in the queue (check icon)."
+        },
+        {
+          "id": "B",
+          "x": 344,
+          "y": 778,
+          "label": "Produto",
+          "text": "Small chip (catalogue icon): picks a kind of the catalogue. Only for a Tarefa; an event has no product."
+        },
+        {
+          "id": "C",
+          "x": 260,
+          "y": 808,
+          "label": "Hora como hoje",
+          "text": "When it lands and Escolher horário stay as they are."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-6.png",
+      "title": "6 · Uma tarefa aberta",
+      "why": "A task's page is the delivery's page, for every task.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 285,
+          "y": 52,
+          "label": "Qualquer tarefa",
+          "text": "Opens for any task, with or without subtasks: ✓ delivers it, trash deletes it."
+        },
+        {
+          "id": "B",
+          "x": 300,
+          "y": 118,
+          "label": "Produto e barra",
+          "text": "Product · value as a tag; time done of its time, its day, and the pending bar."
+        },
+        {
+          "id": "C",
+          "x": 345,
+          "y": 171,
+          "label": "Notas · Pendentes · Feitas",
+          "text": "The delivery's three tabs."
+        },
+        {
+          "id": "D",
+          "x": 110,
+          "y": 232,
+          "label": "Agora",
+          "text": "Pendentes has two sections only: Agora (its subtask running) and Para depois. No day stages, no Ver os próximos dias."
+        },
+        {
+          "id": "E",
+          "x": 46,
+          "y": 445,
+          "label": "Play nas subtarefas",
+          "text": "Every subtask has play. A subtask has no subtasks: one level."
+        }
+      ]
+    }
+  ]
+}

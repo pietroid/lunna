@@ -1170,6 +1170,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get artifactPendingEmpty => 'Nada esperando. O + escreve uma tarefa desta.';
+
+  @override
   String get artifactDoneEmpty => 'Nada feito ainda. O que você terminar desta entrega fica aqui.';
 
   @override
@@ -2139,4 +2142,61 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentChangeRhythm => 'Ciclo e folgas';
+
+  @override
+  String get homeLaterEmpty => 'Nada esperando. Escreva algo no +.';
+
+  @override
+  String get menuProducts => 'Produtos';
+
+  @override
+  String get menuProductsHint => 'Tarefas por produto, as entregues também';
+
+  @override
+  String get menuNewProduct => 'Novo produto';
+
+  @override
+  String get menuNewProductHint => 'Para escolher no + ao criar uma tarefa';
+
+  @override
+  String get homePending => 'Pendentes';
+
+  @override
+  String homeLaterOpen(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Abrir a lista · mais $count',
+      zero: 'Abrir a lista',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayPageTitle => 'Calendário';
+
+  @override
+  String get promptTask => 'Tarefa';
+
+  @override
+  String get promptEvent => 'Evento';
+
+  @override
+  String get promptProduct => 'Produto';
+
+  @override
+  String taskTasksCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tarefas',
+      one: '1 tarefa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String homeCycleTag(int day, String what) {
+    return 'Dia $day · $what';
+  }
 }

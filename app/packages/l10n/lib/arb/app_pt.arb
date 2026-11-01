@@ -834,6 +834,10 @@
       }
     }
   },
+  "artifactPendingEmpty": "Nada esperando. O + escreve uma tarefa desta.",
+  "@artifactPendingEmpty": {
+    "description": "A task's own page, Pendentes' Para depois with nothing in it."
+  },
   "artifactDoneEmpty": "Nada feito ainda. O que você terminar desta entrega fica aqui.",
   "artifactNotesTab": "Notas",
   "artifactDeadlineLabel": "Prazo",
@@ -1839,5 +1843,68 @@
   "agentChangeRhythm": "Ciclo e folgas",
   "@agentChangeRhythm": {
     "description": "A plan's line that changes the cycle, the weekend or a date off."
+  },
+  "homeLaterEmpty": "Nada esperando. Escreva algo no +.",
+  "@homeLaterEmpty": {
+    "description": "Para depois with nothing in it, on Plano and on its own page."
+  },
+  "menuProducts": "Produtos",
+  "@menuProducts": {
+    "description": "Menu's row that opens every task of a product (the catalogue), delivered too."
+  },
+  "menuProductsHint": "Tarefas por produto, as entregues também",
+  "menuNewProduct": "Novo produto",
+  "@menuNewProduct": {
+    "description": "Menu's row that writes a kind into the catalogue."
+  },
+  "menuNewProductHint": "Para escolher no + ao criar uma tarefa",
+  "homePending": "Pendentes",
+  "@homePending": {
+    "description": "The home's section of tasks begun and not finished."
+  },
+  "homeLaterOpen": "{count, plural, =0{Abrir a lista} other{Abrir a lista · mais {count}}}",
+  "@homeLaterOpen": {
+    "description": "Under the home's four first tasks of Para depois: opens the whole queue.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dayPageTitle": "Calendário",
+  "@dayPageTitle": {
+    "description": "The page Ver o dia opens: the calendar alone."
+  },
+  "promptTask": "Tarefa",
+  "@promptTask": {
+    "description": "The creation sheet's choice for something to do, which the queue places."
+  },
+  "promptEvent": "Evento",
+  "@promptEvent": {
+    "description": "The creation sheet's choice for a block with an hour of its own."
+  },
+  "promptProduct": "Produto",
+  "@promptProduct": {
+    "description": "The creation sheet's chip that picks the product (a kind of the catalogue) a task is of."
+  },
+  "taskTasksCount": "{count, plural, =1{1 tarefa} other{{count} tarefas}}",
+  "@taskTasksCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "homeCycleTag": "Dia {day} · {what}",
+  "@homeCycleTag": {
+    "description": "Beside Agora's heading: the day of the cycle and what the day is, short.",
+    "placeholders": {
+      "day": {
+        "type": "int"
+      },
+      "what": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -63,4 +63,15 @@ void main() {
       expect(find.text(l10n.menuCycleHint), findsOneWidget);
     });
   });
+
+  testWidgets('holds the products and the way out', (tester) async {
+    await withClock(Clock.fixed(now), () async {
+      await pump(tester, const []);
+
+      expect(find.text(l10n.menuProducts), findsOneWidget);
+      expect(find.text(l10n.menuNewProduct), findsOneWidget);
+      await tester.scrollUntilVisible(find.text(l10n.homeSignOut), 200);
+      expect(find.text(l10n.homeSignOut), findsOneWidget);
+    });
+  });
 }

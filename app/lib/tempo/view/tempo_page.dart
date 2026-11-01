@@ -4,31 +4,88 @@ import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/plan/view/plan_items.dart';
+import 'package:lunna/plan/view/write_task.dart';
 import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
 
-/// {@template tempo_page}
-/// Tarefas, in Plano: the switch between the list and the calendar, and
-/// the day below.
+/// {@template day_page}
+/// Ver o dia: the calendar, to scale, day after day, on a page of its own
+/// over Plano. The same calendar Tempo drew: a drop on Agora begins a task,
+/// free room and its + write there, and the + at the foot writes on the
+/// first free hour in sight.
 ///
-/// The greeting, the clock and the agent's offer are on the Feed tab
-/// (`FeedPage`); this screen is the day itself. Which way it is drawn
-/// is kept above it ([TimelineModeCubit], given by the shell), so the Feed
-/// tab can open it on the calendar.
+/// It is handed what the shell keeps for it ([TimelineAim],
+/// [OpenDayHours], [WorkOnDay]), since a pushed page is not under the
+/// shell.
 /// {@endtemplate}
-class TempoPage extends StatelessWidget {
-  /// {@macro tempo_page}
-  const TempoPage({super.key});
+class DayPage extends StatelessWidget {
+  /// {@macro day_page}
+  const DayPage({super.key});
+
+  /// Pushes the page, with what the shell keeps for it.
+  static Future<void> open(BuildContext context) {
+    final aim = context.read<TimelineAim>();
+    final hours = context.read<OpenDayHours>();
+    final workOn = context.read<WorkOnDay>();
+    final links = context.read<AgentLinks>();
+
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<TimelineAim>.value(value: aim),
+            RepositoryProvider<OpenDayHours>.value(
+              // Mudar horário leaves the calendar for the Menu.
+              value: OpenDayHours(() {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+                hours.open();
+              }),
+            ),
+            RepositoryProvider<WorkOnDay>.value(value: workOn),
+            RepositoryProvider<AgentLinks>.value(value: links),
+          ],
+          child: const DayPage(),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      children: [
-        TimelineModeSwitch(),
-        Expanded(child: _Threads()),
-      ],
+    final aim = context.read<TimelineAim>();
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: AppIconButton(
+          iconData: AppIcons.back,
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        titleSpacing: 0,
+        title: Text(context.l10n.dayPageTitle, style: AppTypography.title),
+        actions: const [
+          // The agent's last plan, while it can be taken back.
+          UndoChip(),
+          SizedBox(width: AppSpacing.s4),
+        ],
+      ),
+      body: const _Threads(),
+      floatingActionButton: AskDock(
+        // The conversation is about the day on screen.
+        day: () => aim.value?.at,
+        fab: AppFab(
+          tooltip: context.l10n.shellWriteDown,
+          onPressed: () => unawaited(
+            writeTask(
+              context,
+              placement: aim.value ?? const Placement.backlog(),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: AskDock.location,
+      floatingActionButtonAnimator: AskDock.animator,
     );
   }
 }
@@ -91,26 +148,20 @@ class _Threads extends StatelessWidget {
     final busy = context.select<TimelineBloc, bool>(
       (bloc) => bloc.state.guardBusy,
     );
-    final mode = context.watch<TimelineModeCubit>().state;
-
     return Stack(
       children: [
         MinuteRefresh(onRefresh: () => _refresh(context)),
         TimelineList(
-          // A list per mode, so each keeps its own scroll.
-          key: ValueKey(mode),
-          mode: mode,
-          onCardTap: (card) => _open(context, card),
-          // In Lista a delivery's card is the delivery: it opens on what is
-          // left to do of it.
+          onCardTap: (card) => openCard(context, card),
+          // A delivery's card is the delivery: it opens on what is left to
+          // do of it.
           onDeliveryTap: (id) => unawaited(openArtifact(context, id, tab: 1)),
           // Where the button at the foot of the app writes follows the day
           // on screen, so it is kept above this screen, where the button is.
           aim: context.read<TimelineAim>(),
           // Tapping empty room, or a +, is writing something down there.
-          onWriteDown: (placement) => unawaited(
-            writeDownOnTimeline(context, placement: placement),
-          ),
+          onWriteDown: (placement) =>
+              unawaited(writeTask(context, placement: placement)),
           // Once the day is over, Agora offers to change when it ends.
           onAdjustDay: context.read<OpenDayHours>().open,
           // A weekend day off can be put back to work from the calendar.
@@ -134,11 +185,6 @@ class _Threads extends StatelessWidget {
     if (bloc.state.guard != null) return;
 
     bloc.add(const TimelineRequested());
-  }
-
-  /// Opens the card: its header, its commands, and its notes.
-  Future<void> _open(BuildContext context, TimelineEvent card) async {
-    await context.push<void>('/evento/${Uri.encodeComponent(card.id)}');
   }
 }
 

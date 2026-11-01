@@ -132,6 +132,19 @@ final class EventMoved extends TimelineBlocEvent {
   List<Object?> get props => [id, index, backlog, start, after, minutes];
 }
 
+/// Play on a task with tasks of its own (a delivery): its next task begins,
+/// as if dropped at the top of the day, guard and all.
+final class ArtifactPlayed extends TimelineBlocEvent {
+  /// {@macro timeline_bloc_event}
+  const ArtifactPlayed(this.artifactId);
+
+  /// The delivery whose next task begins.
+  final String artifactId;
+
+  @override
+  List<Object?> get props => [artifactId];
+}
+
 /// The user began a task that was waiting for them.
 ///
 /// Sent by the card's button and by the popup a reminder opens. A task that

@@ -71,6 +71,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
     String? notes,
     bool? done,
     bool? started,
+    int? minutes,
   }) async => _put([
     for (final it in data.artifacts)
       if (it.id == id)
@@ -79,6 +80,7 @@ class DemoArtifactsRepository implements ArtifactsRepository {
           deadline: deadline,
           value: value,
           notes: notes,
+          minutes: minutes,
           doneAt: done == null ? null : () => done ? clock.now() : null,
           startedAt: started == null
               ? null
