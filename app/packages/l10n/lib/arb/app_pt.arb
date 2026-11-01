@@ -834,6 +834,10 @@
       }
     }
   },
+  "artifactPendingEmpty": "Nada esperando. O + escreve uma tarefa desta.",
+  "@artifactPendingEmpty": {
+    "description": "A task's own page, Pendentes' Para depois with nothing in it."
+  },
   "artifactDoneEmpty": "Nada feito ainda. O que você terminar desta entrega fica aqui.",
   "artifactNotesTab": "Notas",
   "artifactDeadlineLabel": "Prazo",
@@ -1840,6 +1844,20 @@
   "@agentChangeRhythm": {
     "description": "A plan's line that changes the cycle, the weekend or a date off."
   },
+  "homeLaterEmpty": "Nada esperando. Escreva algo no +.",
+  "@homeLaterEmpty": {
+    "description": "Para depois with nothing in it, on Plano and on its own page."
+  },
+  "menuProducts": "Produtos",
+  "@menuProducts": {
+    "description": "Menu's row that opens every task of a product (the catalogue), delivered too."
+  },
+  "menuProductsHint": "Tarefas por produto, as entregues também",
+  "menuNewProduct": "Novo produto",
+  "@menuNewProduct": {
+    "description": "Menu's row that writes a kind into the catalogue."
+  },
+  "menuNewProductHint": "Para escolher no + ao criar uma tarefa",
   "homePending": "Pendentes",
   "@homePending": {
     "description": "The home's section of tasks begun and not finished."

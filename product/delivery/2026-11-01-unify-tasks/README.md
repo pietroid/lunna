@@ -2,8 +2,9 @@
 
 > Issue [#77](https://github.com/pietroid/lunna/issues/77), **mockup track**
 > (it changes the home, the tabs, every card, the creation sheet and the
-> task's page). Designed unattended; this is the draft for approval on
-> the issue. The build starts from the **Build brief** at the end.
+> task's page). Designed and built unattended; the design was approved on
+> the issue ("approve"), with its two open questions unanswered. Spec:
+> [product/spec/home.md](../../spec/home.md).
 
 ## 1. The prompt
 
@@ -130,7 +131,7 @@ and the running row turns it into stop).
 - **Play on a pending task with tasks** starts its next subtask.
 - The product chip lists kinds by name only; the shelf is not shown.
 
-### Open questions
+### Open questions (answered in section 3, "Decided unattended (build)")
 
 1. **Products and value on a loose task.** The chip sets a product on any
    task; should a task with no subtasks but a product (one post) also
@@ -141,84 +142,132 @@ and the running row turns it into stop).
    the creation sheet has no field for it yet ("we will improve that
    later"). Fine to leave it to the task's page for now?
 
-## Build brief
+## 3. What was built
 
-Starts from here; Phase 4 replaces this section with sections 3–5.
+### The prints, real build
 
-**Files Phase 1 wrote or changed** (uncommitted on the branch, kept for
-the build):
+Lunna, scenes 1–6 (Plano, Plano scrolled, Ver o dia, Para depois, the
+creation sheet, a task with tasks opened on Pendentes):
 
-- `app/lib/unify_preview.dart`: the preview entry point, six scenes
-  (`?s=1..6`) on fakes. Bring it up to the real cubits for Phase 4's
-  prints, then delete it.
-- `app/packages/timeline/lib/src/widgets/task_card.dart`: `TaskCard`,
-  `TaskPlayButton`, `TaskCardBar`, `TaskBar`: the one card. Its ±10/✓
-  are stubs (`_Steps`); wire them as `EventControls` does.
-- `app/lib/plan/view/home_page.dart`: `HomePage` (Plano), `TodayTag`,
-  `HomeData`/`TaskView` (preview view models: replace with the real
-  state from `TimelineBloc`).
-- `app/lib/plan/view/task_pages.dart`: `TaskPage` and `LaterPage`
-  (sketched on view models; the real `TaskPage` grows out of
-  `ArtifactPage`, keeping Notas and its dock).
-- `app/packages/app_ui/lib/src/widgets/app_prompt_sheet.dart`: Tarefa |
-  Evento, `products`/`initialProduct`, `AppPromptResult.product`.
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`): `homePending`,
-  `homeLaterOpen`, `homeCycleTag`, `dayPageTitle`, `promptTask`,
-  `promptEvent`, `promptProduct`, `taskTasksCount`. `promptFlexible` and
-  `promptFixed` become unused.
-- `app/packages/timeline/lib/src/widgets/widgets.dart`: exports
-  `task_card.dart`.
+![Lunna](img/build-lunna.png)
 
-**Server** (`server/src/`):
+Focus, the same scenes:
 
-- **Schema**: `task` gains the delivery's columns (`parent_id` → task,
-  `type_id`, `value`, `deadline`, `block_minutes`, `started_at`; `done_at`
-  and `notes` exist). A check (or the store) refuses a parent that has a
-  parent: **one level**. Migration: each `artifact` row becomes a `task`
-  row (same id, `backlog` true while not begun), and `task.artifact_id`
-  becomes `parent_id`; then drop `artifact`. Drizzle migration committed.
-- **A task with tasks** is never laid out itself: the queue holds its
-  subtasks, as it holds a delivery's tasks today. Its minutes, done
-  minutes, time gone and pace are worked out as `ArtifactStore` does now.
-- **Routes**: `/api/artifacts/*` folds into `/api/tasks/*`
-  (`GET /api/tasks/:id` with its tasks; create with `parentId`, `typeId`,
-  `value`, `deadline`); the timeline answers `pending` (begun, not
-  finished, top-level) and `later` (not begun, in order) beside what it
-  has. Keep `artifact` in the wire for one release, or move the app in
-  the same PR (recommended: the same PR, one app).
-- **Play** on any task is `POST /tasks/:id/move { start: true }` (the
-  guard still asks when something runs); on a task with tasks it starts
-  its next subtask.
-- **±10 on a pending task** not running changes its length (the next
-  subtask's, for a task with tasks).
-- **Goals** count `value` of top-level tasks ticked off in their window.
-- **The agent**: the artifact actions (`agent/actions/`) and the board's
-  artifacts become task actions; Work Quality's levels that read
-  deliveries read tasks with tasks. Update `evals/` fixtures.
-- **Analytics**: rename the artifact rows in `analytics/events.ts`.
+![Focus](img/build-focus.png)
 
-**App**:
+One by one, Lunna: [1](img/build-1.png) · [2](img/build-2.png) ·
+[3](img/build-3.png) · [4](img/build-4.png) · [5](img/build-5.png) ·
+[6](img/build-6.png). Drawn by the real pages and cubits on the demo's
+repositories at 10:00; a preview entry point fed them and was deleted.
 
-- Shell: three tabs, **Plano** (`HomePage`), **Objetivos**
-  (`GoalsPage`), **Menu** (adds Sair and *Produtos*, the catalogue).
-  `FeedPage`, `PlanPage`, `AppTitleTabs` use, Tempo's Lista and the mode
-  switch go. `AppFab` on Plano writes a task; on Objetivos a goal.
-- `/dia`: the calendar page (`TimelineList(mode: calendar)`, back arrow,
-  dock).
-- `/depois`: `LaterPage`, reorderable by drag (a move with `index`).
-- `/tarefa/:id`: `TaskPage` from `ArtifactPage` (Notas with dictation,
-  Pendentes = Agora + Para depois via `TaskCard`, Feitas).
-- `DeliveryTile` and `ArtifactRow` go; Lista's runs (`deliveryRuns`) are
-  not needed on Plano. The calendar keeps its runs (one block per
-  parent).
-- The creation sheet passes the catalogue's kinds as `products`, and the
-  result's `product` as `typeId`.
-- The landing's demo (`app/lib/demo/`) follows: its Entregas chapter
-  becomes Plano's Pendentes.
+### The contract
 
-**Specs to update**: `product/spec/artifacts.md` (becomes tasks),
-`home.md`, `goals.md`, `agent.md`; `AGENTS.md`'s *Tasks and events*,
-*The app shell*, *Entregas*, and the Layout block.
+**One kind of task, to the person.** Every task is one card (`TaskCard`):
+play on its left (pause while it runs; none for an event), the task's name
+as title (a delivery's task at work as subtitle). **Play is a drop on
+Agora**: a loose task posts `move { index: 0, start: true }`; a task with
+tasks posts the new `POST /api/tasks/of/:id/play`, which begins its next
+task. Both go through `EventLayoutService.moveTask`, so the guard asks
+when something else runs, and the time rules hold.
 
-**Cost of the design session**: not recorded here; the queue measures
-every run and writes the figures in the PR.
+**What did not change: storage.** A task with tasks is still an
+`artifact` row and its tasks `task.artifact_id`. See "Where the build
+differs" below for why.
+
+### Server (`server/src/`)
+
+| Piece | What |
+|-------|------|
+| `events/event-layout.service.ts` `playArtifact` | the delivery's next task: the one the queue reaches first (by its laid-out hour), else the first of its backlog, else a new task of its name for what its time still owes (30 min when it owes nothing), then `moveTask(start: true)`. Refuses a delivered one ("Essa entrega já foi entregue.") or one gone; outside the working day, the usual refusal; one already running is left alone |
+| `events/tasks.controller.ts` | `POST /tasks/of/:artifactId/play?days=` → the timeline, with `guard` when it asks |
+| `analytics/events.ts` | `artifact_played` |
+
+### App
+
+| Piece | What |
+|-------|------|
+| `lib/shell/` | three tabs, **Plano · Objetivos · Menu**; the + writes a goal on Objetivos, a task elsewhere |
+| `lib/plan/home_page.dart` | `HomePage`: the offer, Agora (+ `TodayTag`, *Ver o dia*), Em seguida, Pendentes, four of Para depois and *Abrir a lista · mais N*; the guard over it; `MinuteRefresh` |
+| `lib/plan/plan_items.dart` | `PlanItems` (what Plano draws, from the day and the deliveries), `PendingCard`, `LaterCard`, `openCard`, `playCard` |
+| `lib/plan/later_page.dart` | `LaterPage`, the whole of Para depois |
+| `lib/plan/write_task.dart` | `writeTask`: the sheet with the catalogue's kinds on its Produto chip; a task with a product is written as a delivery of that kind |
+| `lib/tempo/tempo_page.dart` | `DayPage` (Ver o dia, the calendar) replaces `TempoPage` |
+| `lib/menu/` | Produtos (`AllArtifactsPage`), Novo produto (`TypeSheet`), Sair |
+| `packages/timeline` | `TaskCard`'s ±10/✓ wired; `NowTaskCard` (Agora as a task card, falling back to `EventTile` for events, a task waiting and overtime); `ArtifactPlayed` → `TimelineRepository.playArtifact`; `writeDownOnTimeline(products:, withProduct:)` |
+| `packages/artifacts` | the delivery's Pendentes: Agora + Para depois with play, the guard over the page; `ArtifactsCubit.addMinutes` (±10 of a pending task, never under what is done or 10 min) |
+| `packages/app_ui` | the sheet's controls wrap, so the Produto chip goes under on a phone instead of off its edge |
+| gone | `FeedPage`, `PlanPage` and their tests |
+
+### Tests
+
+- Server: `events.controller.spec.ts` gains 5 end to end (*play on a task
+  with tasks*: queue's first and the delivery begun, backlog's first, a
+  task written for what it owes, the guard, a delivered one refused).
+  Server total 393, all passing.
+- App: `test/plan/home_page_test.dart` (4: empty, Agora titled by the
+  task with pause and nothing repeated in Pendentes, Pendentes' status,
+  controls, bar and play, Para depois's four, loose first, play on each
+  kind and the two ways out); `menu_page_test.dart` +1; root 50 tests in
+  both brands.
+- Packages: `task_card_test.dart` (4), the bloc's `ArtifactPlayed` (1),
+  the cubit's `addMinutes` (1), the delivery page (one rewritten, one new:
+  Agora with pause over Para depois).
+- `.tool/check` passes (app analyze, every package's tests under both
+  brands, server eslint, tsc, tests). No flaky test met.
+
+### Where the build differs from the design
+
+- **The storage merge is not in this delivery** (decided unattended).
+  The brief proposed moving every `artifact` row into `task` with a
+  `parent_id` and dropping `artifact`. That rewrites `ArtifactStore`, the
+  agent's delivery actions and their evals, Work Quality, goals and
+  analytics, and its migration cannot be taken back; done in the same run
+  as the whole app restructure it was the largest risk for the smallest
+  visible gain. Everything the person sees is unified on top of the two
+  tables, and the merge is the next step. Two things follow from it:
+  - **A product on a task** writes it as a delivery of that kind (a task
+    with no tasks yet), so it has its value and counts for Objetivos once
+    delivered: open question 1 is answered *yes*, by the existing rule.
+  - **A loose task's page is still `EventPage`**, and a loose task cannot
+    get tasks of its own yet. Only a task with tasks opens the delivery's
+    page (Notas · Pendentes · Feitas).
+- **Pendentes holds the deliveries begun.** A loose task begun and not
+  finished is the one on Agora (running or paused), so it is drawn there;
+  one put back in the queue owing time carries no mark to tell it apart.
+- **Agora keeps `EventTile`** for a fixed block, a task waiting to be
+  begun and a task in overtime: their buttons (Começar, +10 de atraso,
+  Terminei) answer what `TaskCard` has no room for.
+- **±10 on a pending delivery** changes its total time, not its next
+  task's length: the bar and "1h30 de 3h" read the total.
+- **Para depois is not reorderable** on its page yet, and its order is the
+  loose backlog first, then the deliveries not begun (the two tables have
+  no common order).
+- **The Produto chip** lists kinds by name; a new kind is written from
+  Menu › Novo produto. With no catalogue the chip is not drawn.
+- **The landing's demo** keeps its old shell (Tempo, Entregas, Menu): the
+  landing has three chapters built on it.
+- `ArtifactsPage`, `ArtifactRow`, `DeliveryTile`, `TimelineModeCubit` and
+  Lista stay in the packages, drawn only by the demo.
+
+### Decided unattended (build)
+
+- Open question 1 (value on a task with a product): **yes**, through the
+  delivery a product writes. Open question 2 (deadline on a plain task):
+  **on the task's page**, which for a task with a product is the
+  delivery's page with its Prazo.
+- The storage merge deferred, as above.
+- Play's route is keyed by the delivery (`/tasks/of/:id/play`): the server
+  picks the task, so a card with no tasks still plays.
+- What play writes when a delivery has nothing left: a task of its name
+  for what its time owes, 30 minutes when it owes nothing.
+
+## 4. How to turn it on
+
+Nothing to set: no env var, no migration. Deploy the server before (or
+with) the app: an app on this build against an older server gets 404 on
+play of a task with tasks; every other route is the same.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. No spend outside Claude: the
+build never called a model.

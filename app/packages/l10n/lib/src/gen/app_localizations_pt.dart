@@ -1170,6 +1170,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get artifactPendingEmpty => 'Nada esperando. O + escreve uma tarefa desta.';
+
+  @override
   String get artifactDoneEmpty => 'Nada feito ainda. O que você terminar desta entrega fica aqui.';
 
   @override
@@ -2139,6 +2142,21 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get agentChangeRhythm => 'Ciclo e folgas';
+
+  @override
+  String get homeLaterEmpty => 'Nada esperando. Escreva algo no +.';
+
+  @override
+  String get menuProducts => 'Produtos';
+
+  @override
+  String get menuProductsHint => 'Tarefas por produto, as entregues também';
+
+  @override
+  String get menuNewProduct => 'Novo produto';
+
+  @override
+  String get menuNewProductHint => 'Para escolher no + ao criar uma tarefa';
 
   @override
   String get homePending => 'Pendentes';

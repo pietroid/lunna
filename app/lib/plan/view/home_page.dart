@@ -1,74 +1,18 @@
+import 'dart:async';
+
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/plan/view/plan_items.dart';
+import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
 
-/// One task as the home draws it: what [TaskCard] reads.
-class TaskView {
-  /// A task for a [TaskCard].
-  const TaskView({
-    required this.title,
-    this.subtitle,
-    this.trailing,
-    this.status,
-    this.statusInk,
-    this.bar,
-    this.playing = false,
-  });
-
-  /// The task's name.
-  final String title;
-
-  /// Its task at work, or what it is of.
-  final String? subtitle;
-
-  /// Its hours or its length.
-  final String? trailing;
-
-  /// Where it stands.
-  final String? status;
-
-  /// [status]'s colour when it warns.
-  final Color? statusInk;
-
-  /// Its bar.
-  final TaskBar? bar;
-
-  /// Whether it runs.
-  final bool playing;
-}
-
-/// What the home shows: the day's mark, Agora and the one after it,
-/// Pendentes and the first of Para depois.
-class HomeData {
-  /// The home's content.
-  const HomeData({
-    this.mark,
-    this.now,
-    this.next,
-    this.pending = const [],
-    this.later = const [],
-    this.laterMore = 0,
-  });
-
-  /// What today is beyond its hours (the cycle, a day off).
-  final DayMark? mark;
-
-  /// The running task, or none (the break).
-  final TaskView? now;
-
-  /// The first card after Agora.
-  final TaskView? next;
-
-  /// The tasks begun and not finished, Agora's left out.
-  final List<TaskView> pending;
-
-  /// The first four of the queue not begun.
-  final List<TaskView> later;
-
-  /// How many more the queue holds after [later].
-  final int laterMore;
-}
+/// How many tasks of Para depois Plano draws before the row that opens
+/// them all.
+const kLaterOnHome = 4;
 
 /// {@template home_page}
 /// Plano: what to do now, what is under way, and what comes later.
@@ -76,113 +20,268 @@ class HomeData {
 /// No greeting and no clock. From the top: the agent's one offer, as it
 /// was; **Agora**, with the day's mark beside its heading (the cycle, a
 /// light day, a day off) and *Ver o dia*, which opens the calendar on a
-/// page of its own, the running task and the one after it; **Pendentes**,
-/// every task begun and not finished, drawn as Agora is, with −10, +10
-/// and ✓ and its bar under it; **Para depois**, the first four of the
-/// queue, and a row that opens the whole of it.
+/// page of its own ([onSeeDay]), the running task and the one after it;
+/// **Pendentes**, every task begun and not finished, drawn as Agora is,
+/// with −10, +10 and ✓ and its bar under it; **Para depois**, the first
+/// four of the queue ([kLaterOnHome]), and a row that opens the whole of
+/// it ([onOpenLater]).
 ///
 /// Every task has its play button on the left, which is letting it go on
-/// Agora.
+/// Agora. The running one's is pause.
+///
+/// The offer is asked for again each time the tab comes to the front
+/// ([shown]) and when a new day begins, since it is about the day. The day
+/// is asked for again on every minute while the page is in sight, and the
+/// deliveries whenever the day's tasks change, since their work is the
+/// day's.
 /// {@endtemplate}
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   /// {@macro home_page}
   const HomePage({
-    required this.data,
-    this.onSeeDay,
-    this.onOpenLater,
+    required this.onSeeDay,
+    required this.onOpenLater,
+    this.shown = true,
     this.controller,
     super.key,
   });
 
-  /// What to draw.
-  final HomeData data;
-
   /// Opens the calendar.
-  final VoidCallback? onSeeDay;
+  final VoidCallback onSeeDay;
 
   /// Opens Para depois whole.
-  final VoidCallback? onOpenLater;
+  final VoidCallback onOpenLater;
+
+  /// Whether the tab is in front. Brought forward, it asks for the offer
+  /// again; behind, it asks nothing.
+  final bool shown;
 
   /// The scroll of the page.
   final ScrollController? controller;
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late final SuggestionCubit _suggestion = SuggestionCubit(
+    repository: context.read<AgentRepository>(),
+  );
+
+  /// The day the offer on screen was asked for.
+  DateTime? _askedOn;
+
+  /// Wakes at the next midnight.
+  Timer? _midnight;
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back from the background on another day: the offer is yesterday's.
+    _lifecycle = AppLifecycleListener(onShow: _askIfNewDay);
+    if (widget.shown) _ask();
+    _scheduleMidnight();
+  }
+
+  @override
+  void didUpdateWidget(HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shown && !oldWidget.shown) _ask();
+  }
+
+  @override
+  void dispose() {
+    _midnight?.cancel();
+    _lifecycle.dispose();
+    unawaited(_suggestion.close());
+    super.dispose();
+  }
+
+  static DateTime _dayOf(DateTime time) =>
+      DateTime(time.year, time.month, time.day);
+
+  void _ask() {
+    _askedOn = _dayOf(clock.now());
+    unawaited(_suggestion.load());
+  }
+
+  void _askIfNewDay() {
+    if (!mounted || !widget.shown) return;
+    if (_askedOn != _dayOf(clock.now())) _ask();
+  }
+
+  void _scheduleMidnight() {
+    final now = clock.now();
+    final next = DateTime(now.year, now.month, now.day + 1);
+    _midnight = Timer(next.difference(now), () {
+      _askIfNewDay();
+      if (mounted) _scheduleMidnight();
+    });
+  }
+
+  /// Asks for the day again on the minute, but not under an open guard:
+  /// replacing the lists behind it would be the screen answering it.
+  void _refresh() {
+    final bloc = context.read<TimelineBloc>();
+    if (bloc.state.guard != null) return;
+    bloc.add(const TimelineRequested());
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final now = data.now;
-    final next = data.next;
+    final day = context.watch<TimelineBloc>().state;
+    final deliveries = context.watch<ArtifactsCubit>().state.data;
+    final now = clock.now();
+    final items = PlanItems.of(day, deliveries, now);
+    final guard = day.guard;
+    final later = items.later.take(kLaterOnHome).toList();
 
-    return SafeArea(
-      bottom: false,
-      child: ListView(
-        controller: controller,
-        padding: EdgeInsets.only(
-          top: AppSpacing.s3,
-          bottom: MediaQuery.paddingOf(context).bottom + kNotesDockClearance,
-        ),
-        children: [
-          const SuggestionCard(),
-          _Heading(
-            title: l10n.feedNow,
-            mark: data.mark,
-            action: AppPillButton(
-              label: l10n.feedSeeDay,
-              iconData: AppIcons.calendar,
-              onPressed: onSeeDay ?? () {},
-            ),
-          ),
-          _Pad(
-            child: now == null
-                ? _Quiet(text: l10n.feedBreak)
-                : _card(now, now: true, controls: true),
-          ),
-          if (next != null) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.s6,
-                AppSpacing.s4,
-                AppSpacing.s6,
-                AppSpacing.s2,
+    return BlocProvider<SuggestionCubit>.value(
+      value: _suggestion,
+      // A delivery's work is the day's tasks: when they change, so does it.
+      child: BlocListener<TimelineBloc, TimelineState>(
+        listenWhen: (before, after) =>
+            before.tasks != after.tasks || before.backlog != after.backlog,
+        listener: (context, _) =>
+            unawaited(context.read<ArtifactsCubit>().load()),
+        child: Stack(
+          children: [
+            if (widget.shown) MinuteRefresh(onRefresh: _refresh),
+            SafeArea(
+              bottom: false,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppSpacing.maxContentWidth,
+                  ),
+                  child: ListView(
+                    controller: widget.controller,
+                    // The bottom bar, which the body runs under, comes in
+                    // the padding; the dock floats over it.
+                    padding: EdgeInsets.only(
+                      top: AppSpacing.s3,
+                      bottom:
+                          MediaQuery.paddingOf(context).bottom +
+                          kNotesDockClearance,
+                    ),
+                    children: [
+                      // The agent's one unasked-for offer, first: it is
+                      // about the day below it, and goes once taken or
+                      // turned down.
+                      const SuggestionCard(),
+                      _Heading(
+                        title: l10n.feedNow,
+                        mark: day.marks.on(now),
+                        action: AppPillButton(
+                          label: l10n.feedSeeDay,
+                          iconData: AppIcons.calendar,
+                          onPressed: widget.onSeeDay,
+                        ),
+                      ),
+                      _Pad(
+                        child: _NowCard(card: items.now, now: now),
+                      ),
+                      if (items.next case final next?) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.s6,
+                            AppSpacing.s3,
+                            AppSpacing.s6,
+                            AppSpacing.s2,
+                          ),
+                          child: Text(
+                            l10n.feedNext,
+                            style: AppTypography.caption,
+                          ),
+                        ),
+                        _Pad(child: _NextCard(card: next)),
+                      ],
+                      if (items.pending.isNotEmpty) ...[
+                        _Heading(title: l10n.homePending),
+                        for (final artifact in items.pending)
+                          _Pad(
+                            child: PendingCard(
+                              key: ValueKey(artifact.id),
+                              artifact: artifact,
+                              now: now,
+                            ),
+                          ),
+                      ],
+                      _Heading(title: l10n.stageBacklog),
+                      if (later.isEmpty)
+                        _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
+                      for (final item in later)
+                        _Pad(
+                          child: LaterCard(
+                            key: ValueKey(item.id),
+                            item: item,
+                            now: now,
+                          ),
+                        ),
+                      if (items.later.length > later.length)
+                        _Pad(
+                          child: _OpenRow(
+                            text: l10n.homeLaterOpen(
+                              items.later.length - later.length,
+                            ),
+                            onTap: widget.onOpenLater,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-              child: Text(l10n.feedNext, style: AppTypography.caption),
             ),
-            _Pad(child: _card(next)),
+            // Play while something runs asks first, over the page, as a
+            // drop on Agora does on the calendar.
+            if (guard != null) GuardSheet(guard: guard, busy: day.guardBusy),
           ],
-          if (data.pending.isNotEmpty) ...[
-            _Heading(title: l10n.homePending),
-            for (final task in data.pending)
-              _Pad(child: _card(task, controls: true)),
-          ],
-          _Heading(title: l10n.stageBacklog),
-          for (final task in data.later) _Pad(child: _card(task)),
-          _Pad(
-            child: _OpenRow(
-              text: l10n.homeLaterOpen(data.laterMore),
-              onTap: onOpenLater,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  static Widget _card(
-    TaskView task, {
-    bool now = false,
-    bool controls = false,
-  }) => TaskCard(
-    title: task.title,
-    subtitle: task.subtitle,
-    trailing: task.trailing,
-    now: now,
-    playing: task.playing,
-    onPlay: () {},
-    status: task.status,
-    statusInk: task.statusInk,
-    controls: controls,
-    bar: task.bar,
-    onTap: () {},
-  );
+/// Agora: [NowTaskCard], or the break when nothing runs.
+class _NowCard extends StatelessWidget {
+  const _NowCard({required this.card, required this.now});
+
+  final TimelineEvent? card;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = this.card;
+    if (card == null) return _Quiet(text: context.l10n.feedBreak);
+    return NowTaskCard(
+      card: card,
+      now: now,
+      onTap: () => openCard(context, card),
+    );
+  }
+}
+
+/// The card after Agora, at its hour: play for a task, nothing for a fixed
+/// block, which is never begun by hand.
+class _NextCard extends StatelessWidget {
+  const _NextCard({required this.card});
+
+  final TimelineEvent card;
+
+  @override
+  Widget build(BuildContext context) {
+    final parent = card.artifactTitle;
+    return TaskCard(
+      title: parent ?? card.title,
+      subtitle: parent == null ? null : card.title,
+      trailing: hhmm(card.startTime),
+      onPlay: card.isTask && card.isInteractive
+          ? () => playCard(context, card)
+          : null,
+      onTap: () => openCard(context, card),
+    );
+  }
 }
 
 /// A card's room in the column: the page's margin, and a gap under it.
@@ -230,7 +329,7 @@ class _Heading extends StatelessWidget {
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
-              child: mark == null ? null : TodayTag(mark: mark),
+              child: TodayTag(mark: mark),
             ),
           ),
           ?action,
@@ -278,16 +377,16 @@ class TodayTag extends StatelessWidget {
 
 /// The row under Para depois's four that opens the whole queue.
 class _OpenRow extends StatelessWidget {
-  const _OpenRow({required this.text, this.onTap});
+  const _OpenRow({required this.text, required this.onTap});
 
   final String text;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-      onTap: onTap ?? () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.s4,

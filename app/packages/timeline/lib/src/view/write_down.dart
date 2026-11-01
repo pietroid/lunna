@@ -13,10 +13,16 @@ import 'package:timeline/src/models/models.dart';
 /// room the hour it tapped (and, when the room is short, its whole length),
 /// and a + at the end of a section that section.
 /// Fixed is an event, at its hour.
+///
+/// The sheet offers [products] (the catalogue's kinds, by name) on a task;
+/// one written down with a product is handed to [withProduct] instead of
+/// the day, since a task of a product is kept with the deliveries.
 Future<void> writeDownOnTimeline(
   BuildContext context, {
   Placement placement = const Placement.backlog(),
   String? artifactId,
+  List<String> products = const [],
+  ValueChanged<AppPromptResult>? withProduct,
 }) async {
   final bloc = context.read<TimelineBloc>();
   final l10n = context.l10n;
@@ -40,8 +46,13 @@ Future<void> writeDownOnTimeline(
     initialDuration: minutes == null ? null : Duration(minutes: minutes),
     // An artifact holds tasks; a fixed block is the calendar's alone.
     fixable: artifactId == null,
+    products: artifactId == null && withProduct != null ? products : const [],
   );
   if (result == null) return;
+  if (result.product != null && withProduct != null) {
+    withProduct(result);
+    return;
+  }
 
   bloc.add(
     EventCreated(

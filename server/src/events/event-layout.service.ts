@@ -625,6 +625,62 @@ export class EventLayoutService {
   }
 
   /**
+   * Play on a task that has tasks of its own (a delivery): its next task is
+   * begun, the way dragging that one to the top of the day begins it, guard
+   * and all.
+   *
+   * The next is the one the queue reaches first, then the first of its
+   * backlog. One with nothing left to do gets a task of its own name, for
+   * what its time still owes (half an hour when it owes none), so play on
+   * any task begins something. One already running is left as it is.
+   */
+  async playArtifact(
+    user: CalendarUser,
+    artifactId: string,
+    trace: Trace,
+    now = new Date(),
+  ): Promise<StartNowGuard | undefined> {
+    const artifact = await this._artifacts?.get(user, artifactId);
+    if (artifact === undefined) {
+      throw new BadRequestException('Essa entrega não existe mais.');
+    }
+    if (artifact.doneAt !== undefined) {
+      throw new BadRequestException('Essa entrega já foi entregue.');
+    }
+    const day = await this._timeline.day(user, 1, now);
+    refuseOutsideWorkDay(day);
+
+    const own = day.tasks.filter((it) => it.artifactId === artifactId);
+    if (own.some((it) => day.live.has(it.id))) return undefined;
+
+    const at = (task: Task): number =>
+      day.placed.get(task.id)?.start.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const next =
+      [...own].sort((a, b) => at(a) - at(b))[0] ??
+      day.backlog.find((it) => it.artifactId === artifactId);
+
+    let taskId = next?.id;
+    if (taskId === undefined) {
+      const done = (await this._tasks.ofArtifacts(user))
+        .filter((it) => it.artifactId === artifactId && it.doneAt !== undefined)
+        .reduce((sum, it) => sum + it.minutes, 0);
+      const owed = (artifact.minutes ?? 0) - done;
+      const created = await this._tasks.insert(user, {
+        title: artifact.title,
+        minutes: owed > 0 ? owed : PLAY_MINUTES,
+        position: await this._positionAt(user, day.backlog, day.backlog.length),
+        backlog: true,
+        artifactId,
+      });
+      trace.log('task.create', { taskId: created.id, backlog: true });
+      taskId = created.id;
+    }
+    trace.log('artifact.play', { artifactId, taskId });
+
+    return this.moveTask(user, { taskId, index: 0, start: true }, trace, now);
+  }
+
+  /**
    * Not yet: the task waits until [minutes] after the later of its hour and
    * now before asking again.
    *
@@ -1499,6 +1555,9 @@ function turnTaking(day: Day): Task[] {
  * a drop sticks to the end of the room it lands in.
  */
 const SNAP_MINUTES = BLOCK_GAP_MINUTES + 5;
+
+/** What play writes for a task with tasks that owes no time and has none. */
+const PLAY_MINUTES = 30;
 
 /**
  * The anchored tasks in the run of blocks right after [end], each starting

@@ -83,11 +83,13 @@ class ArtifactsRepository {
     String? notes,
     bool? done,
     bool? started,
+    int? minutes,
   }) => _data(
     () => apiClient.patch<Map<String, dynamic>>(
       '/artifacts/$id',
       data: {
         'title': ?title,
+        'minutes': ?minutes,
         'notes': ?notes,
         'done': ?done,
         'started': ?started,

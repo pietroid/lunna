@@ -1,6 +1,13 @@
+import 'dart:async';
+
 import 'package:app_ui/app_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
+import 'package:timeline/src/bloc/timeline_bloc.dart';
 import 'package:timeline/src/models/models.dart';
+import 'package:timeline/src/widgets/confirm_sheet.dart';
+import 'package:timeline/src/widgets/event_tile.dart';
+import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/now_surface.dart';
 
 /// The bar under a [TaskCard]: how much of its work is done and, when it
@@ -44,6 +51,9 @@ class TaskCard extends StatelessWidget {
     this.status,
     this.statusInk,
     this.controls = false,
+    this.onLess,
+    this.onMore,
+    this.onDone,
     this.bar,
     this.onTap,
     super.key,
@@ -77,6 +87,15 @@ class TaskCard extends StatelessWidget {
 
   /// Whether −10, +10 and ✓ are drawn beside [status].
   final bool controls;
+
+  /// Ten minutes less ([controls]); null draws it faded.
+  final VoidCallback? onLess;
+
+  /// Ten minutes more ([controls]).
+  final VoidCallback? onMore;
+
+  /// Done ([controls]).
+  final VoidCallback? onDone;
 
   /// The bar under it.
   final TaskBar? bar;
@@ -151,7 +170,8 @@ class TaskCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (controls) const _Steps(),
+                if (controls)
+                  _Steps(onLess: onLess, onMore: onMore, onDone: onDone),
               ],
             ),
           ],
@@ -225,7 +245,11 @@ class TaskPlayButton extends StatelessWidget {
 
 /// −10, +10 and ✓, quiet, as Agora draws them.
 class _Steps extends StatelessWidget {
-  const _Steps();
+  const _Steps({this.onLess, this.onMore, this.onDone});
+
+  final VoidCallback? onLess;
+  final VoidCallback? onMore;
+  final VoidCallback? onDone;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +259,7 @@ class _Steps extends StatelessWidget {
       children: [
         _Step(
           tooltip: l10n.controlLess10,
+          onTap: onLess,
           child: Text(
             '−$stepMinutes',
             style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
@@ -242,6 +267,7 @@ class _Steps extends StatelessWidget {
         ),
         _Step(
           tooltip: l10n.controlMore10,
+          onTap: onMore,
           child: Text(
             '+$stepMinutes',
             style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
@@ -249,6 +275,7 @@ class _Steps extends StatelessWidget {
         ),
         _Step(
           tooltip: l10n.controlDone,
+          onTap: onDone,
           child: const AppIcon(
             iconData: AppIcons.check,
             size: AppSpacing.s4,
@@ -261,22 +288,26 @@ class _Steps extends StatelessWidget {
 }
 
 class _Step extends StatelessWidget {
-  const _Step({required this.tooltip, required this.child});
+  const _Step({required this.tooltip, required this.child, this.onTap});
 
   final String tooltip;
   final Widget child;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkResponse(
-      onTap: () {},
+      onTap: onTap,
       radius: AppSpacing.s5,
       child: Tooltip(
         message: tooltip,
-        child: SizedBox(
-          width: AppSpacing.s8 + AppSpacing.s1,
-          height: AppSpacing.s6,
-          child: Center(child: child),
+        child: Opacity(
+          opacity: onTap == null ? 0.4 : 1,
+          child: SizedBox(
+            width: AppSpacing.s8 + AppSpacing.s1,
+            height: AppSpacing.s6,
+            child: Center(child: child),
+          ),
         ),
       ),
     );
@@ -291,7 +322,6 @@ class TaskCardBar extends StatelessWidget {
   const TaskCardBar({required this.bar, super.key});
 
   /// What it measures.
-
   final TaskBar bar;
 
   @override
@@ -330,6 +360,75 @@ class _Fill extends StatelessWidget {
       alignment: Alignment.centerLeft,
       widthFactor: value.clamp(0, 1),
       child: ColoredBox(color: color),
+    );
+  }
+}
+
+/// {@template now_task_card}
+/// Agora's card: the task being lived through as a [TaskCard], pause on
+/// its left (play once paused), −10, +10 and ✓ beside where it stands,
+/// and the running bar under it.
+///
+/// Titled by the task: a delivery's name, with its task at work under it
+/// ([byParent]); on the delivery's own page, which already names it, by the
+/// task at work. A fixed block, a task waiting to be begun and one in
+/// overtime keep the tile the calendar draws ([EventTile]), whose buttons
+/// answer those.
+/// {@endtemplate}
+class NowTaskCard extends StatelessWidget {
+  /// {@macro now_task_card}
+  const NowTaskCard({
+    required this.card,
+    required this.now,
+    this.byParent = true,
+    this.onTap,
+    super.key,
+  });
+
+  /// The card on Agora.
+  final TimelineEvent card;
+
+  /// The moment it is drawn at.
+  final DateTime now;
+
+  /// Whether a delivery's task is titled by the delivery.
+  final bool byParent;
+
+  /// Opens it.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = this.card;
+    final bloc = context.read<TimelineBloc>();
+
+    if (!card.isTask || !card.started || card.isLate) {
+      return EventTile(
+        card: card,
+        onPauseToggled: () => bloc.add(EventPauseToggled(card.id)),
+        onAdjusted: (minutes) => unawaited(adjustTime(context, card, minutes)),
+        onDone: () => bloc.add(EventFinished(card.id)),
+        onStarted: () => bloc.add(EventStarted(card.id)),
+        onSnoozed: () => bloc.add(EventSnoozed(card.id)),
+      );
+    }
+
+    final parent = byParent ? card.artifactTitle : null;
+    return TaskCard(
+      title: parent ?? card.title,
+      subtitle: parent == null ? null : card.title,
+      trailing: '${hhmm(card.startTime)} – ${hhmm(card.endTime)}',
+      now: true,
+      playing: !card.isPaused,
+      onPlay: () => bloc.add(EventPauseToggled(card.id)),
+      controls: true,
+      onLess: card.canShorten(stepMinutes, now)
+          ? () => unawaited(adjustTime(context, card, -stepMinutes))
+          : null,
+      onMore: () => unawaited(adjustTime(context, card, stepMinutes)),
+      onDone: () => bloc.add(EventFinished(card.id)),
+      bar: TaskBar(done: card.progressAt(now)),
+      onTap: onTap,
     );
   }
 }

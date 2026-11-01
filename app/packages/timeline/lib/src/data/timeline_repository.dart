@@ -100,6 +100,19 @@ class TimelineRepository {
     ),
   );
 
+  /// Play on a task with tasks of its own (a delivery, [artifactId]): its
+  /// next task begins, written down first when it has none left.
+  ///
+  /// Like a drop at the top of the day, it can raise the guard.
+  Future<Timeline> playArtifact(
+    String artifactId, {
+    int days = defaultDays,
+  }) => _day(
+    () => apiClient.post<Map<String, dynamic>>(
+      '/tasks/of/${Uri.encodeComponent(artifactId)}/play?days=$days',
+    ),
+  );
+
   /// Says the user began a task.
   ///
   /// One further down the day goes to the top instead, which can raise the

@@ -5,6 +5,16 @@
 > Delivered in [product/delivery/2026-10-21-artifacts](../delivery/2026-10-21-artifacts/README.md);
 > it replaced Projetos.
 
+> **Since #77** ([2026-11-01-unify-tasks](../delivery/2026-11-01-unify-tasks/README.md))
+> the person no longer sees Entregas as a tab or a kind of its own: a
+> delivery is **a task with tasks of its own**, drawn by the same card as
+> any task, on Plano's Pendentes (begun) and Para depois (not begun); see
+> [home.md](./home.md). Everything below about the model, the rules and the
+> routes still holds; what is said of the Entregas tab (its groups, its
+> drag, its rows) describes `ArtifactsPage`, which only the landing's demo
+> still draws. Play on a delivery is `POST /tasks/of/:id/play`; its page's
+> Pendentes is Agora and Para depois with play on each.
+
 The person reads **Entregas** (one *entrega*); code says `Artifact`. The
 tab is the **queue** of deliveries; the **schedule** (the free working
 time the agenda has left) is still answered but not drawn. The **goals**
@@ -145,6 +155,7 @@ schedule: { needMinutes, freeMinutes, until }, topTypes: [typeId] }`.
 | `DELETE /artifacts/:id` | backlog tasks go with it; the rest stay |
 | `POST /artifacts/:id/move` | `{ index, started?: false }` in the queue; `started: false` stops it (one call for a drop into Não iniciadas) |
 | `POST /artifacts/:id/tasks` | `{ title, minutes }`, at the end of the backlog |
+| `POST /tasks/of/:id/play?days=` | play: begins its next task (the queue's first, else its backlog's first, else a new one of its name for what it owes, 30 min when nothing), as a drop on Agora, guard and all; answers the timeline. Refuses a delivered one |
 | `POST /catalog/types` | `{ name, minutes, price?, blockMinutes?, categoryId \| category }` |
 | `POST /goals`, `PATCH /goals/:id`, `DELETE /goals/:id` | see [goals.md](./goals.md) |
 | `POST /tasks` | the day's write, with `artifactId` |

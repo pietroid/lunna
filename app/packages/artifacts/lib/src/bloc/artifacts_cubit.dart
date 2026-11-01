@@ -150,6 +150,18 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
   Future<void> setValue(String id, int? value) =>
       _run(() => _repository.update(id, value: () => value));
 
+  /// Gives a delivery [delta] minutes more of time (less, negative): the
+  /// ±10 of its card in Pendentes. Never under what is done of it, nor
+  /// under ten minutes.
+  Future<void> addMinutes(String id, int delta) {
+    final artifact = state.byId(id);
+    if (artifact == null) return Future.value();
+    final floor = artifact.doneMinutes < 10 ? 10 : artifact.doneMinutes;
+    final minutes = artifact.minutes + delta;
+    if (minutes < floor) return Future.value();
+    return _run(() => _repository.update(id, minutes: minutes));
+  }
+
   /// Marks a delivery delivered, or open again.
   Future<void> setDone(String id, {required bool done}) =>
       _run(() => _repository.update(id, done: done));

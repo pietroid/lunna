@@ -429,9 +429,14 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    // A Wrap, so the product goes under the rest on a narrow phone rather
+    // than off its edge.
+    return Wrap(
+      spacing: AppSpacing.s2,
+      runSpacing: AppSpacing.s2,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        if (fixable) ...[
+        if (fixable)
           AppSegmented(
             selected: fixed ? 1 : 0,
             onSelected: (index) => onFixed(index == 1),
@@ -446,17 +451,12 @@ class _Controls extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(width: AppSpacing.s2),
-        ],
         AppPillButton(
           iconData: AppIcons.timer,
           label: formatDuration(context.l10n, duration),
           onPressed: onDuration,
         ),
-        if (product != null) ...[
-          const SizedBox(width: AppSpacing.s2),
-          Flexible(child: product!),
-        ],
+        ?product,
       ],
     );
   }

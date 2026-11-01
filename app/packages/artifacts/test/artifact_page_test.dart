@@ -274,19 +274,63 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
-  testAt('draws the artifact in Tempo\'s stages, and nothing else of the day', (
-    tester,
-  ) async {
+  testAt('draws its tasks under Para depois, each with play, and nothing '
+      'else of the day', (tester) async {
     SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
     await pump(tester);
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     expect(find.text('Tarefa x'), findsNothing);
-    expect(top(l10n.sectionToday), lessThan(top('Tarefa c')));
-    expect(top('Tarefa c'), lessThan(top(l10n.stageBacklog)));
-    expect(top(l10n.stageBacklog), lessThan(top('Tarefa d')));
+    expect(find.text(l10n.feedNow), findsNothing);
+    expect(top(l10n.stageBacklog), lessThan(top('Tarefa c')));
+    expect(top('Tarefa c'), lessThan(top('Tarefa d')));
+    expect(find.byType(TaskPlayButton), findsNWidgets(2));
     // What was done has its own tab.
     expect(find.text('Tarefa e'), findsNothing);
+
+    await tester.tap(find.byType(TaskPlayButton).last);
+    verify(
+      () => timeline.add(const EventMoved(id: 'd', index: 0, start: true)),
+    ).called(1);
+  });
+
+  testAt('draws its task running on Agora, with pause, over the rest', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
+    final running = TimelineEvent(
+      id: 'c',
+      title: 'Tarefa c',
+      section: TimelineSection.agora,
+      started: true,
+      startTime: now.subtract(const Duration(minutes: 10)),
+      endTime: now.add(const Duration(minutes: 20)),
+      durationMinutes: 30,
+      workMinutes: 30,
+      artifactId: 'p',
+      artifactTitle: 'Site do estúdio',
+    );
+    when(() => timeline.state).thenReturn(
+      TimelineState(
+        status: TimelineStatus.success,
+        cards: [running],
+        tasks: [running],
+        backlog: day.backlog,
+      ),
+    );
+    await pump(tester);
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top(l10n.feedNow), lessThan(top('Tarefa c')));
+    expect(top('Tarefa c'), lessThan(top(l10n.stageBacklog)));
+    expect(top(l10n.stageBacklog), lessThan(top('Tarefa d')));
+    final pause = tester.widget<TaskPlayButton>(
+      find.byType(TaskPlayButton).first,
+    );
+    expect(pause.playing, isTrue);
+
+    await tester.tap(find.byType(TaskPlayButton).first);
+    verify(() => timeline.add(const EventPauseToggled('c'))).called(1);
   });
 
   testAt('keeps what was done in Feitas, newest first, under its day', (

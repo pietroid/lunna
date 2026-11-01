@@ -326,6 +326,7 @@ class Artifact extends Equatable {
     DateTime? Function()? startedAt,
     int? Function()? value,
     String? notes,
+    int? minutes,
     List<ArtifactTask>? tasks,
   }) {
     return Artifact(
@@ -336,7 +337,7 @@ class Artifact extends Equatable {
       startedAt: startedAt == null ? this.startedAt : startedAt(),
       category: category,
       type: type,
-      minutes: minutes,
+      minutes: minutes ?? this.minutes,
       doneMinutes: doneMinutes,
       value: value == null ? this.value : value(),
       blockMinutes: blockMinutes,

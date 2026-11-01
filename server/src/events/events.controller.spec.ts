@@ -420,6 +420,92 @@ describe('the day', () => {
     });
   });
 
+  describe('play on a task with tasks', () => {
+    it('begins the one the queue reaches first, and the delivery with it', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Post' });
+      await post('/tasks', {
+        title: 'Depois',
+        minutes: 15,
+        artifactId: artifact.id,
+      });
+      await add('Solta', 30);
+      await add('Roteiro', 30, { artifactId: artifact.id });
+
+      const response = await post(`/tasks/of/${artifact.id}/play`).expect(201);
+
+      const now = cards(response).find((it) => it.section === 'agora');
+      expect(now).toMatchObject({ title: 'Roteiro', started: true });
+      expect(body(response).guard).toBeUndefined();
+      expect((await artifactStore.get(owner, artifact.id))?.startedAt).toBe(
+        NOW.toISOString(),
+      );
+    });
+
+    it('takes the first of its backlog when nothing of it is queued', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Post' });
+      await post('/tasks', {
+        title: 'Gravar',
+        minutes: 20,
+        artifactId: artifact.id,
+      });
+
+      const response = await post(`/tasks/of/${artifact.id}/play`).expect(201);
+
+      expect(tasks(response)[0]).toMatchObject({
+        title: 'Gravar',
+        started: true,
+      });
+      expect(backlog(response)).toEqual([]);
+    });
+
+    it('writes a task of its name for what it owes when it has none', async () => {
+      const artifact = await artifactStore.insert(owner, {
+        title: 'Mapa astral',
+        minutes: 90,
+      });
+
+      const response = await post(`/tasks/of/${artifact.id}/play`).expect(201);
+
+      expect(tasks(response)[0]).toMatchObject({
+        title: 'Mapa astral',
+        durationMinutes: 90,
+        started: true,
+        artifact: { id: artifact.id, title: 'Mapa astral' },
+      });
+    });
+
+    it('asks first when something else runs', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Post' });
+      await post('/tasks', {
+        title: 'Gravar',
+        minutes: 20,
+        artifactId: artifact.id,
+      });
+      const running = await add('Agora mesmo', 30);
+      await post(`/tasks/${tasks(running)[0].id}/start`).expect(201);
+
+      const response = await post(`/tasks/of/${artifact.id}/play`).expect(201);
+
+      expect(body(response).guard).toMatchObject({
+        kind: 'start_now',
+        current: { title: 'Agora mesmo' },
+      });
+      expect(tasks(response)[0]).toMatchObject({ title: 'Agora mesmo' });
+    });
+
+    it('refuses a delivered one', async () => {
+      const made = await artifactStore.insert(owner, { title: 'Post' });
+      await artifactStore.update(owner, { ...made, doneAt: NOW.toISOString() });
+      const artifact = made;
+
+      const response = await post(`/tasks/of/${artifact.id}/play`).expect(400);
+
+      expect(response.body).toMatchObject({
+        message: 'Essa entrega já foi entregue.',
+      });
+    });
+  });
+
   describe('the backlog', () => {
     it('is where a task written down goes, with no hour', async () => {
       const response = await shelve('Arrumar armário', 45).expect(201);

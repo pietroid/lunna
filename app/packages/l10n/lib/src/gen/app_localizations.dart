@@ -1847,6 +1847,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{Feitas} other{Feitas · {count}}}'**
   String artifactDoneTab(int count);
 
+  /// A task's own page, Pendentes' Para depois with nothing in it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada esperando. O + escreve uma tarefa desta.'**
+  String get artifactPendingEmpty;
+
   /// No description provided for @artifactDoneEmpty.
   ///
   /// In pt, this message translates to:
@@ -3316,6 +3322,36 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Ciclo e folgas'**
   String get agentChangeRhythm;
+
+  /// Para depois with nothing in it, on Plano and on its own page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada esperando. Escreva algo no +.'**
+  String get homeLaterEmpty;
+
+  /// Menu's row that opens every task of a product (the catalogue), delivered too.
+  ///
+  /// In pt, this message translates to:
+  /// **'Produtos'**
+  String get menuProducts;
+
+  /// No description provided for @menuProductsHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefas por produto, as entregues também'**
+  String get menuProductsHint;
+
+  /// Menu's row that writes a kind into the catalogue.
+  ///
+  /// In pt, this message translates to:
+  /// **'Novo produto'**
+  String get menuNewProduct;
+
+  /// No description provided for @menuNewProductHint.
+  ///
+  /// In pt, this message translates to:
+  /// **'Para escolher no + ao criar uma tarefa'**
+  String get menuNewProductHint;
 
   /// The home's section of tasks begun and not finished.
   ///
