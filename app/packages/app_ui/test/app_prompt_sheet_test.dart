@@ -96,7 +96,7 @@ void main() {
     await tester.tap(find.text('abrir'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Fixo'));
+    await tester.tap(find.text('Evento'));
     await tester.pumpAndSettle();
     expect(find.text('16:00–16:30'), findsOneWidget);
 

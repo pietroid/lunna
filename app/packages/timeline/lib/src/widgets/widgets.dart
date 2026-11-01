@@ -11,4 +11,5 @@ export 'free_tile.dart';
 export 'guard_sheet.dart';
 export 'labels.dart';
 export 'now_surface.dart';
+export 'task_card.dart';
 export 'timeline_scale.dart';

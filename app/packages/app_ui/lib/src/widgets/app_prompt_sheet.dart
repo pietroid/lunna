@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:app_ui/app_ui.dart';
@@ -17,6 +18,7 @@ class AppPromptResult {
     required this.duration,
     required this.fixed,
     this.startTime,
+    this.product,
   });
 
   /// What the user wrote.
@@ -30,6 +32,10 @@ class AppPromptResult {
 
   /// The hour, when the user picked one.
   final DateTime? startTime;
+
+  /// The product (a kind of the catalogue) the task is of, by name; null
+  /// for none, and always null for an event.
+  final String? product;
 }
 
 /// {@template app_prompt_sheet}
@@ -63,8 +69,16 @@ class AppPromptSheet extends StatefulWidget {
     this.initialDuration,
     this.initialStart,
     this.fixable = true,
+    this.products = const [],
+    this.initialProduct,
     super.key,
   });
+
+  /// The products a task can be of, by name. Empty draws no chip.
+  final List<String> products;
+
+  /// The product the sheet opens on.
+  final String? initialProduct;
 
   /// When something of this length would land, if it were added now.
   ///
@@ -126,6 +140,8 @@ class AppPromptSheet extends StatefulWidget {
     Duration? initialDuration,
     DateTime? initialStart,
     bool fixable = true,
+    List<String> products = const [],
+    String? initialProduct,
   }) {
     return showModalBottomSheet<AppPromptResult>(
       context: context,
@@ -139,6 +155,8 @@ class AppPromptSheet extends StatefulWidget {
         initialDuration: initialDuration,
         initialStart: initialStart,
         fixable: fixable,
+        products: products,
+        initialProduct: initialProduct,
       ),
     );
   }
@@ -160,6 +178,22 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
   /// Whether the sheet is asking about the clock at all.
   bool get _timed => widget.previewFor != null;
   bool _fixed = false;
+
+  late String? _product = widget.initialProduct;
+
+  Future<void> _pickProduct(BuildContext anchor) async {
+    final box = anchor.findRenderObject()! as RenderBox;
+    final at = box.localToGlobal(Offset.zero);
+    final picked = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(at.dx, at.dy, at.dx, at.dy),
+      items: [
+        for (final name in widget.products)
+          PopupMenuItem(value: name, child: Text(name)),
+      ],
+    );
+    if (picked != null) setState(() => _product = picked);
+  }
 
   /// The hour it was given. Null for a flexible block that takes its place
   /// instead.
@@ -252,6 +286,7 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
         duration: _duration,
         fixed: _timed && _fixed,
         startTime: _timed ? _startTime : null,
+        product: _timed && _fixed ? null : _product,
       ),
     );
   }
@@ -290,6 +325,16 @@ class _AppPromptSheetState extends State<AppPromptSheet> {
                     duration: _duration,
                     onFixed: (value) => _setFixed(fixed: value),
                     onDuration: _pickDuration,
+                    // A product is what a task is of; an event is of none.
+                    product: widget.products.isEmpty || _fixed
+                        ? null
+                        : Builder(
+                            builder: (anchor) => AppPillButton(
+                              iconData: AppIcons.catalog,
+                              label: _product ?? context.l10n.promptProduct,
+                              onPressed: () => unawaited(_pickProduct(anchor)),
+                            ),
+                          ),
                   ),
                   const SizedBox(height: AppSpacing.s3),
                   _Preview(
@@ -372,8 +417,10 @@ class _Controls extends StatelessWidget {
     required this.duration,
     required this.onFixed,
     required this.onDuration,
+    this.product,
   });
 
+  final Widget? product;
   final bool fixed;
   final bool fixable;
   final Duration duration;
@@ -390,11 +437,11 @@ class _Controls extends StatelessWidget {
             onSelected: (index) => onFixed(index == 1),
             segments: [
               AppSegment(
-                label: context.l10n.promptFlexible,
-                iconData: AppIcons.time,
+                label: context.l10n.promptTask,
+                iconData: AppIcons.check,
               ),
               AppSegment(
-                label: context.l10n.promptFixed,
+                label: context.l10n.promptEvent,
                 iconData: AppIcons.pin,
               ),
             ],
@@ -406,6 +453,10 @@ class _Controls extends StatelessWidget {
           label: formatDuration(context.l10n, duration),
           onPressed: onDuration,
         ),
+        if (product != null) ...[
+          const SizedBox(width: AppSpacing.s2),
+          Flexible(child: product!),
+        ],
       ],
     );
   }
