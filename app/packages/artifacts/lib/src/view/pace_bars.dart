@@ -200,12 +200,12 @@ class PaceKey extends StatelessWidget {
 /// done of it.
 bool isStarted(Artifact artifact) => artifact.startedAt != null;
 
-/// Whether a delivery under way is late: its day has gone by, or its time
-/// is ahead of its work by more than [paceSlack]. Entregas draws it first,
-/// on a red-tinged card tagged Urgente.
+/// Whether a delivery under way is urgent: its day has gone by. Pendentes
+/// draws it first, on a red-tinged card that says Urgente, the red running
+/// its whole bar. Behind its pace alone ([isBehind]) is not urgent: the red
+/// showing past the green already says it.
 bool isUrgent(Artifact artifact, DateTime now) =>
-    isStarted(artifact) &&
-    (isOverdue(artifact, now) || isBehind(artifact, now));
+    isStarted(artifact) && isOverdue(artifact, now);
 
 /// How far the red runs past the green at [now]: the share of the time gone
 /// less the share of the work done. Negative when the work is ahead; with

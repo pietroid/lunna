@@ -15,7 +15,7 @@ import 'package:timeline/src/widgets/now_surface.dart';
 class TaskBar {
   /// Work done, 0 to 1, over [time] gone, 0 to 1. Without [time] the bar is
   /// Agora's: one fill, the accent, the block's own minutes.
-  const TaskBar({required this.done, this.time});
+  const TaskBar({required this.done, this.time, this.late = false});
 
   /// The work done, 0 to 1.
   final double done;
@@ -23,6 +23,20 @@ class TaskBar {
   /// The time gone from its start to its day, 0 to 1; null when it is owed
   /// by no day, or for the running block.
   final double? time;
+
+  /// Whether its day has gone by: the time runs the whole bar, red, with
+  /// the work done still over it.
+  final bool late;
+}
+
+/// What −/+ on a [TaskCard] step by: ten minutes of its length (Agora),
+/// or a day of its deadline (Pendentes).
+enum TaskStep {
+  /// −10 and +10, the length.
+  minutes,
+
+  /// −1d and +1d, the day it is due by.
+  days,
 }
 
 /// {@template task_card}
@@ -45,6 +59,9 @@ class TaskCard extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
+    this.trailingInk,
+    this.fill,
+    this.step = TaskStep.minutes,
     this.now = false,
     this.playing = false,
     this.onPlay,
@@ -69,6 +86,16 @@ class TaskCard extends StatelessWidget {
 
   /// On the right of the title: its hours, or its length.
   final String? trailing;
+
+  /// The colour of [trailing] when it is a warning ("para ontem").
+  final Color? trailingInk;
+
+  /// The card's fill, when not the quiet one: [AppColors.urgentFill] for a
+  /// task past its day.
+  final Color? fill;
+
+  /// What −/+ change ([controls]).
+  final TaskStep step;
 
   /// Whether this is the card on Agora.
   final bool now;
@@ -200,7 +227,12 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
                 if (controls)
-                  _Steps(onLess: onLess, onMore: onMore, onDone: onDone),
+                  _Steps(
+                    step: step,
+                    onLess: onLess,
+                    onMore: onMore,
+                    onDone: onDone,
+                  ),
               ],
             ),
           ],
@@ -217,7 +249,7 @@ class TaskCard extends StatelessWidget {
 
     return Material(
       type: now ? MaterialType.transparency : MaterialType.canvas,
-      color: now ? null : AppColors.fill,
+      color: now ? null : fill ?? AppColors.fill,
       borderRadius: radius,
       child: InkWell(
         borderRadius: radius,
@@ -280,8 +312,14 @@ class TaskPlayButton extends StatelessWidget {
 
 /// −10, +10 and ✓, quiet, as Agora draws them.
 class _Steps extends StatelessWidget {
-  const _Steps({this.onLess, this.onMore, this.onDone});
+  const _Steps({
+    required this.step,
+    this.onLess,
+    this.onMore,
+    this.onDone,
+  });
 
+  final TaskStep step;
   final VoidCallback? onLess;
   final VoidCallback? onMore;
   final VoidCallback? onDone;
@@ -289,22 +327,23 @@ class _Steps extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final days = step == TaskStep.days;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _Step(
-          tooltip: l10n.controlLess10,
+          tooltip: days ? l10n.controlDayEarlier : l10n.controlLess10,
           onTap: onLess,
           child: Text(
-            '−$stepMinutes',
+            days ? l10n.stepDayLess : '−$stepMinutes',
             style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
           ),
         ),
         _Step(
-          tooltip: l10n.controlMore10,
+          tooltip: days ? l10n.controlDayLater : l10n.controlMore10,
           onTap: onMore,
           child: Text(
-            '+$stepMinutes',
+            days ? l10n.stepDayMore : '+$stepMinutes',
             style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
           ),
         ),
@@ -361,7 +400,7 @@ class TaskCardBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final time = bar.time;
+    final time = bar.late ? 1.0 : bar.time;
     final pace = time != null;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSpacing.pillRadius),

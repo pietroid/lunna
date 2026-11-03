@@ -364,6 +364,7 @@ function backlogCard(day: Day, task: Task): BacklogCard {
     routine: routineOf(day, task),
     artifact: artifactOf(day, task),
     ...(task.checklist === undefined ? {} : { checklist: task.checklist }),
+    ...(task.pendingAt === undefined ? {} : { pending: true }),
   };
 }
 

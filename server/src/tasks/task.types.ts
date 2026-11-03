@@ -32,6 +32,12 @@ export interface Task {
   backlog: boolean;
   /** ISO 8601, when it was finished. Absent while there is still work. */
   doneAt?: string;
+  /**
+   * ISO 8601, when it was paused off the day into Pendentes: begun and not
+   * finished, waiting there (in the backlog) rather than in Para depois.
+   * Any other move clears it.
+   */
+  pendingAt?: string;
   /** The artifact it belongs to, when it belongs to one. */
   artifactId?: string;
   /** The flexible routine this is a day of, when it is one. */

@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/plan/view/play_sheet.dart';
 import 'package:timeline/timeline.dart';
 
 /// The room between two cards of Plano (Agora, Em seguida, Pendentes and
@@ -18,10 +20,10 @@ const double kQueueGap = AppSpacing.s1;
 /// its own (a delivery) or not.
 ///
 /// - [now], the card on Agora, and [next], the first card after it.
-/// - [pending]: every task begun and not finished, which today means a
-///   delivery begun ([isStarted]), the most urgent first as Entregas put
-///   them. The one whose task runs on Agora is left out: it is drawn
-///   there.
+/// - [pending]: every task begun and not finished: the deliveries begun
+///   ([isStarted]), the most urgent first as Entregas put them, then the
+///   loose tasks paused off the day ([TimelineEvent.pending]). The
+///   delivery whose task runs on Agora is left out: it is drawn there.
 /// - [later]: everything not begun, in one list: the loose tasks waiting in
 ///   the backlog, in its order, then the deliveries not begun, in the
 ///   queue's.
@@ -47,11 +49,13 @@ class PlanItems {
       next: next,
       pending: [
         for (final a in groups.started)
-          if (a.id != running) a,
+          if (a.id != running) PendingDelivery(a),
+        for (final task in day.backlog)
+          if (task.artifactId == null && task.pending) PendingTask(task),
       ],
       later: [
         for (final task in day.backlog)
-          if (task.artifactId == null) LaterTask(task),
+          if (task.artifactId == null && !task.pending) LaterTask(task),
         for (final a in groups.waiting)
           if (a.id != running) LaterDelivery(a),
       ],
@@ -72,10 +76,44 @@ class PlanItems {
   final TimelineEvent? next;
 
   /// The tasks begun and not finished, Agora's left out.
-  final List<Artifact> pending;
+  final List<Pending> pending;
 
   /// Every task not begun, in order.
   final List<Later> later;
+}
+
+/// One task in Pendentes: a delivery begun ([PendingDelivery]) or a loose
+/// task paused off the day ([PendingTask]).
+sealed class Pending {
+  const Pending();
+
+  /// Its id, for keys.
+  String get id;
+}
+
+/// A delivery begun and not delivered.
+final class PendingDelivery extends Pending {
+  /// Wraps [artifact].
+  const PendingDelivery(this.artifact);
+
+  /// The delivery.
+  final Artifact artifact;
+
+  @override
+  String get id => artifact.id;
+}
+
+/// A loose task begun and paused off the day: it waits in the backlog,
+/// owing what it had left.
+final class PendingTask extends Pending {
+  /// Wraps [card].
+  const PendingTask(this.card);
+
+  /// The task, as the day draws it.
+  final TimelineEvent card;
+
+  @override
+  String get id => card.id;
 }
 
 /// One task in Para depois: a loose one ([LaterTask]) or one with tasks of
@@ -140,13 +178,26 @@ void playCard(BuildContext context, TimelineEvent card) {
 
 /// {@template pending_card}
 /// A task begun and not finished, drawn as Agora is: play on the left (its
-/// next task begins), where it stands under the name (its time done of the
-/// whole, and its day, in red once urgent) with −10, +10 and ✓ beside it,
-/// and its bar under it: the time gone in red under the work done in green.
+/// next task begins, asking how much first when that is over an hour,
+/// [playPending]), and in the corner, where a task with an hour says its
+/// hour, the day it is due by ([dueLabel]: "hoje", "quinta-feira",
+/// "12/nov", "para ontem"). Under the name, its time done of the whole,
+/// the whole being its own time or its tasks' together when they add up
+/// to more, with −1d, +1d and ✓ beside it; and its bar: the time gone in
+/// red under the work done in green.
+///
+/// Past its day it is **urgent**: the card takes the red tint, the corner
+/// says "para ontem" in the danger ink, the line says Urgente, and the red
+/// runs the whole bar.
 /// {@endtemplate}
 class PendingCard extends StatelessWidget {
   /// {@macro pending_card}
-  const PendingCard({required this.artifact, required this.now, super.key});
+  const PendingCard({
+    required this.artifact,
+    required this.now,
+    this.onPlay,
+    super.key,
+  });
 
   /// The task with tasks.
   final Artifact artifact;
@@ -154,39 +205,69 @@ class PendingCard extends StatelessWidget {
   /// The moment it is drawn at.
   final DateTime now;
 
+  /// Plays it; by default [playPending].
+  final VoidCallback? onPlay;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final a = artifact;
     final cubit = context.read<ArtifactsCubit>();
-    final due = a.deadline == null
-        ? null
-        : isOverdue(a, now)
-        ? remainingLabel(l10n, a, now)
-        : deadlineLabel(l10n, a, now);
-    final floor = a.doneMinutes < stepMinutes ? stepMinutes : a.doneMinutes;
+    final late = isOverdue(a, now);
+    final done = l10n.artifactTimeDone(
+      formatMinutes(l10n, a.doneMinutes),
+      formatMinutes(l10n, a.minutes),
+    );
 
     return TaskCard(
       title: a.title,
       subtitle: nextTaskOf(a)?.title,
-      onPlay: () =>
-          context.read<TimelineBloc>().add(ArtifactPlayed(artifact.id)),
-      status: [
-        l10n.artifactTimeDone(
-          formatMinutes(l10n, a.doneMinutes),
-          formatMinutes(l10n, a.minutes),
-        ),
-        ?due,
-      ].join(' · '),
-      statusInk: isUrgent(a, now) ? AppColors.dangerInk : null,
+      trailing: dueLabel(l10n, a, now),
+      trailingInk: late ? AppColors.dangerInk : null,
+      fill: late ? AppColors.urgentFill : null,
+      onPlay: onPlay ?? () => unawaited(playPending(context, a)),
+      status: late ? l10n.pendingUrgentStatus(done) : done,
+      statusInk: late ? AppColors.dangerInk : null,
       controls: true,
-      onLess: a.minutes - stepMinutes < floor
+      step: TaskStep.days,
+      onLess: a.deadline == null
           ? null
-          : () => unawaited(cubit.addMinutes(a.id, -stepMinutes)),
-      onMore: () => unawaited(cubit.addMinutes(a.id, stepMinutes)),
+          : () => unawaited(cubit.shiftDeadline(a.id, -1)),
+      onMore: () => unawaited(cubit.shiftDeadline(a.id, 1)),
       onDone: () => unawaited(cubit.setDone(a.id, done: true)),
-      bar: TaskBar(done: workDone(a), time: a.progressAt(now)),
+      bar: TaskBar(done: workDone(a), time: a.progressAt(now), late: late),
       onTap: () => unawaited(openArtifact(context, a.id, tab: 1)),
+    );
+  }
+}
+
+/// {@template pending_task_card}
+/// A loose task paused off the day, in Pendentes: play, its name, what it
+/// still owes, and −10, +10 and ✓, as Agora draws them. No bar: it has no
+/// tasks and no day.
+/// {@endtemplate}
+class PendingTaskCard extends StatelessWidget {
+  /// {@macro pending_task_card}
+  const PendingTaskCard({required this.card, super.key});
+
+  /// The task.
+  final TimelineEvent card;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bloc = context.read<TimelineBloc>();
+    return TaskCard(
+      title: card.title,
+      onPlay: () => playCard(context, card),
+      status: l10n.pendingTaskLeft(durationLabel(l10n, card.workMinutes)),
+      controls: true,
+      onLess: card.canShorten(stepMinutes, clock.now())
+          ? () => unawaited(adjustTime(context, card, -stepMinutes))
+          : null,
+      onMore: () => unawaited(adjustTime(context, card, stepMinutes)),
+      onDone: () => bloc.add(EventFinished(card.id)),
+      onTap: () => openCard(context, card),
     );
   }
 }
@@ -230,8 +311,7 @@ class LaterCard extends StatelessWidget {
           trailing: artifact.minutes > 0
               ? formatMinutes(l10n, artifact.minutes)
               : null,
-          onPlay: () =>
-              context.read<TimelineBloc>().add(ArtifactPlayed(artifact.id)),
+          onPlay: () => unawaited(playPending(context, artifact)),
           onTap: () => unawaited(openArtifact(context, artifact.id, tab: 1)),
         );
     }

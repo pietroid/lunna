@@ -168,6 +168,27 @@ describe('ArtifactsController', () => {
     await http().post('/artifacts').send({ title: '  ' }).expect(400);
   });
 
+  it('counts its own time, or its tasks together once they add up to more', async () => {
+    let answer = await http()
+      .post('/artifacts')
+      .send({ title: 'Vídeo', minutes: 45 })
+      .expect(201);
+    const id = artifacts(answer).at(-1)!.id;
+    for (const title of ['Roteiro', 'Gravar']) {
+      answer = await http()
+        .post(`/artifacts/${id}/tasks`)
+        .send({ title, minutes: 30 })
+        .expect(201);
+    }
+    expect(artifacts(answer).find((it) => it.id === id)!.minutes).toBe(60);
+
+    answer = await http()
+      .patch(`/artifacts/${id}`)
+      .send({ minutes: 300 })
+      .expect(200);
+    expect(artifacts(answer).find((it) => it.id === id)!.minutes).toBe(300);
+  });
+
   it('writes the task of an artifact at the end of the backlog', async () => {
     await http()
       .post('/tasks')

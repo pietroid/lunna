@@ -495,7 +495,14 @@ export class EventLayoutService {
     const task = pendingOf(day, action.taskId);
 
     if (action.backlog === true) {
-      await this._shelve(user, day, task, action.index, trace);
+      await this._shelve(
+        user,
+        day,
+        task,
+        action.index,
+        trace,
+        action.pending === true,
+      );
       return undefined;
     }
 
@@ -522,11 +529,27 @@ export class EventLayoutService {
 
     // What the guard's answer does to what was running. Postponing a fixed
     // block does nothing: its hour is the point of it, so the task waits
-    // for it instead.
+    // for it instead. Pausing a task puts it in Pendentes, and Para depois
+    // puts it in the backlog, both at the top, owing what it had left.
     let postponed: Task | undefined;
+    let shelved: string | undefined;
     if (action.start === true && running !== undefined) {
       if (action.decision === 'solve_current') {
         await this._finishRunning(user, running, trace, now);
+      } else if (
+        running.kind === 'task' &&
+        (action.decision === 'pause_current' ||
+          action.decision === 'later_current')
+      ) {
+        await this._shelve(
+          user,
+          day,
+          running.task,
+          0,
+          trace,
+          action.decision === 'pause_current',
+        );
+        shelved = running.task.id;
       } else if (running.kind === 'task') {
         trace.log('task.postpone', { taskId: running.task.id });
         await this._calendar.remove(user, running.event);
@@ -557,12 +580,16 @@ export class EventLayoutService {
         : laterOf(floorToMinute(new Date(action.after)), floorToMinute(now));
 
     const queue = turnTaking(day).filter(
-      (it) => it.id !== task.id && it.id !== postponed?.id,
+      (it) => it.id !== task.id && it.id !== postponed?.id && it.id !== shelved,
     );
     const index = queueIndexOf(
       day,
       action.index,
-      new Set([task.id, ...(postponed === undefined ? [] : [postponed.id])]),
+      new Set([
+        task.id,
+        ...(postponed === undefined ? [] : [postponed.id]),
+        ...(shelved === undefined ? [] : [shelved]),
+      ]),
     );
 
     trace.log('task.move', {
@@ -576,6 +603,8 @@ export class EventLayoutService {
       notBefore: anchor?.toISOString(),
       minutes: action.minutes ?? owed ?? task.minutes,
       backlog: false,
+      // Back on the day, it no longer waits in Pendentes.
+      pendingAt: undefined,
     });
 
     // What was running and was put off is the next thing after this one.
@@ -633,12 +662,18 @@ export class EventLayoutService {
    * backlog. One with nothing left to do gets a task of its own name, for
    * what its time still owes (half an hour when it owes none), so play on
    * any task begins something. One already running is left as it is.
+   *
+   * With [piece] and nothing left to do, the task written is a piece of
+   * that length instead of all it owes: it is on Agora and inside the
+   * delivery, whose own time is unchanged. With tasks left, [piece] is
+   * ignored: what begins is the next of them.
    */
   async playArtifact(
     user: CalendarUser,
     artifactId: string,
     trace: Trace,
     now = new Date(),
+    piece?: number,
   ): Promise<StartNowGuard | undefined> {
     const artifact = await this._artifacts?.get(user, artifactId);
     if (artifact === undefined) {
@@ -667,7 +702,7 @@ export class EventLayoutService {
       const owed = (artifact.minutes ?? 0) - done;
       const created = await this._tasks.insert(user, {
         title: artifact.title,
-        minutes: owed > 0 ? owed : PLAY_MINUTES,
+        minutes: piece ?? (owed > 0 ? owed : PLAY_MINUTES),
         position: await this._positionAt(user, day.backlog, day.backlog.length),
         backlog: true,
         artifactId,
@@ -1015,6 +1050,7 @@ export class EventLayoutService {
     task: Task,
     index: number,
     trace: Trace,
+    pending = false,
   ): Promise<void> {
     const live = day.live.get(task.id);
     if (live !== undefined) {
@@ -1032,6 +1068,7 @@ export class EventLayoutService {
       notBefore: undefined,
       backlog: true,
       minutes: live === undefined ? task.minutes : owedMinutes(live, day.now),
+      pendingAt: pending ? day.now.toISOString() : undefined,
     });
   }
 

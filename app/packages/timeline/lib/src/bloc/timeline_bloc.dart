@@ -203,6 +203,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           event.index,
           backlog: event.backlog,
           start: event.start,
+          pending: event.pending,
           after: event.after,
           minutes: event.minutes,
           days: _days,
@@ -222,7 +223,11 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
   ) async {
     try {
       _land(
-        await _repository.playArtifact(event.artifactId, days: _days),
+        await _repository.playArtifact(
+          event.artifactId,
+          minutes: event.minutes,
+          days: _days,
+        ),
         emit,
       );
     } on Object catch (error) {

@@ -9,8 +9,9 @@ import 'package:timeline/src/widgets/format.dart';
 /// The one question a drag can raise, drawn over the timeline.
 ///
 /// Something is running and a card was just dropped at the top of the day.
-/// Both answers start the dropped card now; they differ in what becomes of
-/// the running one. The server decides what that does to the rest of the
+/// Each answer starts the dropped card now; they differ in what becomes of
+/// the running one: finished, paused into Pendentes, or sent to Para
+/// depois. The server decides what that does to the rest of the
 /// day — this only asks.
 ///
 /// While it is open the timeline behind it is the one from before the drag.
@@ -95,28 +96,31 @@ class _Panel extends StatelessWidget {
                   AppListItem(
                     iconData: AppIcons.timer,
                     title: l10n.guardStartNowTitle,
-                    subtitle: l10n.guardStartNowRunning(
+                    subtitle: l10n.guardBusyBody(
                       guard.currentTitle,
                       hhmm(guard.currentStart),
                       hhmm(guard.currentEnd),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.s4),
-                  AppButton.icon(
-                    icon: const AppIcon(
-                      iconData: AppIcons.check,
-                      color: AppColors.onAccent,
-                    ),
+                  AppButton(
                     text: l10n.guardFinishCurrent,
                     expand: true,
                     onPressed: () => answer(TimingDecision.solveCurrent),
                   ),
                   const SizedBox(height: AppSpacing.s2),
                   AppButton(
-                    text: l10n.guardPostponeCurrent,
+                    text: l10n.guardToPending,
                     variant: AppButtonVariant.secondary,
                     expand: true,
-                    onPressed: () => answer(TimingDecision.postponeCurrent),
+                    onPressed: () => answer(TimingDecision.pauseCurrent),
+                  ),
+                  const SizedBox(height: AppSpacing.s2),
+                  AppButton(
+                    text: l10n.guardToLater,
+                    variant: AppButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () => answer(TimingDecision.laterCurrent),
                   ),
                   const SizedBox(height: AppSpacing.s2),
                   AppButton.text(

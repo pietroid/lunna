@@ -10,12 +10,9 @@ app has three tabs: **Plano**, **Objetivos**, **Menu**. It opens on Plano.
 To the person there is one kind of thing to do: a **task**. A task with
 tasks of its own is what the code still calls a delivery (`Artifact`);
 the cut is between tasks and **events** (fixed blocks). Every task is drawn
-by the same card (`TaskCard`, `packages/timeline`): a small play button
-on its left (24 px, `fillStrong`; pause while it runs, on `accentSoft`;
-none for an event), its name, what it is under it, its hours or length on
-the right, on the title's line. A subtitle that only repeats the title
-(trimmed, any case) is not drawn: a delivery whose one task is itself
-says its name once. **The task's name is the title**: a
+by the same card (`TaskCard`, `packages/timeline`): a play button on its
+left (pause while it runs; none for an event), its name, what it is under
+it, its hours or length on the right. **The task's name is the title**: a
 delivery's task at work is the subtitle. **One level**: a delivery's task
 has no tasks.
 
@@ -29,23 +26,51 @@ No greeting, date or clock. From the top:
 
 | Section | What it shows | Chosen by | Empty |
 |---------|---------------|-----------|-------|
-| Offer | `SuggestionCard`, the agent's one offer. **Off for now** (#79): `kSuggestionOnPlan = false` in `home_page.dart` draws nothing and asks nothing; the server still makes them | `GET /agent/suggestion` | not drawn |
-| Agora | heading with today's mark (`TodayTag`: "Dia 2 · dia leve", or the day's own tag) and *Ver o dia*; the running task as `NowTaskCard`: titled by its delivery, the task under it, pause, −10 +10 ✓, the 3 px bar. A fixed block, a task waiting to be begun and one in overtime keep `EventTile` | the card in section `agora` | what the calendar's Agora says (`AgoraIdleTile`): the break with its line, a tap writing a task from now; outside the working day `DayOverTile`, with the Menu's hours |
-| Em seguida | the first card in section `dia`, `start – end`, play for a task; an event has none but keeps its room (`keepPlaySlot`) | `TimelineState.cards` | not drawn |
-| Pendentes | every delivery begun and not delivered (`PendingCard`): its next task under the name, "1h30 de 3h · até ter, 3 nov" (danger ink when urgent), −10 +10 ✓, the pace bar at 3 px | `progressGroups(...).started`, minus the one running on Agora | not drawn |
-| Para depois | the first four (`kLaterOnHome`) of everything not begun (`LaterCard`), then *Abrir a lista · mais N*, 4 px apart (`kQueueGap`, as every card on Plano) | `PlanItems.later`: the loose backlog in its order, then the deliveries not begun in the queue's | "Nada esperando." |
+| Offer | `SuggestionCard`, the agent's one offer | `GET /agent/suggestion` | not drawn |
+| Agora | heading with today's mark (`TodayTag`: "Dia 2 · dia leve", or the day's own tag) and *Ver o dia*; the running task as `NowTaskCard`: titled by its delivery, the task under it, pause, −10 +10 ✓, the 3 px bar. A fixed block, a task waiting to be begun and one in overtime keep `EventTile` | the card in section `agora` | "Nada em andamento" |
+| Em seguida | the first card in section `dia`, play for a task, none for an event | `TimelineState.cards` | not drawn |
+| Pendentes | every delivery begun and not delivered (`PendingCard`): its next task under the name, the day it is due in the corner (`dueLabel`: *hoje*, the weekday this week, *12/nov* beyond, *para ontem* once past), "1h30 de 6h15" (*Urgente ·* before it once past its day), −1d +1d ✓, the pace bar at 3 px; then the loose tasks paused off the day (`PendingTaskCard`: "Falta 40 min", −10 +10 ✓) | `PlanItems.pending`: `progressGroups(...).started` minus the one running on Agora, then the backlog's cards with `pending` | not drawn, unless a card is being carried |
+| Para depois | the first four (`kLaterOnHome`) of everything not begun (`LaterCard`), then *Abrir a lista · mais N* | `PlanItems.later`: the loose backlog in its order, then the deliveries not begun in the queue's | "Nada esperando." |
 
 - **Play** is a drop on Agora: a loose task posts `POST /tasks/:id/move
   { index: 0, start: true }`; a delivery posts `POST /tasks/of/:id/play`,
   which begins its next task (the first the queue reaches, else the first
   of its backlog, else a new task of its name for what it still owes).
   Both can raise the guard, drawn over the page (`GuardSheet`).
-- **±10 on a pending delivery** changes its time (`PATCH /artifacts/:id
-  { minutes }`, never under what is done or ten minutes); **✓** delivers it.
+- **Play on a delivery asks first when what would begin is over an hour**
+  (`playPending`, `kPlayAsksOver`), wherever it is drawn: with no task
+  left, `PlaySheet` offers *30 min* (the accent), *1 h*, *Tudo · 2h30* and
+  *Falar com a Lunna*; a piece posts `{ minutes }` with the play, which
+  writes a task of that length into it, titled with its name, and begins
+  it. With tasks, it names the next (*Começar Roteiro?*), *Começar* or
+  *Falar com a Lunna*. Talk opens the conversation about the delivery.
+  A loose task begins whole. Every button of the sheet is text only.
+- **A delivery's time is the larger of its own and its tasks' together**
+  (the server's `minutes`); the green is its tasks done over that.
+- **Urgent is past its day** (`isUrgent`): `urgentFill`, *para ontem* in
+  the danger ink, and the red runs the whole bar (`TaskBar.late`), the
+  green over it. Behind pace alone tints nothing.
+- **−1d +1d on a pending delivery** move its day (`shiftDeadline`; −1d is
+  faded with no day); **✓** delivers it.
+- **One drag between Agora, Em seguida, Pendentes and Para depois**
+  (`plan_drag.dart`): any task card but a fixed block is held
+  (`LongPressDraggable`) and leaves a gap; Agora draws `NowDropZone`, the
+  others a gap at their top (`PlanDropGap`); its own section takes
+  nothing. Let go on **Agora** is play (`move { start: true }`, or
+  `playPending` for a delivery), guard and all. **Em seguida**: a move to
+  the place under what runs (a delivery's next task). **Pendentes**: a
+  loose task `move { backlog: true, pending: true }` (it stops, owing
+  what it had left); a delivery's task goes to its backlog and its
+  delivery is begun (its day asked when it has none); a delivery not
+  begun is begun. **Para depois**: `move { backlog: true }`, or a begun
+  delivery stopped (`ArtifactsCubit.stop`). Out of Agora never asks.
+- **The guard's answers** (`GuardSheet`, here and on the calendar):
+  *Concluir o atual* (`solve_current`), *Pausar em Pendentes*
+  (`pause_current`), *Mandar para Para depois* (`later_current`).
 - A tap on a delivery opens its page on Pendentes; on a loose task its
   `EventPage`.
-- With the offer on, it is asked for when the tab comes forward, at
-  midnight, and on coming back on another day. The day is asked for on every minute while
+- The offer is asked for when the tab comes forward, at midnight, and on
+  coming back on another day. The day is asked for on every minute while
   Plano is in front (`MinuteRefresh`), and the deliveries whenever the
   day's tasks change.
 
@@ -53,13 +78,10 @@ No greeting, date or clock. From the top:
 
 - **Ver o dia** (`DayPage`, `app/lib/tempo/`): the calendar
   (`TimelineList(mode: calendar)`), a back arrow, *Calendário*, the undo
-  chip, its + writing at the first free hour in sight. A task with an
-  hour not begun has play before its title (`EventTile.onPlay`, a drop on
-  Agora, so the guard asks with something running); a delivery's block
-  plays its next task; an event has none. Lista mode is gone
+  chip, its + writing at the first free hour in sight. Lista mode is gone
   from the app (`TimelineModeCubit` survives only in the landing's demo).
 - **Para depois** (`LaterPage`): the whole of `PlanItems.later`, each with
-  play, 4 px apart. Not reorderable yet.
+  play. Not reorderable yet.
 - **A delivery's page** (`ArtifactPage`): Pendentes is two sections,
   **Agora** (its task running, `NowTaskCard` titled by the task) and
   **Para depois** (the rest, the queue's first first, then its backlog),

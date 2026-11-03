@@ -29,7 +29,7 @@ have a tab of their own, Objetivos: see [goals.md](./goals.md).
   by `POST /catalog/types` with a shelf she has (`categoryId`) or a shelf's
   name (`category`), reused case-insensitively or made at the end.
 - **Artifact** (`artifact`): a name, notes, an optional kind (`type_id`,
-  null for a one-off), `minutes` (null: the sum of its tasks), `value` (whole
+  null for a one-off), `minutes` (null: the sum of its tasks; on the wire always the larger of its own and its tasks' together), `value` (whole
   reais), `block_minutes` (null: whole), a `deadline` day, a fractional
   `position` in the queue, `started_at` (begun: its clock runs from here;
   null while it waits in Não iniciadas) and `done_at` (delivered). Writing
@@ -102,9 +102,8 @@ have a tab of their own, Objetivos: see [goals.md](./goals.md).
   delivery begun at once (`ArtifactSheet(started: true)`, a day required,
   a week out unless picked, no place in the queue), Não iniciadas' one at
   the end of the queue. The `AppFab` still writes to the queue.
-- **Urgent** (`isUrgent`): begun, and either its day has gone by or its
-  time is more than `paceSlack` (15 points) ahead of its work
-  (`isBehind`). Its card is `AppColors.urgentFill` and carries an `AppTag`
+- **Urgent** (`isUrgent`): begun, and its day has gone by (#83: behind
+  its pace alone, `isBehind`, is no longer urgent; the bar shows it). Its card is `AppColors.urgentFill` and carries an `AppTag`
   *Urgente* (`AppIcons.warning`, `dangerInk` on `danger`). A delivery not
   begun is never urgent: its row writes its day in the danger ink once
   passed, and it stays where the queue put it.
@@ -155,7 +154,7 @@ schedule: { needMinutes, freeMinutes, until }, topTypes: [typeId] }`.
 | `DELETE /artifacts/:id` | backlog tasks go with it; the rest stay |
 | `POST /artifacts/:id/move` | `{ index, started?: false }` in the queue; `started: false` stops it (one call for a drop into Não iniciadas) |
 | `POST /artifacts/:id/tasks` | `{ title, minutes }`, at the end of the backlog |
-| `POST /tasks/of/:id/play?days=` | play: begins its next task (the queue's first, else its backlog's first, else a new one of its name for what it owes, 30 min when nothing), as a drop on Agora, guard and all; answers the timeline. Refuses a delivered one |
+| `POST /tasks/of/:id/play?days=` | `{ minutes? }`; play: begins its next task (the queue's first, else its backlog's first, else a new one of its name for what it owes, 30 min when nothing, or a piece of `minutes`, 5 to 480, when given), as a drop on Agora, guard and all; answers the timeline. Refuses a delivered one |
 | `POST /catalog/types` | `{ name, minutes, price?, blockMinutes?, categoryId \| category }` |
 | `POST /goals`, `PATCH /goals/:id`, `DELETE /goals/:id` | see [goals.md](./goals.md) |
 | `POST /tasks` | the day's write, with `artifactId` |

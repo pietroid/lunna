@@ -171,6 +171,7 @@ function toTask(stored: Task & { userId?: string }): Task {
   for (const key of [
     'notBefore',
     'doneAt',
+    'pendingAt',
     'routineId',
     'occurrence',
     'artifactId',

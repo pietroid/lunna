@@ -22,6 +22,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { EditEventDto } from './dto/edit-event.dto';
 import { ExtendEventDto } from './dto/extend-event.dto';
 import { MoveEventDto } from './dto/move-event.dto';
+import { PlayArtifactDto } from './dto/play-artifact.dto';
 import { SnoozeEventDto } from './dto/snooze-event.dto';
 import { SwapTaskDto } from './dto/swap-task.dto';
 import { TimingDto } from './dto/timing.dto';
@@ -34,6 +35,7 @@ import {
   requireDonePage,
   requireLength,
   requireMove,
+  requirePiece,
   requireSnooze,
   requireSwap,
   requireTask,
@@ -206,17 +208,21 @@ export class TasksController {
   /**
    * Play on a task with tasks of its own: its next task begins, guard and
    * all. Keyed by the delivery, since what plays is worked out here.
+   * `{ minutes }` asks for a piece of that length when it has no task left.
    */
   @Post('of/:artifactId/play')
   async play(
     @CurrentUser() user: AuthUser,
     @Param('artifactId') artifactId: string,
+    @Body() dto: PlayArtifactDto | undefined,
     @Query('days') days?: string,
   ): Promise<Timeline> {
     const guard = await this.layout.playArtifact(
       owner(user),
       artifactId,
       Trace.start(user.id, artifactId),
+      undefined,
+      requirePiece(dto?.minutes),
     );
 
     return this._answer(user, days, guard);

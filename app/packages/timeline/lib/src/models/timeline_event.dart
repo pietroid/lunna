@@ -103,6 +103,7 @@ class TimelineEvent extends Equatable {
     this.artifactId,
     this.artifactTitle,
     this.checklist = const [],
+    this.pending = false,
   }) : workMinutes = workMinutes ?? durationMinutes,
        day = day ?? DateTime(startTime.year, startTime.month, startTime.day);
 
@@ -137,6 +138,7 @@ class TimelineEvent extends Equatable {
         for (final item in json['checklist'] as List<dynamic>? ?? <dynamic>[])
           ChecklistItem.fromJson(item as Map<String, dynamic>),
       ],
+      pending: json['pending'] as bool? ?? false,
     );
   }
 
@@ -237,6 +239,10 @@ class TimelineEvent extends Equatable {
   /// The day's own list, when it is a day of a routine that has one
   /// (breakfast: the coffee, the dishes), each item ticked off or not.
   final List<ChecklistItem> checklist;
+
+  /// Whether it was begun and paused off the day: in the backlog, but drawn
+  /// in Pendentes rather than in Para depois.
+  final bool pending;
 
   /// The first item not yet ticked off, or null when all are (or there is
   /// no list).
@@ -340,6 +346,7 @@ class TimelineEvent extends Equatable {
       artifactId: artifactId,
       artifactTitle: artifactTitle,
       checklist: checklist ?? this.checklist,
+      pending: pending,
     );
   }
 
@@ -369,6 +376,7 @@ class TimelineEvent extends Equatable {
     artifactId,
     artifactTitle,
     checklist,
+    pending,
   ];
 }
 
@@ -423,7 +431,14 @@ enum TimingDecision {
   solveCurrent('solve_current'),
 
   /// Keep it, further down the day.
-  postponeCurrent('postpone_current');
+  postponeCurrent('postpone_current'),
+
+  /// Pause it where it is: begun and not finished, so it waits in
+  /// Pendentes owing what it had left.
+  pauseCurrent('pause_current'),
+
+  /// Send it to the backlog, Para depois, owing what it had left.
+  laterCurrent('later_current');
 
   const TimingDecision(this.wire);
 

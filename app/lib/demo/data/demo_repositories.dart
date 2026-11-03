@@ -169,6 +169,7 @@ class DemoTimelineRepository implements TimelineRepository {
     int index, {
     bool backlog = false,
     bool start = false,
+    bool pending = false,
     DateTime? after,
     int? minutes,
     int days = TimelineRepository.defaultDays,

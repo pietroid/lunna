@@ -1,0 +1,166 @@
+{
+  "title": "Pendentes: o prazo no canto, um pedaço por vez, um arrasto só",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Pendentes",
+      "why": "The deadline where a task's hour is, −1d +1d, and urgent means past its day.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 262,
+          "y": 225,
+          "label": "Prazo no canto",
+          "text": "Where a task with an hour shows its hour: hoje; the weekday in full this week (quinta-feira); 12/nov in another week; para ontem once past, in the danger ink."
+        },
+        {
+          "id": "B",
+          "x": 120,
+          "y": 282,
+          "label": "Urgente = passou do dia",
+          "text": "Past its day: urgentFill, 'Urgente ·' before the time done, and the red runs the whole bar with the green still over it. Behind pace alone no longer tints the card."
+        },
+        {
+          "id": "C",
+          "x": 240,
+          "y": 368,
+          "label": "−1d +1d ✓",
+          "text": "On every pending card, replacing −10 +10: they move the deadline a day (shiftDeadline). −1d is faded with no deadline. Agora keeps −10 +10."
+        },
+        {
+          "id": "D",
+          "x": 168,
+          "y": 610,
+          "label": "Soma das tarefas",
+          "text": "The whole is the larger of the task's own time (5h) and its tasks' together (6h15). Green: the minutes of tasks done over that whole. Red: working time gone, unchanged."
+        },
+        {
+          "id": "E",
+          "x": 22,
+          "y": 439,
+          "label": "Play pergunta > 1h",
+          "text": "Play begins at once when what would begin is an hour or less; over that, the sheet of screens 2–3."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Play sem subtarefas",
+      "why": "2h30 owed: how much now? A piece becomes a subtask of its own.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 118,
+          "y": 740,
+          "label": "30 min em destaque",
+          "text": "The pieces: 30 min (accent, the sheet exists to take a piece) and 1h. A piece writes a task of that length into it, titled with its name, and begins it: on Agora and inside the task."
+        },
+        {
+          "id": "B",
+          "x": 362,
+          "y": 740,
+          "label": "Tudo · 2h30",
+          "text": "The whole of what it owes, no new subtask."
+        },
+        {
+          "id": "C",
+          "x": 40,
+          "y": 765,
+          "label": "Falar com a Lunna",
+          "text": "Text only, as every button of the sheet: opens the conversation with this task as its 'about'."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Play com subtarefas",
+      "why": "The next subtask is 1h30: confirm it.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 340,
+          "y": 640,
+          "label": "Nomeia a próxima",
+          "text": "The next subtask (the queue's first, else the backlog's), its parent and length. Asked only when it is over an hour."
+        },
+        {
+          "id": "B",
+          "x": 300,
+          "y": 712,
+          "label": "Começar",
+          "text": "Text only, accent: begins that subtask (ArtifactPlayed), as today."
+        },
+        {
+          "id": "C",
+          "x": 300,
+          "y": 755,
+          "label": "Ou conversar",
+          "text": "Falar com a Lunna, as on screen 2. Cancelar closes."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Arrastar para Agora",
+      "why": "Agora, Em seguida, Pendentes and Para depois are one drag.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 340,
+          "y": 113,
+          "label": "Solte para começar",
+          "text": "Only Agora draws itself as a target: the running card fades under an accent outline. Letting go here is play (and screens 2–3 may ask)."
+        },
+        {
+          "id": "B",
+          "x": 26,
+          "y": 200,
+          "label": "Cartão carregado",
+          "text": "Long-press any task card (not an event) to carry it; it leaves a gap where it was (Mapa astral left Pendentes)."
+        },
+        {
+          "id": "C",
+          "x": 152,
+          "y": 689,
+          "label": "Entre seções, sem pergunta",
+          "text": "Out of Agora to any section never asks: into Pendentes pauses it, into Para depois sends it to the backlog, into Em seguida queues it next."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · Agora ocupado",
+      "why": "Let go on Agora (or play) while something runs: what of it?",
+      "pins": [
+        {
+          "id": "A",
+          "x": 22,
+          "y": 588,
+          "label": "O que fazer com ela?",
+          "text": "The same GuardSheet, on Plano and the calendar; its three answers are text only. On a vacant Agora nothing asks: it just begins."
+        },
+        {
+          "id": "B",
+          "x": 370,
+          "y": 666,
+          "label": "Concluir",
+          "text": "Finishes the running one, which gives its hour away (solve_current)."
+        },
+        {
+          "id": "C",
+          "x": 370,
+          "y": 708,
+          "label": "Pausar em Pendentes",
+          "text": "New pause_current: it stops owing what it had left and stays begun, so it waits in Pendentes."
+        },
+        {
+          "id": "D",
+          "x": 370,
+          "y": 750,
+          "label": "Para depois",
+          "text": "New later_current: back to the backlog. 'Deixar para depois' (next in the queue) goes."
+        }
+      ]
+    }
+  ]
+}

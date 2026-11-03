@@ -2825,6 +2825,12 @@ abstract class AppLocalizations {
   /// **'Em seguida'**
   String get feedNext;
 
+  /// No description provided for @feedBreak.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada em andamento'**
+  String get feedBreak;
+
   /// No description provided for @feedSeeDay.
   ///
   /// In pt, this message translates to:
@@ -3394,6 +3400,132 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Dia {day} · {what}'**
   String homeCycleTag(int day, String what);
+
+  /// No description provided for @dueToday.
+  ///
+  /// In pt, this message translates to:
+  /// **'hoje'**
+  String get dueToday;
+
+  /// No description provided for @dueYesterday.
+  ///
+  /// In pt, this message translates to:
+  /// **'para ontem'**
+  String get dueYesterday;
+
+  /// No description provided for @weekdaysLong.
+  ///
+  /// In pt, this message translates to:
+  /// **'segunda-feira,terça-feira,quarta-feira,quinta-feira,sexta-feira,sábado,domingo'**
+  String get weekdaysLong;
+
+  /// No description provided for @dueDate.
+  ///
+  /// In pt, this message translates to:
+  /// **'{day}/{month}'**
+  String dueDate(String day, String month);
+
+  /// No description provided for @controlDayEarlier.
+  ///
+  /// In pt, this message translates to:
+  /// **'Prazo um dia antes'**
+  String get controlDayEarlier;
+
+  /// No description provided for @controlDayLater.
+  ///
+  /// In pt, this message translates to:
+  /// **'Prazo um dia depois'**
+  String get controlDayLater;
+
+  /// No description provided for @pendingUrgentStatus.
+  ///
+  /// In pt, this message translates to:
+  /// **'Urgente · {status}'**
+  String pendingUrgentStatus(String status);
+
+  /// No description provided for @playPieceTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto você vai fazer agora?'**
+  String get playPieceTitle;
+
+  /// No description provided for @playPieceBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} tem {length} pela frente. Um pedaço vira uma tarefa dentro dela.'**
+  String playPieceBody(String title, String length);
+
+  /// No description provided for @playWhole.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tudo · {length}'**
+  String playWhole(String length);
+
+  /// No description provided for @playNextTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar {task}?'**
+  String playNextTitle(String task);
+
+  /// No description provided for @playNextBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'A próxima de {parent} · {length}'**
+  String playNextBody(String parent, String length);
+
+  /// No description provided for @playNextStart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar'**
+  String get playNextStart;
+
+  /// No description provided for @guardBusyBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} está rodando, {start}–{end}. O que fazer com ela?'**
+  String guardBusyBody(String title, String start, String end);
+
+  /// No description provided for @guardToPending.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pausar em Pendentes'**
+  String get guardToPending;
+
+  /// No description provided for @guardToLater.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mandar para Para depois'**
+  String get guardToLater;
+
+  /// No description provided for @planDropStart.
+  ///
+  /// In pt, this message translates to:
+  /// **'Solte para começar agora'**
+  String get planDropStart;
+
+  /// No description provided for @stepDayLess.
+  ///
+  /// In pt, this message translates to:
+  /// **'−1d'**
+  String get stepDayLess;
+
+  /// No description provided for @stepDayMore.
+  ///
+  /// In pt, this message translates to:
+  /// **'+1d'**
+  String get stepDayMore;
+
+  /// Under a loose task paused into Pendentes: what it still owes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Falta {length}'**
+  String pendingTaskLeft(String length);
+
+  /// The gap a section of Plano opens while a card is carried over it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Solte aqui'**
+  String get planDropHere;
 
   /// The one button at the foot of every screen, to a screen reader: opens the composer.
   ///

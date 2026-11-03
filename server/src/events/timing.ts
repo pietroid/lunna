@@ -27,6 +27,11 @@ export interface TimingAction {
    * saying they are doing it now.
    */
   start?: boolean;
+  /**
+   * With [backlog], whether it was dropped into Pendentes: it waits there,
+   * begun and not finished, rather than in Para depois.
+   */
+  pending?: boolean;
   /** What the user decided. Absent means they have not been asked yet. */
   decision?: TimingDecision;
   /** ISO 8601, the start of the gap it was dropped into, when it was. */
@@ -36,16 +41,26 @@ export interface TimingAction {
 }
 
 /**
- * What the guard's two answers say about the block that was already running.
+ * What the guard's answers say about the block that was already running.
  *
  * - `solve_current` finishes it and gives its hour away.
- * - `postpone_current` keeps it, further down the day.
+ * - `pause_current` stops a running task owing what it had left, and it
+ *   waits in Pendentes (the backlog's top, marked pending).
+ * - `later_current` stops a running task owing what it had left, and it
+ *   goes back to Para depois (the backlog's top).
+ * - `postpone_current` keeps it, next in the queue. Older apps send it.
+ *
+ * A fixed block is never moved by any of the last three: the task waits
+ * for it instead.
  */
-export type TimingDecision = 'solve_current' | 'postpone_current';
+export type TimingDecision =
+  'solve_current' | 'pause_current' | 'later_current' | 'postpone_current';
 
 /** Every decision, for validating one off the wire. */
 export const TIMING_DECISIONS: TimingDecision[] = [
   'solve_current',
+  'pause_current',
+  'later_current',
   'postpone_current',
 ];
 
