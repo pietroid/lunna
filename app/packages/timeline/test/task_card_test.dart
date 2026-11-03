@@ -80,5 +80,65 @@ void main() {
       expect(find.text('1h30 de 3h'), findsOneWidget);
       expect(find.byType(TaskCardBar), findsOneWidget);
     });
+
+    testWidgets('says a name once when its task is itself', (tester) async {
+      await pump(
+        tester,
+        TaskCard(
+          title: 'Notas fiscais',
+          subtitle: ' notas fiscais ',
+          onPlay: () {},
+        ),
+      );
+
+      expect(find.textContaining('otas fiscais'), findsOneWidget);
+    });
+
+    testWidgets('keeps the button small, and its room for a fixed block', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        Column(
+          children: [
+            TaskCard(title: 'Roteiro', onPlay: () {}),
+            const TaskCard(title: 'Reunião', keepPlaySlot: true),
+            const TaskCard(title: 'Almoço'),
+          ],
+        ),
+      );
+
+      expect(TaskPlayButton.size, 24);
+      expect(tester.getSize(find.byType(TaskPlayButton)).width, 24);
+      final left = tester.getTopLeft(find.text('Roteiro')).dx;
+      expect(tester.getTopLeft(find.text('Reunião')).dx, left);
+      expect(tester.getTopLeft(find.text('Almoço')).dx, lessThan(left));
+    });
+
+    testWidgets('puts its hours on the title line, not in the middle', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        TaskCard(
+          title: 'Post de novembro',
+          subtitle: 'Roteiro',
+          trailing: '10:00 – 10:45',
+          onPlay: () {},
+        ),
+      );
+
+      final title = tester.getRect(find.text('Post de novembro'));
+      final hours = tester.getRect(find.text('10:00 – 10:45'));
+      expect(
+        hours.bottom,
+        lessThan(tester.getTopLeft(find.text('Roteiro')).dy),
+      );
+      expect((hours.center.dy - title.center.dy).abs(), lessThan(4));
+      expect(
+        tester.getTopLeft(find.byType(TaskPlayButton)).dy,
+        lessThan(tester.getTopLeft(find.text('Roteiro')).dy),
+      );
+    });
   });
 }

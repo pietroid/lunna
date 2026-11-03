@@ -1835,9 +1835,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get feedNext => 'Em seguida';
 
   @override
-  String get feedBreak => 'Nada em andamento';
-
-  @override
   String get feedSeeDay => 'Ver o dia';
 
   @override

@@ -1,8 +1,7 @@
 # UX e UI, parte 1 (#79)
 
-Draft, from the unattended design session (mockup track). Sections 1 and
-2 are the proposal; the **Build brief** is what `/create build ux-part-1`
-starts from, and Phase 4 replaces it with sections 3–5.
+Mockup track, designed and built unattended by the queue. App only:
+nothing changed on the server.
 
 ## 1. The prompt
 
@@ -74,63 +73,74 @@ overtime to `EventTile`. The difference was only the empty state.
   the air while dragged draws none either.
 - **An event on the calendar keeps no empty play slot** (unlike Em
   seguida's `keepPlaySlot`): its pin already sits where the button would.
+- **Calendário's empty Agora draws through `AgoraIdleTile` too** (build
+  brief item 1): the tile takes the calendar's free room (`slot`) and its
+  aim (`targeted`), so Plano, Lista and the calendar draw an empty Agora
+  with one widget.
 - **Suggestions are switched off on Plano only**: the landing's demo
   keeps its offer (it is the agent's chapter), and the server keeps
   making suggestions (`SuggestionTimer` still fires; nobody sees them).
 
-## Build brief
+## 3. What was built
 
-**Files the design session wrote or changed** (uncommitted by the
-session; the queue commits them):
+![Lunna](img/build-lunna.png)
 
-- `app/packages/timeline/lib/src/widgets/agora_idle_tile.dart` (new),
-  exported from `widgets.dart`.
-- `app/packages/timeline/lib/src/view/timeline_list.dart`: Lista's break
-  draws `AgoraIdleTile`.
-- `app/packages/timeline/lib/src/widgets/task_card.dart`: top-aligned
-  row, hours on the title line, `_subtitle` (no repeat), `keepPlaySlot`,
-  `TaskPlayButton.size` = 24 px.
-- `app/lib/plan/view/home_page.dart`: `kSuggestionOnPlan`, `_NowCard`
-  with `AgoraIdleTile`, `_NextCard` with `start – end` and play,
-  `_Pad(gap:)`.
-- `app/lib/plan/view/plan_items.dart`: `kQueueGap`;
-  `app/lib/plan/view/later_page.dart` uses it.
-- `app/test/plan/home_page_test.dart`: the empty day expects `FreeTile`.
-- After the review (play on the calendar):
-  `app/packages/timeline/lib/src/widgets/event_tile.dart` (`onPlay`, the
-  button before the title), `delivery_tile.dart` (`onPlay`, in `_Head`
-  in place of the mark), `view/timeline_list.dart` (`_plays`, wired in
-  `_tile` and `_calendarRun`), and three tests in
-  `test/timeline_list_test.dart` (play begins a task without opening it,
-  none on an event, a delivery block plays its next task). The timeline
-  package's list, run and preview tests pass (86).
-- `app/lib/ux_part_1_preview.dart`: the preview entry point (scenes 1–5,
-  5 being the calendar with two more queued tasks);
-  delete it in Phase 4.
+![Focus](img/build-focus.png)
 
-**What the build must still do** (app only; nothing on the server):
+The real build, Lunna then Focus, five scenes each: a task running (with
+Em seguida's `start – end` and play), the break on an empty Agora, before
+the working day (`DayOverTile`), Para depois whole (4 px apart), and the
+calendar with play on each task not begun and none on the Standup event.
+The 24 px button reads on both: `fillStrong` with `ink2` waiting, and on
+Agora's glow the pause on `accentSoft` (lime on Focus's dark, rose on
+Lunna's).
 
-1. Calendário's own empty Agora (`timeline_list.dart`, the `(null, null)`
-   cases near line 1782) draws `DayOverTile`/`FreeTile` from its free
-   room; move it onto `AgoraIdleTile` too if the room's slot can be
-   passed in, or leave it and say why.
-2. Remove `feedBreak` from `app_pt.arb` if nothing reads it any more
-   (only the old `_Quiet` did), and regenerate l10n.
-3. Tests: `task_card_test.dart` for the dropped repeat subtitle,
-   `keepPlaySlot` and the 24 px button; `home_page_test.dart` for
-   Em seguida's `start – end` and play, no `SuggestionCard` on Plano, and
-   `DayOverTile` outside the working day.
-4. Check that the smaller button still reads on Focus (lime `accentSoft`
-   on dark) in the build prints, and on Agora's `NowSurface` glow.
-5. AGENTS.md "The timeline" (Calendário) and `product/spec/home.md`:
-   say a task not begun on the calendar has play, a drop on Agora.
-6. Shoot the calendar in both brands (scene 5) and check the button on
-   Focus's dark fill and on a routine's or a short (30 min) card.
-7. AGENTS.md "The app shell" says Plano opens with "the agent's one
-   offer": say it is off for now (`kSuggestionOnPlan`), and point
-   `product/spec/home.md` at the same.
+**The contract**: play is always a drop on Agora (`EventMoved(start:
+true)`, a delivery's `ArtifactPlayed`), wherever it is drawn (Plano, Para
+depois, Em seguida, the calendar), so with something running it asks first
+(`GuardSheet`). An event never has play: it begins at its hour.
 
-**Open questions**: none blocking. If "the queue" meant Pendentes as well,
-it is one `gap:` on its `_Pad`.
+**Server**: nothing.
 
-**Cost**: the queue measures every run and writes the figures in the PR.
+**App**:
+
+| Piece | Where |
+|-------|-------|
+| `TaskCard`: top-aligned row, hours on the title's line, the subtitle that only repeats the title dropped, `keepPlaySlot`, `TaskPlayButton.size` 24 px | `packages/timeline/lib/src/widgets/task_card.dart` |
+| `AgoraIdleTile` (new): the empty Agora, the break (`FreeTile(now: true)`) or `DayOverTile`; takes the calendar's `slot` and `targeted` | `packages/timeline/lib/src/widgets/agora_idle_tile.dart` |
+| Lista's break and Calendário's empty Agora draw `AgoraIdleTile`; `_plays` wires play on the calendar | `packages/timeline/lib/src/view/timeline_list.dart` |
+| `EventTile.onPlay`, `DeliveryTile.onPlay` | `packages/timeline/lib/src/widgets/event_tile.dart`, `delivery_tile.dart` |
+| `kSuggestionOnPlan = false`, `_NowCard`, `_NextCard`, `_Pad(gap:)` | `app/lib/plan/view/home_page.dart` |
+| `kQueueGap` (4 px) on Plano and `LaterPage` | `app/lib/plan/view/plan_items.dart`, `later_page.dart` |
+| `feedBreak` ("Nada em andamento") removed, l10n regenerated | `packages/l10n` |
+
+**Tests** (all passing):
+
+- `packages/timeline/test/task_card_test.dart`: 7 (3 new: the name said
+  once, the 24 px button and `keepPlaySlot`'s alignment, the hours on the
+  title's line).
+- `packages/timeline/test/timeline_list_test.dart`: 3 new (play on the
+  calendar begins a task without opening it, none on an event, a delivery
+  block plays its next task). The timeline package: 186.
+- `app/test/plan/home_page_test.dart`: 6 (2 new: `DayOverTile` outside
+  the working day; Em seguida's `10:40 – 11:25` and its play; and the
+  empty day now also checks that no `SuggestionCard` is drawn and the
+  agent is never asked). Run under both brands.
+- `.tool/check`: every step passed (`app-analyze`, the tests of every
+  package under Focus and Lunna). No flaky test seen.
+
+**Where the build differs from the mockup**: nothing a person sees. The
+one change behind it is Calendário's empty Agora, which now draws through
+`AgoraIdleTile` like Plano and Lista instead of its own copy of the same
+two widgets.
+
+## 4. How to turn it on
+
+Nothing to set: it ships with the app. The agent's offer on Plano comes
+back by setting `kSuggestionOnPlan = true` in
+`app/lib/plan/view/home_page.dart`; the server never stopped making
+suggestions.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

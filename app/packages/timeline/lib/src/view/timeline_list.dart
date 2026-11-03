@@ -1778,22 +1778,15 @@ class _TimelineListState extends State<TimelineList> {
             key: key,
             dy: dy,
             child: switch ((card, entrySection)) {
-              // Outside the working day nothing begins, and Agora says so.
-              (null, null) when _closedAt(now) => DayOverTile(
+              // Agora with nothing in it, as Plano draws it: the break, or
+              // outside the working day the day over.
+              (null, null) => AgoraIdleTile(
                 workDay: state.workDay,
-                over: now.hour * 60 + now.minute >= state.workDay.end,
-                onAdjust: widget.onAdjustDay,
-              ),
-              (null, null) => FreeTile(
-                slot: room!.slot,
-                now: true,
+                now: now,
+                slot: room?.slot,
                 targeted: aimed,
-                // The break is not cut into hours, so a tap on it is always
-                // now.
-                onTap: widget.onWriteDown == null
-                    ? null
-                    : () =>
-                          widget.onWriteDown!(Placement.at(room.slot.earliest)),
+                onWriteDown: widget.onWriteDown,
+                onAdjustDay: widget.onAdjustDay,
               ),
               // A whole day off: one row, not its hours to scale.
               (null, _) when room!.slot.rest != null => RestDayTile(
