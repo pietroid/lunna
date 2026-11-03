@@ -103,6 +103,7 @@ final class EventMoved extends TimelineBlocEvent {
     required this.index,
     this.backlog = false,
     this.start = false,
+    this.pending = false,
     this.after,
     this.minutes,
   });
@@ -122,6 +123,10 @@ final class EventMoved extends TimelineBlocEvent {
   /// now.
   final bool start;
 
+  /// With [backlog], whether it was dropped into Pendentes: it waits there
+  /// begun, rather than in Para depois.
+  final bool pending;
+
   /// Where the free stretch it was dropped into starts, when it was.
   final DateTime? after;
 
@@ -129,20 +134,32 @@ final class EventMoved extends TimelineBlocEvent {
   final int? minutes;
 
   @override
-  List<Object?> get props => [id, index, backlog, start, after, minutes];
+  List<Object?> get props => [
+    id,
+    index,
+    backlog,
+    start,
+    pending,
+    after,
+    minutes,
+  ];
 }
 
 /// Play on a task with tasks of its own (a delivery): its next task begins,
 /// as if dropped at the top of the day, guard and all.
 final class ArtifactPlayed extends TimelineBlocEvent {
   /// {@macro timeline_bloc_event}
-  const ArtifactPlayed(this.artifactId);
+  const ArtifactPlayed(this.artifactId, {this.minutes});
 
   /// The delivery whose next task begins.
   final String artifactId;
 
+  /// A piece of this length, when it has no task left: the task written
+  /// into it is that long instead of all it owes.
+  final int? minutes;
+
   @override
-  List<Object?> get props => [artifactId];
+  List<Object?> get props => [artifactId, minutes];
 }
 
 /// The user began a task that was waiting for them.

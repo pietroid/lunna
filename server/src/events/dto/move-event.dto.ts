@@ -4,6 +4,8 @@ export class MoveEventDto {
   index?: number;
   /** Whether it was dropped into the backlog rather than into the queue. */
   backlog?: boolean;
+  /** With [backlog]: dropped into Pendentes, where it waits begun. */
+  pending?: boolean;
   /** Whether it was dropped at the very top of the day: do it now. */
   start?: boolean;
   /** ISO 8601, the start of the gap it was dropped into, when it was. */

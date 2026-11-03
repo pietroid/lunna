@@ -3,6 +3,7 @@ import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:clock/clock.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
@@ -58,18 +59,27 @@ void main() {
     );
   }
 
-  TimelineEvent loose(String id, String title) =>
-      card(id, title, TimelineSection.backlog);
+  TimelineEvent loose(String id, String title, {bool pending = false}) {
+    final start = now;
+    return TimelineEvent(
+      id: id,
+      title: title,
+      section: TimelineSection.backlog,
+      startTime: start,
+      endTime: start.add(const Duration(minutes: 45)),
+      durationMinutes: 45,
+      workMinutes: 45,
+      pending: pending,
+    );
+  }
 
-  Artifact delivery(String id, String title, {DateTime? startedAt}) => Artifact(
-    id: id,
-    title: title,
-    minutes: 180,
-    doneMinutes: 90,
-    createdAt: DateTime(2026, 10),
-    deadline: DateTime(2026, 11, 3),
-    startedAt: startedAt,
-    tasks: const [
+  Artifact delivery(
+    String id,
+    String title, {
+    DateTime? startedAt,
+    DateTime? deadline,
+    int minutes = 180,
+    List<ArtifactTask> tasks = const [
       ArtifactTask(
         id: 't',
         title: 'Roteiro',
@@ -77,6 +87,15 @@ void main() {
         place: TaskPlace.backlog,
       ),
     ],
+  }) => Artifact(
+    id: id,
+    title: title,
+    minutes: minutes,
+    doneMinutes: 90,
+    createdAt: DateTime(2026, 10),
+    deadline: deadline ?? DateTime(2026, 11, 3),
+    startedAt: startedAt,
+    tasks: tasks,
   );
 
   ArtifactsData artifacts(List<Artifact> queue) => ArtifactsData(
@@ -106,6 +125,7 @@ void main() {
     List<TimelineEvent> cards = const [],
     List<TimelineEvent> backlog = const [],
     List<Artifact> queue = const [],
+    ArtifactsRepository? artifactsRepository,
   }) async {
     tester.view
       ..physicalSize = const Size(600, 2400)
@@ -127,7 +147,7 @@ void main() {
             BlocProvider<TimelineBloc>.value(value: timeline),
             BlocProvider(
               create: (_) => ArtifactsCubit(
-                repository: _MockArtifactsRepository(),
+                repository: artifactsRepository ?? _MockArtifactsRepository(),
                 initial: ArtifactsState(
                   status: ArtifactsStatus.ready,
                   data: artifacts(queue),
@@ -262,5 +282,204 @@ void main() {
     await tester.tap(find.text(l10n.homeLaterOpen(1)));
     await tester.tap(find.text(l10n.feedSeeDay));
     expect(opened, ['depois', 'dia']);
+  });
+
+  testAt('draws a loose task paused off the day in Pendentes, not later', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      backlog: [
+        loose('1', 'Notas fiscais', pending: true),
+        loose('2', 'Planejar a semana'),
+      ],
+    );
+
+    expect(
+      top(tester, l10n.homePending),
+      lessThan(top(tester, 'Notas fiscais')),
+    );
+    expect(
+      top(tester, 'Notas fiscais'),
+      lessThan(top(tester, l10n.stageBacklog)),
+    );
+    expect(
+      top(tester, l10n.stageBacklog),
+      lessThan(top(tester, 'Planejar a semana')),
+    );
+    expect(find.text(l10n.pendingTaskLeft('45 min')), findsOneWidget);
+
+    await tester.tap(find.byTooltip(l10n.controlDone));
+    verify(() => timeline.add(const EventFinished('1'))).called(1);
+  });
+
+  testAt('marks a pending task past its day urgent, the day in the corner', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      queue: [
+        delivery(
+          'p',
+          'Relatório',
+          startedAt: DateTime(2026, 10, 20),
+          deadline: DateTime(2026, 10, 27),
+        ),
+        delivery(
+          'q',
+          'Proposta',
+          startedAt: DateTime(2026, 10, 20),
+          deadline: DateTime(2026, 10, 29),
+        ),
+      ],
+    );
+
+    expect(find.text(l10n.dueYesterday), findsOneWidget);
+    expect(find.text('quinta-feira'), findsOneWidget);
+    expect(find.textContaining('Urgente'), findsOneWidget);
+    // The urgent one first.
+    expect(top(tester, 'Relatório'), lessThan(top(tester, 'Proposta')));
+    // −1d +1d move the day.
+    expect(find.byTooltip(l10n.controlDayEarlier), findsNWidgets(2));
+  });
+
+  testAt(
+    'asks how much before playing over an hour with no tasks, and plays the piece',
+    (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        queue: [
+          delivery(
+            'p',
+            'Proposta',
+            startedAt: DateTime(2026, 10, 20),
+            minutes: 240,
+            tasks: const [],
+          ),
+        ],
+      );
+
+      await tester.tap(find.byType(TaskPlayButton));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.playPieceTitle), findsOneWidget);
+      expect(find.text(l10n.playWhole('2h30')), findsOneWidget);
+
+      await tester.tap(find.text('30 min'));
+      await tester.pumpAndSettle();
+      verify(
+        () => timeline.add(const ArtifactPlayed('p', minutes: 30)),
+      ).called(1);
+    },
+  );
+
+  testAt('asks to begin the next task when it is over an hour', (tester) async {
+    await pump(
+      tester,
+      queue: [
+        delivery(
+          'p',
+          'Vídeo',
+          startedAt: DateTime(2026, 10, 20),
+          tasks: const [
+            ArtifactTask(
+              id: 't',
+              title: 'Gravação',
+              minutes: 90,
+              place: TaskPlace.backlog,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    await tester.tap(find.byType(TaskPlayButton));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.playNextTitle('Gravação')), findsOneWidget);
+
+    await tester.tap(find.text(l10n.playNextStart));
+    await tester.pumpAndSettle();
+    verify(() => timeline.add(const ArtifactPlayed('p'))).called(1);
+  });
+
+  Future<void> carry(WidgetTester tester, Finder from, Finder to) async {
+    final gesture = await tester.startGesture(tester.getCenter(from));
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    await gesture.moveTo(tester.getCenter(to));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(to) + const Offset(0, 1));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+  }
+
+  testAt('carries a task of Para depois to Agora, which begins it', (
+    tester,
+  ) async {
+    await pump(tester, backlog: [loose('1', 'Notas fiscais')]);
+
+    await carry(
+      tester,
+      find.text('Notas fiscais'),
+      find.text(l10n.feedBreak),
+    );
+
+    verify(
+      () => timeline.add(const EventMoved(id: '1', index: 0, start: true)),
+    ).called(1);
+  });
+
+  testAt('carries the running task into Pendentes without asking', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      cards: [
+        card('a', 'Roteiro', TimelineSection.agora, at: -10, started: true),
+      ],
+      backlog: [loose('1', 'Notas fiscais')],
+    );
+
+    // Pendentes is empty, so it shows itself only once something is held.
+    expect(find.text(l10n.homePending), findsNothing);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('Roteiro')),
+    );
+    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    await gesture.moveBy(const Offset(0, 5));
+    await tester.pump();
+    expect(find.text(l10n.homePending), findsOneWidget);
+    await gesture.moveTo(tester.getCenter(find.text(l10n.homePending)));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 1));
+    await tester.pump();
+    await gesture.up();
+    // Agora's card keeps moving, so the page never settles.
+    await tester.pump(const Duration(milliseconds: 500));
+
+    verify(
+      () => timeline.add(
+        const EventMoved(id: 'a', index: 0, backlog: true, pending: true),
+      ),
+    ).called(1);
+  });
+
+  testAt('carries a pending delivery to Para depois, which stops it', (
+    tester,
+  ) async {
+    final repository = _MockArtifactsRepository();
+    when(
+      () => repository.move(any(), any(), stop: any(named: 'stop')),
+    ).thenAnswer((_) async => artifacts([delivery('p', 'Mapa')]));
+    await pump(
+      tester,
+      queue: [delivery('p', 'Mapa', startedAt: DateTime(2026, 10, 20))],
+      artifactsRepository: repository,
+    );
+
+    await carry(tester, find.text('Mapa'), find.text(l10n.stageBacklog));
+
+    verify(() => repository.move('p', 0, stop: true)).called(1);
   });
 }

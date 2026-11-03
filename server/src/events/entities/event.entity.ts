@@ -137,6 +137,11 @@ export class BacklogCard {
   routine?: RoutineDays;
   artifact?: CardArtifact;
   checklist?: ChecklistItem[];
+  /**
+   * Whether it was begun and paused off the day: Plano draws it in
+   * Pendentes rather than in Para depois.
+   */
+  pending?: boolean;
 }
 
 /**

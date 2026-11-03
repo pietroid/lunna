@@ -9,8 +9,9 @@ import 'package:timeline/src/widgets/format.dart';
 /// The one question a drag can raise, drawn over the timeline.
 ///
 /// Something is running and a card was just dropped at the top of the day.
-/// Both answers start the dropped card now; they differ in what becomes of
-/// the running one. The server decides what that does to the rest of the
+/// Each answer starts the dropped card now; they differ in what becomes of
+/// the running one: finished, paused into Pendentes, or sent to Para
+/// depois. The server decides what that does to the rest of the
 /// day — this only asks.
 ///
 /// While it is open the timeline behind it is the one from before the drag.

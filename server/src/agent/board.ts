@@ -748,7 +748,12 @@ export class Board {
       ...(artifact.minutes === undefined || artifact.doneAt !== undefined
         ? []
         : [
-            `${formatSpan(done * 60_000)} of ${formatSpan(artifact.minutes * 60_000)}`,
+            `${formatSpan(done * 60_000)} of ${formatSpan(
+              Math.max(
+                artifact.minutes,
+                it.tasks.reduce((sum, task) => sum + task.minutes, 0),
+              ) * 60_000,
+            )}`,
           ]),
       ...(artifact.value === undefined ? [] : [reais(artifact.value)]),
     ].join(' · ');

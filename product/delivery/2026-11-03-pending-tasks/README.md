@@ -3,7 +3,7 @@
 > Issue [#83](https://github.com/pietroid/lunna/issues/83), **mockup track**
 > (it changes the pending card, adds a sheet on play, a third answer to the
 > guard and drags between Plano's sections). Designed unattended; the
-> person approves on the issue. Draft: sections 1, 2 and the Build brief.
+> person approved on the issue ("approve"); built unattended.
 
 ## 1. The prompt
 
@@ -40,6 +40,10 @@ From the issue, verbatim:
 The design was reviewed on the issue, and the person replied:
 
 > Remove the icons from the buttons, they are too ugly
+
+and then, on the revised design:
+
+> approve
 
 ## 2. The design
 
@@ -146,83 +150,144 @@ owes).
 - **Falar com a Lunna** opens the conversation with the task as its
   `about`, as the notes' bar does.
 
-### Open questions
+### Open questions, as the build answered them
 
-1. A loose task that is **not** pending (in Para depois, 2 h): does its
-   play ask too? The design asks on any play over an hour, wherever it
-   is, since the issue's rule is about what begins.
-2. Dragging a card out of **Pendentes into Para depois**: does it stop
-   being begun (it leaves Pendentes, keeping what was done), as the old
-   Entregas did when dragged down? The design says yes.
+The approval left both open; the build took these and lists them under
+section 3's *Decided unattended*:
 
-## Build brief
+1. A loose task that is not pending, over an hour: **its play does not
+   ask**. A piece is a task written *inside* the task, and a loose task
+   has no inside (one level: only a delivery has tasks). Every
+   **delivery's** play asks, wherever it is drawn (Pendentes and Para
+   depois).
+2. Out of Pendentes into Para depois: **yes, it stops being begun** (a
+   delivery is stopped, `ArtifactsCubit.stop`; a loose task loses
+   `pending`), keeping what was done.
 
-### Files the design wrote (uncommitted, kept for the build)
+## 3. What was built
 
-- `app/lib/pending_tasks_preview.dart`: the preview entry point (delete
-  in Phase 4).
-- `app/lib/plan/view/play_sheet.dart`: `PlaySheet`, `PlayChoice`
-  (`PlayPiece`, `PlayWhole`, `PlayTalk`), `playPending` (asks over
-  `kPlayAsksOver`). `PlayPiece` and `PlayTalk` are not wired yet.
-- `app/lib/plan/view/plan_items.dart`: `PendingCard` on the new rules.
-- `app/lib/plan/view/home_page.dart`: `NowDropZone`, `HomePage.carrying` (the carried card leaves its place).
-- `app/lib/plan/plan.dart`: exports the sheet.
-- `app/packages/timeline/lib/src/widgets/task_card.dart`: `TaskStep`
-  (minutes | days), `TaskCard.fill`, `.trailingInk`, `.step`,
-  `TaskBar.late`.
-- `app/packages/timeline/lib/src/widgets/guard_sheet.dart`: three answers,
-  text only (`AppButton`, no `AppButton.icon`).
-- `app/packages/timeline/lib/src/models/timeline_event.dart`:
-  `TimingDecision.pauseCurrent`, `.laterCurrent`.
-- `app/packages/artifacts/lib/src/view/artifact_format.dart`: `dueLabel`.
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): `dueToday`,
-  `dueYesterday`, `weekdaysLong`, `dueDate`, `controlDayEarlier`,
-  `controlDayLater`, `stepDayLess`, `stepDayMore`, `pendingUrgentStatus`,
-  `playPiece*`, `playWhole`, `playNext*`, `guardBusyBody`,
-  `guardToPending`, `guardToLater`, `planDropStart`.
+### The real build, both brands
 
-### Decided in review
+Drawn by `app/lib/pending_tasks_preview.dart` (deleted afterwards) over
+the real `HomePage`, `ArtifactsCubit` and `TimelineBloc`, on the demo's
+day at 10:00, a Tuesday. Scene 4 is a **real long press and drag**, sent
+as pointer events, not a drawing of one.
 
-- Every button of `PlaySheet` and `GuardSheet` is a plain `AppButton`
-  with no icon; keep it so when wiring them (round 2, the issue's reply).
+**Lunna**
+
+![Lunna](img/build-lunna.png)
+
+**Focus**
+
+![Focus](img/build-focus.png)
+
+1. Pendentes: the day in the corner (*para ontem* in the danger ink,
+   *hoje*, *quinta-feira*, *12/nov*), −1d +1d ✓, the urgent card, and a
+   loose task paused off the day (*Falta 40 min*, −10 +10 ✓).
+2. Play on *Proposta para a Moinho* (no tasks, 2h30 owed).
+3. Play on *Vídeo do lançamento* (next task 1h30).
+4. *Proposta para a Moinho* held and carried over Agora (it leaves a gap in Pendentes).
+5. Let go while something runs: the guard's three answers.
+
+### The contract
+
+- **A delivery's time is the larger of its own and its tasks'
+  together.** The server's `minutes` on the wire is `max(own, Σ tasks)`
+  (`viewOf`), so the bar, the schedule, goals and the agent's board all
+  read the same whole; the own minutes stay stored.
+- **Urgent is past its day** (`isUrgent`), nothing else.
+- **Play with a piece**: `POST /tasks/of/:id/play { minutes }` (5–480):
+  with no task left, the task written is that long (its name) and begins;
+  the delivery's own time is unchanged, so the next play owes the rest.
+- **Pending is a fact on the task**: `task.pending_at` (migration
+  `0020`), set by `move { backlog: true, pending: true }` and by the
+  guard's `pause_current`, cleared by any other move. A pending task is
+  in the backlog, drawn in Pendentes (`BacklogCard.pending`).
+- **The guard has three answers**: `solve_current`, `pause_current` (the
+  running task stops owing what it had left, top of the backlog,
+  pending), `later_current` (the same, not pending). `postpone_current`
+  stays for older apps. A fixed block is moved by none of them.
 
 ### Server
 
-- **The whole**: an artifact's `minutes` on the wire becomes
-  `max(own, Σ tasks)` (and `doneMinutes` stays the tasks done), wherever
-  it is read: the bar, the queue's share, goals' pace, the suggestion's
-  Work Quality. Keep the own minutes stored.
-- **Urgent** (`isUrgent` in the app, the server's ordering if it has
-  one): past its day only.
-- **Play with a piece**: `POST /tasks/of/:id/play { minutes }`; with no
-  open task, writes a task of that length into it (its title) and begins
-  it; without `minutes`, as today (no new task).
-- **The guard's answers**: `pause_current` (a running task stops, owing
-  what it had left, keeps `started_at` on its delivery, so it stays
-  pending; a fixed block stays and the task waits, as `postpone_current`)
-  and `later_current` (the running task goes to the backlog). Keep
-  `postpone_current` for old clients or drop it.
-- **A loose task is pending** when begun and not done: today Pendentes is
-  deliveries only. A paused loose task needs to show there (with its
-  minutes done), or `pause_current` on a loose task has nowhere to land.
-  This is the biggest piece of the build.
-- Analytics rows for any new route or body.
+| File | What changed |
+|------|--------------|
+| `src/db/schema.ts`, `drizzle/0020_lonely_kree.sql` | `task.pending_at` |
+| `src/tasks/*` | `Task.pendingAt`, both stores |
+| `src/events/timing.ts`, `request.ts`, `dto/` | `pause_current`, `later_current`; `pending` on a move (backlog only); `requirePiece`; `PlayArtifactDto` |
+| `src/events/event-layout.service.ts` | the two answers (through `_shelve`), `pendingAt` set and cleared, `playArtifact(piece)` |
+| `src/events/tasks.controller.ts` | `POST /tasks/of/:id/play` reads `{ minutes }` |
+| `src/events/timeline.service.ts`, `entities/` | the backlog card's `pending` |
+| `src/artifacts/artifacts.service.ts`, `src/agent/board.ts` | the whole is `max(own, Σ tasks)` |
+
+No new route, so no new analytics row (`artifact_played` and the move's
+event already count them; no body is sent).
 
 ### App
 
-- Wire `PlayPiece` (minutes on `ArtifactPlayed`) and `PlayTalk` (the
-  agent's conversation with `about` the task).
-- Drag between Agora, Em seguida, Pendentes and Para depois on Plano
-  (`LongPressDraggable` on every `TaskCard` but events, `DragTarget`s per
-  section; `NowDropZone` while over Agora). Out of Agora: a pause (into
-  Pendentes) or the backlog, no sheet. Into Agora: `playPending` for a
-  pending task, the move with `start: true` otherwise.
-- `PendingCard` for a loose begun task (no subtitle, no tasks).
-- Tests: `dueLabel` (hoje, this week, next week, past; under several
-  `TZ`), `PendingCard` urgent / not, `playPending` asks over an hour and
-  not under, the guard's three answers; server specs for the piece and
-  the two decisions.
+- `lib/plan/view/plan_drag.dart` (new): `PlanSection`, `PlanCarry`
+  (`CarryCard`, `CarryDelivery`), `dropOnPlan` (what a drop on each
+  section does), `PlanDraggable`, `PlanDropTarget`, `PlanDropGap`.
+- `lib/plan/view/home_page.dart`: each section a drop target, every task
+  card (not a fixed block) held to carry; Pendentes is drawn while a card
+  is carried even when empty, so it can be dropped on.
+- `lib/plan/view/plan_items.dart`: `Pending` (`PendingDelivery`,
+  `PendingTask`), `PendingTaskCard`; Para depois's deliveries play through
+  `playPending` too.
+- `lib/plan/view/play_sheet.dart`: `PlayPiece` sends its minutes,
+  `PlayTalk` opens the agent's conversation about the delivery
+  (`AgentSubject.artifact`), `playAsks`.
+- `packages/timeline`: `TimelineEvent.pending`, `EventMoved.pending`,
+  `ArtifactPlayed.minutes`, the repository's two bodies; the guard sheet
+  as designed.
+- `packages/artifacts`: `isUrgent` is past its day; `dueLabel`.
+- `l10n`: `pendingTaskLeft`, `planDropHere`.
 
-### Design session cost
+### Tests
 
-Measured by the queue for this run and written in the PR (`.tool/cost` is skipped unattended).
+- Server: `events.controller.spec.ts` 129 (new: pause into Pendentes,
+  Para depois, a pending drop and back, a pending drop refused off the
+  backlog, the piece, a piece refused); `artifacts.controller.spec.ts` 22
+  (new: the whole is the larger).
+- App `test/plan/home_page_test.dart` 11 (new: the loose pending task,
+  urgent and the corner, the piece sheet, the next-task sheet, drags to
+  Agora, into Pendentes and to Para depois).
+- `packages/timeline` 181 + `guard_sheet_test.dart` (three answers, text
+  only); `packages/artifacts` 62 (new `dueLabel` cases, urgency updated:
+  behind pace is no longer urgent).
+- `.tool/check`: see the last line of this section.
+
+### Where the build differs from the mockup
+
+- **Scene 4** is a real drag: the card under the finger is a plain card
+  with the task's name, not the full `PendingCard` the mockup drew (the
+  feedback layer has none of the page's blocs).
+- **The loose pending card** has no bar: the work done before a pause is
+  not kept (the paused block's hour is removed, as pausing always did),
+  so it says what it still owes.
+- **Em seguida** is a target only when it is drawn (something comes
+  next).
+
+### Decided unattended
+
+- Q1 and Q2 above, as answered there.
+- A delivery's task carried into Pendentes goes back to its delivery's
+  backlog; its delivery is begun if it was not (its day asked first when
+  it has none, `showStartSheet`).
+- Pausing (the guard or a drop) puts the task at the **top** of the
+  backlog, so it is the first one Para depois or its delivery shows.
+- `postpone_current` kept on the server for older apps.
+
+`.tool/check` passes: `app-analyze`, every touched package under both brands (agent, analytics, api_client, app_ui, artifacts, cycle, notifications, timeline), the server's eslint, tsc and tests. The first run failed only on prettier in the files this build wrote; `eslint --fix` fixed it.
+
+## 4. How to turn it on
+
+Nothing to set. The migration (`0020`, one nullable column) runs on the
+server's boot. An app older than this build never sends the new answers
+or bodies and keeps working; a pending task drawn by an old app is simply
+in Para depois.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request. No spend outside Claude: no
+model was called (no agent eval).

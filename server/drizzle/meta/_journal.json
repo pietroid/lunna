@@ -141,6 +141,13 @@
       "when": 1793363050585,
       "tag": "0019_rhythm",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793730840126,
+      "tag": "0020_lonely_kree",
+      "breakpoints": true
     }
   ]
 }

@@ -78,12 +78,14 @@ class TimelineRepository {
   ///
   /// [backlog] says it was dropped into the backlog instead, and then
   /// [index] counts the backlog. Nothing there has an hour, so a drop there
-  /// never starts anything and never asks.
+  /// never starts anything and never asks. With [pending] too, it was
+  /// dropped into Pendentes: it waits there begun.
   Future<Timeline> moveTask(
     String id,
     int index, {
     bool backlog = false,
     bool start = false,
+    bool pending = false,
     DateTime? after,
     int? minutes,
     int days = defaultDays,
@@ -94,6 +96,7 @@ class TimelineRepository {
         'index': index,
         if (backlog) 'backlog': true,
         if (start) 'start': true,
+        if (pending) 'pending': true,
         if (after != null) 'after': after.toUtc().toIso8601String(),
         'minutes': ?minutes,
       },
@@ -103,13 +106,16 @@ class TimelineRepository {
   /// Play on a task with tasks of its own (a delivery, [artifactId]): its
   /// next task begins, written down first when it has none left.
   ///
-  /// Like a drop at the top of the day, it can raise the guard.
+  /// Like a drop at the top of the day, it can raise the guard. With
+  /// [minutes] and no task left, what is written is a piece that long.
   Future<Timeline> playArtifact(
     String artifactId, {
+    int? minutes,
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(
       '/tasks/of/${Uri.encodeComponent(artifactId)}/play?days=$days',
+      data: {'minutes': ?minutes},
     ),
   );
 

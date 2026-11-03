@@ -1,0 +1,1 @@
+ALTER TABLE "task" ADD COLUMN "pending_at" timestamp with time zone;

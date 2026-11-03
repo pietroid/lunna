@@ -6,6 +6,7 @@ import 'package:artifacts/artifacts.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
+import 'package:lunna/plan/view/plan_drag.dart';
 import 'package:lunna/plan/view/plan_items.dart';
 import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
@@ -27,7 +28,9 @@ const kLaterOnHome = 4;
 /// it ([onOpenLater]).
 ///
 /// Every task has its play button on the left, which is letting it go on
-/// Agora. The running one's is pause.
+/// Agora. The running one's is pause. Held, any task (not a fixed block)
+/// can be carried between Agora, Em seguida, Pendentes and Para depois
+/// ([dropOnPlan]); while one is, Pendentes is drawn even when empty.
 ///
 /// The offer is asked for again each time the tab comes to the front
 /// ([shown]) and when a new day begins, since it is about the day. The day
@@ -41,7 +44,6 @@ class HomePage extends StatefulWidget {
     required this.onSeeDay,
     required this.onOpenLater,
     this.shown = true,
-    this.carrying,
     this.controller,
     super.key,
   });
@@ -55,11 +57,6 @@ class HomePage extends StatefulWidget {
   /// Whether the tab is in front. Brought forward, it asks for the offer
   /// again; behind, it asks nothing.
   final bool shown;
-
-  /// The id of the card carried over Agora: it leaves its place in its
-  /// section, and Agora draws itself as the place it starts
-  /// ([NowDropZone]). The drag sets it; the preview too.
-  final String? carrying;
 
   /// The scroll of the page.
   final ScrollController? controller;
@@ -78,6 +75,9 @@ class _HomePageState extends State<HomePage> {
 
   /// Wakes at the next midnight.
   Timer? _midnight;
+
+  /// Whether a card is being carried.
+  bool _carrying = false;
   late final AppLifecycleListener _lifecycle;
 
   @override
@@ -133,6 +133,39 @@ class _HomePageState extends State<HomePage> {
     bloc.add(const TimelineRequested());
   }
 
+  void _setCarrying(bool carrying) {
+    if (mounted && carrying != _carrying) {
+      setState(() => _carrying = carrying);
+    }
+  }
+
+  /// [child], the card of [card], made something to carry when it is a
+  /// task (a fixed block is never moved by hand).
+  Widget _carry(TimelineEvent? card, PlanSection from, Widget child) {
+    if (card == null || !card.isTask || !card.isInteractive) return child;
+    return PlanDraggable(
+      carry: CarryCard(card, from),
+      onCarry: _setCarrying,
+      child: child,
+    );
+  }
+
+  /// A card of Pendentes, to carry.
+  Widget _pending(Pending item, DateTime now) {
+    return switch (item) {
+      PendingDelivery(:final artifact) => PlanDraggable(
+        carry: CarryDelivery(artifact, PlanSection.pending),
+        onCarry: _setCarrying,
+        child: PendingCard(artifact: artifact, now: now),
+      ),
+      PendingTask(:final card) => PlanDraggable(
+        carry: CarryCard(card, PlanSection.pending),
+        onCarry: _setCarrying,
+        child: PendingTaskCard(card: card),
+      ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -185,59 +218,112 @@ class _HomePageState extends State<HomePage> {
                           onPressed: widget.onSeeDay,
                         ),
                       ),
-                      _Pad(
-                        child: NowDropZone(
-                          hovering: widget.carrying != null,
-                          child: _NowCard(card: items.now, now: now),
+                      PlanDropTarget(
+                        section: PlanSection.now,
+                        onDrop: planDropper(context, PlanSection.now, items),
+                        builder: (context, {required hovering}) => _Pad(
+                          child: NowDropZone(
+                            hovering: hovering,
+                            child: _carry(
+                              items.now,
+                              PlanSection.now,
+                              _NowCard(card: items.now, now: now),
+                            ),
+                          ),
                         ),
                       ),
-                      if (items.next case final next?) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.s6,
-                            AppSpacing.s3,
-                            AppSpacing.s6,
-                            AppSpacing.s2,
-                          ),
-                          child: Text(
-                            l10n.feedNext,
-                            style: AppTypography.caption,
-                          ),
-                        ),
-                        _Pad(child: _NextCard(card: next)),
-                      ],
-                      if (items.pending.isNotEmpty) ...[
-                        _Heading(title: l10n.homePending),
-                        for (final artifact in items.pending)
-                          if (artifact.id != widget.carrying)
-                            _Pad(
-                              child: PendingCard(
-                                key: ValueKey(artifact.id),
-                                artifact: artifact,
-                                now: now,
+                      if (items.next case final next?)
+                        PlanDropTarget(
+                          section: PlanSection.next,
+                          onDrop: planDropper(context, PlanSection.next, items),
+                          builder: (context, {required hovering}) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.s6,
+                                  AppSpacing.s3,
+                                  AppSpacing.s6,
+                                  AppSpacing.s2,
+                                ),
+                                child: Text(
+                                  l10n.feedNext,
+                                  style: AppTypography.caption,
+                                ),
                               ),
-                            ),
-                      ],
-                      _Heading(title: l10n.stageBacklog),
-                      if (later.isEmpty)
-                        _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
-                      for (final item in later)
-                        _Pad(
-                          child: LaterCard(
-                            key: ValueKey(item.id),
-                            item: item,
-                            now: now,
+                              if (hovering) const _Pad(child: PlanDropGap()),
+                              _Pad(
+                                child: _carry(
+                                  next,
+                                  PlanSection.next,
+                                  _NextCard(card: next),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      if (items.later.length > later.length)
-                        _Pad(
-                          child: _OpenRow(
-                            text: l10n.homeLaterOpen(
-                              items.later.length - later.length,
-                            ),
-                            onTap: widget.onOpenLater,
+                      if (items.pending.isNotEmpty || _carrying)
+                        PlanDropTarget(
+                          section: PlanSection.pending,
+                          onDrop: planDropper(
+                            context,
+                            PlanSection.pending,
+                            items,
+                          ),
+                          builder: (context, {required hovering}) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _Heading(title: l10n.homePending),
+                              if (hovering) const _Pad(child: PlanDropGap()),
+                              for (final item in items.pending)
+                                _Pad(
+                                  key: ValueKey(item.id),
+                                  child: _pending(item, now),
+                                ),
+                            ],
                           ),
                         ),
+                      PlanDropTarget(
+                        section: PlanSection.later,
+                        onDrop: planDropper(context, PlanSection.later, items),
+                        builder: (context, {required hovering}) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _Heading(title: l10n.stageBacklog),
+                            if (hovering) const _Pad(child: PlanDropGap()),
+                            if (later.isEmpty && !hovering)
+                              _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
+                            for (final item in later)
+                              _Pad(
+                                key: ValueKey(item.id),
+                                child: PlanDraggable(
+                                  carry: switch (item) {
+                                    LaterTask(:final card) => CarryCard(
+                                      card,
+                                      PlanSection.later,
+                                    ),
+                                    LaterDelivery(:final artifact) =>
+                                      CarryDelivery(
+                                        artifact,
+                                        PlanSection.later,
+                                      ),
+                                  },
+                                  onCarry: _setCarrying,
+                                  child: LaterCard(item: item, now: now),
+                                ),
+                              ),
+                            if (items.later.length > later.length)
+                              _Pad(
+                                child: _OpenRow(
+                                  text: l10n.homeLaterOpen(
+                                    items.later.length - later.length,
+                                  ),
+                                  onTap: widget.onOpenLater,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -296,7 +382,7 @@ class _NextCard extends StatelessWidget {
 
 /// A card's room in the column: the page's margin, and a gap under it.
 class _Pad extends StatelessWidget {
-  const _Pad({required this.child});
+  const _Pad({required this.child, super.key});
 
   final Widget child;
 
@@ -446,7 +532,7 @@ class _Quiet extends StatelessWidget {
 /// {@template now_drop_zone}
 /// Agora while a card is carried over it: what runs fades under an
 /// accent outline that says letting go begins the card. Pendentes, Em
-/// seguida and Para depois take a drop as places in their list; only
+/// seguida and Para depois open a gap at their top ([PlanDropGap]); only
 /// Agora says what a drop does, since only there it starts something.
 /// {@endtemplate}
 class NowDropZone extends StatelessWidget {

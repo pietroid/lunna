@@ -112,7 +112,8 @@ function later(minutes: number): void {
 /** The answer a guard's button sends, for [decision]. */
 function answerOf(
   guard: StartNowGuard | undefined,
-  decision: 'solve_current' | 'postpone_current',
+  decision:
+    'solve_current' | 'postpone_current' | 'pause_current' | 'later_current',
 ): Record<string, unknown> {
   if (guard === undefined) throw new Error('No guard to answer');
 
@@ -456,6 +457,34 @@ describe('the day', () => {
         started: true,
       });
       expect(backlog(response)).toEqual([]);
+    });
+
+    it('writes a piece of the length asked for when it has none, leaving its time whole', async () => {
+      const artifact = await artifactStore.insert(owner, {
+        title: 'Proposta',
+        minutes: 150,
+      });
+
+      const response = await post(`/tasks/of/${artifact.id}/play`, {
+        minutes: 30,
+      }).expect(201);
+
+      expect(tasks(response)[0]).toMatchObject({
+        title: 'Proposta',
+        durationMinutes: 30,
+        started: true,
+        artifact: { id: artifact.id },
+      });
+      expect((await artifactStore.get(owner, artifact.id))?.minutes).toBe(150);
+    });
+
+    it('refuses a piece that is not a length', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Post' });
+
+      await post(`/tasks/of/${artifact.id}/play`, { minutes: 2 }).expect(400);
+      await post(`/tasks/of/${artifact.id}/play`, { minutes: '30' }).expect(
+        400,
+      );
     });
 
     it('writes a task of its name for what it owes when it has none', async () => {
@@ -929,6 +958,74 @@ describe('the day', () => {
       expect(now.started).toBe(true);
       expect(next.started).toBe(false);
       expect(gapBetween(now, next)).toBe(5);
+    });
+
+    it('pauses the running task into Pendentes, owing what it had left', async () => {
+      await add('Em andamento', 60).expect(201);
+      await add('Outra coisa', 30).expect(201);
+      await begin('Em andamento');
+      later(10);
+
+      const guard = body(
+        await drag((await task('Outra coisa')).id, 0, { start: true }),
+      ).guard;
+      const after = await answer(answerOf(guard, 'pause_current')).expect(201);
+
+      expect(titles(tasks(after))).toEqual(['Outra coisa']);
+      expect(tasks(after)[0].started).toBe(true);
+      expect(backlog(after)[0]).toMatchObject({
+        title: 'Em andamento',
+        durationMinutes: 50,
+        pending: true,
+      });
+    });
+
+    it('sends the running task to Para depois, not pending', async () => {
+      await add('Em andamento', 60).expect(201);
+      await add('Outra coisa', 30).expect(201);
+      await begin('Em andamento');
+      later(10);
+
+      const guard = body(
+        await drag((await task('Outra coisa')).id, 0, { start: true }),
+      ).guard;
+      const after = await answer(answerOf(guard, 'later_current')).expect(201);
+
+      expect(titles(tasks(after))).toEqual(['Outra coisa']);
+      expect(backlog(after)[0]).toMatchObject({
+        title: 'Em andamento',
+        durationMinutes: 50,
+      });
+      expect(backlog(after)[0].pending).toBeUndefined();
+    });
+
+    it('drops the running task in Pendentes without asking, and back on the day it is no longer pending', async () => {
+      await add('Em andamento', 60).expect(201);
+      await begin('Em andamento');
+      later(20);
+
+      const id = (await task('Em andamento')).id;
+      const paused = await drag(id, 0, { backlog: true, pending: true }).expect(
+        201,
+      );
+      expect(body(paused).guard).toBeUndefined();
+      expect(tasks(paused)).toEqual([]);
+      expect(backlog(paused)[0]).toMatchObject({
+        durationMinutes: 40,
+        pending: true,
+      });
+
+      const back = await drag(id, 0, { start: true }).expect(201);
+      expect(tasks(back)[0]).toMatchObject({ id, started: true });
+
+      const shelved = await drag(id, 0, { backlog: true }).expect(201);
+      expect(backlog(shelved)[0].pending).toBeUndefined();
+    });
+
+    it('refuses a pending drop that is not off the day', async () => {
+      await add('Solta', 30).expect(201);
+
+      await drag((await task('Solta')).id, 0, { pending: true }).expect(400);
     });
 
     it('makes a task the next thing when dropped just under what is running', async () => {

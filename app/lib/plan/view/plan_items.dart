@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -14,10 +15,10 @@ import 'package:timeline/timeline.dart';
 /// its own (a delivery) or not.
 ///
 /// - [now], the card on Agora, and [next], the first card after it.
-/// - [pending]: every task begun and not finished, which today means a
-///   delivery begun ([isStarted]), the most urgent first as Entregas put
-///   them. The one whose task runs on Agora is left out: it is drawn
-///   there.
+/// - [pending]: every task begun and not finished: the deliveries begun
+///   ([isStarted]), the most urgent first as Entregas put them, then the
+///   loose tasks paused off the day ([TimelineEvent.pending]). The
+///   delivery whose task runs on Agora is left out: it is drawn there.
 /// - [later]: everything not begun, in one list: the loose tasks waiting in
 ///   the backlog, in its order, then the deliveries not begun, in the
 ///   queue's.
@@ -43,11 +44,13 @@ class PlanItems {
       next: next,
       pending: [
         for (final a in groups.started)
-          if (a.id != running) a,
+          if (a.id != running) PendingDelivery(a),
+        for (final task in day.backlog)
+          if (task.artifactId == null && task.pending) PendingTask(task),
       ],
       later: [
         for (final task in day.backlog)
-          if (task.artifactId == null) LaterTask(task),
+          if (task.artifactId == null && !task.pending) LaterTask(task),
         for (final a in groups.waiting)
           if (a.id != running) LaterDelivery(a),
       ],
@@ -68,10 +71,44 @@ class PlanItems {
   final TimelineEvent? next;
 
   /// The tasks begun and not finished, Agora's left out.
-  final List<Artifact> pending;
+  final List<Pending> pending;
 
   /// Every task not begun, in order.
   final List<Later> later;
+}
+
+/// One task in Pendentes: a delivery begun ([PendingDelivery]) or a loose
+/// task paused off the day ([PendingTask]).
+sealed class Pending {
+  const Pending();
+
+  /// Its id, for keys.
+  String get id;
+}
+
+/// A delivery begun and not delivered.
+final class PendingDelivery extends Pending {
+  /// Wraps [artifact].
+  const PendingDelivery(this.artifact);
+
+  /// The delivery.
+  final Artifact artifact;
+
+  @override
+  String get id => artifact.id;
+}
+
+/// A loose task begun and paused off the day: it waits in the backlog,
+/// owing what it had left.
+final class PendingTask extends Pending {
+  /// Wraps [card].
+  const PendingTask(this.card);
+
+  /// The task, as the day draws it.
+  final TimelineEvent card;
+
+  @override
+  String get id => card.id;
 }
 
 /// One task in Para depois: a loose one ([LaterTask]) or one with tasks of
@@ -199,6 +236,37 @@ class PendingCard extends StatelessWidget {
   }
 }
 
+/// {@template pending_task_card}
+/// A loose task paused off the day, in Pendentes: play, its name, what it
+/// still owes, and −10, +10 and ✓, as Agora draws them. No bar: it has no
+/// tasks and no day.
+/// {@endtemplate}
+class PendingTaskCard extends StatelessWidget {
+  /// {@macro pending_task_card}
+  const PendingTaskCard({required this.card, super.key});
+
+  /// The task.
+  final TimelineEvent card;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final bloc = context.read<TimelineBloc>();
+    return TaskCard(
+      title: card.title,
+      onPlay: () => playCard(context, card),
+      status: l10n.pendingTaskLeft(durationLabel(l10n, card.workMinutes)),
+      controls: true,
+      onLess: card.canShorten(stepMinutes, clock.now())
+          ? () => unawaited(adjustTime(context, card, -stepMinutes))
+          : null,
+      onMore: () => unawaited(adjustTime(context, card, stepMinutes)),
+      onDone: () => bloc.add(EventFinished(card.id)),
+      onTap: () => openCard(context, card),
+    );
+  }
+}
+
 /// {@template later_card}
 /// A task not begun, in Para depois: play, its name, what it is (its
 /// product and how many tasks it has, or its day) and its length. No bar
@@ -238,8 +306,7 @@ class LaterCard extends StatelessWidget {
           trailing: artifact.minutes > 0
               ? formatMinutes(l10n, artifact.minutes)
               : null,
-          onPlay: () =>
-              context.read<TimelineBloc>().add(ArtifactPlayed(artifact.id)),
+          onPlay: () => unawaited(playPending(context, artifact)),
           onTap: () => unawaited(openArtifact(context, artifact.id, tab: 1)),
         );
     }

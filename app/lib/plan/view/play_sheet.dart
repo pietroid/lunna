@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -48,28 +49,34 @@ final class PlayTalk extends PlayChoice {
 ///   it, and a piece is written into it as a task of its own.
 ///
 /// An hour or less begins at once. Either way the begin is a drop on
-/// Agora, so the guard still asks when something else runs.
+/// Agora, so the guard still asks when something else runs. *Falar com a
+/// Lunna* opens the conversation about it instead.
 Future<void> playPending(BuildContext context, Artifact artifact) async {
   final bloc = context.read<TimelineBloc>();
-  final next = nextTaskOf(artifact);
-  final owed = artifact.minutes - artifact.doneMinutes;
-  final length = next?.minutes ?? owed;
-  if (length <= kPlayAsksOver) {
+  if (!playAsks(artifact)) {
     bloc.add(ArtifactPlayed(artifact.id));
     return;
   }
   final choice = await PlaySheet.show(context, artifact: artifact);
+  if (!context.mounted) return;
   switch (choice) {
     case null:
       return;
     case PlayWhole():
       bloc.add(ArtifactPlayed(artifact.id));
-    case PlayPiece():
-      // The build sends the piece's minutes with the play.
-      bloc.add(ArtifactPlayed(artifact.id));
+    case PlayPiece(:final minutes):
+      bloc.add(ArtifactPlayed(artifact.id, minutes: minutes));
     case PlayTalk():
-      return;
+      await showAgentSheet(context, about: AgentSubject.artifact(artifact.id));
   }
+}
+
+/// Whether play on [artifact] asks first: what would begin, its next task
+/// or (with none) all it still owes, is over [kPlayAsksOver].
+bool playAsks(Artifact artifact) {
+  final next = nextTaskOf(artifact);
+  final length = next?.minutes ?? artifact.minutes - artifact.doneMinutes;
+  return length > kPlayAsksOver;
 }
 
 /// {@template play_sheet}

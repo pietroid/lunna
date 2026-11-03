@@ -64,6 +64,16 @@ export function requireMove(taskId: string, dto: MoveEventDto): TimingAction {
     throw new BadRequestException('the backlog has no hours to drop into');
   }
 
+  if (dto.pending !== undefined) {
+    if (typeof dto.pending !== 'boolean') {
+      throw new BadRequestException('pending must be a boolean');
+    }
+    if (dto.pending && !backlog) {
+      throw new BadRequestException('only a drop off the day can be pending');
+    }
+    if (dto.pending) action.pending = true;
+  }
+
   if (dto.after !== undefined) {
     if (typeof dto.after !== 'string' || Number.isNaN(Date.parse(dto.after))) {
       throw new BadRequestException('after must be an ISO 8601 date-time');
@@ -269,6 +279,21 @@ export function requireSwap(other: string | undefined): string {
 export const STEP_MINUTES = 10;
 
 /** How long a snooze or a delay is: between one minute and four hours. */
+/** A piece of a task to begin, 5 minutes to 8 hours; none when not said. */
+export function requirePiece(minutes: unknown): number | undefined {
+  if (minutes === undefined || minutes === null) return undefined;
+  if (
+    typeof minutes !== 'number' ||
+    !Number.isInteger(minutes) ||
+    minutes < 5 ||
+    minutes > 480
+  ) {
+    throw new BadRequestException('minutes must be an integer from 5 to 480');
+  }
+
+  return minutes;
+}
+
 export function requireSnooze(minutes: number | undefined): number {
   const value = minutes ?? STEP_MINUTES;
   if (!Number.isInteger(value) || value <= 0 || value > 240) {

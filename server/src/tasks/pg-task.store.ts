@@ -134,6 +134,7 @@ export class PgTaskStore extends TaskStore {
         notBefore: dateOf(next.notBefore),
         backlog: next.backlog,
         doneAt: dateOf(next.doneAt),
+        pendingAt: dateOf(next.pendingAt),
         cancelled: next.cancelled === true,
         artifactId: next.artifactId ?? null,
         checklist: next.checklist ?? null,
@@ -167,6 +168,7 @@ export class PgTaskStore extends TaskStore {
         notBefore: dateOf(it.notBefore),
         backlog: it.backlog,
         doneAt: dateOf(it.doneAt),
+        pendingAt: dateOf(it.pendingAt),
         cancelled: it.cancelled === true,
         artifactId: it.artifactId ?? null,
         routineId: it.routineId ?? null,
@@ -189,6 +191,9 @@ function toTask(row: TaskRow): Task {
       ? {}
       : { notBefore: row.notBefore.toISOString() }),
     ...(row.doneAt === null ? {} : { doneAt: row.doneAt.toISOString() }),
+    ...(row.pendingAt === null
+      ? {}
+      : { pendingAt: row.pendingAt.toISOString() }),
     ...(row.routineId === null ? {} : { routineId: row.routineId }),
     ...(row.occurrence === null
       ? {}

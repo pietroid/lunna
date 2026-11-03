@@ -3514,6 +3514,18 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'+1d'**
   String get stepDayMore;
+
+  /// Under a loose task paused into Pendentes: what it still owes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Falta {length}'**
+  String pendingTaskLeft(String length);
+
+  /// The gap a section of Plano opens while a card is carried over it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Solte aqui'**
+  String get planDropHere;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -500,7 +500,13 @@ nothing; the app draws `GuardSheet` and posts the answer to
 | Answer | What happens |
 |--------|--------------|
 | `solve_current` | the running block is finished and gives its hour away |
-| `postpone_current` | a running task goes back in the queue, next after this one; a fixed block stays, and the task waits for it |
+| `pause_current` | a running task stops, owing what it had left, and waits in **Pendentes** (top of the backlog, `task.pending_at` set); a fixed block stays, and the task waits for it |
+| `later_current` | the same, into **Para depois** (top of the backlog, not pending) |
+| `postpone_current` | older apps: a running task goes back in the queue, next after this one |
+
+A loose task is **pending** when `pending_at` is set: a drop into
+Pendentes (`move { backlog: true, pending: true }`) or `pause_current`
+sets it; any other move clears it. The card carries `pending: true`.
 
 ### The app shell
 
@@ -514,9 +520,11 @@ still `artifact` and `task.artifact_id`.
 
 Three tabs: **Plano** (`HomePage`, the home: the agent's one offer;
 Agora with today's mark and *Ver o dia*, the running task and the one
-after it; **Pendentes**, the deliveries begun, drawn like Agora with ±10,
-✓ and their bar; **Para depois**, the first four of everything not begun
-and *Abrir a lista*), **Objetivos** (`GoalsPage`) and **Menu**, which
+after it; **Pendentes**, the deliveries begun (their day in the corner,
+−1d +1d ✓ and their bar; urgent once past their day) and the loose tasks
+paused off the day; **Para depois**, the first four of everything not
+begun and *Abrir a lista*; a card is carried between the four, and play
+on a delivery over an hour asks how much first, `PlaySheet`), **Objetivos** (`GoalsPage`) and **Menu**, which
 opens Rotina, **Feitas**, **Produtos** (the catalogue), sets when the day
 starts and ends, and signs out. *Ver o dia* pushes `DayPage` (the
 calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano,

@@ -443,7 +443,8 @@ function viewOf(
     title: artifact.title,
     notes: artifact.notes,
     typeId: artifact.typeId ?? null,
-    minutes: artifact.minutes ?? total,
+    // Its own time, or its tasks' together once they add up to more.
+    minutes: Math.max(artifact.minutes ?? 0, total),
     doneMinutes: done,
     value: artifact.value ?? null,
     blockMinutes: artifact.blockMinutes ?? null,

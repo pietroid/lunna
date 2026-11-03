@@ -1989,5 +1989,18 @@
   "guardToLater": "Mandar para Para depois",
   "planDropStart": "Solte para começar agora",
   "stepDayLess": "−1d",
-  "stepDayMore": "+1d"
+  "stepDayMore": "+1d",
+  "pendingTaskLeft": "Falta {length}",
+  "@pendingTaskLeft": {
+    "description": "Under a loose task paused into Pendentes: what it still owes.",
+    "placeholders": {
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "planDropHere": "Solte aqui",
+  "@planDropHere": {
+    "description": "The gap a section of Plano opens while a card is carried over it."
+  }
 }

@@ -304,6 +304,11 @@ export const task = pgTable(
     }),
     /** When it was finished. Null while there is still something to do. */
     doneAt: timestamp('done_at', { withTimezone: true }),
+    /**
+     * When it was paused into Pendentes: begun, not finished, waiting in the
+     * backlog. Null for everything else; any other move clears it.
+     */
+    pendingAt: timestamp('pending_at', { withTimezone: true }),
     /** The flexible routine this is a day of, when it is one. */
     routineId: uuid('routine_id').references(() => routine.id, {
       onDelete: 'set null',

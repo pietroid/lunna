@@ -2270,4 +2270,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get stepDayMore => '+1d';
+
+  @override
+  String pendingTaskLeft(String length) {
+    return 'Falta $length';
+  }
+
+  @override
+  String get planDropHere => 'Solte aqui';
 }

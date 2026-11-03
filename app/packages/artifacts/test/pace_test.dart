@@ -70,8 +70,9 @@ void main() {
       expect(
         [for (final a in groups.started) a.id],
         [
-          'behind',
+          // Past its day is the one urgent: first, though it lags less.
           'overdue',
+          'behind',
           'close',
           'ahead',
           'worked',
@@ -91,7 +92,7 @@ void main() {
   });
 
   group('isUrgent', () {
-    test('is only for what was begun, past its day or behind', () {
+    test('is only for what was begun and past its day', () {
       final overdue = DateTime(2026, 10, 20);
       expect(isUrgent(artifact('a', deadline: overdue), now), isFalse);
       expect(
@@ -108,7 +109,8 @@ void main() {
           ),
           now,
         ),
-        isTrue,
+        // Behind its pace alone, the bar says it; the card is not urgent.
+        isFalse,
       );
       expect(isUrgent(artifact('d', startedAt: begun), now), isFalse);
     });
@@ -400,7 +402,7 @@ void main() {
           artifact(
             'atrasada',
             startedAt: begun,
-            deadline: DateTime(2026, 10, 30),
+            deadline: DateTime(2026, 10, 20),
             minutes: 180,
             doneMinutes: 15,
           ),
@@ -421,10 +423,18 @@ void main() {
             .first,
       );
       expect(card.color, AppColors.urgentFill);
-      // The day it is due is the red's key, in the danger ink.
+      // How late it is is the red's key, in the danger ink.
       expect(
         tester
-            .widget<Text>(find.text(l10n.artifactUntil('sex, 30 out')))
+            .widget<Text>(
+              find.text(
+                remainingLabel(
+                  l10n,
+                  artifact('x', deadline: DateTime(2026, 10, 20)),
+                  now,
+                )!,
+              ),
+            )
             .style
             ?.color,
         AppColors.dangerInk,
@@ -483,6 +493,35 @@ void main() {
       await drag(tester, 'Entrega semana', const Offset(0, 260));
 
       verify(() => repository.move('semana', 1, stop: true)).called(1);
+    });
+  });
+
+  group('dueLabel', () {
+    String? due(DateTime? deadline) =>
+        dueLabel(l10n, artifact('a', deadline: deadline), now);
+
+    test('says hoje, the weekday this week, the date beyond, para ontem', () {
+      // Wednesday 21 October: the week runs Monday 19 to Sunday 25.
+      expect(due(DateTime(2026, 10, 21)), 'hoje');
+      expect(due(DateTime(2026, 10, 22)), 'quinta-feira');
+      expect(due(DateTime(2026, 10, 25)), 'domingo');
+      expect(due(DateTime(2026, 10, 26)), '26/out');
+      expect(due(DateTime(2026, 11, 5)), '05/nov');
+      expect(due(DateTime(2026, 10, 20)), 'para ontem');
+      expect(due(DateTime(2026, 9, 30)), 'para ontem');
+      expect(due(null), isNull);
+    });
+
+    test('counts the day from the clock, late at night too', () {
+      final night = DateTime(2026, 10, 21, 23, 59);
+      expect(
+        dueLabel(l10n, artifact('a', deadline: DateTime(2026, 10, 22)), night),
+        'quinta-feira',
+      );
+      expect(
+        dueLabel(l10n, artifact('a', deadline: DateTime(2026, 10, 21)), night),
+        'hoje',
+      );
     });
   });
 }
