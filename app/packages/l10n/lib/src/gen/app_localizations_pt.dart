@@ -2196,4 +2196,70 @@ class AppLocalizationsPt extends AppLocalizations {
   String homeCycleTag(int day, String what) {
     return 'Dia $day · $what';
   }
+
+  @override
+  String get composeOpen => 'Anotar ou pedir';
+
+  @override
+  String get composeHint => 'Uma tarefa, um evento, ou o que mudar no dia';
+
+  @override
+  String get composeSend => 'Enviar';
+
+  @override
+  String get composeListen => 'Falar';
+
+  @override
+  String get composeReading => 'Entendendo…';
+
+  @override
+  String get composeKindTask => 'Tarefa';
+
+  @override
+  String get composeKindEvent => 'Evento';
+
+  @override
+  String get composeKindPlan => 'Mudanças no dia';
+
+  @override
+  String get composeQueued => 'na fila';
+
+  @override
+  String get composeToday => 'hoje';
+
+  @override
+  String get composeTomorrow => 'amanhã';
+
+  @override
+  String composeAt(String day, String hour) {
+    return '$day, $hour';
+  }
+
+  @override
+  String composeIn(String parent) {
+    return 'em $parent';
+  }
+
+  @override
+  String composeSubtasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count subtarefas',
+      one: '1 subtarefa',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get composeAdd => 'Adicionar';
+
+  @override
+  String get composeAdjust => 'Ajustar';
+
+  @override
+  String get composeApply => 'Aplicar';
+
+  @override
+  String get composeTalk => 'Conversar';
 }

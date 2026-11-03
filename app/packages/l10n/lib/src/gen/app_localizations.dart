@@ -3394,6 +3394,114 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Dia {day} · {what}'**
   String homeCycleTag(int day, String what);
+
+  /// The one button at the foot of every screen, to a screen reader: opens the composer.
+  ///
+  /// In pt, this message translates to:
+  /// **'Anotar ou pedir'**
+  String get composeOpen;
+
+  /// The composer's empty field.
+  ///
+  /// In pt, this message translates to:
+  /// **'Uma tarefa, um evento, ou o que mudar no dia'**
+  String get composeHint;
+
+  /// The composer's send button, to a screen reader.
+  ///
+  /// In pt, this message translates to:
+  /// **'Enviar'**
+  String get composeSend;
+
+  /// The composer's microphone, to a screen reader.
+  ///
+  /// In pt, this message translates to:
+  /// **'Falar'**
+  String get composeListen;
+
+  /// The summary box while the request is read.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entendendo…'**
+  String get composeReading;
+
+  /// The summary's kind: a task.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tarefa'**
+  String get composeKindTask;
+
+  /// The summary's kind: an event, a block with an hour of its own.
+  ///
+  /// In pt, this message translates to:
+  /// **'Evento'**
+  String get composeKindEvent;
+
+  /// The summary's kind: a request that changes several things on the day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Mudanças no dia'**
+  String get composeKindPlan;
+
+  /// The summary's hour for a task with no hour: it takes its turn in the queue.
+  ///
+  /// In pt, this message translates to:
+  /// **'na fila'**
+  String get composeQueued;
+
+  /// The summary's day: today.
+  ///
+  /// In pt, this message translates to:
+  /// **'hoje'**
+  String get composeToday;
+
+  /// The summary's day: tomorrow.
+  ///
+  /// In pt, this message translates to:
+  /// **'amanhã'**
+  String get composeTomorrow;
+
+  /// The summary's day and hour.
+  ///
+  /// In pt, this message translates to:
+  /// **'{day}, {hour}'**
+  String composeAt(String day, String hour);
+
+  /// The summary's task this one goes under.
+  ///
+  /// In pt, this message translates to:
+  /// **'em {parent}'**
+  String composeIn(String parent);
+
+  /// How many subtasks the summary's task has.
+  ///
+  /// In pt, this message translates to:
+  /// **'{count, plural, =1{1 subtarefa} other{{count} subtarefas}}'**
+  String composeSubtasks(int count);
+
+  /// The summary's button that writes it down.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adicionar'**
+  String get composeAdd;
+
+  /// The summary's button that opens the details to change.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ajustar'**
+  String get composeAdjust;
+
+  /// The summary's button that applies the changes to the day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Aplicar'**
+  String get composeApply;
+
+  /// The summary's button that opens the conversation about the request.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conversar'**
+  String get composeTalk;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

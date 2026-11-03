@@ -1905,5 +1905,95 @@
         "type": "String"
       }
     }
+  },
+  "composeOpen": "Anotar ou pedir",
+  "@composeOpen": {
+    "description": "The one button at the foot of every screen, to a screen reader: opens the composer."
+  },
+  "composeHint": "Uma tarefa, um evento, ou o que mudar no dia",
+  "@composeHint": {
+    "description": "The composer's empty field."
+  },
+  "composeSend": "Enviar",
+  "@composeSend": {
+    "description": "The composer's send button, to a screen reader."
+  },
+  "composeListen": "Falar",
+  "@composeListen": {
+    "description": "The composer's microphone, to a screen reader."
+  },
+  "composeReading": "Entendendo…",
+  "@composeReading": {
+    "description": "The summary box while the request is read."
+  },
+  "composeKindTask": "Tarefa",
+  "@composeKindTask": {
+    "description": "The summary's kind: a task."
+  },
+  "composeKindEvent": "Evento",
+  "@composeKindEvent": {
+    "description": "The summary's kind: an event, a block with an hour of its own."
+  },
+  "composeKindPlan": "Mudanças no dia",
+  "@composeKindPlan": {
+    "description": "The summary's kind: a request that changes several things on the day."
+  },
+  "composeQueued": "na fila",
+  "@composeQueued": {
+    "description": "The summary's hour for a task with no hour: it takes its turn in the queue."
+  },
+  "composeToday": "hoje",
+  "@composeToday": {
+    "description": "The summary's day: today."
+  },
+  "composeTomorrow": "amanhã",
+  "@composeTomorrow": {
+    "description": "The summary's day: tomorrow."
+  },
+  "composeAt": "{day}, {hour}",
+  "@composeAt": {
+    "description": "The summary's day and hour.",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "composeIn": "em {parent}",
+  "@composeIn": {
+    "description": "The summary's task this one goes under.",
+    "placeholders": {
+      "parent": {
+        "type": "String"
+      }
+    }
+  },
+  "composeSubtasks": "{count, plural, =1{1 subtarefa} other{{count} subtarefas}}",
+  "@composeSubtasks": {
+    "description": "How many subtasks the summary's task has.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "composeAdd": "Adicionar",
+  "@composeAdd": {
+    "description": "The summary's button that writes it down."
+  },
+  "composeAdjust": "Ajustar",
+  "@composeAdjust": {
+    "description": "The summary's button that opens the details to change."
+  },
+  "composeApply": "Aplicar",
+  "@composeApply": {
+    "description": "The summary's button that applies the changes to the day."
+  },
+  "composeTalk": "Conversar",
+  "@composeTalk": {
+    "description": "The summary's button that opens the conversation about the request."
   }
 }
