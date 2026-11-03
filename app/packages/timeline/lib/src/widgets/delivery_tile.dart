@@ -7,6 +7,7 @@ import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/event_tile.dart';
 import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/now_surface.dart';
+import 'package:timeline/src/widgets/task_card.dart';
 
 /// {@template delivery_tile}
 /// A run of one delivery's tasks, drawn as one card: the delivery is the
@@ -53,6 +54,7 @@ class DeliveryTile extends StatelessWidget {
     this.onDone,
     this.onStarted,
     this.onSnoozed,
+    this.onPlay,
     super.key,
   });
 
@@ -108,6 +110,10 @@ class DeliveryTile extends StatelessWidget {
   /// Gives the task waiting in Agora fifteen minutes more.
   final VoidCallback? onSnoozed;
 
+  /// Begins the run's next task, from the calendar: a play button in place
+  /// of the delivery's mark, under [actionsKey]. Not drawn on Agora.
+  final VoidCallback? onPlay;
+
   bool get _isNow => tasks.first.section == TimelineSection.agora;
 
   TimelineEvent get _next => tasks.first;
@@ -136,6 +142,14 @@ class DeliveryTile extends StatelessWidget {
                   )
                 : '${hhmm(_next.startTime)}–${hhmm(tasks.last.endTime)}',
             routine: routine,
+            // On the calendar, play begins the run's next task.
+            play: _isNow || onPlay == null
+                ? null
+                : TaskPlayButton(
+                    key: actionsKey,
+                    playing: false,
+                    onPressed: onPlay,
+                  ),
           ),
           const SizedBox(height: AppSpacing.s1),
           if (height == null)
@@ -277,22 +291,27 @@ class _Head extends StatelessWidget {
     required this.title,
     required this.hours,
     required this.routine,
+    this.play,
   });
 
   final String title;
   final String hours;
   final bool routine;
 
+  /// The play button, drawn in place of the mark.
+  final Widget? play;
+
   @override
   Widget build(BuildContext context) {
     final quiet = routine ? AppColors.routineInk : AppColors.ink3;
     return Row(
       children: [
-        AppIcon(
-          iconData: routine ? AppIcons.repeat : AppIcons.artifacts,
-          size: AppSpacing.s4,
-          color: quiet,
-        ),
+        play ??
+            AppIcon(
+              iconData: routine ? AppIcons.repeat : AppIcons.artifacts,
+              size: AppSpacing.s4,
+              color: quiet,
+            ),
         const SizedBox(width: AppSpacing.s2),
         Expanded(
           child: Text(

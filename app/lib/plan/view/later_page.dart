@@ -68,7 +68,7 @@ class LaterPage extends StatelessWidget {
                     for (final item in later)
                       Padding(
                         key: ValueKey(item.id),
-                        padding: const EdgeInsets.only(bottom: AppSpacing.s2),
+                        padding: const EdgeInsets.only(bottom: kQueueGap),
                         child: LaterCard(item: item, now: now),
                       ),
                   ],

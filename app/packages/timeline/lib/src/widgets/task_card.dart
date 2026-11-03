@@ -73,6 +73,7 @@ class TaskCard extends StatelessWidget {
     this.onDone,
     this.bar,
     this.onTap,
+    this.keepPlaySlot = false,
     super.key,
   });
 
@@ -130,6 +131,19 @@ class TaskCard extends StatelessWidget {
   /// Opens the task.
   final VoidCallback? onTap;
 
+  /// Without [onPlay], whether the button's room is kept, so a fixed block
+  /// among tasks lines its title up with theirs.
+  final bool keepPlaySlot;
+
+  /// [subtitle], unless it only says the title again: a task whose one
+  /// task is itself is drawn by its name alone.
+  String? get _subtitle {
+    final line = subtitle?.trim();
+    if (line == null || line.isEmpty) return null;
+    if (line.toLowerCase() == title.trim().toLowerCase()) return null;
+    return line;
+  }
+
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(AppSpacing.chipRadius);
@@ -145,25 +159,47 @@ class TaskCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            // The play button and the hours sit on the title's line, not in
+            // the middle of a two-line card.
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (onPlay != null) ...[
                 TaskPlayButton(playing: playing, onPressed: onPlay),
                 const SizedBox(width: AppSpacing.s3),
-              ] else
+              ] else if (keepPlaySlot)
+                const SizedBox(width: TaskPlayButton.size + AppSpacing.s3)
+              else
                 const SizedBox(width: AppSpacing.s1),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: AppTypography.body,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: AppTypography.body,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (trailing != null) ...[
+                          const SizedBox(width: AppSpacing.s3),
+                          Text(
+                            trailing!,
+                            style: AppTypography.label.copyWith(
+                              color: AppColors.ink3,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    if (subtitle != null)
+                    if (_subtitle case final subtitle?)
                       Text(
-                        subtitle!,
+                        subtitle,
                         style: AppTypography.label.copyWith(
                           color: AppColors.ink2,
                         ),
@@ -173,15 +209,6 @@ class TaskCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: AppSpacing.s3),
-                Text(
-                  trailing!,
-                  style: trailingInk == null
-                      ? AppTypography.label.copyWith(color: AppColors.ink3)
-                      : AppTypography.labelStrong.copyWith(color: trailingInk),
-                ),
-              ],
             ],
           ),
           if (status != null || controls) ...[
@@ -247,7 +274,11 @@ class TaskPlayButton extends StatelessWidget {
   /// Plays or pauses it.
   final VoidCallback? onPressed;
 
-  static const double _size = AppSpacing.s8;
+  /// Its diameter. Small and quiet: the card is the task, the button only
+  /// one way to begin it. A tap lands in [_target] around it.
+  static const double size = AppSpacing.s6;
+
+  static const double _target = AppSpacing.s8;
 
   @override
   Widget build(BuildContext context) {
@@ -255,19 +286,21 @@ class TaskPlayButton extends StatelessWidget {
       message: playing
           ? context.l10n.controlPause
           : context.l10n.controlStartNow,
-      child: Material(
-        color: playing ? AppColors.accent : AppColors.fillStrong,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox.square(
-            dimension: _size,
+      child: InkResponse(
+        onTap: onPressed,
+        radius: _target / 2,
+        child: SizedBox.square(
+          dimension: size,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: playing ? AppColors.accentSoft : AppColors.fillStrong,
+            ),
             child: Center(
               child: AppIcon(
                 iconData: playing ? AppIcons.pause : AppIcons.play,
-                size: AppSpacing.s4,
-                color: playing ? AppColors.onAccent : AppColors.ink,
+                size: AppSpacing.s3,
+                color: playing ? AppColors.accent : AppColors.ink2,
               ),
             ),
           ),

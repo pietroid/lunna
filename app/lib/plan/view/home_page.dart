@@ -8,12 +8,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/plan/view/plan_drag.dart';
 import 'package:lunna/plan/view/plan_items.dart';
+import 'package:lunna/plan/view/write_task.dart';
 import 'package:lunna/tempo/view/minute_refresh.dart';
+import 'package:lunna/tempo/view/tempo_page.dart';
 import 'package:timeline/timeline.dart';
 
 /// How many tasks of Para depois Plano draws before the row that opens
 /// them all.
 const kLaterOnHome = 4;
+
+/// Whether Plano draws the agent's offer. Off for now (#79): the card and
+/// its cubit stay, so turning it back on is this line.
+const kSuggestionOnPlan = false;
 
 /// {@template home_page}
 /// Plano: what to do now, what is under way, and what comes later.
@@ -85,14 +91,14 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     // Back from the background on another day: the offer is yesterday's.
     _lifecycle = AppLifecycleListener(onShow: _askIfNewDay);
-    if (widget.shown) _ask();
+    if (widget.shown && kSuggestionOnPlan) _ask();
     _scheduleMidnight();
   }
 
   @override
   void didUpdateWidget(HomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.shown && !oldWidget.shown) _ask();
+    if (kSuggestionOnPlan && widget.shown && !oldWidget.shown) _ask();
   }
 
   @override
@@ -112,7 +118,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _askIfNewDay() {
-    if (!mounted || !widget.shown) return;
+    if (!mounted || !widget.shown || !kSuggestionOnPlan) return;
     if (_askedOn != _dayOf(clock.now())) _ask();
   }
 
@@ -208,7 +214,7 @@ class _HomePageState extends State<HomePage> {
                       // The agent's one unasked-for offer, first: it is
                       // about the day below it, and goes once taken or
                       // turned down.
-                      const SuggestionCard(),
+                      if (kSuggestionOnPlan) const SuggestionCard(),
                       _Heading(
                         title: l10n.feedNow,
                         mark: day.marks.on(now),
@@ -227,7 +233,7 @@ class _HomePageState extends State<HomePage> {
                             child: _carry(
                               items.now,
                               PlanSection.now,
-                              _NowCard(card: items.now, now: now),
+                              _NowCard(card: items.now, day: day, now: now),
                             ),
                           ),
                         ),
@@ -339,17 +345,32 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// Agora: [NowTaskCard], or the break when nothing runs.
+/// Agora: [NowTaskCard], or, when nothing is in it, what the calendar's
+/// Agora says then ([AgoraIdleTile]): the break with its line inside the
+/// working day, the day over (or not begun) outside it.
 class _NowCard extends StatelessWidget {
-  const _NowCard({required this.card, required this.now});
+  const _NowCard({required this.card, required this.day, required this.now});
 
   final TimelineEvent? card;
+  final TimelineState day;
   final DateTime now;
 
   @override
   Widget build(BuildContext context) {
     final card = this.card;
-    if (card == null) return _Quiet(text: context.l10n.feedBreak);
+    if (card == null) {
+      return AgoraIdleTile(
+        workDay: day.workDay,
+        now: now,
+        nextStart: day.cards
+            .where((c) => c.startTime.isAfter(now))
+            .map((c) => c.startTime)
+            .firstOrNull,
+        onWriteDown: (placement) =>
+            unawaited(writeTask(context, placement: placement)),
+        onAdjustDay: context.read<OpenDayHours?>()?.open,
+      );
+    }
     return NowTaskCard(
       card: card,
       now: now,
@@ -358,8 +379,9 @@ class _NowCard extends StatelessWidget {
   }
 }
 
-/// The card after Agora, at its hour: play for a task, nothing for a fixed
-/// block, which is never begun by hand.
+/// The card after Agora, from its start to its end, with play for a task;
+/// a fixed block, which begins at its hour by itself, keeps the button's
+/// room so its title lines up.
 class _NextCard extends StatelessWidget {
   const _NextCard({required this.card});
 
@@ -371,16 +393,16 @@ class _NextCard extends StatelessWidget {
     return TaskCard(
       title: parent ?? card.title,
       subtitle: parent == null ? null : card.title,
-      trailing: hhmm(card.startTime),
-      onPlay: card.isTask && card.isInteractive
-          ? () => playCard(context, card)
-          : null,
+      trailing: '${hhmm(card.startTime)} – ${hhmm(card.endTime)}',
+      onPlay: card.isTask ? () => playCard(context, card) : null,
+      keepPlaySlot: true,
       onTap: () => openCard(context, card),
     );
   }
 }
 
-/// A card's room in the column: the page's margin, and a gap under it.
+/// A card's room in the column: the page's margin, and under it the gap
+/// every card of Plano keeps ([kQueueGap]).
 class _Pad extends StatelessWidget {
   const _Pad({required this.child, super.key});
 
@@ -393,7 +415,7 @@ class _Pad extends StatelessWidget {
         AppSpacing.s5,
         0,
         AppSpacing.s5,
-        AppSpacing.s2,
+        kQueueGap,
       ),
       child: child,
     );
