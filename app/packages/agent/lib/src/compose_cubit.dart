@@ -101,8 +101,8 @@ class ComposeState extends Equatable {
 /// The composer: one field, typed or spoken, read into a [ComposeDraft].
 ///
 /// `read` asks the server what the text is; a single task or event comes
-/// back in about a second, and only a request that changes several things
-/// takes the agent's whole turn.
+/// back from one short read on the agent's model, and only a request that
+/// changes several things takes the agent's whole turn.
 /// {@endtemplate}
 class ComposeCubit extends Cubit<ComposeState> {
   /// {@macro compose_cubit}

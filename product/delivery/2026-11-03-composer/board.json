@@ -60,7 +60,7 @@
           "x": 245,
           "y": 616,
           "label": "Uma linha",
-          "text": "Kind · day, hour (or \"na fila\") · length. A single task or event must come back in about a second: a small, fast read, not the agent's turn."
+          "text": "Kind · day, hour (or \"na fila\") · length. A single task or event comes back fast: one short read on the agent's own model (one forced tool, a short context), not the agent's whole turn."
         },
         {
           "id": "C",

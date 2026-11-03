@@ -3,7 +3,8 @@
 > Issue [#81](https://github.com/pietroid/lunna/issues/81), **mockup track**:
 > it changes the input surface on every screen (the button, a new
 > sheet, a summary box). Designed unattended and **approved on the
-> issue**, with the + kept as it was (round 2). This is the hand-off:
+> issue**, with the + kept as it was (round 2) and both open questions
+> answered (round 3). This is the hand-off:
 > sections 1 and 2 and the Build brief. `/create build composer` takes it
 > from here.
 
@@ -32,6 +33,19 @@ The design was reviewed on the issue, and the person replied:
 So the button keeps the app's own `+` (round 2 re-shot screen 1 and the
 board); everything else is as drawn in round 1.
 
+Round 3, the person's answer to the two open questions:
+
+> Open question 1 from round 1 still stands: when a task that has already started gets its first subtask, it should go to the last subtask item so the in progress will not be affected.
+>
+> Open question 2 from round 1 still stands: should the fast read use a small OpenRouter model (the same key as the agent) with a 2 s timeout that falls back to the agent's turn, or something else (a different provider, or parsing simple cases on the phone)?
+>
+> we can use the same model for now.
+
+So a begun task given subtasks keeps running untouched, and every new
+subtask goes at the end of the list; and the fast read runs on the
+agent's own model. Nothing drawn changed: round 3 only re-wrote pin 3B
+and re-laid the board.
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -53,8 +67,9 @@ the agent's changes to the day. **Nothing is written until Adicionar**
 (or Aplicar), and the field keeps the words, so a correction is changing a
 word and sending again.
 
-**A single task or event is read fast** (about a second: a small, cheap
-read that only fills a summary). Only a request that changes several
+**A single task or event is read fast**: one short read on the agent's
+own model (one forced tool over a short context) that only fills a
+summary. Only a request that changes several
 things goes through the agent's whole turn, and says "Entendendo…" for
 as long as that takes.
 
@@ -81,7 +96,7 @@ later on its page. One level, as in #77.
 | 2A | The field | One field, hint "Uma tarefa, um evento, ou o que mudar no dia". No Tarefa \| Evento, no hour or length pills: they are read from the words. |
 | 2B | Voice | `VoiceBar` as it is (trash, time, wave); its stop is ↑ and sends. Typed: mic left, ↑ right, grey until there is text. |
 | 3A | The kind | A 32 px mark: check on `fill` for a Tarefa, pin on `fixedFill` for an Evento (the fixed cards' mark), the crescent on `accentWash` for changes. While reading, the same box shows a spinner and "Entendendo…". |
-| 3B | One line | Kind · day, hour (or "na fila") · length. |
+| 3B | One line | Kind · day, hour (or "na fila") · length, from one short read on the agent's model (round 3). |
 | 3C | Adicionar | The one accent action: writes through the same routes the old sheet used, closes the sheet, with Desfazer on the snackbar. |
 | 3D | Ajustar | Opens the old detailed sheet (`AppPromptSheet`) filled with what was read, for a fix by hand. |
 | 3E | The words stay | The field keeps the text; editing it drops the box, sending reads again. |
@@ -130,16 +145,23 @@ dictation that becomes text in the field).
 - After Adicionar the sheet closes; the new card is on Plano with a
   snackbar "Adicionado · Desfazer".
 
+- **Round 3, read of the answer to question 1**: "it should go to the
+  last subtask item so the in progress will not be affected" is read as:
+  the begun task's row stays exactly as it is (running, its hour, its
+  `event` row) and becomes the task with tasks' first item, and the new
+  subtask (and every later one) is appended **at the end** of the list,
+  after the running one. Nothing is paused, refused or re-laid. If the
+  intent was the reverse (the begun work moved to the last slot), the
+  only change is the position the first subtask is written at.
+- **Round 3, the model**: the fast read uses `OPENROUTER_MODEL`, the
+  agent's own, with no model of its own and no new env var. It keeps a
+  timeout (8 s) after which the text goes to the agent's turn, as a
+  failed read does; the latency is measured in the spec and in
+  `eval:agent`, so a smaller model can be swapped in later on numbers.
+
 ### Open questions
 
-1. **A loose task that is already begun, given its first subtask**: the
-   design keeps its row (and its hours on the calendar) as the first
-   subtask of a new task with tasks of the same name. Is that right, or
-   should a begun task refuse subtasks until it is paused?
-2. **The model for the fast read**: the brief proposes a small, fast
-   OpenRouter model (same key as the agent) with a 2 s timeout falling
-   back to the agent's turn. A different provider, or an on-device parse
-   for the plain cases, would be a different cost and latency.
+None left: both were answered on the issue (round 3, above).
 
 ## Build brief
 
@@ -163,10 +185,12 @@ plain `AppFab`. `app_ui` is back to `main`.
   (`task` \| `event` \| `goal` \| `plan`), `title`, `start?`, `minutes?`,
   `parent?` (`{ id, title }`, resolved by the server from a ref),
   `subtasks[]`, and for `plan` the agent's turn (`conversationId`, the plan,
-  its lines). The fast path is one forced tool on a small model over a
-  short context (date, zone, `WorkDay`, open deliveries by ref); it asks
-  nothing back. `plan` runs the existing agent turn. Refusals in
-  Portuguese. Measure the latency (p50 target ≈ 1 s) in the spec and in
+  its lines). The fast path is one forced tool on **the agent's own model**
+  (`OPENROUTER_MODEL`, the same OpenRouter client and key; no new env
+  var) over a short context (date, zone, `WorkDay`, open deliveries by
+  ref); it asks nothing back. Past 8 s, or on a failed read, the text
+  goes to the agent's turn as `plan`. `plan` runs the existing agent turn. Refusals in
+  Portuguese. Measure the latency (p50 and p95, on the agent's model) in the spec and in
   `npm run eval:agent` (a few compose cases).
 - No new write route for Adicionar: the app posts what the draft says
   through the existing ones (`POST /tasks`, `POST /events`,
@@ -174,8 +198,10 @@ plain `AppFab`. `app_ui` is back to `main`.
   hold.
 - Subtasks on a loose task: `POST /api/tasks/:id/subtasks { title,
   minutes? }`: the first one makes an `artifact` from the task (title,
-  notes, minutes, its place in the queue) and the task its first task (or
-  the new one, per open question 1); later ones add a task to it. Through
+  notes, minutes, its place in the queue) and keeps the task's own row as
+  its first task, untouched (a begun one keeps running, its `event` row
+  and hour as they were); the new subtask, and every later one, is
+  appended **at the end** of its tasks (round 3). Through
   `EventLayoutService`; undoable.
 - `analytics/events.ts`: `compose_read` (kind, ms; never the text) and the
   subtasks route.
