@@ -95,7 +95,7 @@ class _Panel extends StatelessWidget {
                   AppListItem(
                     iconData: AppIcons.timer,
                     title: l10n.guardStartNowTitle,
-                    subtitle: l10n.guardStartNowRunning(
+                    subtitle: l10n.guardBusyBody(
                       guard.currentTitle,
                       hhmm(guard.currentStart),
                       hhmm(guard.currentEnd),
@@ -112,11 +112,26 @@ class _Panel extends StatelessWidget {
                     onPressed: () => answer(TimingDecision.solveCurrent),
                   ),
                   const SizedBox(height: AppSpacing.s2),
-                  AppButton(
-                    text: l10n.guardPostponeCurrent,
+                  AppButton.icon(
+                    icon: const AppIcon(
+                      iconData: AppIcons.pause,
+                      color: AppColors.ink,
+                    ),
+                    text: l10n.guardToPending,
                     variant: AppButtonVariant.secondary,
                     expand: true,
-                    onPressed: () => answer(TimingDecision.postponeCurrent),
+                    onPressed: () => answer(TimingDecision.pauseCurrent),
+                  ),
+                  const SizedBox(height: AppSpacing.s2),
+                  AppButton.icon(
+                    icon: const AppIcon(
+                      iconData: AppIcons.archive,
+                      color: AppColors.ink,
+                    ),
+                    text: l10n.guardToLater,
+                    variant: AppButtonVariant.secondary,
+                    expand: true,
+                    onPressed: () => answer(TimingDecision.laterCurrent),
                   ),
                   const SizedBox(height: AppSpacing.s2),
                   AppButton.text(

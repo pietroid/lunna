@@ -41,6 +41,7 @@ class HomePage extends StatefulWidget {
     required this.onSeeDay,
     required this.onOpenLater,
     this.shown = true,
+    this.carrying,
     this.controller,
     super.key,
   });
@@ -54,6 +55,11 @@ class HomePage extends StatefulWidget {
   /// Whether the tab is in front. Brought forward, it asks for the offer
   /// again; behind, it asks nothing.
   final bool shown;
+
+  /// The id of the card carried over Agora: it leaves its place in its
+  /// section, and Agora draws itself as the place it starts
+  /// ([NowDropZone]). The drag sets it; the preview too.
+  final String? carrying;
 
   /// The scroll of the page.
   final ScrollController? controller;
@@ -180,7 +186,10 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       _Pad(
-                        child: _NowCard(card: items.now, now: now),
+                        child: NowDropZone(
+                          hovering: widget.carrying != null,
+                          child: _NowCard(card: items.now, now: now),
+                        ),
                       ),
                       if (items.next case final next?) ...[
                         Padding(
@@ -200,13 +209,14 @@ class _HomePageState extends State<HomePage> {
                       if (items.pending.isNotEmpty) ...[
                         _Heading(title: l10n.homePending),
                         for (final artifact in items.pending)
-                          _Pad(
-                            child: PendingCard(
-                              key: ValueKey(artifact.id),
-                              artifact: artifact,
-                              now: now,
+                          if (artifact.id != widget.carrying)
+                            _Pad(
+                              child: PendingCard(
+                                key: ValueKey(artifact.id),
+                                artifact: artifact,
+                                now: now,
+                              ),
                             ),
-                          ),
                       ],
                       _Heading(title: l10n.stageBacklog),
                       if (later.isEmpty)
@@ -429,6 +439,62 @@ class _Quiet extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
       ),
       child: Text(text, style: AppTypography.label),
+    );
+  }
+}
+
+/// {@template now_drop_zone}
+/// Agora while a card is carried over it: what runs fades under an
+/// accent outline that says letting go begins the card. Pendentes, Em
+/// seguida and Para depois take a drop as places in their list; only
+/// Agora says what a drop does, since only there it starts something.
+/// {@endtemplate}
+class NowDropZone extends StatelessWidget {
+  /// {@macro now_drop_zone}
+  const NowDropZone({required this.hovering, required this.child, super.key});
+
+  /// Whether a card is over it.
+  final bool hovering;
+
+  /// Agora's card.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hovering) return child;
+    final radius = BorderRadius.circular(AppSpacing.chipRadius);
+    return Stack(
+      children: [
+        Opacity(opacity: 0.25, child: child),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.bg.withValues(alpha: 0.6),
+              borderRadius: radius,
+              border: Border.all(color: AppColors.accent, width: 2),
+            ),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppIcon(
+                    iconData: AppIcons.play,
+                    size: AppSpacing.s4,
+                    color: AppColors.accent,
+                  ),
+                  const SizedBox(width: AppSpacing.s2),
+                  Text(
+                    context.l10n.planDropStart,
+                    style: AppTypography.labelStrong.copyWith(
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -423,7 +423,14 @@ enum TimingDecision {
   solveCurrent('solve_current'),
 
   /// Keep it, further down the day.
-  postponeCurrent('postpone_current');
+  postponeCurrent('postpone_current'),
+
+  /// Pause it where it is: begun and not finished, so it waits in
+  /// Pendentes owing what it had left.
+  pauseCurrent('pause_current'),
+
+  /// Send it to the backlog, Para depois, owing what it had left.
+  laterCurrent('later_current');
 
   const TimingDecision(this.wire);
 

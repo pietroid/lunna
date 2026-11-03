@@ -2199,4 +2199,75 @@ class AppLocalizationsPt extends AppLocalizations {
   String homeCycleTag(int day, String what) {
     return 'Dia $day · $what';
   }
+
+  @override
+  String get dueToday => 'hoje';
+
+  @override
+  String get dueYesterday => 'para ontem';
+
+  @override
+  String get weekdaysLong => 'segunda-feira,terça-feira,quarta-feira,quinta-feira,sexta-feira,sábado,domingo';
+
+  @override
+  String dueDate(String day, String month) {
+    return '$day/$month';
+  }
+
+  @override
+  String get controlDayEarlier => 'Prazo um dia antes';
+
+  @override
+  String get controlDayLater => 'Prazo um dia depois';
+
+  @override
+  String pendingUrgentStatus(String status) {
+    return 'Urgente · $status';
+  }
+
+  @override
+  String get playPieceTitle => 'Quanto você vai fazer agora?';
+
+  @override
+  String playPieceBody(String title, String length) {
+    return '$title tem $length pela frente. Um pedaço vira uma tarefa dentro dela.';
+  }
+
+  @override
+  String playWhole(String length) {
+    return 'Tudo · $length';
+  }
+
+  @override
+  String playNextTitle(String task) {
+    return 'Começar $task?';
+  }
+
+  @override
+  String playNextBody(String parent, String length) {
+    return 'A próxima de $parent · $length';
+  }
+
+  @override
+  String get playNextStart => 'Começar';
+
+  @override
+  String guardBusyBody(String title, String start, String end) {
+    return '$title está rodando, $start–$end. O que fazer com ela?';
+  }
+
+  @override
+  String get guardToPending => 'Pausar em Pendentes';
+
+  @override
+  String get guardToLater => 'Mandar para Para depois';
+
+  @override
+  String get planDropStart => 'Solte para começar agora';
+
+  @override
+  String get stepDayLess => '−1d';
+
+  @override
+  String get stepDayMore => '+1d';
 }

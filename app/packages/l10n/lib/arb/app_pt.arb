@@ -1906,5 +1906,88 @@
         "type": "String"
       }
     }
-  }
+  },
+  "dueToday": "hoje",
+  "dueYesterday": "para ontem",
+  "weekdaysLong": "segunda-feira,terça-feira,quarta-feira,quinta-feira,sexta-feira,sábado,domingo",
+  "dueDate": "{day}/{month}",
+  "@dueDate": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "controlDayEarlier": "Prazo um dia antes",
+  "controlDayLater": "Prazo um dia depois",
+  "pendingUrgentStatus": "Urgente · {status}",
+  "@pendingUrgentStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "playPieceTitle": "Quanto você vai fazer agora?",
+  "playPieceBody": "{title} tem {length} pela frente. Um pedaço vira uma tarefa dentro dela.",
+  "@playPieceBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhole": "Tudo · {length}",
+  "@playWhole": {
+    "placeholders": {
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playNextTitle": "Começar {task}?",
+  "@playNextTitle": {
+    "placeholders": {
+      "task": {
+        "type": "String"
+      }
+    }
+  },
+  "playNextBody": "A próxima de {parent} · {length}",
+  "@playNextBody": {
+    "placeholders": {
+      "parent": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playNextStart": "Começar",
+  "guardBusyBody": "{title} está rodando, {start}–{end}. O que fazer com ela?",
+  "@guardBusyBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "guardToPending": "Pausar em Pendentes",
+  "guardToLater": "Mandar para Para depois",
+  "planDropStart": "Solte para começar agora",
+  "stepDayLess": "−1d",
+  "stepDayMore": "+1d"
 }
