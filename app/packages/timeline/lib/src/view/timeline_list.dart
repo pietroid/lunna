@@ -2185,7 +2185,6 @@ class _TimelineListState extends State<TimelineList> {
       room: null,
       card: null,
     ));
-    final minute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
     final next = state.cards
         .where((card) => card.startTime.isAfter(now))
         .map((card) => card.startTime)
@@ -2194,24 +2193,13 @@ class _TimelineListState extends State<TimelineList> {
       Padding(
         key: _breakKey,
         padding: const EdgeInsets.only(top: AppSpacing.s1),
-        child: _closedAt(now)
-            ? DayOverTile(
-                workDay: state.workDay,
-                over: now.hour * 60 + now.minute >= state.workDay.end,
-                onAdjust: widget.onAdjustDay,
-              )
-            : FreeTile(
-                slot: FreeSlot(
-                  start: minute,
-                  end: next ?? minute.add(const Duration(hours: 1)),
-                  earliest: minute,
-                  index: 0,
-                ),
-                now: true,
-                onTap: widget.onWriteDown == null
-                    ? null
-                    : () => widget.onWriteDown!(Placement.at(minute)),
-              ),
+        child: AgoraIdleTile(
+          workDay: state.workDay,
+          now: now,
+          nextStart: next,
+          onWriteDown: widget.onWriteDown,
+          onAdjustDay: widget.onAdjustDay,
+        ),
       ),
     );
   }

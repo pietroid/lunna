@@ -1,0 +1,110 @@
+{
+ "title": "Plano: UX e UI, parte 1 (#79)",
+ "screens": [
+  {
+   "png": "img/mockup-1.png",
+   "title": "Plano, com uma tarefa em andamento",
+   "why": "Agora, Em seguida e as filas ficam mais leves: botão menor, horas no topo, sem nome repetido.",
+   "pins": [
+    {
+     "id": "A",
+     "x": 160,
+     "y": 52,
+     "label": "Sem sugestão",
+     "text": "O cartão da sugestão sai de Plano por ora (kSuggestionOnPlan = false); nada é pedido ao agente. O widget e o cubit ficam."
+    },
+    {
+     "id": "B",
+     "x": 14,
+     "y": 107,
+     "label": "Play/pausa menor",
+     "text": "24 px em vez de 32, ícone de 12 px. Parado: fillStrong com ícone ink2; rodando: accentSoft com pausa no accent. O toque continua com 32 px."
+    },
+    {
+     "id": "C",
+     "x": 246,
+     "y": 107,
+     "label": "Horas no topo",
+     "text": "As horas ficam na linha do título, alinhadas à direita, e não no meio do cartão; o play também sobe para a primeira linha."
+    },
+    {
+     "id": "D",
+     "x": 246,
+     "y": 242,
+     "label": "Em seguida: início – fim",
+     "text": "Mostra 10:38 – 11:08 em vez de só o início, e play em toda tarefa (é soltá-la em Agora)."
+    },
+    {
+     "id": "E",
+     "x": 330,
+     "y": 354,
+     "label": "Sem repetir o nome",
+     "text": "Quando a única tarefa tem o mesmo nome da tarefa-mãe, o cartão mostra só o título. Vale em todo TaskCard."
+    },
+    {
+     "id": "F",
+     "x": 196,
+     "y": 635,
+     "label": "Fila mais junta",
+     "text": "4 px entre os cartões de Para depois (antes 8), aqui e na página da lista."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-2.png",
+   "title": "Plano no intervalo",
+   "why": "Agora vazio diz o mesmo que o Agora do calendário.",
+   "pins": [
+    {
+     "id": "G",
+     "x": 340,
+     "y": 134,
+     "label": "O mesmo intervalo",
+     "text": "Sem nada rodando, Agora é o FreeTile do calendário (Nada programado + uma das 20 frases), num widget só para os dois (AgoraIdleTile). Um toque anota algo a partir de agora."
+    },
+    {
+     "id": "H",
+     "x": 14,
+     "y": 249,
+     "label": "Play em Em seguida",
+     "text": "Tarefa: play. Evento fixo (começa sozinho na hora): sem botão, mas o espaço dele fica, para os títulos se alinharem."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-3.png",
+   "title": "Plano fora do dia de trabalho",
+   "why": "Antes das 07:00 ou depois das 22:00, Agora diz que nada começa, como no calendário.",
+   "pins": [
+    {
+     "id": "I",
+     "x": 352,
+     "y": 110,
+     "label": "Dia fechado",
+     "text": "DayOverTile, o mesmo do calendário: 'Seu dia começa às 07:00' ou 'Seu dia terminou às 22:00', com o atalho para mudar o horário quando o Menu o oferece."
+    }
+   ]
+  },
+  {
+   "png": "img/mockup-4.png",
+   "title": "Para depois, a lista inteira",
+   "why": "A fila lida como uma lista só.",
+   "pins": [
+    {
+     "id": "J",
+     "x": 194,
+     "y": 121,
+     "label": "4 px entre itens",
+     "text": "kQueueGap = 4 px, o mesmo de Plano."
+    },
+    {
+     "id": "K",
+     "x": 14,
+     "y": 95,
+     "label": "Botão discreto",
+     "text": "O mesmo play de 24 px em toda a lista."
+    }
+   ]
+  }
+ ]
+}

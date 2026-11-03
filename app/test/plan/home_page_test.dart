@@ -156,15 +156,18 @@ void main() {
   double top(WidgetTester tester, String text) =>
       tester.getTopLeft(find.text(text)).dy;
 
-  testAt('draws the break and an empty Para depois on an empty day', (
-    tester,
-  ) async {
-    await pump(tester);
+  testAt(
+    'draws the break as the calendar does, and an empty Para depois on an empty day',
+    (
+      tester,
+    ) async {
+      await pump(tester);
 
-    expect(find.text(l10n.feedBreak), findsOneWidget);
-    expect(find.text(l10n.homePending), findsNothing);
-    expect(find.text(l10n.homeLaterEmpty), findsOneWidget);
-  });
+      expect(find.byType(FreeTile), findsOneWidget);
+      expect(find.text(l10n.homePending), findsNothing);
+      expect(find.text(l10n.homeLaterEmpty), findsOneWidget);
+    },
+  );
 
   testAt('titles Agora by the task, its task at work under it, with pause', (
     tester,
