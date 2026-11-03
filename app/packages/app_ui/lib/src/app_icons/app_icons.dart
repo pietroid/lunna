@@ -20,6 +20,10 @@ class AppIcons {
     AppBrand.isLunna ? 'agent_lunna' : 'agent_focus',
   );
 
+  /// The one button that writes or asks anything: the brand's crescent with
+  /// a plus in its hollow (SVG asset, one colour; give it `onAccent`).
+  static const compose = AppIconData.asset('compose');
+
   /// The conversations before this one, above it.
   static const earlier = AppIconData.phosphor(PhosphorIconsRegular.caretUp);
 

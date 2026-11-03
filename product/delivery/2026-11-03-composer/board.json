@@ -1,0 +1,145 @@
+{
+  "title": "Um botão, um campo: escrever ou pedir · toda tarefa tem subtarefas",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · Plano, um botão só",
+      "why": "The ask bar and the + become one button: the crescent with a plus.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 346,
+          "y": 700,
+          "label": "Lua com +",
+          "text": "AppIcons.compose: the brand's crescent with a plus in its hollow, one colour (onAccent) on the accent circle, 30 px in the 56 px AppFab. SVG on the 64 grid in app/brands/<brand>/compose.svg."
+        },
+        {
+          "id": "B",
+          "x": 150,
+          "y": 792,
+          "label": "Sem barra do agente",
+          "text": "AskDock's bar is gone from every tab and page. The button sits where the + was (AppFab.location, bottom right, thumb side), the same on every screen."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · Falar",
+      "why": "One field: type, or tap the mic and the words rise in it.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 380,
+          "y": 722,
+          "label": "Um campo",
+          "text": "Hint: \"Uma tarefa, um evento, ou o que mudar no dia\". No Tarefa | Evento, no hour or length pills: they are read from the words."
+        },
+        {
+          "id": "B",
+          "x": 358,
+          "y": 780,
+          "label": "↑ envia",
+          "text": "Recording reuses VoiceBar (trash, time, wave); its stop is ↑ and sends at once. Typed, the mic sits left and ↑ right, grey until there is text."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Lido como evento",
+      "why": "A small box over the sheet says what will be written, before anything is.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 44,
+          "y": 601,
+          "label": "O tipo",
+          "text": "Pin on fixedFill for an Evento, check for a Tarefa, the crescent for changes to the day. While reading: a spinner and \"Entendendo…\" in the same box."
+        },
+        {
+          "id": "B",
+          "x": 245,
+          "y": 616,
+          "label": "Uma linha",
+          "text": "Kind · day, hour (or \"na fila\") · length. A single task or event must come back in about a second: a small, fast read, not the agent's turn."
+        },
+        {
+          "id": "C",
+          "x": 360,
+          "y": 640,
+          "label": "Adicionar",
+          "text": "The one accent action: writes it through the same routes as the old sheet, closes the sheet, Desfazer on the snackbar."
+        },
+        {
+          "id": "D",
+          "x": 28,
+          "y": 653,
+          "label": "Ajustar",
+          "text": "Opens the old detailed sheet (AppPromptSheet) filled with what was read, for a fix by hand."
+        },
+        {
+          "id": "E",
+          "x": 372,
+          "y": 742,
+          "label": "O texto fica",
+          "text": "The field keeps the words: change one and send again, and the box is read again."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · Tarefa com subtarefas",
+      "why": "Every task can hold tasks: said in one breath, written in one tap.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 270,
+          "y": 491,
+          "label": "Em qual tarefa",
+          "text": "\"pro post de Touro\" is matched to an open task: the new one goes under it (AppTag \"em …\"). One level: a subtask has none."
+        },
+        {
+          "id": "B",
+          "x": 220,
+          "y": 571,
+          "label": "Subtarefas",
+          "text": "A list after a colon, or \"primeiro… depois…\", becomes its subtasks, in order. Adicionar writes the task and them together."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · Um pedido maior",
+      "why": "Not one thing to add but a change to the day: the agent's plan, shortened.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 43,
+          "y": 499,
+          "label": "É o agente",
+          "text": "The crescent marks a plan. This is the only case that takes the agent's whole turn; the box says \"Entendendo…\" longer, and nothing else changes."
+        },
+        {
+          "id": "B",
+          "x": 372,
+          "y": 600,
+          "label": "As mudanças",
+          "text": "The plan card's lines (PlanLine), up to four; more open the conversation."
+        },
+        {
+          "id": "C",
+          "x": 28,
+          "y": 653,
+          "label": "Conversar",
+          "text": "Opens the full conversation page on this turn, where Ajustar and Desfazer already live."
+        },
+        {
+          "id": "D",
+          "x": 232,
+          "y": 653,
+          "label": "Aplicar",
+          "text": "Applies the plan as the plan card does, with its undo."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="1024" height="1024">
+<!-- The composer's button: the brand's crescent with a plus in its hollow,
+     one colour, drawn in onAccent on the accent circle (AppIcons.compose). -->
+<path d="M33.285 8.225A24 24 0 1 0 52.523 40.289A19 19 0 1 1 33.285 8.225Z" fill="#000"/>
+<path d="M44 15.5V28.5M37.5 22H50.5" fill="none" stroke="#000" stroke-width="4.6" stroke-linecap="round"/>
+</svg>
