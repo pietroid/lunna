@@ -108,8 +108,7 @@ class PlaySheet extends StatelessWidget {
     final owed = a.minutes - a.doneMinutes;
     void pick(PlayChoice choice) => Navigator.of(context).pop(choice);
 
-    final talk = AppButton.icon(
-      icon: const AppIcon(iconData: AppIcons.agent, color: AppColors.ink),
+    final talk = AppButton(
       text: l10n.notificationActionTalk(AppBrand.id),
       variant: AppButtonVariant.secondary,
       expand: true,
@@ -126,11 +125,7 @@ class PlaySheet extends StatelessWidget {
           style: AppTypography.body.copyWith(color: AppColors.ink2),
         ),
         const SizedBox(height: AppSpacing.s5),
-        AppButton.icon(
-          icon: const AppIcon(
-            iconData: AppIcons.play,
-            color: AppColors.onAccent,
-          ),
+        AppButton(
           text: l10n.playNextStart,
           expand: true,
           onPressed: () => pick(const PlayWhole()),

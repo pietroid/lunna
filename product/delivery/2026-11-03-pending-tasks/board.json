@@ -67,7 +67,7 @@
           "x": 40,
           "y": 765,
           "label": "Falar com a Lunna",
-          "text": "The crescent: opens the conversation with this task as its 'about'."
+          "text": "Text only, as every button of the sheet: opens the conversation with this task as its 'about'."
         }
       ]
     },
@@ -88,7 +88,7 @@
           "x": 300,
           "y": 712,
           "label": "Começar",
-          "text": "Play icon, accent: begins that subtask (ArtifactPlayed), as today."
+          "text": "Text only, accent: begins that subtask (ArtifactPlayed), as today."
         },
         {
           "id": "C",
@@ -137,7 +137,7 @@
           "x": 22,
           "y": 588,
           "label": "O que fazer com ela?",
-          "text": "The same GuardSheet, on Plano and the calendar. On a vacant Agora nothing asks: it just begins."
+          "text": "The same GuardSheet, on Plano and the calendar; its three answers are text only. On a vacant Agora nothing asks: it just begins."
         },
         {
           "id": "B",

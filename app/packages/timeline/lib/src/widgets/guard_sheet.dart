@@ -102,32 +102,20 @@ class _Panel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.s4),
-                  AppButton.icon(
-                    icon: const AppIcon(
-                      iconData: AppIcons.check,
-                      color: AppColors.onAccent,
-                    ),
+                  AppButton(
                     text: l10n.guardFinishCurrent,
                     expand: true,
                     onPressed: () => answer(TimingDecision.solveCurrent),
                   ),
                   const SizedBox(height: AppSpacing.s2),
-                  AppButton.icon(
-                    icon: const AppIcon(
-                      iconData: AppIcons.pause,
-                      color: AppColors.ink,
-                    ),
+                  AppButton(
                     text: l10n.guardToPending,
                     variant: AppButtonVariant.secondary,
                     expand: true,
                     onPressed: () => answer(TimingDecision.pauseCurrent),
                   ),
                   const SizedBox(height: AppSpacing.s2),
-                  AppButton.icon(
-                    icon: const AppIcon(
-                      iconData: AppIcons.archive,
-                      color: AppColors.ink,
-                    ),
+                  AppButton(
                     text: l10n.guardToLater,
                     variant: AppButtonVariant.secondary,
                     expand: true,

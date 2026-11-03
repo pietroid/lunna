@@ -37,6 +37,10 @@ From the issue, verbatim:
 > - When moving something out of in progress and to any other place, it is clear what this means so no popup
 > - When moving to in progress or hitting play when the agora is vacant, it will just play along
 
+The design was reviewed on the issue, and the person replied:
+
+> Remove the icons from the buttons, they are too ugly
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -88,14 +92,14 @@ on the demo's day at 10:00 (a Tuesday), with five canned tasks.
 | 1E | Play pergunta > 1h | Play begins at once when what would begin is an hour or less; over that, the sheet of screens 2–3. |
 | 2A | 30 min em destaque | The pieces: 30 min (accent, the sheet exists to take a piece) and 1h. A piece writes a task of that length into it, titled with its name, and begins it: on Agora and inside the task. |
 | 2B | Tudo · 2h30 | The whole of what it owes, no new subtask. |
-| 2C | Falar com a Lunna | The crescent: opens the conversation with this task as its 'about'. |
+| 2C | Falar com a Lunna | Text only, as every button of the sheet: opens the conversation with this task as its 'about'. |
 | 3A | Nomeia a próxima | The next subtask (the queue's first, else the backlog's), its parent and length. Asked only when it is over an hour. |
-| 3B | Começar | Play icon, accent: begins that subtask (ArtifactPlayed), as today. |
+| 3B | Começar | Text only, accent: begins that subtask (ArtifactPlayed), as today. |
 | 3C | Ou conversar | Falar com a Lunna, as on screen 2. Cancelar closes. |
 | 4A | Solte para começar | Only Agora draws itself as a target: the running card fades under an accent outline. Letting go here is play (and screens 2–3 may ask). |
 | 4B | Cartão carregado | Long-press any task card (not an event) to carry it; it leaves a gap where it was (Mapa astral left Pendentes). |
 | 4C | Entre seções, sem pergunta | Out of Agora to any section never asks: into Pendentes pauses it, into Para depois sends it to the backlog, into Em seguida queues it next. |
-| 5A | O que fazer com ela? | The same GuardSheet, on Plano and the calendar. On a vacant Agora nothing asks: it just begins. |
+| 5A | O que fazer com ela? | The same GuardSheet, on Plano and the calendar; its three answers are text only. On a vacant Agora nothing asks: it just begins. |
 | 5B | Concluir | Finishes the running one, which gives its hour away (solve_current). |
 | 5C | Pausar em Pendentes | New pause_current: it stops owing what it had left and stays begun, so it waits in Pendentes. |
 | 5D | Para depois | New later_current: back to the backlog. 'Deixar para depois' (next in the queue) goes. |
@@ -132,6 +136,13 @@ owes).
 - **Only Agora draws itself as a target** while a card is carried (the
   outline and *Solte para começar agora*); the other sections open a gap
   where the card would land, as Lista did.
+- **No icons on the sheets' buttons** (the review's reply): *Começar*,
+  *Falar com a Lunna*, *Concluir o atual*, *Pausar em Pendentes* and
+  *Mandar para Para depois* are text only, the accent alone marking the
+  one offered. Read as the buttons of the two sheets: the guard's heading
+  keeps its timer (it is not a button), the cards keep their play and ✓
+  (controls drawn on every card, not buttons with a label), and *Solte
+  para começar agora* keeps its play (a label).
 - **Falar com a Lunna** opens the conversation with the task as its
   `about`, as the notes' bar does.
 
@@ -159,7 +170,8 @@ owes).
 - `app/packages/timeline/lib/src/widgets/task_card.dart`: `TaskStep`
   (minutes | days), `TaskCard.fill`, `.trailingInk`, `.step`,
   `TaskBar.late`.
-- `app/packages/timeline/lib/src/widgets/guard_sheet.dart`: three answers.
+- `app/packages/timeline/lib/src/widgets/guard_sheet.dart`: three answers,
+  text only (`AppButton`, no `AppButton.icon`).
 - `app/packages/timeline/lib/src/models/timeline_event.dart`:
   `TimingDecision.pauseCurrent`, `.laterCurrent`.
 - `app/packages/artifacts/lib/src/view/artifact_format.dart`: `dueLabel`.
@@ -168,6 +180,11 @@ owes).
   `controlDayLater`, `stepDayLess`, `stepDayMore`, `pendingUrgentStatus`,
   `playPiece*`, `playWhole`, `playNext*`, `guardBusyBody`,
   `guardToPending`, `guardToLater`, `planDropStart`.
+
+### Decided in review
+
+- Every button of `PlaySheet` and `GuardSheet` is a plain `AppButton`
+  with no icon; keep it so when wiring them (round 2, the issue's reply).
 
 ### Server
 
