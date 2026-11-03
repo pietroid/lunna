@@ -31,6 +31,7 @@ done
 imgs=""
 for scene in "$@"; do
   node "$here/shoot.mjs" "$debug" "http://localhost:$port/?s=$scene" "$out/$scene.png" 4500
+  sips --resampleWidth 240 "$out/$scene.png" --out "$out/$scene-thumb.png" >/dev/null 2>&1
   imgs="$imgs<img src=\"$scene.png\" width=\"390\">"
 done
 
@@ -40,4 +41,5 @@ cat > "$out/strip.html" <<HTML
 HTML
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
   --window-size=$((24 + count * 414)),892 --screenshot="$out/strip.png" "file://$out/strip.html" 2>/dev/null
+sips --resampleWidth 240 "$out/strip.png" --out "$out/strip-thumb.png" >/dev/null 2>&1
 ls "$out"

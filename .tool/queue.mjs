@@ -220,6 +220,7 @@ async function claude(st, phase, text) {
   const out = createWriteStream(logPath);
   const args = ['-p', text, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--permission-prompts', 'none',
     '--max-turns', '500', '--json-schema', SCHEMA, '--append-system-prompt', rules(st)];
+  if (phase === 'create:design') args.push('--model', 'sonnet');
   const child = spawn('claude', args, { cwd: st.worktree, env: { ...process.env, LUNNA_QUEUE: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   const awake = spawn('caffeinate', ['-i', '-w', String(child.pid)], { stdio: 'ignore' });
   awake.on('error', () => {});

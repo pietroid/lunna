@@ -8,6 +8,12 @@ matters (paths, ✓/✗, the lines of a failure). That's the point: an agent
 re-reads the whole conversation on every call, so fewer calls and shorter
 output are what make a session cheap.
 
+**Cost conventions.** The queue runs design phases on `sonnet` and build
+phases on `opus`. Tools that produce images also write a `-thumb.png`
+(240 px wide) so the agent can review layout without loading full-resolution
+base64 into context. Reads are capped: prefer `Read(offset/limit)` or `grep`
+to whole-file `cat`, and keep any single tool result under ~20k chars.
+
 | Tool | One line |
 |------|----------|
 | `check` | CI's checks on what changed, one line per step |
@@ -39,8 +45,11 @@ prints `✓ name (12s)`, or `✗` with the lines that explain it and its log.
 
 Builds `app/lib/<slug>_preview.dart` (or `app/lib/<slug>.dart`) for each
 brand at once, screenshots each scene (`?s=<n>`) as a 390×844 phone into
-`<out>/<brand>/<n>.png` plus `strip.png`, and with `--board` lays out the
-annotated board in `<out>/board/`. A failed build prints its errors.
+`<out>/<brand>/<n>.png` plus `strip.png`. It also writes a 240 px-wide
+`<n>-thumb.png` and `strip-thumb.png` for cheap LLM review. With `--board`
+it lays out the annotated board in `<out>/board/` (full `board.png` and
+`board-thumb.png`, plus `screenN.png` and `screenN-thumb.png`). A failed
+build prints its errors.
 
 ## `cost`: what a session cost
 

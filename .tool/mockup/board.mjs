@@ -9,6 +9,8 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
+const THUMB_WIDTH = 240;
+
 const [specPath, outArg] = process.argv.slice(2);
 const spec = JSON.parse(readFileSync(specPath, 'utf8'));
 const base = dirname(resolve(specPath));
@@ -47,6 +49,7 @@ const shoot = (name, cols) => {
   execFileSync(chrome, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files',
     '--force-device-scale-factor=2', '--virtual-time-budget=5000', `--window-size=${w},${H}`,
     `--screenshot=${out}/${name}.png`, `file://${out}/${name}.html`], { stdio: 'ignore' });
+  execFileSync('sips', ['--resampleWidth', String(THUMB_WIDTH), `${out}/${name}.png`, '--out', `${out}/${name}-thumb.png`], { stdio: 'ignore' });
 };
 
 const cols = spec.screens.map(column);

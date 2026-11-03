@@ -89,6 +89,14 @@ same quality. Every round trip and every re-read costs both.
   re-render once. Don't polish what the user hasn't seen yet.
 - **Look at the strip, not every shot.** One `strip.png` per brand shows
   every scene; open a single shot only to place pins.
+- **Read the thumbnail, never the full-res PNG.** `.tool/preview` and
+  `.tool/mockup/board.mjs` write `-thumb.png` files. Use those for layout
+  review and pin placement; the full `board.png` is for the human/README.
+  A full screenshot is ~500k chars of base64; a thumbnail is ~50k.
+- **Cap every read.** Never `cat` a whole Dart file; use `Read` with
+  `offset`/`limit` or `grep` for the class/method. If a Bash/Read result
+  exceeds 20k chars, read a smaller slice. Never re-read a file you read
+  this session.
 
 Quality is not negotiable: the pins still state every decision, the specs
 still cover the rules, both brands are still checked.
@@ -137,10 +145,10 @@ decisions stated, not just pretty screens.
    - Accent on one primary action per screen.
    - **No generic AI iconography.** No sparkles, magic wands or robots. The agent is the brand's crescent without the check (`AppIcons.agent`). Anything new gets a brand-derived or Phosphor icon, named in a pin; a new brand icon is an SVG in `app/brands/<brand>/` on the 64-unit grid.
 4. **Build and shoot.**
-   - `.tool/preview <slug> 1 2 3 4 --out <scratchpad>/design` (background, about a minute) builds Lunna and shoots each scene: `<out>/lunna/<n>.png` and `strip.png`. Write `board.json` while it runs.
-   - `board.json` (in the scratchpad) lists each screen's `png`, `title`, `why` and `pins` (`id`, `x`, `y` in logical px on the 390×844 shot, the pin's centre; `label`, `text`). Read the shots to place the pins.
-   - `node .tool/mockup/board.mjs <board.json> <out>/board` writes `board.png` and `screen1..n.png` (2x), with the pins and their notes. On later rounds, `.tool/preview … --board <board.json>` does all three in one call.
-5. **Look at the prints** (Read `board.png`) before sending: overflow stripes, grey boxes (a build exception), pins off their target or over text, clipped text. Fix and re-shoot once.
+   - `.tool/preview <slug> 1 2 3 4 --out <scratchpad>/design` (background, about a minute) builds Lunna and shoots each scene: `<out>/lunna/<n>.png`, `<n>-thumb.png`, `strip.png` and `strip-thumb.png`. Write `board.json` while it runs.
+   - `board.json` (in the scratchpad) lists each screen's `png`, `title`, `why` and `pins` (`id`, `x`, `y` in logical px on the 390×844 shot, the pin's centre; `label`, `text`). Place pins using `board-thumb.png`.
+   - `node .tool/mockup/board.mjs <board.json> <out>/board` writes `board.png`, `board-thumb.png`, `screen1..n.png` and `screen1..n-thumb.png`. On later rounds, `.tool/preview … --board <board.json>` does all of this in one call.
+5. **Look at the prints** (Read `board-thumb.png` only) before sending: overflow stripes, grey boxes (a build exception), pins off their target or over text, clipped text. Use `strip-thumb.png` as a cross-check if needed. Never read the full-resolution `board.png` or individual screens for your own review. Fix and re-shoot once.
 6. **Send** the absolute paths of `board.png` and each screen, a short list of the decisions (entry point, icon, placement, the main rule of the flow), and any open questions. The preview entry point and the new widgets stay uncommitted; if the proposal is dropped, delete them.
 
 ## Phase 1P: The plan (plan track)
@@ -166,7 +174,7 @@ same session (it doesn't split).
 
 ## Phase 2: Iterate
 
-Feedback usually arrives as one-liners ("button location, icon, etc.", "remove that ugly icon"). Change the widgets, re-run `.tool/preview` (background) with only the scenes that changed, move the pins, look, re-send. When only pins moved, re-run `board.mjs` alone. An icon that changes becomes a real asset (SVG in `app/brands/<brand>/`, wired through `AppIcons`), never a stand-in.
+Feedback usually arrives as one-liners ("button location, icon, etc.", "remove that ugly icon"). Change the widgets, re-run `.tool/preview` (background) with only the scenes that changed, move the pins using `board-thumb.png`, re-send. When only pins moved, re-run `board.mjs` alone. An icon that changes becomes a real asset (SVG in `app/brands/<brand>/`, wired through `AppIcons`), never a stand-in.
 
 **Hand-off, when the user approves.** Write the draft
 `product/delivery/<YYYY-MM-DD>-<slug>/README.md` with sections 1 and 2 done
@@ -194,6 +202,12 @@ already in context: it is the spec of how the day works, and the build must
 respect it. Read also the `product/spec/<feature>.md` of any feature the
 build touches (the agent, projects).
 
+**Context budget.** The design session already explored; the build starts
+from the README's file list. Do not run broad `ls`/`cat` exploration. Read
+only the slices you edit, using `Read(offset/limit)` or `grep`. If a test
+or build log is longer than 20k chars, read only the first and last 80
+lines or the lines `.tool/check` points at.
+
 1. **Look for prior art.** The sibling repo `../focus` is the original Focus app and often already has the feature (it had the agent: OpenRouter client, tool loop, "reads run, writes are proposed"). Port its approach rather than reinvent it. Read the git history of this repo for what was removed and why (`git log --stat`).
 2. **Ask only real forks.** Use AskUserQuestion for decisions that are genuinely the user's (which model provider, a new container vs inside the server, a paid dependency), with a recommended option first. Don't ask what the code or `AGENTS.md` already answers.
 3. **Server** (`server/src/<feature>/`, a Nest module):
@@ -220,8 +234,8 @@ build touches (the agent, projects).
 
 1. **Screenshot the finished build** when it changed what the person sees (always on the mockup track; on the plan track only for its UI touch, through a small `app/lib/<slug>_preview.dart`). With nothing to see, the proof is the plan's "How it will be proved" run for real: the commands and the lines they printed, in section 3. Through the same entry point:
    - Bring `app/lib/<slug>_preview.dart` up to the final code: its fakes now stand in for the real repositories (canned replies behind the real cubits), `DemoTimelineRepository` for the day, `?s=<n>` per scene (open the sheet, send a message, apply a plan).
-   - `.tool/preview <slug> 1 2 3 4 --brands lunna,focus --out <scratchpad>/build` (background) builds both brands at once and shoots them: `<out>/<brand>/strip.png`, one `<n>.png` per scene.
-   - Read the two strips: they catch real bugs (the grey sheet above was one).
+   - `.tool/preview <slug> 1 2 3 4 --brands lunna,focus --out <scratchpad>/build` (background) builds both brands at once and shoots them: `<out>/<brand>/strip.png`, `<out>/<brand>/<n>.png`, `<out>/<brand>/<n>-thumb.png` per scene.
+   - Read the two **thumbnail strips** (`strip-thumb.png`): they catch real bugs (the grey sheet above was one).
    - **Delete the preview entry point** afterwards; it is not committed.
 2. **Finish `product/delivery/<YYYY-MM-DD>-<slug>/README.md`**, one Markdown document, with images in `img/` next to it. Sections 1 and 2 are there from the hand-off; replace the Build brief with sections 3–5:
    1. **The prompt**: every user message of the request, verbatim and in order, plus answers given to questions.
