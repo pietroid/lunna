@@ -5,6 +5,7 @@ import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/checklist.dart';
 import 'package:timeline/src/widgets/format.dart';
 import 'package:timeline/src/widgets/now_surface.dart';
+import 'package:timeline/src/widgets/task_card.dart';
 
 /// {@template event_tile}
 /// One card on the timeline: a block of time.
@@ -38,9 +39,15 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// a line per item, every item one under another. Agora draws the next one
 /// alone. Items are ticked off on the block's own page.
 ///
-/// It carries no gestures of its own. Tapping and dragging on the timeline
-/// are read by one listener over the whole list, which tells each card how it
-/// is being touched through [pressed], [hidden], and [lifted].
+/// A task on the calendar that has not begun draws the play button
+/// before its title ([onPlay]), the same small one as Plano's: playing it
+/// is letting it go on Agora. An event has none, since it begins at its
+/// hour by itself.
+///
+/// It carries no gestures of its own but that button. Tapping and dragging
+/// on the timeline are read by one listener over the whole list, which
+/// tells each card how it is being touched through [pressed], [hidden], and
+/// [lifted].
 /// {@endtemplate}
 class EventTile extends StatelessWidget {
   /// {@macro event_tile}
@@ -57,6 +64,7 @@ class EventTile extends StatelessWidget {
     this.onDone,
     this.onStarted,
     this.onSnoozed,
+    this.onPlay,
     super.key,
   });
 
@@ -107,6 +115,11 @@ class EventTile extends StatelessWidget {
 
   /// Gives a waiting block fifteen minutes more.
   final VoidCallback? onSnoozed;
+
+  /// Begins it from the calendar: drawn as [TaskPlayButton] before the
+  /// title, under [actionsKey], on a card that is not on Agora (which has
+  /// its own controls).
+  final VoidCallback? onPlay;
 
   /// Whether this is the block being lived through.
   bool get _isNow => card.section == TimelineSection.agora;
@@ -182,6 +195,14 @@ class EventTile extends StatelessWidget {
         children: [
           Row(
             children: [
+              if (onPlay != null && !_isNow) ...[
+                TaskPlayButton(
+                  key: actionsKey,
+                  playing: false,
+                  onPressed: onPlay,
+                ),
+                const SizedBox(width: AppSpacing.s2),
+              ],
               // The mark comes before the title, where it reads as "this one
               // is a meeting" or "this one is pinned", rather than after it,
               // where it would read as a status the block had earned.

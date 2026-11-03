@@ -17,6 +17,10 @@ UI: Part 1*:
 > - Disable suggestions for now (we will come to that later)
 > - Make the items in the queue with less spacing between each other
 
+The design was reviewed on the issue, and the person replied:
+
+> We should also have play buttons on calendar view
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -25,7 +29,8 @@ Drawn by the real app (Lunna) through `app/lib/ux_part_1_preview.dart`,
 on the demo's fakes; the pins are in [board.json](board.json). Screens:
 [1](img/mockup-1.png) a task running, [2](img/mockup-2.png) the break,
 [3](img/mockup-3.png) before the working day, [4](img/mockup-4.png) Para
-depois whole.
+depois whole, [5](img/mockup-5.png) the calendar (Ver o dia), added after
+the review.
 
 **References** (from known patterns; Mobbin was not browsed in this
 session): Structured's timeline rows (hours on the title's line, a small
@@ -43,6 +48,9 @@ doesn't compete with the title.
 | E | Repeated name | `TaskCard` drops a subtitle that only repeats the title (trimmed, case-insensitive). A delivery whose one task is itself shows its name once, everywhere the card is drawn. |
 | G | Agora empty | The calendar's break, the same widget: `AgoraIdleTile` (new, in `timeline`) is `FreeTile(now: true)` from now to the next card (*Nada programado* and one of the twenty lines), and a tap writes a task from now. Lista's break now draws through it too, so the two can't drift. Replaces *Nada em andamento*. |
 | I | Agora outside the day | `DayOverTile`, the calendar's: *Seu dia começa às 07:00* / *terminou às 22:00*, with the Menu's hours when the shell offers them (`OpenDayHours`). |
+| L | Play on the calendar | Every task with an hour that has not begun draws the same 24 px `TaskPlayButton` before its title (`EventTile.onPlay`). A tap is a drop on Agora (`EventMoved(start: true)`), so with something running it asks first (`GuardSheet`). A delivery's block on the calendar draws it in place of the folders and plays its next task (`DeliveryTile.onPlay`). Tapping it never opens the card nor starts a drag (it sits under the card's `actionsKey`). |
+| M | Events on the calendar | No play: an event begins at its hour. The pin stays; no empty slot is kept, since calendar cards are not a column of titles. |
+| N | Agora on the calendar | Unchanged: the running card already has pause, −10, +10 and ✓. |
 | F, J | Queue spacing | 4 px between Para depois's cards (was 8), on Plano and on its page (`kQueueGap`). Agora, Em seguida and Pendentes keep 8. |
 
 What Agora draws when something is in it was already the calendar's:
@@ -60,6 +68,12 @@ overtime to `EventTile`. The difference was only the empty state.
   while running, a 14 % tint instead), since "more discrete" read as both.
 - **The repeated-name rule lives in `TaskCard`**, not in each caller, so
   Pendentes, Agora, Em seguida and Para depois all follow it.
+- **Play on the calendar is for tasks not begun, off Agora and off the
+  backlog** (`_plays` in `timeline_list.dart`): the same set a nudge
+  reads. Lista (only the landing's demo draws it) gets none; the card in
+  the air while dragged draws none either.
+- **An event on the calendar keeps no empty play slot** (unlike Em
+  seguida's `keepPlaySlot`): its pin already sits where the button would.
 - **Suggestions are switched off on Plano only**: the landing's demo
   keeps its offer (it is the agent's chapter), and the server keeps
   making suggestions (`SuggestionTimer` still fires; nobody sees them).
@@ -82,7 +96,16 @@ session; the queue commits them):
 - `app/lib/plan/view/plan_items.dart`: `kQueueGap`;
   `app/lib/plan/view/later_page.dart` uses it.
 - `app/test/plan/home_page_test.dart`: the empty day expects `FreeTile`.
-- `app/lib/ux_part_1_preview.dart`: the preview entry point (scenes 1–4);
+- After the review (play on the calendar):
+  `app/packages/timeline/lib/src/widgets/event_tile.dart` (`onPlay`, the
+  button before the title), `delivery_tile.dart` (`onPlay`, in `_Head`
+  in place of the mark), `view/timeline_list.dart` (`_plays`, wired in
+  `_tile` and `_calendarRun`), and three tests in
+  `test/timeline_list_test.dart` (play begins a task without opening it,
+  none on an event, a delivery block plays its next task). The timeline
+  package's list, run and preview tests pass (86).
+- `app/lib/ux_part_1_preview.dart`: the preview entry point (scenes 1–5,
+  5 being the calendar with two more queued tasks);
   delete it in Phase 4.
 
 **What the build must still do** (app only; nothing on the server):
@@ -99,7 +122,11 @@ session; the queue commits them):
    `DayOverTile` outside the working day.
 4. Check that the smaller button still reads on Focus (lime `accentSoft`
    on dark) in the build prints, and on Agora's `NowSurface` glow.
-5. AGENTS.md "The app shell" says Plano opens with "the agent's one
+5. AGENTS.md "The timeline" (Calendário) and `product/spec/home.md`:
+   say a task not begun on the calendar has play, a drop on Agora.
+6. Shoot the calendar in both brands (scene 5) and check the button on
+   Focus's dark fill and on a routine's or a short (30 min) card.
+7. AGENTS.md "The app shell" says Plano opens with "the agent's one
    offer": say it is off for now (`kSuggestionOnPlan`), and point
    `product/spec/home.md` at the same.
 

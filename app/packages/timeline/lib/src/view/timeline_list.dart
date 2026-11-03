@@ -2327,8 +2327,20 @@ class _TimelineListState extends State<TimelineList> {
       onDone: () => bloc.add(EventFinished(card.id)),
       onStarted: () => bloc.add(EventStarted(card.id)),
       onSnoozed: () => bloc.add(EventSnoozed(card.id)),
+      onPlay: _plays(card) ? () => _now(card) : null,
     );
   }
+
+  /// Whether [card] draws a play button: a task with an hour, on the
+  /// calendar, that has not begun and is not on Agora. Playing it is
+  /// letting it go on Agora ([_now]), guard and all.
+  bool _plays(TimelineEvent card) =>
+      !_isList &&
+      card.isTask &&
+      card.isInteractive &&
+      !card.started &&
+      !card.isBacklog &&
+      card.section != TimelineSection.agora;
 
   /// The free stretches as they are drawn, each under its heading.
   ///
@@ -2459,6 +2471,9 @@ class _TimelineListState extends State<TimelineList> {
       height: height,
       lineKeys: keys,
       hidden: dragging,
+      actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+      // Play begins the run's next task, as it does on Plano.
+      onPlay: _plays(lead) ? () => _now(lead) : null,
     );
   }
 

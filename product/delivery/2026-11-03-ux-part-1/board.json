@@ -105,6 +105,34 @@
      "text": "O mesmo play de 24 px em toda a lista."
     }
    ]
+  },
+  {
+   "png": "img/mockup-5.png",
+   "title": "Calendário (Ver o dia)",
+   "why": "Toda tarefa que ainda não começou tem o mesmo play de Plano, também no calendário.",
+   "pins": [
+    {
+     "id": "L",
+     "x": 52,
+     "y": 282,
+     "label": "Play no calendário",
+     "text": "O mesmo TaskPlayButton de 24 px antes do título, em toda tarefa com hora que não começou. Tocar é soltá-la em Agora (com a pergunta, se algo já roda). Num bloco de uma entrega, o play fica no lugar do ícone e começa a próxima tarefa."
+    },
+    {
+     "id": "M",
+     "x": 48,
+     "y": 455,
+     "label": "Evento sem play",
+     "text": "Um evento fixo começa sozinho na hora: fica com o alfinete, sem botão."
+    },
+    {
+     "id": "N",
+     "x": 180,
+     "y": 163,
+     "label": "Agora como era",
+     "text": "O cartão que roda já tem pausa, −10, +10 e ✓; não ganha outro botão."
+    }
+   ]
   }
  ]
 }

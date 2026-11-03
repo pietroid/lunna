@@ -16,7 +16,8 @@ import 'package:timeline/timeline.dart';
 /// Preview of #79 (UX and UI, part 1), on fakes. Not committed.
 ///
 /// `?s=1` Plano with a task running; `?s=2` Plano on the break; `?s=3`
-/// Plano before the working day opens; `?s=4` Para depois whole.
+/// Plano before the working day opens; `?s=4` Para depois whole; `?s=5`
+/// the calendar (Ver o dia) with a task running, play on what is next.
 void main() {
   final scene = int.tryParse(Uri.base.queryParameters['s'] ?? '') ?? 1;
   final today = DateTime.now();
@@ -65,7 +66,7 @@ class _FakesState extends State<_Fakes> {
   late final DemoTimelineRepository _timeline = () {
     final repo = DemoTimelineRepository(
       context.l10n,
-      resting: widget.scene != 1,
+      resting: widget.scene != 1 && widget.scene != 5,
     );
     // On the break, nothing waits at this minute: the groceries keep an
     // hour of their own, at eleven.
@@ -76,6 +77,23 @@ class _FakesState extends State<_Fakes> {
           'mercado',
           0,
           after: DateTime(now.year, now.month, now.day, 11),
+        ),
+      );
+    }
+    // On the calendar, a few more tasks queued after the groceries.
+    if (widget.scene == 5) {
+      unawaited(
+        repo.createTask(
+          title: 'Responder e-mails da Marina',
+          minutes: 30,
+          placement: const Placement.queue(99),
+        ),
+      );
+      unawaited(
+        repo.createTask(
+          title: 'Revisar proposta do site',
+          minutes: 45,
+          placement: const Placement.queue(99),
         ),
       );
     }
@@ -161,7 +179,11 @@ class _FakesState extends State<_Fakes> {
             ),
           ),
         ],
-        child: widget.scene == 4 ? const LaterPage() : const _Plano(),
+        child: switch (widget.scene) {
+          4 => const LaterPage(),
+          5 => const _Day(),
+          _ => const _Plano(),
+        },
       ),
     );
   }
@@ -190,6 +212,28 @@ class _Plano extends StatelessWidget {
           AppBottomBarItem(iconData: AppIcons.menu, label: l10n.shellMenuTab),
         ],
       ),
+    );
+  }
+}
+
+class _Day extends StatelessWidget {
+  const _Day();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Scaffold(
+      appBar: AppBar(
+        leading: AppIconButton(iconData: AppIcons.back, onPressed: () {}),
+        titleSpacing: 0,
+        title: Text(l10n.dayPageTitle, style: AppTypography.title),
+      ),
+      body: TimelineList(onCardTap: (_) {}, onDeliveryTap: (_) {}),
+      floatingActionButton: AskDock(
+        fab: AppFab(tooltip: l10n.shellWriteDown, onPressed: () {}),
+      ),
+      floatingActionButtonLocation: AskDock.location,
+      floatingActionButtonAnimator: AskDock.animator,
     );
   }
 }
