@@ -19,7 +19,6 @@ class AppFab extends StatefulWidget {
     this.iconData = AppIcons.plus,
     this.tooltip,
     this.diameter = 56,
-    this.iconSize = AppSpacing.iconSize,
     super.key,
   });
 
@@ -34,9 +33,6 @@ class AppFab extends StatefulWidget {
 
   /// How wide the circle is.
   final double diameter;
-
-  /// How big the glyph is.
-  final double iconSize;
 
   /// Floats the button at the end of the content column: at the screen's
   /// edge on a phone, and at the column's edge when the screen is wider
@@ -80,7 +76,6 @@ class _AppFabState extends State<AppFab> {
             child: Center(
               child: AppIcon(
                 iconData: widget.iconData,
-                size: widget.iconSize,
                 color: AppColors.onAccent,
               ),
             ),

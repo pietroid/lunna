@@ -9,7 +9,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template compose_button}
-/// The one button at the foot of every screen: the crescent with a plus.
+/// The one button at the foot of every screen: the app's plus, where it
+/// always was.
 ///
 /// It replaces both the + (which wrote a task through a form) and the
 /// agent's bar (which asked): whatever is typed or said in the sheet it
@@ -25,8 +26,6 @@ class ComposeButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppFab(
       tooltip: context.l10n.composeOpen,
-      iconData: AppIcons.compose,
-      iconSize: 30,
       onPressed: onPressed,
     );
   }

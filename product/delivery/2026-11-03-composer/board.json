@@ -4,14 +4,14 @@
     {
       "png": "img/mockup-1.png",
       "title": "1 · Plano, um botão só",
-      "why": "The ask bar and the + become one button: the crescent with a plus.",
+      "why": "The ask bar and the + become one button: the + that was already there.",
       "pins": [
         {
           "id": "A",
           "x": 346,
           "y": 700,
-          "label": "Lua com +",
-          "text": "AppIcons.compose: the brand's crescent with a plus in its hollow, one colour (onAccent) on the accent circle, 30 px in the 56 px AppFab. SVG on the 64 grid in app/brands/<brand>/compose.svg."
+          "label": "O + de sempre",
+          "text": "AppFab as it was: AppIcons.plus, onAccent on the accent circle, 56 px. It now opens the composer instead of the form; no new icon."
         },
         {
           "id": "B",

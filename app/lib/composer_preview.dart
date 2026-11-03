@@ -15,7 +15,7 @@ import 'package:timeline/timeline.dart';
 /// The composer's mockup: Plano with the one button, and the sheet it opens
 /// in each state. `?s=<n>` picks the scene. Nothing ships from here.
 ///
-/// 1. Plano: the crescent with a plus, alone at the foot.
+/// 1. Plano: the plus, alone at the foot.
 /// 2. The sheet, recording: the words rise in the field.
 /// 3. Read as an event: the summary over the sheet.
 /// 4. Read as a task under a task, with its subtasks.

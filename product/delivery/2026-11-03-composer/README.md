@@ -2,9 +2,10 @@
 
 > Issue [#81](https://github.com/pietroid/lunna/issues/81), **mockup track**:
 > it changes the input surface on every screen (the button, a new
-> sheet, a summary box) and the icon. Designed unattended; the person
-> approves on the issue. This is the draft: sections 1 and 2 and the
-> Build brief. `/create build composer` takes it from here.
+> sheet, a summary box). Designed unattended and **approved on the
+> issue**, with the + kept as it was (round 2). This is the hand-off:
+> sections 1 and 2 and the Build brief. `/create build composer` takes it
+> from here.
 
 ## 1. The prompt
 
@@ -23,6 +24,13 @@ From the issue, verbatim:
 > Also, I realized that anything that is added is just a task without subtasks. I dont know why. Tasks should always have support of subtasks.
 >
 > Also about the add icon, create a kind of moon with an add on top of it instead of just a + button
+
+The design was reviewed on the issue, and the person replied:
+
+> Thats aboslutely perfect. I just want you to make a better look on the + icon , i think we can revert that to + that was before. lets go for it.
+
+So the button keeps the app's own `+` (round 2 re-shot screen 1 and the
+board); everything else is as drawn in round 1.
 
 ## 2. The design
 
@@ -58,7 +66,7 @@ later on its page. One level, as in #77.
 
 | # | Screen | What it shows |
 |---|--------|---------------|
-| 1 | Plano | No agent bar. One button at the foot, the crescent with a plus, where the + was. |
+| 1 | Plano | No agent bar. One button at the foot, the same + as before, where it was. |
 | 2 | Falar | The sheet: one field, the mic on the left, ↑ on the right. Recording, the words rise in the field and the recorder's stop is ↑ (it sends). |
 | 3 | Lido como evento | The box over the sheet: the kind's mark, the name, "Evento · amanhã, 15:00 · 1h", Ajustar and Adicionar. |
 | 4 | Tarefa com subtarefas | "Tarefa · na fila · 1h30", the tag "em Post: Lua cheia em Touro", "3 subtarefas" listed. |
@@ -68,7 +76,7 @@ later on its page. One level, as in #77.
 
 | Pin | Decision | Chosen |
 |-----|----------|--------|
-| 1A | The icon | `AppIcons.compose`: the brand's crescent (the agent's path) with a round plus in its hollow, one colour, `onAccent` on the accent circle, 30 px in the 56 px `AppFab`. Asset `app_ui/assets/icons/compose.svg`; brand copies on the 64 grid in `app/brands/{lunna,focus}/compose.svg`. |
+| 1A | The icon | The `+` that was there: `AppFab` unchanged (`AppIcons.plus`, `onAccent` on the accent circle, 56 px). It now opens the composer instead of the form. The round-1 crescent-with-plus (`AppIcons.compose`) was dropped on review, with its SVGs. |
 | 1B | The bar | `AskDock`'s bar goes from every tab and page. The button sits where the + was (`AppFab.location`, bottom right, the thumb's side), the same on every screen. |
 | 2A | The field | One field, hint "Uma tarefa, um evento, ou o que mudar no dia". No Tarefa \| Evento, no hour or length pills: they are read from the words. |
 | 2B | Voice | `VoiceBar` as it is (trash, time, wave); its stop is ↑ and sends. Typed: mic left, ↑ right, grey until there is text. |
@@ -116,6 +124,9 @@ dictation that becomes text in the field).
   the first one turns it into a task with tasks (see Build brief).
 - **Ajustar** opens `AppPromptSheet` filled from the read; it does not
   carry the subtasks (they are added on the task's page).
+- **No new icon** (round 2): the person asked to keep the `+`, so the
+  crescent stays the agent's alone (the plan box's mark, 3A), and the
+  button reads as "add" as it always has.
 - After Adicionar the sheet closes; the new card is on Plano with a
   snackbar "Adicionado · Desfazer".
 
@@ -140,10 +151,11 @@ dictation that becomes text in the field).
 | `app/packages/agent/lib/src/compose_cubit.dart` | `ComposeKind`, `ComposeDraft`, `ComposeState`, `ComposeCubit(read:)` |
 | `app/packages/agent/lib/src/view/composer.dart` | `ComposeButton`, `showComposer`, `ComposerSheet`, `ComposeSummary` |
 | `app/packages/agent/lib/agent.dart` | exports both |
-| `app/packages/app_ui/assets/icons/compose.svg`, `app/brands/{lunna,focus}/compose.svg` | the icon |
-| `app/packages/app_ui/lib/src/app_icons/app_icons.dart` | `AppIcons.compose` |
-| `app/packages/app_ui/lib/src/widgets/app_fab.dart` | `iconSize` |
 | `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`) | the `compose*` strings |
+
+Round 2 removed the icon: `compose.svg` (app_ui and both brands),
+`AppIcons.compose` and `AppFab.iconSize` are gone, and `ComposeButton` is a
+plain `AppFab`. `app_ui` is back to `main`.
 
 ### Server
 
@@ -171,7 +183,7 @@ dictation that becomes text in the field).
 ### App
 
 - Shell, pages and notes: replace `AskDock` (bar + `AppFab`) with
-  `ComposeButton` at `AppFab.location`; keep `DockHero` so it stays still
+  `ComposeButton` (the same `+`) at `AppFab.location`; keep `DockHero` so it stays still
   across pages; on notes pages keep the dictation mic beside it.
 - Wire `ComposeCubit.read` to `AgentRepository.compose`; on Adicionar post
   through `TimelineBloc` / `ArtifactsCubit` / the goals cubit by kind;
