@@ -33,7 +33,7 @@ No greeting, date or clock. From the top:
 | Agora | heading with today's mark (`TodayTag`: "Dia 2 · dia leve", or the day's own tag) and *Ver o dia*; the running task as `NowTaskCard`: titled by its delivery, the task under it, pause, −10 +10 ✓, the 3 px bar. A fixed block, a task waiting to be begun and one in overtime keep `EventTile` | the card in section `agora` | what the calendar's Agora says (`AgoraIdleTile`): the break with its line, a tap writing a task from now; outside the working day `DayOverTile`, with the Menu's hours |
 | Em seguida | the first card in section `dia`, `start – end`, play for a task; an event has none but keeps its room (`keepPlaySlot`) | `TimelineState.cards` | not drawn |
 | Pendentes | every delivery begun and not delivered (`PendingCard`): its next task under the name, "1h30 de 3h · até ter, 3 nov" (danger ink when urgent), −10 +10 ✓, the pace bar at 3 px | `progressGroups(...).started`, minus the one running on Agora | not drawn |
-| Para depois | the first four (`kLaterOnHome`) of everything not begun (`LaterCard`), then *Abrir a lista · mais N*, 4 px apart (`kQueueGap`; the other sections keep 8) | `PlanItems.later`: the loose backlog in its order, then the deliveries not begun in the queue's | "Nada esperando." |
+| Para depois | the first four (`kLaterOnHome`) of everything not begun (`LaterCard`), then *Abrir a lista · mais N*, 4 px apart (`kQueueGap`, as every card on Plano) | `PlanItems.later`: the loose backlog in its order, then the deliveries not begun in the queue's | "Nada esperando." |
 
 - **Play** is a drop on Agora: a loose task posts `POST /tasks/:id/move
   { index: 0, start: true }`; a delivery posts `POST /tasks/of/:id/play`,

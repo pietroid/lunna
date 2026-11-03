@@ -20,6 +20,11 @@ The design was reviewed on the issue, and the person replied:
 
 > We should also have play buttons on calendar view
 
+The build was reviewed on the issue. Asked whether Pendentes should be
+tighter too (only Para depois was at 4 px), the person replied:
+
+> yes, they should all follow the same spacing
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -50,7 +55,7 @@ doesn't compete with the title.
 | L | Play on the calendar | Every task with an hour that has not begun draws the same 24 px `TaskPlayButton` before its title (`EventTile.onPlay`). A tap is a drop on Agora (`EventMoved(start: true)`), so with something running it asks first (`GuardSheet`). A delivery's block on the calendar draws it in place of the folders and plays its next task (`DeliveryTile.onPlay`). Tapping it never opens the card nor starts a drag (it sits under the card's `actionsKey`). |
 | M | Events on the calendar | No play: an event begins at its hour. The pin stays; no empty slot is kept, since calendar cards are not a column of titles. |
 | N | Agora on the calendar | Unchanged: the running card already has pause, −10, +10 and ✓. |
-| F, J | Queue spacing | 4 px between Para depois's cards (was 8), on Plano and on its page (`kQueueGap`). Agora, Em seguida and Pendentes keep 8. |
+| F, J | Queue spacing | 4 px between Para depois's cards (was 8), on Plano and on its page (`kQueueGap`). After the build's review, every card on Plano (Agora, Em seguida, Pendentes too) keeps the same 4 px. |
 
 What Agora draws when something is in it was already the calendar's:
 `NowTaskCard` hands a fixed block, a task waiting to be begun and one in
@@ -59,7 +64,8 @@ overtime to `EventTile`. The difference was only the empty state.
 ### Decided unattended
 
 - **"The queue" is Para depois** (the list on Plano and `LaterPage`), not
-  Pendentes, whose cards carry a bar and controls and stay at 8 px.
+  Pendentes. Superseded by the build's review: every section follows the
+  same spacing.
 - **Play for a fixed block in Em seguida: none.** An event starts at its
   hour by itself (AGENTS.md, "Events never wait"); the slot is kept so the
   title aligns.
@@ -91,6 +97,8 @@ The real build, Lunna then Focus, five scenes each: a task running (with
 Em seguida's `start – end` and play), the break on an empty Agora, before
 the working day (`DayOverTile`), Para depois whole (4 px apart), and the
 calendar with play on each task not begun and none on the Standup event.
+Re-shot after the build's review: every card on Plano, Agora's, Em
+seguida's and Pendentes' included, is now 4 px from the next.
 The 24 px button reads on both: `fillStrong` with `ink2` waiting, and on
 Agora's glow the pause on `accentSoft` (lime on Focus's dark, rose on
 Lunna's).
@@ -111,7 +119,7 @@ depois, Em seguida, the calendar), so with something running it asks first
 | Lista's break and Calendário's empty Agora draw `AgoraIdleTile`; `_plays` wires play on the calendar | `packages/timeline/lib/src/view/timeline_list.dart` |
 | `EventTile.onPlay`, `DeliveryTile.onPlay` | `packages/timeline/lib/src/widgets/event_tile.dart`, `delivery_tile.dart` |
 | `kSuggestionOnPlan = false`, `_NowCard`, `_NextCard`, `_Pad(gap:)` | `app/lib/plan/view/home_page.dart` |
-| `kQueueGap` (4 px) on Plano and `LaterPage` | `app/lib/plan/view/plan_items.dart`, `later_page.dart` |
+| `kQueueGap` (4 px) under every card on Plano (`_Pad` has no other gap) and on `LaterPage` | `app/lib/plan/view/plan_items.dart`, `home_page.dart`, `later_page.dart` |
 | `feedBreak` ("Nada em andamento") removed, l10n regenerated | `packages/l10n` |
 
 **Tests** (all passing):
@@ -126,10 +134,14 @@ depois, Em seguida, the calendar), so with something running it asks first
   the working day; Em seguida's `10:40 – 11:25` and its play; and the
   empty day now also checks that no `SuggestionCard` is drawn and the
   agent is never asked). Run under both brands.
+- After the review's spacing change: `.tool/check` green (`app-analyze`,
+  the step it chose for the change), and `test/plan` passed by hand under
+  Focus and Lunna (6 each).
 - `.tool/check`: every step passed (`app-analyze`, the tests of every
   package under Focus and Lunna). No flaky test seen.
 
-**Where the build differs from the mockup**: nothing a person sees. The
+**Where the build differs from the mockup**: one spacing on Plano, as
+the review asked (the mockup kept 8 px outside Para depois). Otherwise, the
 one change behind it is Calendário's empty Agora, which now draws through
 `AgoraIdleTile` like Plano and Lista instead of its own copy of the same
 two widgets.

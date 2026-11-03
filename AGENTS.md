@@ -520,7 +520,7 @@ Three tabs: **Plano** (`HomePage`, the home: the agent's offer, off
 for now (`kSuggestionOnPlan`, #79); Agora with today's mark and *Ver o dia*, the running task and the one
 after it; **Pendentes**, the deliveries begun, drawn like Agora with ±10,
 ✓ and their bar; **Para depois**, the first four of everything not begun
-and *Abrir a lista*, its cards 4 px apart), **Objetivos** (`GoalsPage`) and **Menu**, which
+and *Abrir a lista*; every card 4 px apart, `kQueueGap`), **Objetivos** (`GoalsPage`) and **Menu**, which
 opens Rotina, **Feitas**, **Produtos** (the catalogue), sets when the day
 starts and ends, and signs out. *Ver o dia* pushes `DayPage` (the
 calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano;

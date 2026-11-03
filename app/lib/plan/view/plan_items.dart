@@ -7,9 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
-/// The room between two tasks of a queue (Para depois, on Plano and on
-/// its own page): closer than the sections' cards, so the queue reads as
-/// one list.
+/// The room between two cards of Plano (Agora, Em seguida, Pendentes and
+/// Para depois) and of Para depois's own page: one spacing everywhere, so
+/// each section reads as one list.
 const double kQueueGap = AppSpacing.s1;
 
 /// {@template plan_items}

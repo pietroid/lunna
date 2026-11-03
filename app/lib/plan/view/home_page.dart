@@ -223,7 +223,6 @@ class _HomePageState extends State<HomePage> {
                         _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
                       for (final item in later)
                         _Pad(
-                          gap: kQueueGap,
                           child: LaterCard(
                             key: ValueKey(item.id),
                             item: item,
@@ -310,23 +309,21 @@ class _NextCard extends StatelessWidget {
   }
 }
 
-/// A card's room in the column: the page's margin, and a gap under it.
+/// A card's room in the column: the page's margin, and under it the gap
+/// every card of Plano keeps ([kQueueGap]).
 class _Pad extends StatelessWidget {
-  const _Pad({required this.child, this.gap = AppSpacing.s2});
+  const _Pad({required this.child});
 
   final Widget child;
-
-  /// The room under it.
-  final double gap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         AppSpacing.s5,
         0,
         AppSpacing.s5,
-        gap,
+        kQueueGap,
       ),
       child: child,
     );
