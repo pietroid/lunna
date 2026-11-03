@@ -2263,9 +2263,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get guardToLater => 'Mandar para Para depois';
 
   @override
-  String get planDropStart => 'Solte para começar agora';
-
-  @override
   String get stepDayLess => '−1d';
 
   @override
@@ -2277,7 +2274,20 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get planDropHere => 'Solte aqui';
+  String homeNextMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mais $count hoje · Ver o dia',
+      one: 'Mais 1 hoje · Ver o dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String playPieceBodyLoose(String title, String length) {
+    return '$title tem $length pela frente. O resto espera em Pendentes.';
+  }
 
   @override
   String get composeOpen => 'Anotar ou pedir';

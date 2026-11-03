@@ -3497,12 +3497,6 @@ abstract class AppLocalizations {
   /// **'Mandar para Para depois'**
   String get guardToLater;
 
-  /// No description provided for @planDropStart.
-  ///
-  /// In pt, this message translates to:
-  /// **'Solte para começar agora'**
-  String get planDropStart;
-
   /// No description provided for @stepDayLess.
   ///
   /// In pt, this message translates to:
@@ -3521,11 +3515,17 @@ abstract class AppLocalizations {
   /// **'Falta {length}'**
   String pendingTaskLeft(String length);
 
-  /// The gap a section of Plano opens while a card is carried over it.
+  /// Under Em seguida's first cards: how many more the day has; opens the calendar.
   ///
   /// In pt, this message translates to:
-  /// **'Solte aqui'**
-  String get planDropHere;
+  /// **'{count, plural, =1{Mais 1 hoje · Ver o dia} other{Mais {count} hoje · Ver o dia}}'**
+  String homeNextMore(int count);
+
+  /// Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} tem {length} pela frente. O resto espera em Pendentes.'**
+  String playPieceBodyLoose(String title, String length);
 
   /// The one button at the foot of every screen, to a screen reader: opens the composer.
   ///

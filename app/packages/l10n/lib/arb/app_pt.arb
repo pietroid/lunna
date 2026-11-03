@@ -1987,7 +1987,6 @@
   },
   "guardToPending": "Pausar em Pendentes",
   "guardToLater": "Mandar para Para depois",
-  "planDropStart": "Solte para começar agora",
   "stepDayLess": "−1d",
   "stepDayMore": "+1d",
   "pendingTaskLeft": "Falta {length}",
@@ -1999,9 +1998,26 @@
       }
     }
   },
-  "planDropHere": "Solte aqui",
-  "@planDropHere": {
-    "description": "The gap a section of Plano opens while a card is carried over it."
+  "homeNextMore": "{count, plural, =1{Mais 1 hoje · Ver o dia} other{Mais {count} hoje · Ver o dia}}",
+  "@homeNextMore": {
+    "description": "Under Em seguida's first cards: how many more the day has; opens the calendar.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playPieceBodyLoose": "{title} tem {length} pela frente. O resto espera em Pendentes.",
+  "@playPieceBodyLoose": {
+    "description": "Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
   },
   "composeOpen": "Anotar ou pedir",
   "@composeOpen": {

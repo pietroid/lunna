@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:clock/clock.dart';
@@ -14,12 +15,17 @@ import 'package:timeline/timeline.dart';
 /// each section reads as one list.
 const double kQueueGap = AppSpacing.s1;
 
+/// How many cards Em seguida draws before it counts the rest.
+const kNextOnHome = 4;
+
 /// {@template plan_items}
 /// What Plano draws, worked out from the day ([TimelineState]) and the
 /// deliveries ([ArtifactsData]): one kind of task, whether it has tasks of
 /// its own (a delivery) or not.
 ///
-/// - [now], the card on Agora, and [next], the first card after it.
+/// - [now], the card on Agora, and [next], the queue after it: the cards
+///   of the first day that has any (today, while it has some left), up
+///   to [kNextOnHome], with [nextMore] counting the rest of that day.
 /// - [pending]: every task begun and not finished: the deliveries begun
 ///   ([isStarted]), the most urgent first as Entregas put them, then the
 ///   loose tasks paused off the day ([TimelineEvent.pending]). The
@@ -38,15 +44,22 @@ class PlanItems {
     final agora = day.cards
         .where((card) => card.section == TimelineSection.agora)
         .firstOrNull;
-    final next = day.cards
-        .where((card) => card.section == TimelineSection.dia && card != agora)
-        .firstOrNull;
+    final after = [
+      for (final card in day.cards)
+        if (card.section == TimelineSection.dia && card != agora) card,
+    ];
+    final first = after.firstOrNull;
+    final sameDay = [
+      for (final card in after)
+        if (first != null && _sameDay(card.startTime, first.startTime)) card,
+    ];
     final groups = progressGroups(deliveries?.queue ?? const [], now);
     final running = agora?.artifactId;
 
     return PlanItems._(
       now: agora,
-      next: next,
+      next: sameDay.take(kNextOnHome).toList(),
+      nextMore: (sameDay.length - kNextOnHome).clamp(0, sameDay.length),
       pending: [
         for (final a in groups.started)
           if (a.id != running) PendingDelivery(a),
@@ -65,6 +78,7 @@ class PlanItems {
   const PlanItems._({
     required this.now,
     required this.next,
+    required this.nextMore,
     required this.pending,
     required this.later,
   });
@@ -72,8 +86,15 @@ class PlanItems {
   /// The card on Agora, or none (the break).
   final TimelineEvent? now;
 
-  /// The first card after Agora.
-  final TimelineEvent? next;
+  /// The queue after Agora, in its order: tasks to play and to carry, and
+  /// the fixed blocks between them, which keep their place.
+  final List<TimelineEvent> next;
+
+  /// How many more cards that day has after [next].
+  final int nextMore;
+
+  static bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// The tasks begun and not finished, Agora's left out.
   final List<Pending> pending;
@@ -169,11 +190,27 @@ void openCard(BuildContext context, TimelineEvent card) {
   unawaited(context.push<void>('/evento/${Uri.encodeComponent(card.id)}'));
 }
 
-/// Plays a task that waits: the same as letting it go on Agora.
-void playCard(BuildContext context, TimelineEvent card) {
-  context.read<TimelineBloc>().add(
-    EventMoved(id: card.id, index: 0, start: true),
+/// Plays a task that waits: the same as letting it go on Agora. A loose
+/// task over an hour asks how much first ([PlaySheet.task]): a piece
+/// begins that long and the rest waits in Pendentes.
+Future<void> playCard(BuildContext context, TimelineEvent card) async {
+  final bloc = context.read<TimelineBloc>();
+  void begin({int? minutes}) => bloc.add(
+    EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
   );
+  if (!playCardAsks(card)) return begin();
+  final choice = await PlaySheet.show(context, PlaySheet.task(card: card));
+  if (!context.mounted) return;
+  switch (choice) {
+    case null:
+      return;
+    case PlayWhole():
+      begin();
+    case PlayPiece(:final minutes):
+      begin(minutes: minutes);
+    case PlayTalk():
+      await showAgentSheet(context, about: AgentSubject.task(card.id));
+  }
 }
 
 /// {@template pending_card}
@@ -259,7 +296,7 @@ class PendingTaskCard extends StatelessWidget {
     final bloc = context.read<TimelineBloc>();
     return TaskCard(
       title: card.title,
-      onPlay: () => playCard(context, card),
+      onPlay: () => unawaited(playCard(context, card)),
       status: l10n.pendingTaskLeft(durationLabel(l10n, card.workMinutes)),
       controls: true,
       onLess: card.canShorten(stepMinutes, clock.now())
@@ -295,7 +332,7 @@ class LaterCard extends StatelessWidget {
         return TaskCard(
           title: card.title,
           trailing: durationLabel(l10n, card.durationMinutes),
-          onPlay: () => playCard(context, card),
+          onPlay: () => unawaited(playCard(context, card)),
           onTap: () => openCard(context, card),
         );
       case LaterDelivery(:final artifact):

@@ -1,0 +1,152 @@
+{
+  "title": "UI e UX, parte 4: Plano como uma fila",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "Em seguida, uma fila",
+      "why": "Headed as Agora is; every task plays; the composer's one button.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 150,
+          "y": 211,
+          "label": "Heading",
+          "text": "Em seguida is a section heading, the same size as Agora and Pendentes, no longer a caption."
+        },
+        {
+          "id": "B",
+          "x": 24,
+          "y": 258,
+          "label": "Play on all",
+          "text": "Every task in the queue has the round play on its left; over an hour it asks first (3)."
+        },
+        {
+          "id": "C",
+          "x": 24,
+          "y": 361,
+          "label": "Fixed block",
+          "text": "An event keeps the play's room empty, so titles line up; it is not carried."
+        },
+        {
+          "id": "D",
+          "x": 200,
+          "y": 484,
+          "label": "Four, then count",
+          "text": "The rest of the day's cards, up to four; 'Mais N hoje · Ver o dia' opens the calendar."
+        },
+        {
+          "id": "E",
+          "x": 300,
+          "y": 690,
+          "label": "Composer (#81)",
+          "text": "The + opens #81's composer, built in this delivery: no agent bar on Plano."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "Carregar na fila",
+      "why": "Where it lands is the card itself, quiet; no 'Solte aqui'.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 370,
+          "y": 257,
+          "label": "Quiet copy",
+          "text": "The carried card's own copy at 40 %, name and length, opens where it would land; the cards under it make room."
+        },
+        {
+          "id": "B",
+          "x": 370,
+          "y": 302,
+          "label": "Under the finger",
+          "text": "The lifted card, as today."
+        },
+        {
+          "id": "C",
+          "x": 370,
+          "y": 364,
+          "label": "Old place closes",
+          "text": "Its place closes while held, as in a list being reordered. A drop is that place in the queue (move { index })."
+        },
+        {
+          "id": "D",
+          "x": 200,
+          "y": 545,
+          "label": "Every section",
+          "text": "Pendentes, Para depois and Agora draw the same copy, at their top (Agora: in place of what runs). No outline, no words."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "Play numa tarefa de 2h",
+      "why": "#83's sheet, now for any task over an hour, wherever play is.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 300,
+          "y": 628,
+          "label": "Any task",
+          "text": "Asked for a loose task too, from Em seguida, Pendentes, Para depois, the calendar or a drop on Agora."
+        },
+        {
+          "id": "B",
+          "x": 20,
+          "y": 670,
+          "label": "The rest waits",
+          "text": "A loose task's piece begins that long; the rest is a loose task in Pendentes owing what is left."
+        },
+        {
+          "id": "C",
+          "x": 58,
+          "y": 745,
+          "label": "30 min first",
+          "text": "The smallest piece is the accent; 1 h and Tudo · 2h beside it."
+        },
+        {
+          "id": "D",
+          "x": 370,
+          "y": 762,
+          "label": "Talk",
+          "text": "Falar com a Lunna opens the conversation about the task."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "Ver o dia",
+      "why": "The calendar's Agora plays and pauses where every card does.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 20,
+          "y": 127,
+          "label": "Round play",
+          "text": "Agora's task: pause/play is the round button before the title, as on Plano; a waiting task begins from it."
+        },
+        {
+          "id": "B",
+          "x": 370,
+          "y": 140,
+          "label": "Quiet row",
+          "text": "−10, +10 and ✓ stay; the row's own pause is gone. An event keeps its row."
+        },
+        {
+          "id": "C",
+          "x": 20,
+          "y": 283,
+          "label": "Play on cards",
+          "text": "Each task not begun keeps its play; over an hour it asks (3)."
+        },
+        {
+          "id": "D",
+          "x": 200,
+          "y": 760,
+          "label": "Bar goes",
+          "text": "The ask bar is replaced by the composer's + here too, with #81's build."
+        }
+      ]
+    }
+  ]
+}

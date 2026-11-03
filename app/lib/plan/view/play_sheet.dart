@@ -57,7 +57,7 @@ Future<void> playPending(BuildContext context, Artifact artifact) async {
     bloc.add(ArtifactPlayed(artifact.id));
     return;
   }
-  final choice = await PlaySheet.show(context, artifact: artifact);
+  final choice = await PlaySheet.show(context, PlaySheet(artifact: artifact));
   if (!context.mounted) return;
   switch (choice) {
     case null:
@@ -79,31 +79,46 @@ bool playAsks(Artifact artifact) {
   return length > kPlayAsksOver;
 }
 
+/// Whether play on [card], a loose task with an hour or in the backlog,
+/// asks first: it has not begun and is over [kPlayAsksOver].
+bool playCardAsks(TimelineEvent card) =>
+    card.isTask &&
+    !card.started &&
+    card.artifactId == null &&
+    card.workMinutes > kPlayAsksOver;
+
 /// {@template play_sheet}
-/// How much of a pending task to begin, asked when it is over an hour.
+/// How much of a task to begin, asked when it is over an hour, wherever
+/// its play is (Em seguida, Pendentes, Para depois, the calendar).
 ///
 /// With no tasks of its own: 30 min, 1 h or all of it (*Tudo · 2h30*), the
-/// pieces in a row, and *Falar com a Lunna* under them. With tasks, it
-/// names the next one and asks to begin it (*Começar*), or talk.
+/// pieces in a row, and *Falar com a Lunna* under them. A delivery's piece
+/// becomes a task inside it; a loose task's piece begins and the rest
+/// waits in Pendentes. With tasks, it names the next one and asks to begin
+/// it (*Começar*), or talk.
 /// {@endtemplate}
 class PlaySheet extends StatelessWidget {
   /// {@macro play_sheet}
-  const PlaySheet({required this.artifact, super.key});
+  const PlaySheet({required Artifact this.artifact, super.key}) : card = null;
 
-  /// The pending task.
-  final Artifact artifact;
+  /// The sheet for a loose task, [card].
+  const PlaySheet.task({required TimelineEvent this.card, super.key})
+    : artifact = null;
 
-  /// Opens the sheet over [context] and answers what was picked; null when
+  /// The task with tasks of its own, when it is one.
+  final Artifact? artifact;
+
+  /// The loose task, when it is one.
+  final TimelineEvent? card;
+
+  /// Opens [sheet] over [context] and answers what was picked; null when
   /// it was dismissed.
-  static Future<PlayChoice?> show(
-    BuildContext context, {
-    required Artifact artifact,
-  }) {
+  static Future<PlayChoice?> show(BuildContext context, PlaySheet sheet) {
     return showModalBottomSheet<PlayChoice>(
       context: context,
       backgroundColor: Colors.transparent,
       barrierColor: AppColors.bg.withValues(alpha: 0.72),
-      builder: (_) => PlaySheet(artifact: artifact),
+      builder: (_) => sheet,
     );
   }
 
@@ -111,8 +126,9 @@ class PlaySheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final a = artifact;
-    final next = nextTaskOf(a);
-    final owed = a.minutes - a.doneMinutes;
+    final next = a == null ? null : nextTaskOf(a);
+    final title = a?.title ?? card!.title;
+    final owed = a == null ? card!.workMinutes : a.minutes - a.doneMinutes;
     void pick(PlayChoice choice) => Navigator.of(context).pop(choice);
 
     final talk = AppButton(
@@ -128,7 +144,7 @@ class PlaySheet extends StatelessWidget {
         Text(l10n.playNextTitle(next.title), style: AppTypography.title),
         const SizedBox(height: AppSpacing.s1),
         Text(
-          l10n.playNextBody(a.title, formatMinutes(l10n, next.minutes)),
+          l10n.playNextBody(title, formatMinutes(l10n, next.minutes)),
           style: AppTypography.body.copyWith(color: AppColors.ink2),
         ),
         const SizedBox(height: AppSpacing.s5),
@@ -145,7 +161,9 @@ class PlaySheet extends StatelessWidget {
         Text(l10n.playPieceTitle, style: AppTypography.title),
         const SizedBox(height: AppSpacing.s1),
         Text(
-          l10n.playPieceBody(a.title, formatMinutes(l10n, owed)),
+          a == null
+              ? l10n.playPieceBodyLoose(title, formatMinutes(l10n, owed))
+              : l10n.playPieceBody(title, formatMinutes(l10n, owed)),
           style: AppTypography.body.copyWith(color: AppColors.ink2),
         ),
         const SizedBox(height: AppSpacing.s5),
