@@ -324,7 +324,11 @@ still what `TimelineList(mode: list)` and the landing's demo draw
   and each line is its task to a drag, a nudge or a swap; a run's seam is
   not pulled. A tap on any line, or on a delivery's lone task, opens the
   delivery, as in Lista. Agora's run draws every line, with the running
-  one's controls. A delivery's lone task is the card it always was. Every free
+  one's controls. A delivery's lone task is the card it always was. A task
+  with an hour that has not begun has **play** before its title (24 px,
+  `EventTile.onPlay`; a delivery's block plays its next task), which is a
+  drop on Agora; an event has none, as it begins at its hour. An empty
+  Agora is `AgoraIdleTile`, the same on Plano. Every free
   stretch carries a small **+**
   and its hours, both stuck to the top of the part of it in sight (placed
   while painting, so they never lag the scroll); the hours run from the
@@ -512,16 +516,16 @@ task at work under it). Play is a drop on Agora (`move { start: true }`;
 a delivery's `POST /tasks/of/:id/play` begins its next task). Storage is
 still `artifact` and `task.artifact_id`.
 
-Three tabs: **Plano** (`HomePage`, the home: the agent's one offer;
-Agora with today's mark and *Ver o dia*, the running task and the one
+Three tabs: **Plano** (`HomePage`, the home: the agent's offer, off
+for now (`kSuggestionOnPlan`, #79); Agora with today's mark and *Ver o dia*, the running task and the one
 after it; **Pendentes**, the deliveries begun, drawn like Agora with ±10,
 ✓ and their bar; **Para depois**, the first four of everything not begun
-and *Abrir a lista*), **Objetivos** (`GoalsPage`) and **Menu**, which
+and *Abrir a lista*; every card 4 px apart, `kQueueGap`), **Objetivos** (`GoalsPage`) and **Menu**, which
 opens Rotina, **Feitas**, **Produtos** (the catalogue), sets when the day
 starts and ends, and signs out. *Ver o dia* pushes `DayPage` (the
-calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano,
-which asks for the offer again each time it comes forward and when a new
-day begins. The `AppFab` (a `+`) writes a goal on Objetivos and a task
+calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano;
+with the offer on, it asks for it again each time it comes forward and
+when a new day begins. The `AppFab` (a `+`) writes a goal on Objetivos and a task
 anywhere else (`writeTask`: Tarefa | Evento, and a Produto chip that
 writes a delivery of that kind). See
 [product/spec/home.md](./product/spec/home.md).

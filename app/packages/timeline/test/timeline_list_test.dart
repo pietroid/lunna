@@ -1150,6 +1150,64 @@ void main() {
   });
 
   group('the calendar', () {
+    testAt('play on a task later in the day begins it, as a drop on Agora', (
+      tester,
+    ) async {
+      final (bloc, tapped) = await pump(tester, [running, later]);
+
+      // Agora has its own controls; the later task has the one play.
+      final play = find.byType(TaskPlayButton);
+      expect(play, findsOneWidget);
+      await tester.tap(play);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      verify(
+        () => bloc.add(const EventMoved(id: 'b', index: 0, start: true)),
+      ).called(1);
+      expect(tapped, isEmpty);
+    });
+
+    testAt('an event has no play: it begins at its hour', (tester) async {
+      final meeting = TimelineEvent(
+        id: 'm',
+        title: 'Reunião',
+        section: TimelineSection.dia,
+        startTime: now.add(const Duration(minutes: 30)),
+        endTime: now.add(const Duration(minutes: 60)),
+        durationMinutes: 30,
+        kind: CardKind.event,
+        fixed: true,
+      );
+      await pump(tester, [running, meeting]);
+
+      expect(find.byType(TaskPlayButton), findsNothing);
+    });
+
+    testAt('play on a delivery run begins its next task', (tester) async {
+      TimelineEvent step(String id, int from) => TimelineEvent(
+        id: id,
+        title: 'Passo $id',
+        section: TimelineSection.dia,
+        startTime: now.add(Duration(minutes: from)),
+        endTime: now.add(Duration(minutes: from + 30)),
+        durationMinutes: 30,
+        artifactId: 'site',
+        artifactTitle: 'Site da Ana',
+      );
+      final (bloc, _) = await pump(tester, [
+        running,
+        step('s1', 25),
+        step('s2', 60),
+      ]);
+
+      await tester.tap(find.byType(TaskPlayButton));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      verify(
+        () => bloc.add(const EventMoved(id: 's1', index: 0, start: true)),
+      ).called(1);
+    });
+
     testAt('heads a day past tomorrow with its weekday and date', (
       tester,
     ) async {

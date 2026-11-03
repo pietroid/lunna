@@ -156,15 +156,22 @@ void main() {
   double top(WidgetTester tester, String text) =>
       tester.getTopLeft(find.text(text)).dy;
 
-  testAt('draws the break and an empty Para depois on an empty day', (
-    tester,
-  ) async {
-    await pump(tester);
+  testAt(
+    'draws the break as the calendar does, and an empty Para depois on an empty day',
+    (
+      tester,
+    ) async {
+      await pump(tester);
 
-    expect(find.text(l10n.feedBreak), findsOneWidget);
-    expect(find.text(l10n.homePending), findsNothing);
-    expect(find.text(l10n.homeLaterEmpty), findsOneWidget);
-  });
+      expect(find.byType(FreeTile), findsOneWidget);
+      expect(find.byType(DayOverTile), findsNothing);
+      // The agent's offer is off on Plano for now, and is not asked for.
+      expect(find.byType(SuggestionCard), findsNothing);
+      verifyNever(() => agent.suggestion());
+      expect(find.text(l10n.homePending), findsNothing);
+      expect(find.text(l10n.homeLaterEmpty), findsOneWidget);
+    },
+  );
 
   testAt('titles Agora by the task, its task at work under it, with pause', (
     tester,
@@ -262,5 +269,40 @@ void main() {
     await tester.tap(find.text(l10n.homeLaterOpen(1)));
     await tester.tap(find.text(l10n.feedSeeDay));
     expect(opened, ['depois', 'dia']);
+  });
+
+  testWidgets(
+    'says the day is over outside the working day, as the calendar does',
+    (
+      tester,
+    ) async {
+      await withClock(Clock.fixed(DateTime(2026, 10, 28, 23)), () async {
+        await pump(tester);
+
+        expect(find.byType(DayOverTile), findsOneWidget);
+        expect(find.byType(FreeTile), findsNothing);
+      });
+    },
+  );
+
+  testAt('draws Em seguida from its start to its end, with play', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      cards: [
+        card('a', 'Roteiro', TimelineSection.agora, at: -10, started: true),
+        card('b', 'Planejar a semana', TimelineSection.dia, at: 40),
+      ],
+    );
+
+    expect(find.text(l10n.feedNext), findsOneWidget);
+    expect(find.text('10:40 – 11:25'), findsOneWidget);
+    expect(find.byType(TaskPlayButton), findsNWidgets(2));
+
+    await tester.tap(find.byType(TaskPlayButton).last);
+    verify(
+      () => timeline.add(const EventMoved(id: 'b', index: 0, start: true)),
+    ).called(1);
   });
 }

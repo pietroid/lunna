@@ -1778,22 +1778,15 @@ class _TimelineListState extends State<TimelineList> {
             key: key,
             dy: dy,
             child: switch ((card, entrySection)) {
-              // Outside the working day nothing begins, and Agora says so.
-              (null, null) when _closedAt(now) => DayOverTile(
+              // Agora with nothing in it, as Plano draws it: the break, or
+              // outside the working day the day over.
+              (null, null) => AgoraIdleTile(
                 workDay: state.workDay,
-                over: now.hour * 60 + now.minute >= state.workDay.end,
-                onAdjust: widget.onAdjustDay,
-              ),
-              (null, null) => FreeTile(
-                slot: room!.slot,
-                now: true,
+                now: now,
+                slot: room?.slot,
                 targeted: aimed,
-                // The break is not cut into hours, so a tap on it is always
-                // now.
-                onTap: widget.onWriteDown == null
-                    ? null
-                    : () =>
-                          widget.onWriteDown!(Placement.at(room.slot.earliest)),
+                onWriteDown: widget.onWriteDown,
+                onAdjustDay: widget.onAdjustDay,
               ),
               // A whole day off: one row, not its hours to scale.
               (null, _) when room!.slot.rest != null => RestDayTile(
@@ -2185,7 +2178,6 @@ class _TimelineListState extends State<TimelineList> {
       room: null,
       card: null,
     ));
-    final minute = DateTime(now.year, now.month, now.day, now.hour, now.minute);
     final next = state.cards
         .where((card) => card.startTime.isAfter(now))
         .map((card) => card.startTime)
@@ -2194,24 +2186,13 @@ class _TimelineListState extends State<TimelineList> {
       Padding(
         key: _breakKey,
         padding: const EdgeInsets.only(top: AppSpacing.s1),
-        child: _closedAt(now)
-            ? DayOverTile(
-                workDay: state.workDay,
-                over: now.hour * 60 + now.minute >= state.workDay.end,
-                onAdjust: widget.onAdjustDay,
-              )
-            : FreeTile(
-                slot: FreeSlot(
-                  start: minute,
-                  end: next ?? minute.add(const Duration(hours: 1)),
-                  earliest: minute,
-                  index: 0,
-                ),
-                now: true,
-                onTap: widget.onWriteDown == null
-                    ? null
-                    : () => widget.onWriteDown!(Placement.at(minute)),
-              ),
+        child: AgoraIdleTile(
+          workDay: state.workDay,
+          now: now,
+          nextStart: next,
+          onWriteDown: widget.onWriteDown,
+          onAdjustDay: widget.onAdjustDay,
+        ),
       ),
     );
   }
@@ -2339,8 +2320,20 @@ class _TimelineListState extends State<TimelineList> {
       onDone: () => bloc.add(EventFinished(card.id)),
       onStarted: () => bloc.add(EventStarted(card.id)),
       onSnoozed: () => bloc.add(EventSnoozed(card.id)),
+      onPlay: _plays(card) ? () => _now(card) : null,
     );
   }
+
+  /// Whether [card] draws a play button: a task with an hour, on the
+  /// calendar, that has not begun and is not on Agora. Playing it is
+  /// letting it go on Agora ([_now]), guard and all.
+  bool _plays(TimelineEvent card) =>
+      !_isList &&
+      card.isTask &&
+      card.isInteractive &&
+      !card.started &&
+      !card.isBacklog &&
+      card.section != TimelineSection.agora;
 
   /// The free stretches as they are drawn, each under its heading.
   ///
@@ -2471,6 +2464,9 @@ class _TimelineListState extends State<TimelineList> {
       height: height,
       lineKeys: keys,
       hidden: dragging,
+      actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+      // Play begins the run's next task, as it does on Plano.
+      onPlay: _plays(lead) ? () => _now(lead) : null,
     );
   }
 

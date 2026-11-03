@@ -7,6 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
 
+/// The room between two cards of Plano (Agora, Em seguida, Pendentes and
+/// Para depois) and of Para depois's own page: one spacing everywhere, so
+/// each section reads as one list.
+const double kQueueGap = AppSpacing.s1;
+
 /// {@template plan_items}
 /// What Plano draws, worked out from the day ([TimelineState]) and the
 /// deliveries ([ArtifactsData]): one kind of task, whether it has tasks of

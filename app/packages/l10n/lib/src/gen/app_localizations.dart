@@ -2825,12 +2825,6 @@ abstract class AppLocalizations {
   /// **'Em seguida'**
   String get feedNext;
 
-  /// No description provided for @feedBreak.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nada em andamento'**
-  String get feedBreak;
-
   /// No description provided for @feedSeeDay.
   ///
   /// In pt, this message translates to:
