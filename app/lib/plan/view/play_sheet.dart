@@ -413,9 +413,12 @@ class PlaceSheet extends StatelessWidget {
 /// A sheet's frame: the page's ground, its corners, and Cancelar at its
 /// foot.
 class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({required this.children});
+  const _SheetFrame({required this.children, this.cancel = true});
 
   final List<Widget> children;
+
+  /// Whether Cancelar closes it at its foot.
+  final bool cancel;
 
   @override
   Widget build(BuildContext context) {
@@ -438,17 +441,320 @@ class _SheetFrame extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               ...children,
-              const SizedBox(height: AppSpacing.s2),
-              AppButton.text(
-                text: context.l10n.commonCancel,
-                color: AppColors.ink2,
-                expand: true,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+              if (cancel) ...[
+                const SizedBox(height: AppSpacing.s2),
+                AppButton.text(
+                  text: context.l10n.commonCancel,
+                  color: AppColors.ink2,
+                  expand: true,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// #89: play's questions by strict rules. The build replaces the sheets above
+// with these and moves the arithmetic ([playPieces], the 20 minutes of room)
+// next to the day's layout.
+// ---------------------------------------------------------------------------
+
+/// The least room worth offering: an hour with less is never suggested,
+/// or the how-much question would have nothing to offer.
+const kPlayMinRoom = 20;
+
+/// What the how-much question offers for a task that still owes [owed]
+/// minutes, at an hour with [room] minutes free until what comes next;
+/// null when it asks nothing (an hour or less, and it fits).
+///
+/// - Over an hour: 30 min, 1 h, and the whole when it fits, else all the
+///   room there is; under an hour of room, only that room.
+/// - An hour or less that does not fit: only the room.
+List<int>? playPieces({required int owed, required int room}) {
+  if (owed <= kPlayAsksOver) return owed <= room ? null : [room];
+  if (room < kPlayAsksOver) return [room];
+  final most = room >= owed ? owed : room;
+  return [...kPlayPieces.where((m) => m < most), most];
+}
+
+/// Which later hour [PlayWhenQuestion] offers beside *Começar agora*.
+enum PlayLater {
+  /// Nothing runs: 15 minutes from now.
+  soon,
+
+  /// Nothing runs, and 15 minutes from now has under [kPlayMinRoom] of
+  /// room: the first hour that has.
+  at,
+
+  /// Something runs: right after it, at the first hour with room.
+  after,
+}
+
+/// {@template play_when_question}
+/// Play's first question (#89): **when**. *Começar agora* (the accent,
+/// gone when now has under [kPlayMinRoom] of room) and one later hour:
+/// 15 minutes from now when nothing runs ([PlayLater.soon]), the first
+/// hour with room when that has none ([PlayLater.at]), or right after
+/// what runs ([PlayLater.after]); none when the task is next already.
+/// The hour is where it begins, whether or not it all fits: the second
+/// question asks how much.
+/// {@endtemplate}
+class PlayWhenQuestion extends StatelessWidget {
+  /// {@macro play_when_question}
+  const PlayWhenQuestion({
+    required this.title,
+    required this.owed,
+    required this.later,
+    required this.laterAt,
+    this.running,
+    this.runningEnd,
+    this.canStartNow = true,
+    super.key,
+  });
+
+  /// The task.
+  final String title;
+
+  /// What it still asks, in minutes.
+  final int owed;
+
+  /// Which later hour, or null for none.
+  final PlayLater? later;
+
+  /// That hour.
+  final DateTime? laterAt;
+
+  /// What runs now, if anything, and when it ends.
+  final String? running;
+
+  /// When [running] ends.
+  final DateTime? runningEnd;
+
+  /// Whether now has [kPlayMinRoom] of room.
+  final bool canStartNow;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final length = formatMinutes(l10n, owed);
+    final at = laterAt == null ? '' : hhmm(laterAt!);
+    final laterText = switch (later) {
+      PlayLater.soon => l10n.playWhenSoon(at),
+      PlayLater.at => l10n.playWhenAt(at),
+      PlayLater.after => l10n.playWhenAfter(running ?? '', at),
+      null => null,
+    };
+    return _SheetFrame(
+      children: [
+        Text(l10n.playWhenTitle(title), style: AppTypography.title),
+        const SizedBox(height: AppSpacing.s1),
+        Text(
+          running == null
+              ? l10n.playWhenIdle(length)
+              : l10n.playWhenBusy(running!, hhmm(runningEnd!), length),
+          style: AppTypography.body.copyWith(color: AppColors.ink2),
+        ),
+        const SizedBox(height: AppSpacing.s5),
+        if (canStartNow)
+          AppButton(
+            text: l10n.playWhenNow,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop(const PlayNow()),
+          ),
+        if (canStartNow && laterText != null)
+          const SizedBox(height: AppSpacing.s2),
+        if (laterText != null)
+          AppButton(
+            text: laterText,
+            variant: canStartNow
+                ? AppButtonVariant.secondary
+                : AppButtonVariant.primary,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop(const PlayNext()),
+          ),
+      ],
+    );
+  }
+}
+
+/// {@template play_much_question}
+/// Play's second question (#89): **how much**, measured against the room
+/// at the hour the first answer chose ([at], null for now) up to what
+/// comes next ([until]). The pieces are [playPieces]'s; a piece splits
+/// the task in two subtasks, the piece and the rest.
+/// {@endtemplate}
+class PlayMuchQuestion extends StatelessWidget {
+  /// {@macro play_much_question}
+  const PlayMuchQuestion({
+    required this.title,
+    required this.owed,
+    required this.room,
+    required this.until,
+    this.at,
+    super.key,
+  });
+
+  /// The task (or subtask) that begins.
+  final String title;
+
+  /// What it still asks, in minutes.
+  final int owed;
+
+  /// The minutes free from its hour to [until].
+  final int room;
+
+  /// What the room runs up to (`playMuchUntil`, `playMuchDayEnd`).
+  final String until;
+
+  /// The hour it goes to, or null for now.
+  final DateTime? at;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final pieces = playPieces(owed: owed, room: room) ?? [owed];
+    final length = formatMinutes(l10n, owed);
+    void pick(int minutes) => Navigator.of(context).pop(
+      minutes == owed ? const PlayWhole() : PlayPiece(minutes),
+    );
+
+    if (pieces.length == 1) {
+      final only = formatMinutes(l10n, pieces.single);
+      return _SheetFrame(
+        children: [
+          Text(
+            l10n.playMuchShortTitle(only, until),
+            style: AppTypography.title,
+          ),
+          const SizedBox(height: AppSpacing.s1),
+          Text(
+            l10n.playMuchShortBody(
+              title,
+              length,
+              only,
+              formatMinutes(l10n, owed - pieces.single),
+            ),
+            style: AppTypography.body.copyWith(color: AppColors.ink2),
+          ),
+          const SizedBox(height: AppSpacing.s5),
+          AppButton(
+            text: l10n.playMuchDo(only),
+            expand: true,
+            onPressed: () => pick(pieces.single),
+          ),
+        ],
+      );
+    }
+
+    return _SheetFrame(
+      children: [
+        Text(
+          at == null ? l10n.playMuchNowTitle : l10n.playMuchAtTitle(hhmm(at!)),
+          style: AppTypography.title,
+        ),
+        const SizedBox(height: AppSpacing.s1),
+        Text(
+          [
+            l10n.playMuchRoomUntil(
+              title,
+              length,
+              formatMinutes(l10n, room),
+              until,
+            ),
+            if (at == null) l10n.playMuchRestNow else l10n.playMuchRestStays,
+          ].join(' '),
+          style: AppTypography.body.copyWith(color: AppColors.ink2),
+        ),
+        const SizedBox(height: AppSpacing.s5),
+        Row(
+          children: [
+            for (final (i, minutes) in pieces.indexed) ...[
+              if (i > 0) const SizedBox(width: AppSpacing.s2),
+              Expanded(
+                flex: i == pieces.length - 1 ? 3 : 2,
+                child: AppButton(
+                  text: minutes == owed
+                      ? l10n.playWhole(length)
+                      : formatMinutes(l10n, minutes),
+                  // The smallest piece is the one offered.
+                  variant: i == 0
+                      ? AppButtonVariant.primary
+                      : AppButtonVariant.secondary,
+                  expand: true,
+                  onPressed: () => pick(minutes),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// {@template pause_question}
+/// The guard after *Começar agora* while something runs (#89): one yes or
+/// no. Yes pauses [current] into Pendentes, split in two subtasks (the
+/// [done] minutes, ticked off, and the [left] ones), and begins [next].
+/// {@endtemplate}
+class PauseQuestion extends StatelessWidget {
+  /// {@macro pause_question}
+  const PauseQuestion({
+    required this.next,
+    required this.current,
+    required this.done,
+    required this.left,
+    super.key,
+  });
+
+  /// What begins.
+  final String next;
+
+  /// What runs, and is paused.
+  final String current;
+
+  /// Minutes of [current] done so far.
+  final int done;
+
+  /// Minutes of [current] still owed.
+  final int left;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return _SheetFrame(
+      cancel: false,
+      children: [
+        Text(l10n.guardPauseTitle(current), style: AppTypography.title),
+        const SizedBox(height: AppSpacing.s1),
+        Text(
+          l10n.guardPauseBody(
+            next,
+            current,
+            formatMinutes(l10n, done),
+            formatMinutes(l10n, left),
+          ),
+          style: AppTypography.body.copyWith(color: AppColors.ink2),
+        ),
+        const SizedBox(height: AppSpacing.s5),
+        AppButton(
+          text: l10n.guardPauseYes,
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        AppButton.text(
+          text: l10n.guardPauseNo,
+          color: AppColors.ink2,
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+      ],
     );
   }
 }

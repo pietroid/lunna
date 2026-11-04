@@ -1,0 +1,54 @@
+{
+  "title": "Play: when, then how much, by strict rules (#89)",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "1 · When, nothing running",
+      "why": "Play always asks when, even with Agora free.",
+      "pins": [
+        {"id": "A", "x": 378, "y": 670, "label": "Nothing runs", "text": "The line under the title says so, and the task's length."},
+        {"id": "B", "x": 378, "y": 717, "label": "Começar agora", "text": "The accent. Hidden when now has under 20 min of room before the next fixed block (rule 3); the later hour becomes the accent."},
+        {"id": "C", "x": 378, "y": 760, "label": "Daqui a 15 min · 10:15", "text": "Anchors it 15 min from now. When that hour has under 20 min of room it reads 'Às 13:00', the first hour that has."}
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "2 · When, something running",
+      "why": "Now, or right after what runs, at the next hour with room.",
+      "pins": [
+        {"id": "A", "x": 378, "y": 670, "label": "What runs", "text": "Its name and its end, so the person knows what 'now' interrupts."},
+        {"id": "B", "x": 378, "y": 717, "label": "Começar agora", "text": "Leads to the pause question (3), then how much (4)."},
+        {"id": "C", "x": 378, "y": 760, "label": "Depois de … · 10:38", "text": "First in Em seguida, at the first hour after it with ≥ 20 min of room, whether or not the whole fits. Not offered when the task is already next."}
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "3 · Pause what runs?",
+      "why": "The guard is now a yes or no, and Pendentes' sums stay true.",
+      "pins": [
+        {"id": "A", "x": 378, "y": 620, "label": "One question", "text": "Replaces Concluir / Pausar em Pendentes / Para depois: after 'now', pausing is the only road."},
+        {"id": "B", "x": 378, "y": 690, "label": "The split", "text": "The running task becomes two subtasks: the 12 min done (ticked off) and the 33 min left, waiting in Pendentes."},
+        {"id": "C", "x": 378, "y": 764, "label": "Sim / Não", "text": "Não changes nothing. A drop on Agora while something runs asks the same."}
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "4 · How much, over an hour",
+      "why": "Measured against the room at the chosen hour.",
+      "pins": [
+        {"id": "A", "x": 378, "y": 690, "label": "The room", "text": "From the chosen hour to the next fixed block or the day's end: 1h55 until the Standup."},
+        {"id": "B", "x": 70, "y": 790, "label": "30 min · 1h", "text": "Always offered over an hour; 30 min the accent, as today."},
+        {"id": "C", "x": 296, "y": 790, "label": "The most", "text": "'Tudo · 4h' when it fits, else all the room (1h55). Under an hour of room, only that room."}
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "5 · An hour or less that doesn't fit",
+      "why": "One button: the room there is.",
+      "pins": [
+        {"id": "A", "x": 378, "y": 650, "label": "Só cabem 20 min", "text": "A task of 1h or less that fits asks nothing at all."},
+        {"id": "B", "x": 378, "y": 764, "label": "Fazer 20 min", "text": "The piece becomes a subtask at 11:35; the 40 min left, another, where the task was."}
+      ]
+    }
+  ]
+}

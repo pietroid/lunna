@@ -2357,4 +2357,89 @@ class AppLocalizationsPt extends AppLocalizations {
   String placePieceBody(String title, String length) {
     return '$title tem $length. O resto fica onde está.';
   }
+
+  @override
+  String playWhenIdle(String length) {
+    return 'Nada rodando agora · $length';
+  }
+
+  @override
+  String playWhenBusy(String title, String end, String length) {
+    return '$title roda até $end · $length';
+  }
+
+  @override
+  String playWhenSoon(String hour) {
+    return 'Daqui a 15 min · $hour';
+  }
+
+  @override
+  String playWhenAt(String hour) {
+    return 'Às $hour';
+  }
+
+  @override
+  String playWhenAfter(String title, String hour) {
+    return 'Depois de $title · $hour';
+  }
+
+  @override
+  String get playMuchNowTitle => 'Quanto você vai fazer agora?';
+
+  @override
+  String playMuchAtTitle(String hour) {
+    return 'Quanto vai para as $hour?';
+  }
+
+  @override
+  String playMuchRoomUntil(String title, String length, String room, String next) {
+    return '$title tem $length. Há $room livres até $next.';
+  }
+
+  @override
+  String get playMuchRestNow => 'O resto vira outra subtarefa, em Pendentes.';
+
+  @override
+  String get playMuchRestStays => 'O resto vira outra subtarefa e fica onde está.';
+
+  @override
+  String playMuchShortTitle(String room, String next) {
+    return 'Só cabem $room até $next';
+  }
+
+  @override
+  String playMuchShortBody(String title, String length, String room, String rest) {
+    return '$title tem $length. Fazer $room e deixar $rest como outra subtarefa?';
+  }
+
+  @override
+  String playMuchDo(String length) {
+    return 'Fazer $length';
+  }
+
+  @override
+  String guardPauseTitle(String title) {
+    return 'Pausar $title?';
+  }
+
+  @override
+  String guardPauseBody(String next, String title, String done, String left) {
+    return '$next começa agora. $title vai para Pendentes: os $done feitos ficam como uma subtarefa concluída, e os $left que faltam, como outra.';
+  }
+
+  @override
+  String get guardPauseYes => 'Sim, pausar e começar';
+
+  @override
+  String get guardPauseNo => 'Não';
+
+  @override
+  String playMuchUntil(String title, String hour) {
+    return '$title, às $hour';
+  }
+
+  @override
+  String playMuchDayEnd(String hour) {
+    return 'o fim do dia, às $hour';
+  }
 }

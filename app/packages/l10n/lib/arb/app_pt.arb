@@ -2067,8 +2067,12 @@
   "@composeGoalBy": {
     "description": "A goal's line in the summary: the amount by its last day.",
     "placeholders": {
-      "value": {"type": "String"},
-      "day": {"type": "String"}
+      "value": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      }
     }
   },
   "composeAdded": "Adicionado",
@@ -2117,6 +2121,175 @@
         "type": "String"
       },
       "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenIdle": "Nada rodando agora · {length}",
+  "@playWhenIdle": {
+    "description": "Under the when sheet title when nothing runs: the task's length.",
+    "placeholders": {
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenBusy": "{title} roda até {end} · {length}",
+  "@playWhenBusy": {
+    "description": "Under the when sheet title while something runs.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenSoon": "Daqui a 15 min · {hour}",
+  "@playWhenSoon": {
+    "description": "Play when nothing runs: start in 15 minutes.",
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenAt": "Às {hour}",
+  "@playWhenAt": {
+    "description": "Play: the first hour with at least 20 minutes of room, when the nearer one has none.",
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenAfter": "Depois de {title} · {hour}",
+  "@playWhenAfter": {
+    "description": "Play while something runs: right after it, at the first hour with 20 minutes of room.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "playMuchNowTitle": "Quanto você vai fazer agora?",
+  "playMuchAtTitle": "Quanto vai para as {hour}?",
+  "@playMuchAtTitle": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "playMuchRoomUntil": "{title} tem {length}. Há {room} livres até {next}.",
+  "@playMuchRoomUntil": {
+    "description": "How much: the task, and the room from its hour to what comes next.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      },
+      "room": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "playMuchRestNow": "O resto vira outra subtarefa, em Pendentes.",
+  "playMuchRestStays": "O resto vira outra subtarefa e fica onde está.",
+  "playMuchShortTitle": "Só cabem {room} até {next}",
+  "@playMuchShortTitle": {
+    "description": "How much, a task of an hour or less that does not fit.",
+    "placeholders": {
+      "room": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "playMuchShortBody": "{title} tem {length}. Fazer {room} e deixar {rest} como outra subtarefa?",
+  "@playMuchShortBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      },
+      "room": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "playMuchDo": "Fazer {length}",
+  "@playMuchDo": {
+    "placeholders": {
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "guardPauseTitle": "Pausar {title}?",
+  "@guardPauseTitle": {
+    "description": "The guard, after play now while something runs.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "guardPauseBody": "{next} começa agora. {title} vai para Pendentes: os {done} feitos ficam como uma subtarefa concluída, e os {left} que faltam, como outra.",
+  "@guardPauseBody": {
+    "placeholders": {
+      "next": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      },
+      "done": {
+        "type": "String"
+      },
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "guardPauseYes": "Sim, pausar e começar",
+  "guardPauseNo": "Não",
+  "playMuchUntil": "{title}, às {hour}",
+  "@playMuchUntil": {
+    "description": "What the room runs up to: the next fixed block.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "playMuchDayEnd": "o fim do dia, às {hour}",
+  "@playMuchDayEnd": {
+    "description": "What the room runs up to: the end of the working day.",
+    "placeholders": {
+      "hour": {
         "type": "String"
       }
     }
