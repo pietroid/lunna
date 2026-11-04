@@ -2360,4 +2360,44 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get subtaskAdd => 'Subtarefa';
+
+  @override
+  String get homeSeeCalendar => 'Ver calendário';
+
+  @override
+  String get homeNextEmpty => 'Nada marcado daqui para a frente.';
+
+  @override
+  String playWhenTitle(String title) {
+    return 'Quando fazer $title?';
+  }
+
+  @override
+  String get playWhenHowMuch => 'Quanto';
+
+  @override
+  String get playWhenWhole => 'Tudo de uma vez.';
+
+  @override
+  String playRestWaits(String rest) {
+    return 'O resto, $rest, continua esperando.';
+  }
+
+  @override
+  String get playWhenNow => 'Começar agora';
+
+  @override
+  String playWhenNext(String hour) {
+    return 'Em seguida · $hour';
+  }
+
+  @override
+  String placePieceTitle(String hour) {
+    return 'Quanto vai para as $hour?';
+  }
+
+  @override
+  String placePieceBody(String title, String length) {
+    return '$title tem $length. O resto fica onde está.';
+  }
 }

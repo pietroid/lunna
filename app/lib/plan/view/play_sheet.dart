@@ -36,6 +36,29 @@ final class PlayWhole extends PlayChoice {
 }
 
 /// Talk it over with the agent instead.
+/// {@template play_now}
+/// Begin it now: the whole, or [minutes] of it.
+/// {@endtemplate}
+final class PlayNow extends PlayChoice {
+  /// {@macro play_now}
+  const PlayNow([this.minutes]);
+
+  /// The piece to begin, or null for the whole.
+  final int? minutes;
+}
+
+/// {@template play_next}
+/// Put it first in Em seguida, at the next hour the day has room for: the
+/// whole, or [minutes] of it, the rest staying where it was.
+/// {@endtemplate}
+final class PlayNext extends PlayChoice {
+  /// {@macro play_next}
+  const PlayNext([this.minutes]);
+
+  /// The piece to queue, or null for the whole.
+  final int? minutes;
+}
+
 final class PlayTalk extends PlayChoice {
   /// Talk.
   const PlayTalk();
@@ -60,7 +83,7 @@ Future<void> playPending(BuildContext context, Artifact artifact) async {
   final choice = await PlaySheet.show(context, PlaySheet(artifact: artifact));
   if (!context.mounted) return;
   switch (choice) {
-    case null:
+    case null || PlayNow() || PlayNext():
       return;
     case PlayWhole():
       bloc.add(ArtifactPlayed(artifact.id));
@@ -222,6 +245,252 @@ class PlaySheet extends StatelessWidget {
               const SizedBox(height: AppSpacing.s2),
               AppButton.text(
                 text: l10n.commonCancel,
+                color: AppColors.ink2,
+                expand: true,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// {@template play_when_sheet}
+/// What play asks, on every task that waits (#87): **when**. *Começar
+/// agora* (the accent) begins it, raising the guard as ever when
+/// something runs; *Em seguida · 11:40* puts it first in the queue, at
+/// [nextAt], the next hour the day has room for (for the piece chosen:
+/// half an hour fits where two do not), and begins nothing.
+///
+/// Over an hour ([pieces]) it asks **how much** too, above the two: 30
+/// min, 1 h or *Tudo*, the whole chosen until another is. A piece begun
+/// leaves the rest in Pendentes; a piece queued leaves it where it was.
+/// {@endtemplate}
+class PlayWhenSheet extends StatefulWidget {
+  /// {@macro play_when_sheet}
+  const PlayWhenSheet({
+    required this.title,
+    required this.owed,
+    required this.nextAt,
+    this.subtitle,
+    super.key,
+  });
+
+  /// What begins: the task, or a delivery's next task.
+  final String title;
+
+  /// Under it: whose task it is, for a delivery's.
+  final String? subtitle;
+
+  /// What it still asks, in minutes.
+  final int owed;
+
+  /// Where Em seguida would put that many minutes of it.
+  final DateTime Function(int minutes) nextAt;
+
+  /// Whether it asks how much.
+  bool get pieces => owed > kPlayAsksOver;
+
+  /// Shows [sheet] and answers with what was picked, or null.
+  static Future<PlayChoice?> show(BuildContext context, PlayWhenSheet sheet) {
+    return showModalBottomSheet<PlayChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: AppColors.bg.withValues(alpha: 0.72),
+      builder: (_) => sheet,
+    );
+  }
+
+  @override
+  State<PlayWhenSheet> createState() => _PlayWhenSheetState();
+}
+
+class _PlayWhenSheetState extends State<PlayWhenSheet> {
+  /// The piece chosen, an index into [kPlayPieces], or theirs' length for
+  /// the whole.
+  late int _piece = kPlayPieces.length;
+
+  int? get _minutes =>
+      widget.pieces && _piece < kPlayPieces.length ? kPlayPieces[_piece] : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    void pick(PlayChoice choice) => Navigator.of(context).pop(choice);
+    final owed = formatMinutes(l10n, widget.owed);
+    final minutes = _minutes;
+
+    return _SheetFrame(
+      children: [
+        Text(l10n.playWhenTitle(widget.title), style: AppTypography.title),
+        const SizedBox(height: AppSpacing.s1),
+        Text(
+          [?widget.subtitle, owed].join(' · '),
+          style: AppTypography.body.copyWith(color: AppColors.ink2),
+        ),
+        if (widget.pieces) ...[
+          const SizedBox(height: AppSpacing.s5),
+          Text(
+            l10n.playWhenHowMuch,
+            style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
+          ),
+          const SizedBox(height: AppSpacing.s2),
+          AppSegmented(
+            segments: [
+              for (final m in kPlayPieces)
+                AppSegment(label: formatMinutes(l10n, m)),
+              AppSegment(label: l10n.playWhole(owed)),
+            ],
+            selected: _piece,
+            onSelected: (i) => setState(() => _piece = i),
+          ),
+          const SizedBox(height: AppSpacing.s2),
+          Text(
+            minutes == null
+                ? l10n.playWhenWhole
+                : l10n.playRestWaits(
+                    formatMinutes(l10n, widget.owed - minutes),
+                  ),
+            style: AppTypography.label.copyWith(color: AppColors.ink3),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.s5),
+        AppButton(
+          text: l10n.playWhenNow,
+          expand: true,
+          onPressed: () => pick(PlayNow(minutes)),
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        AppButton(
+          text: l10n.playWhenNext(hhmm(widget.nextAt(minutes ?? widget.owed))),
+          variant: AppButtonVariant.secondary,
+          expand: true,
+          onPressed: () => pick(PlayNext(minutes)),
+        ),
+        const SizedBox(height: AppSpacing.s2),
+        AppButton.text(
+          text: l10n.notificationActionTalk(AppBrand.id),
+          color: AppColors.ink2,
+          expand: true,
+          onPressed: () => pick(const PlayTalk()),
+        ),
+      ],
+    );
+  }
+}
+
+/// {@template place_sheet}
+/// A task over an hour let go on Em seguida (#87): how much goes to that
+/// place. 30 min (the accent), 1 h or *Tudo*; the rest stays where it was.
+/// Agora asks with [PlaySheet.task], as play does.
+/// {@endtemplate}
+class PlaceSheet extends StatelessWidget {
+  /// {@macro place_sheet}
+  const PlaceSheet({
+    required this.title,
+    required this.owed,
+    required this.at,
+    super.key,
+  });
+
+  /// The task carried.
+  final String title;
+
+  /// Its length, in minutes.
+  final int owed;
+
+  /// The hour of the place it was let go on.
+  final DateTime at;
+
+  /// Shows [sheet] and answers with what was picked, or null.
+  static Future<PlayChoice?> show(BuildContext context, PlaceSheet sheet) {
+    return showModalBottomSheet<PlayChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: AppColors.bg.withValues(alpha: 0.72),
+      builder: (_) => sheet,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    void pick(PlayChoice choice) => Navigator.of(context).pop(choice);
+    final length = formatMinutes(l10n, owed);
+    return _SheetFrame(
+      children: [
+        Text(l10n.placePieceTitle(hhmm(at)), style: AppTypography.title),
+        const SizedBox(height: AppSpacing.s1),
+        Text(
+          l10n.placePieceBody(title, length),
+          style: AppTypography.body.copyWith(color: AppColors.ink2),
+        ),
+        const SizedBox(height: AppSpacing.s5),
+        Row(
+          children: [
+            for (final minutes in kPlayPieces) ...[
+              Expanded(
+                flex: 2,
+                child: AppButton(
+                  text: formatMinutes(l10n, minutes),
+                  variant: minutes == kPlayPieces.first
+                      ? AppButtonVariant.primary
+                      : AppButtonVariant.secondary,
+                  expand: true,
+                  onPressed: () => pick(PlayPiece(minutes)),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.s2),
+            ],
+            Expanded(
+              flex: 3,
+              child: AppButton(
+                text: l10n.playWhole(length),
+                variant: AppButtonVariant.secondary,
+                expand: true,
+                onPressed: () => pick(const PlayWhole()),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// A sheet's frame: the page's ground, its corners, and Cancelar at its
+/// foot.
+class _SheetFrame extends StatelessWidget {
+  const _SheetFrame({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.bg,
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppSpacing.cardRadius),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.s6,
+            AppSpacing.s5,
+            AppSpacing.s6,
+            AppSpacing.s4,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ...children,
+              const SizedBox(height: AppSpacing.s2),
+              AppButton.text(
+                text: context.l10n.commonCancel,
                 color: AppColors.ink2,
                 expand: true,
                 onPressed: () => Navigator.of(context).pop(),

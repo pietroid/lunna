@@ -8,14 +8,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/plan/view/plan_drag.dart';
 import 'package:lunna/plan/view/plan_items.dart';
+import 'package:lunna/plan/view/plan_skeleton.dart';
 import 'package:lunna/plan/view/write_task.dart';
 import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:lunna/tempo/view/tempo_page.dart';
 import 'package:timeline/timeline.dart';
-
-/// How many tasks of Para depois Plano draws before the row that opens
-/// them all.
-const kLaterOnHome = 4;
 
 /// Whether Plano draws the agent's offer. Off for now (#79): the card and
 /// its cubit stay, so turning it back on is this line.
@@ -26,12 +23,13 @@ const kSuggestionOnPlan = false;
 ///
 /// No greeting and no clock. From the top: the agent's one offer, as it
 /// was; **Agora**, with the day's mark beside its heading (the cycle, a
-/// light day, a day off) and *Ver o dia*, which opens the calendar on a
-/// page of its own ([onSeeDay]), the running task and the one after it;
-/// **Pendentes**, every task begun and not finished, drawn as Agora is,
-/// with −10, +10 and ✓ and its bar under it; **Para depois**, the first
-/// four of the queue ([kLaterOnHome]), and a row that opens the whole of
-/// it ([onOpenLater]).
+/// light day, a day off), the running task; **Em seguida**, with *Ver
+/// calendário* beside its heading ([onSeeDay]), everything after it that
+/// has an hour, with no limit, and *+ Adicionar*; **Pendentes**, every
+/// task begun and not finished, drawn as Agora is, with −10, +10 and ✓
+/// and its bar under it; **Para depois**, the whole of it, and *+
+/// Adicionar*. Until the day first arrives, each section is drawn as its
+/// cards' skeleton ([PlanSkeletonCard]), never an empty page.
 ///
 /// Every task has its play button on the left, which is letting it go on
 /// Agora. The running one's is pause. Held, any task (not a fixed block)
@@ -172,6 +170,28 @@ class _HomePageState extends State<HomePage> {
     };
   }
 
+  /// Plano before the day first arrives: each section's heading and its
+  /// cards' skeleton, where they will be.
+  List<Widget> _skeleton(BuildContext context) {
+    final l10n = context.l10n;
+    return [
+      const _Pad(child: PlanSkeletonCard(tall: true)),
+      _Heading(
+        title: l10n.feedNext,
+        action: AppPillButton(
+          label: l10n.homeSeeCalendar,
+          iconData: AppIcons.calendar,
+          onPressed: widget.onSeeDay,
+        ),
+      ),
+      for (final width in const [0.6, 0.45, 0.7, 0.5])
+        _Pad(child: PlanSkeletonCard(title: width)),
+      _Heading(title: l10n.stageBacklog),
+      for (final width in const [0.5, 0.65, 0.4])
+        _Pad(child: PlanSkeletonCard(title: width)),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -180,7 +200,9 @@ class _HomePageState extends State<HomePage> {
     final now = clock.now();
     final items = PlanItems.of(day, deliveries, now);
     final guard = day.guard;
-    final later = items.later.take(kLaterOnHome).toList();
+    final later = items.later;
+    // The first read only: a reload keeps the cards on screen.
+    final loading = day.status == TimelineStatus.initial || day.isInitialLoad;
 
     return BlocProvider<SuggestionCubit>.value(
       value: _suggestion,
@@ -215,34 +237,37 @@ class _HomePageState extends State<HomePage> {
                       // about the day below it, and goes once taken or
                       // turned down.
                       if (kSuggestionOnPlan) const SuggestionCard(),
-                      _Heading(
-                        title: l10n.feedNow,
-                        mark: day.marks.on(now),
-                        action: AppPillButton(
-                          label: l10n.feedSeeDay,
-                          iconData: AppIcons.calendar,
-                          onPressed: widget.onSeeDay,
-                        ),
-                      ),
-                      PlanDropTarget(
-                        section: PlanSection.now,
-                        onDrop: planDropper(context, PlanSection.now, items),
-                        builder: (context, {hovering}) => _Pad(
-                          child: NowDropZone(
-                            hovering: hovering,
-                            child: _carry(
-                              items.now,
-                              PlanSection.now,
-                              _NowCard(card: items.now, day: day, now: now),
+                      _Heading(title: l10n.feedNow, mark: day.marks.on(now)),
+                      if (loading)
+                        ..._skeleton(context)
+                      else ...[
+                        PlanDropTarget(
+                          section: PlanSection.now,
+                          onDrop: planDropper(context, PlanSection.now, items),
+                          builder: (context, {hovering}) => _Pad(
+                            child: NowDropZone(
+                              hovering: hovering,
+                              child: _carry(
+                                items.now,
+                                PlanSection.now,
+                                _NowCard(card: items.now, day: day, now: now),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      // Em seguida is a heading as Agora is, and a queue:
-                      // every task plays, and is carried to another place
-                      // in it or to another section.
-                      if (items.next.isNotEmpty || _carrying) ...[
-                        _Heading(title: l10n.feedNext),
+                        // Em seguida is a heading as Agora is, and a queue:
+                        // every task plays, and is carried to another place
+                        // in it or to another section.
+                        _Heading(
+                          title: l10n.feedNext,
+                          action: AppPillButton(
+                            label: l10n.homeSeeCalendar,
+                            iconData: AppIcons.calendar,
+                            onPressed: widget.onSeeDay,
+                          ),
+                        ),
+                        if (items.next.isEmpty && !_carrying)
+                          _Pad(child: _Quiet(text: l10n.homeNextEmpty)),
                         PlanQueue(
                           cards: items.next,
                           padding: const EdgeInsets.fromLTRB(
@@ -252,10 +277,15 @@ class _HomePageState extends State<HomePage> {
                             kQueueGap,
                           ),
                           onDrop: queueDropper(context, items),
-                          itemBuilder: (context, card) => _carry(
-                            card,
-                            PlanSection.next,
-                            _NextCard(card: card),
+                          itemBuilder: (context, card) => _DayOf(
+                            card: card,
+                            cards: items.next,
+                            now: now,
+                            child: _carry(
+                              card,
+                              PlanSection.next,
+                              _NextCard(card: card),
+                            ),
                           ),
                         ),
                         // The queue ends in a +, as Lista's day did: it
@@ -273,71 +303,74 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ),
-                      ],
-                      if (items.pending.isNotEmpty || _carrying)
+                        if (items.pending.isNotEmpty || _carrying)
+                          PlanDropTarget(
+                            section: PlanSection.pending,
+                            onDrop: planDropper(
+                              context,
+                              PlanSection.pending,
+                              items,
+                            ),
+                            builder: (context, {hovering}) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _Heading(title: l10n.homePending),
+                                if (hovering != null)
+                                  _Pad(child: PlanDropGhost(carry: hovering)),
+                                for (final item in items.pending)
+                                  _Pad(
+                                    key: ValueKey(item.id),
+                                    child: _pending(item, now),
+                                  ),
+                              ],
+                            ),
+                          ),
                         PlanDropTarget(
-                          section: PlanSection.pending,
+                          section: PlanSection.later,
                           onDrop: planDropper(
                             context,
-                            PlanSection.pending,
+                            PlanSection.later,
                             items,
                           ),
                           builder: (context, {hovering}) => Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _Heading(title: l10n.homePending),
+                              _Heading(title: l10n.stageBacklog),
                               if (hovering != null)
                                 _Pad(child: PlanDropGhost(carry: hovering)),
-                              for (final item in items.pending)
+                              if (later.isEmpty && hovering == null)
+                                _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
+                              for (final item in later)
                                 _Pad(
                                   key: ValueKey(item.id),
-                                  child: _pending(item, now),
+                                  child: PlanDraggable(
+                                    carry: switch (item) {
+                                      LaterTask(:final card) => CarryCard(
+                                        card,
+                                        PlanSection.later,
+                                      ),
+                                      LaterDelivery(:final artifact) =>
+                                        CarryDelivery(
+                                          artifact,
+                                          PlanSection.later,
+                                        ),
+                                    },
+                                    onCarry: _setCarrying,
+                                    child: LaterCard(item: item, now: now),
+                                  ),
                                 ),
+                              // Para depois has no limit, and ends as Em
+                              // seguida does: a + that writes at its end.
+                              _Pad(
+                                child: AppAddRow(
+                                  dense: true,
+                                  onTap: () => unawaited(writeTask(context)),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      PlanDropTarget(
-                        section: PlanSection.later,
-                        onDrop: planDropper(context, PlanSection.later, items),
-                        builder: (context, {hovering}) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _Heading(title: l10n.stageBacklog),
-                            if (hovering != null)
-                              _Pad(child: PlanDropGhost(carry: hovering)),
-                            if (later.isEmpty && hovering == null)
-                              _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
-                            for (final item in later)
-                              _Pad(
-                                key: ValueKey(item.id),
-                                child: PlanDraggable(
-                                  carry: switch (item) {
-                                    LaterTask(:final card) => CarryCard(
-                                      card,
-                                      PlanSection.later,
-                                    ),
-                                    LaterDelivery(:final artifact) =>
-                                      CarryDelivery(
-                                        artifact,
-                                        PlanSection.later,
-                                      ),
-                                  },
-                                  onCarry: _setCarrying,
-                                  child: LaterCard(item: item, now: now),
-                                ),
-                              ),
-                            if (items.later.length > later.length)
-                              _Pad(
-                                child: _OpenRow(
-                                  text: l10n.homeLaterOpen(
-                                    items.later.length - later.length,
-                                  ),
-                                  onTap: widget.onOpenLater,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -412,9 +445,7 @@ class _NextCard extends StatelessWidget {
       fill: fill,
       mark: mark,
       markInk: ink,
-      onPlay: card.isTask
-          ? () => unawaited(playCard(context, card))
-          : null,
+      onPlay: card.isTask ? () => unawaited(playCard(context, card)) : null,
       keepPlaySlot: true,
       onTap: () => openCard(context, card),
     );
@@ -513,41 +544,59 @@ class TodayTag extends StatelessWidget {
   }
 }
 
-/// The row under Para depois's four that opens the whole queue.
-class _OpenRow extends StatelessWidget {
-  const _OpenRow({required this.text, required this.onTap});
+/// {@template day_of}
+/// A card of Em seguida, under its day's name when it is the first card of
+/// a day after the first one drawn ("Amanhã", "Sexta, 6 de nov."): the
+/// queue runs on into the following days, each task at its hour.
+/// {@endtemplate}
+class _DayOf extends StatelessWidget {
+  const _DayOf({
+    required this.card,
+    required this.cards,
+    required this.now,
+    required this.child,
+  });
 
-  final String text;
-  final VoidCallback onTap;
+  final TimelineEvent card;
+  final List<TimelineEvent> cards;
+  final DateTime now;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s4,
-          vertical: AppSpacing.s3,
+    final i = cards.indexOf(card);
+    final first =
+        i <= 0 || !PlanItems.sameDay(cards[i - 1].startTime, card.startTime);
+    if (i <= 0 || !first || PlanItems.sameDay(card.startTime, now)) {
+      return child;
+    }
+    final l10n = context.l10n;
+    final today = DateTime(now.year, now.month, now.day);
+    final at = card.startTime;
+    final days = DateTime(at.year, at.month, at.day).difference(today).inDays;
+    final date = l10n.sectionDay(at);
+    final label = days == 1
+        ? l10n.sectionTomorrow
+        : date.isEmpty
+        ? date
+        : date[0].toUpperCase() + date.substring(1);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.s1,
+            AppSpacing.s3,
+            0,
+            AppSpacing.s2,
+          ),
+          child: Text(
+            label,
+            style: AppTypography.labelStrong.copyWith(color: AppColors.ink2),
+          ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                text,
-                style: AppTypography.labelStrong.copyWith(
-                  color: AppColors.ink2,
-                ),
-              ),
-            ),
-            const AppIcon(
-              iconData: AppIcons.chevronRight,
-              size: AppSpacing.s4,
-              color: AppColors.ink3,
-            ),
-          ],
-        ),
-      ),
+        child,
+      ],
     );
   }
 }

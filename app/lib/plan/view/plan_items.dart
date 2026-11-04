@@ -15,17 +15,17 @@ import 'package:timeline/timeline.dart';
 /// each section reads as one list.
 const double kQueueGap = AppSpacing.s1;
 
-/// How many cards Em seguida draws; the calendar has the rest.
-const kNextOnHome = 4;
-
 /// {@template plan_items}
 /// What Plano draws, worked out from the day ([TimelineState]) and the
 /// deliveries ([ArtifactsData]): one kind of task, whether it has tasks of
 /// its own (a delivery) or not.
 ///
-/// - [now], the card on Agora, and [next], the queue after it: the cards
-///   of the first day that has any (today, while it has some left), up
-///   to [kNextOnHome].
+/// - [now], the card on Agora, and [next], everything after it that has
+///   an hour: every card of the first day that has any (today, while it
+///   has some left), its events too, then every task the queue puts on
+///   the days after it, in their order. No limit: each with the hour the
+///   layout gives it, so a pause, a move or a task done earlier moves them
+///   all on the next read.
 /// - [pending]: every task begun and not finished: the deliveries begun
 ///   ([isStarted]), the most urgent first as Entregas put them, then the
 ///   loose tasks paused off the day ([TimelineEvent.pending]). The
@@ -53,12 +53,21 @@ class PlanItems {
       for (final card in after)
         if (first != null && _sameDay(card.startTime, first.startTime)) card,
     ];
+    final ahead = [
+      for (final task in day.tasks)
+        if (first != null &&
+            !task.started &&
+            task != agora &&
+            task.startTime.isAfter(first.startTime) &&
+            !_sameDay(task.startTime, first.startTime))
+          task,
+    ];
     final groups = progressGroups(deliveries?.queue ?? const [], now);
     final running = agora?.artifactId;
 
     return PlanItems._(
       now: agora,
-      next: sameDay.take(kNextOnHome).toList(),
+      next: [...sameDay, ...ahead],
       pending: [
         for (final a in groups.started)
           if (a.id != running) PendingDelivery(a),
@@ -87,6 +96,9 @@ class PlanItems {
   /// The queue after Agora, in its order: tasks to play and to carry, and
   /// the fixed blocks between them, which keep their place.
   final List<TimelineEvent> next;
+
+  /// Whether [a] and [b] fall on the same day.
+  static bool sameDay(DateTime a, DateTime b) => _sameDay(a, b);
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -185,10 +197,45 @@ void openCard(BuildContext context, TimelineEvent card) {
   unawaited(context.push<void>('/evento/${Uri.encodeComponent(card.id)}'));
 }
 
-/// Plays a task that waits: the same as letting it go on Agora. A loose
+/// Plays a task that waits (#87): asks when first, always
+/// ([PlayWhenSheet]): begun now, as a drop on Agora is ([beginCard], the
+/// guard and all), or put first in Em seguida at the next hour the day has
+/// room for ([nextSlotOf]). Over an hour it asks how much too.
+Future<void> playCard(BuildContext context, TimelineEvent card) async {
+  final bloc = context.read<TimelineBloc>();
+  final day = bloc.state;
+  final choice = await PlayWhenSheet.show(
+    context,
+    PlayWhenSheet(
+      title: card.title,
+      subtitle: card.artifactTitle,
+      owed: card.workMinutes,
+      nextAt: (minutes) => nextSlotOf(day, card, minutes: minutes),
+    ),
+  );
+  if (!context.mounted) return;
+  switch (choice) {
+    case null || PlayWhole() || PlayPiece():
+      return;
+    case PlayNow(:final minutes):
+      bloc.add(
+        EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
+      );
+    case PlayNext(:final minutes):
+      // Build: a piece queued is split as a piece begun is, the rest
+      // staying where the task was (`move { index, minutes, split }`).
+      bloc.add(
+        EventMoved(id: card.id, index: nextIndexOf(day), minutes: minutes),
+      );
+    case PlayTalk():
+      await showAgentSheet(context, about: AgentSubject.task(card.id));
+  }
+}
+
+/// Begins a task that waits: the same as letting it go on Agora. A loose
 /// task over an hour asks how much first ([PlaySheet.task]): a piece
 /// begins that long and the rest waits in Pendentes.
-Future<void> playCard(BuildContext context, TimelineEvent card) async {
+Future<void> beginCard(BuildContext context, TimelineEvent card) async {
   final bloc = context.read<TimelineBloc>();
   void begin({int? minutes}) => bloc.add(
     EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
@@ -197,7 +244,7 @@ Future<void> playCard(BuildContext context, TimelineEvent card) async {
   final choice = await PlaySheet.show(context, PlaySheet.task(card: card));
   if (!context.mounted) return;
   switch (choice) {
-    case null:
+    case null || PlayNow() || PlayNext():
       return;
     case PlayWhole():
       begin();
@@ -206,6 +253,41 @@ Future<void> playCard(BuildContext context, TimelineEvent card) async {
     case PlayTalk():
       await showAgentSheet(context, about: AgentSubject.task(card.id));
   }
+}
+
+/// The place in the list of tasks that is first in Em seguida: right
+/// after the task running on Agora, else the top.
+int nextIndexOf(TimelineState day) {
+  final running = day.tasks.firstOrNull;
+  return running != null && running.started ? 1 : 0;
+}
+
+/// The hour Em seguida's first place would give [card], or [minutes] of
+/// it: the first room after what runs (and its pause) long enough for it,
+/// around the events;
+/// the queue moves after it. The server's layout has the last word.
+DateTime nextSlotOf(
+  TimelineState day,
+  TimelineEvent card, {
+  int? minutes,
+  DateTime? now,
+}) {
+  final at = now ?? clock.now();
+  final busy = [
+    for (final c in day.cards)
+      if (c.id != card.id && (!c.isTask || c.started)) c,
+  ];
+  final running = day.cards
+      .where((c) => c.section == TimelineSection.agora && c.id != card.id)
+      .firstOrNull;
+  final from = running == null || running.endTime.isBefore(at)
+      ? at
+      : running.endTime.add(TimelinePlan.gap);
+  return TimelinePlan.nextFreeStart(
+    busy,
+    Duration(minutes: minutes ?? card.workMinutes),
+    now: from,
+  );
 }
 
 /// {@template pending_card}

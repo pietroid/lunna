@@ -2123,5 +2123,53 @@
   "subtaskAdd": "Subtarefa",
   "@subtaskAdd": {
     "description": "The button on a loose task's page that gives it a subtask."
+  },
+  "homeSeeCalendar": "Ver calendário",
+  "homeNextEmpty": "Nada marcado daqui para a frente.",
+  "playWhenTitle": "Quando fazer {title}?",
+  "@playWhenTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenHowMuch": "Quanto",
+  "playWhenWhole": "Tudo de uma vez.",
+  "playRestWaits": "O resto, {rest}, continua esperando.",
+  "@playRestWaits": {
+    "placeholders": {
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "playWhenNow": "Começar agora",
+  "playWhenNext": "Em seguida · {hour}",
+  "@playWhenNext": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "placePieceTitle": "Quanto vai para as {hour}?",
+  "@placePieceTitle": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "placePieceBody": "{title} tem {length}. O resto fica onde está.",
+  "@placePieceBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
   }
 }

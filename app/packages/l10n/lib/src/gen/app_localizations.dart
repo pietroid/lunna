@@ -3658,6 +3658,66 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Subtarefa'**
   String get subtaskAdd;
+
+  /// No description provided for @homeSeeCalendar.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver calendário'**
+  String get homeSeeCalendar;
+
+  /// No description provided for @homeNextEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada marcado daqui para a frente.'**
+  String get homeNextEmpty;
+
+  /// No description provided for @playWhenTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quando fazer {title}?'**
+  String playWhenTitle(String title);
+
+  /// No description provided for @playWhenHowMuch.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto'**
+  String get playWhenHowMuch;
+
+  /// No description provided for @playWhenWhole.
+  ///
+  /// In pt, this message translates to:
+  /// **'Tudo de uma vez.'**
+  String get playWhenWhole;
+
+  /// No description provided for @playRestWaits.
+  ///
+  /// In pt, this message translates to:
+  /// **'O resto, {rest}, continua esperando.'**
+  String playRestWaits(String rest);
+
+  /// No description provided for @playWhenNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar agora'**
+  String get playWhenNow;
+
+  /// No description provided for @playWhenNext.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em seguida · {hour}'**
+  String playWhenNext(String hour);
+
+  /// No description provided for @placePieceTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto vai para as {hour}?'**
+  String placePieceTitle(String hour);
+
+  /// No description provided for @placePieceBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} tem {length}. O resto fica onde está.'**
+  String placePieceBody(String title, String length);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
