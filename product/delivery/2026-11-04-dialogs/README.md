@@ -55,6 +55,10 @@ From the issue, verbatim:
 >
 > The reason for all of this is that the math for the pending tasks should be sound
 
+The design was reviewed on the issue, and the person replied:
+
+> you just dont need to overexplain on "Pausar fazendo a Lunna". Just to "Fazendo a lunna vai para pendentes" is enough
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -95,10 +99,12 @@ play (Plano, Pendentes, Para depois, the calendar, a delivery's page):
 
 **3. The pause** (`PauseQuestion`, replacing `GuardSheet`'s three
 answers): after *Começar agora* (or a drop on Agora) while something
-runs, one question, ***Pausar Fazendo a Lunna?*** — *Sim, pausar e
-começar* / *Não*. Yes always pauses into **Pendentes** and **splits** what
-ran: the minutes done become a subtask ticked off, the minutes left
-another subtask, not done. No question about where the rest goes.
+runs, one question, ***Pausar Fazendo a Lunna?***, and one line under
+it, *Fazendo a Lunna vai para Pendentes.* — *Sim, pausar e começar* /
+*Não*. Yes always pauses into **Pendentes** and **splits** what ran: the
+minutes done become a subtask ticked off, the minutes left another
+subtask, not done. The sheet doesn't explain the split (review), and asks
+nothing about where the rest goes.
 
 **2. How much** (`PlayMuchQuestion`), measured at the hour chosen (now,
 the later hour, or where it was dropped), on the task, or on **the
@@ -139,7 +145,7 @@ until the last answer; a dismissed sheet leaves the day as it was.
 | 1C | The later hour, idle | *Daqui a 15 min · 10:15*, an anchor; *Às 13:00* when 15 min from now has no 20 min of room |
 | 2C | The later hour, busy | *Depois de … · 10:38*: first in Em seguida, the first hour with 20 min of room; hidden when already next |
 | 3A | The guard | one yes/no, *Pausar …?*; *Concluir o atual* and *Para depois* go |
-| 3B | What a pause does | the running task splits into done + left subtasks, the rest in Pendentes |
+| 3B | The line under it | only *Fazendo a Lunna vai para Pendentes.* (review: no account of the split); the split into done + left subtasks still happens |
 | 3C | Não | changes nothing (no Cancelar under it) |
 | 4A | The room | from the chosen hour to the next fixed thing or the day's end, named in the body |
 | 4B | Pieces | 30 min (the accent) and 1 h, always over an hour |
@@ -180,6 +186,9 @@ into chunks that fit the free blocks, each its own row.
   has its one button as the accent.
 - **A drop of a task over an hour on free room** now asks how much there
   too (the issue's "very similar"); today only Em seguida and Agora ask.
+- **The pause's line after the review**: the title stays the question
+  (*Pausar Fazendo a Lunna?*) and the body is only the person's sentence;
+  the minutes done and left are not named anywhere on the sheet.
 - **Falar com a Lunna leaves the how-much sheet**: the issue lists the
   options exactly. The composer's + stays the way to talk.
 
@@ -209,7 +218,9 @@ Phase 3 starts here and Phase 4 removes this section.
   `playMuchNowTitle`, `playMuchAtTitle`, `playMuchRoomUntil`,
   `playMuchRestNow`, `playMuchRestStays`, `playMuchShortTitle`,
   `playMuchShortBody`, `playMuchDo`, `playMuchUntil`, `playMuchDayEnd`,
-  `guardPauseTitle`, `guardPauseBody`, `guardPauseYes`, `guardPauseNo`.
+  `guardPauseTitle`, `guardPauseBody` (`{title} vai para Pendentes.`,
+  after the review), `guardPauseYes`, `guardPauseNo`. `PauseQuestion`
+  takes only `current`.
   The strings the old sheets used go when they do.
 
 ### Server
@@ -244,7 +255,8 @@ Phase 3 starts here and Phase 4 removes this section.
   `playPending`, Plano's play, the calendar's `onPlay` and a delivery's
   page play on a subtask.
 - `GuardSheet` becomes `PauseQuestion` (move it to `timeline`, which
-  draws the guard), posting `pause_current` on yes.
+  draws the guard), posting `pause_current` on yes. Its body is one line,
+  *{title} vai para Pendentes.*; the split is not explained on screen.
 - Drops: Agora → pause (if running) → how much at now; Em seguida and
   free room → how much at that hour. Post once, after the last answer.
 - Widget tests: `playPieces` table, the when sheet's three shapes, the

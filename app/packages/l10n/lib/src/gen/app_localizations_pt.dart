@@ -2423,8 +2423,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String guardPauseBody(String next, String title, String done, String left) {
-    return '$next começa agora. $title vai para Pendentes: os $done feitos ficam como uma subtarefa concluída, e os $left que faltam, como outra.';
+  String guardPauseBody(String title) {
+    return '$title vai para Pendentes.';
   }
 
   @override

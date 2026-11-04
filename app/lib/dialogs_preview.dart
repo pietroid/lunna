@@ -60,7 +60,7 @@ class _Scene extends StatelessWidget {
         laterAt: at(10, 38),
       ),
       // Now, while something runs: pause it, yes or no.
-      3 => PauseQuestion(next: report, current: running, done: 12, left: 33),
+      3 => PauseQuestion(current: running),
       // How much, now: 4 h with 1h55 free before the standup.
       4 => PlayMuchQuestion(
         title: report,

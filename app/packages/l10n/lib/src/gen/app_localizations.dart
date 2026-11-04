@@ -3752,8 +3752,8 @@ abstract class AppLocalizations {
   /// No description provided for @guardPauseBody.
   ///
   /// In pt, this message translates to:
-  /// **'{next} começa agora. {title} vai para Pendentes: os {done} feitos ficam como uma subtarefa concluída, e os {left} que faltam, como outra.'**
-  String guardPauseBody(String next, String title, String done, String left);
+  /// **'{title} vai para Pendentes.'**
+  String guardPauseBody(String title);
 
   /// No description provided for @guardPauseYes.
   ///

@@ -24,10 +24,10 @@
     {
       "png": "img/mockup-3.png",
       "title": "3 · Pause what runs?",
-      "why": "The guard is now a yes or no, and Pendentes' sums stay true.",
+      "why": "The guard is now a yes or no, said in one line.",
       "pins": [
-        {"id": "A", "x": 378, "y": 620, "label": "One question", "text": "Replaces Concluir / Pausar em Pendentes / Para depois: after 'now', pausing is the only road."},
-        {"id": "B", "x": 378, "y": 690, "label": "The split", "text": "The running task becomes two subtasks: the 12 min done (ticked off) and the 33 min left, waiting in Pendentes."},
+        {"id": "A", "x": 378, "y": 690, "label": "One question", "text": "Replaces Concluir / Pausar em Pendentes / Para depois: after 'now', pausing is the only road."},
+        {"id": "B", "x": 378, "y": 724, "label": "One line", "text": "'Fazendo a Lunna vai para Pendentes.' The split into done and left subtasks still happens, unexplained."},
         {"id": "C", "x": 378, "y": 764, "label": "Sim / Não", "text": "Não changes nothing. A drop on Agora while something runs asks the same."}
       ]
     },

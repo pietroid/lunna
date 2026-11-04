@@ -699,30 +699,19 @@ class PlayMuchQuestion extends StatelessWidget {
 
 /// {@template pause_question}
 /// The guard after *Começar agora* while something runs (#89): one yes or
-/// no. Yes pauses [current] into Pendentes, split in two subtasks (the
-/// [done] minutes, ticked off, and the [left] ones), and begins [next].
+/// no, saying only that [current] goes to Pendentes. Yes pauses it there
+/// (split in two subtasks, the minutes done and the ones left, by the
+/// server) and begins what was played.
 /// {@endtemplate}
 class PauseQuestion extends StatelessWidget {
   /// {@macro pause_question}
   const PauseQuestion({
-    required this.next,
     required this.current,
-    required this.done,
-    required this.left,
     super.key,
   });
 
-  /// What begins.
-  final String next;
-
   /// What runs, and is paused.
   final String current;
-
-  /// Minutes of [current] done so far.
-  final int done;
-
-  /// Minutes of [current] still owed.
-  final int left;
 
   @override
   Widget build(BuildContext context) {
@@ -733,12 +722,7 @@ class PauseQuestion extends StatelessWidget {
         Text(l10n.guardPauseTitle(current), style: AppTypography.title),
         const SizedBox(height: AppSpacing.s1),
         Text(
-          l10n.guardPauseBody(
-            next,
-            current,
-            formatMinutes(l10n, done),
-            formatMinutes(l10n, left),
-          ),
+          l10n.guardPauseBody(current),
           style: AppTypography.body.copyWith(color: AppColors.ink2),
         ),
         const SizedBox(height: AppSpacing.s5),

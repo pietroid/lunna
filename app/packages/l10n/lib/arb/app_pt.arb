@@ -2254,19 +2254,10 @@
       }
     }
   },
-  "guardPauseBody": "{next} começa agora. {title} vai para Pendentes: os {done} feitos ficam como uma subtarefa concluída, e os {left} que faltam, como outra.",
+  "guardPauseBody": "{title} vai para Pendentes.",
   "@guardPauseBody": {
     "placeholders": {
-      "next": {
-        "type": "String"
-      },
       "title": {
-        "type": "String"
-      },
-      "done": {
-        "type": "String"
-      },
-      "left": {
         "type": "String"
       }
     }
