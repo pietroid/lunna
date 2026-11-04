@@ -46,7 +46,6 @@ class HomePage extends StatefulWidget {
   /// {@macro home_page}
   const HomePage({
     required this.onSeeDay,
-    required this.onOpenLater,
     this.shown = true,
     this.controller,
     super.key,
@@ -54,9 +53,6 @@ class HomePage extends StatefulWidget {
 
   /// Opens the calendar.
   final VoidCallback onSeeDay;
-
-  /// Opens Para depois whole.
-  final VoidCallback onOpenLater;
 
   /// Whether the tab is in front. Brought forward, it asks for the offer
   /// again; behind, it asks nothing.
@@ -266,7 +262,9 @@ class _HomePageState extends State<HomePage> {
                             onPressed: widget.onSeeDay,
                           ),
                         ),
-                        if (items.next.isEmpty && !_carrying)
+                        // Kept while a card is carried, so nothing under
+                        // the finger moves; the card's copy opens under it.
+                        if (items.next.isEmpty)
                           _Pad(child: _Quiet(text: l10n.homeNextEmpty)),
                         PlanQueue(
                           cards: items.next,

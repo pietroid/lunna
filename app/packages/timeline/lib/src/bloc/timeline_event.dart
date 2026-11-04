@@ -106,6 +106,7 @@ final class EventMoved extends TimelineBlocEvent {
     this.pending = false,
     this.after,
     this.minutes,
+    this.split = false,
   });
 
   /// The task that was dragged.
@@ -133,6 +134,10 @@ final class EventMoved extends TimelineBlocEvent {
   /// The length the user agreed to cut it to so it fits that stretch.
   final int? minutes;
 
+  /// With [minutes] and not [start]: only a piece that long takes the
+  /// place, and the rest stays where the task was.
+  final bool split;
+
   @override
   List<Object?> get props => [
     id,
@@ -142,6 +147,7 @@ final class EventMoved extends TimelineBlocEvent {
     pending,
     after,
     minutes,
+    split,
   ];
 }
 

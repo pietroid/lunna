@@ -81,9 +81,22 @@ export function requireMove(taskId: string, dto: MoveEventDto): TimingAction {
     action.after = dto.after;
   }
 
+  if (dto.split !== undefined) {
+    if (typeof dto.split !== 'boolean') {
+      throw new BadRequestException('split must be a boolean');
+    }
+    if (dto.split && (action.start || backlog || dto.minutes === undefined)) {
+      throw new BadRequestException(
+        'split takes minutes, and only on a drop on the day that starts nothing',
+      );
+    }
+    if (dto.split) action.split = true;
+  }
+
   if (dto.minutes !== undefined) {
     // With start, a piece of the task to begin: the rest waits in Pendentes.
-    if (action.start) {
+    // With split, a piece to put in that place: the rest stays where it was.
+    if (action.start || action.split) {
       action.minutes = requirePlayPiece(dto.minutes);
     } else {
       if (!Number.isInteger(dto.minutes) || dto.minutes < 5) {

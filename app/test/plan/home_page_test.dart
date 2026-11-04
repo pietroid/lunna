@@ -61,16 +61,21 @@ void main() {
     );
   }
 
-  TimelineEvent loose(String id, String title, {bool pending = false}) {
+  TimelineEvent loose(
+    String id,
+    String title, {
+    bool pending = false,
+    int minutes = 45,
+  }) {
     final start = now;
     return TimelineEvent(
       id: id,
       title: title,
       section: TimelineSection.backlog,
       startTime: start,
-      endTime: start.add(const Duration(minutes: 45)),
-      durationMinutes: 45,
-      workMinutes: 45,
+      endTime: start.add(Duration(minutes: minutes)),
+      durationMinutes: minutes,
+      workMinutes: minutes,
       pending: pending,
     );
   }
@@ -129,6 +134,7 @@ void main() {
     List<TimelineEvent> tasks = const [],
     List<Artifact> queue = const [],
     ArtifactsRepository? artifactsRepository,
+    TimelineStatus status = TimelineStatus.success,
   }) async {
     tester.view
       ..physicalSize = const Size(600, 2400)
@@ -136,7 +142,7 @@ void main() {
     addTearDown(tester.view.reset);
     when(() => timeline.state).thenReturn(
       TimelineState(
-        status: TimelineStatus.success,
+        status: status,
         cards: cards,
         tasks: tasks,
         backlog: backlog,
@@ -167,7 +173,6 @@ void main() {
             home: Scaffold(
               body: HomePage(
                 onSeeDay: () => opened.add('dia'),
-                onOpenLater: () => opened.add('depois'),
               ),
             ),
           ),
@@ -180,6 +185,48 @@ void main() {
   double top(WidgetTester tester, String text) =>
       tester.getTopLeft(find.text(text)).dy;
 
+  /// Plays with [play]: answers the first sheet, when ([PlayWhenSheet]),
+  /// with [button], then the second, how much, with [piece].
+  Future<void> playWith(
+    WidgetTester tester,
+    Finder play,
+    String button, {
+    String? piece,
+  }) async {
+    // Agora's card keeps moving while a task runs: pumped, not settled.
+    Future<void> settle() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    await tester.tap(play);
+    await settle();
+    expect(find.byType(PlayWhenSheet), findsOneWidget);
+    // Only when: two answers, no pieces.
+    expect(find.text(formatMinutes(l10n, kPlayPieces.first)), findsNothing);
+    await tester.tap(find.textContaining(button));
+    await settle();
+    if (piece != null) {
+      expect(find.byType(PlayWhenSheet), findsNothing);
+      await tester.tap(find.text(piece));
+      await settle();
+    }
+  }
+
+  testAt('draws the skeleton of each section until the day first arrives', (
+    tester,
+  ) async {
+    await pump(tester, status: TimelineStatus.initial);
+
+    expect(find.byType(PlanSkeletonCard), findsWidgets);
+    expect(find.byType(AgoraIdleTile), findsNothing);
+    expect(find.text(l10n.feedNow), findsOneWidget);
+    expect(find.text(l10n.feedNext), findsOneWidget);
+    expect(find.text(l10n.homeSeeCalendar), findsOneWidget);
+    expect(find.text(l10n.stageBacklog), findsOneWidget);
+    expect(find.text(l10n.homePending), findsNothing);
+  });
+
   testAt('draws the break and an empty Para depois on an empty day', (
     tester,
   ) async {
@@ -188,6 +235,8 @@ void main() {
     expect(find.byType(AgoraIdleTile), findsOneWidget);
     expect(find.text(l10n.homePending), findsNothing);
     expect(find.text(l10n.homeLaterEmpty), findsOneWidget);
+    expect(find.text(l10n.homeNextEmpty), findsOneWidget);
+    expect(find.byType(PlanSkeletonCard), findsNothing);
   });
 
   testAt('titles Agora by the task, its task at work under it, with pause', (
@@ -245,11 +294,14 @@ void main() {
     expect(find.byTooltip(l10n.controlDone), findsOneWidget);
     expect(find.byType(TaskCardBar), findsOneWidget);
 
+    // Its next task is not on the day and is short: nothing to ask.
     await tester.tap(find.byType(TaskPlayButton));
+    await tester.pump();
+    expect(find.byType(PlayWhenSheet), findsNothing);
     verify(() => timeline.add(const ArtifactPlayed('p'))).called(1);
   });
 
-  testAt('draws four of Para depois, loose tasks first, and opens the rest', (
+  testAt('draws the whole of Para depois, loose tasks first, then its +', (
     tester,
   ) async {
     await pump(
@@ -272,20 +324,32 @@ void main() {
 
     expect(find.text('Roteiro'), findsNothing);
     expect(top(tester, 'Ligar para o contador'), lessThan(top(tester, 'Post')));
-    expect(find.text('Mapa · Ana'), findsNothing);
-    expect(find.text(l10n.homeLaterOpen(1)), findsOneWidget);
-    expect(find.byType(TaskPlayButton), findsNWidgets(4));
+    expect(top(tester, 'Post'), lessThan(top(tester, 'Mapa · Ana')));
+    expect(find.byType(TaskPlayButton), findsNWidgets(5));
+    // Em seguida's + and Para depois's, the last thing on the page.
+    expect(find.byType(AppAddRow), findsNWidgets(2));
+    expect(
+      tester.getTopLeft(find.byType(AppAddRow).last).dy,
+      greaterThan(top(tester, 'Mapa · Ana')),
+    );
 
-    await tester.tap(find.byType(TaskPlayButton).first);
+    await playWith(tester, find.byType(TaskPlayButton).first, l10n.playWhenNow);
     verify(
       () => timeline.add(const EventMoved(id: '1', index: 0, start: true)),
     ).called(1);
-    await tester.tap(find.byType(TaskPlayButton).last);
-    verify(() => timeline.add(const ArtifactPlayed('w'))).called(1);
 
-    await tester.tap(find.text(l10n.homeLaterOpen(1)));
-    await tester.tap(find.text(l10n.feedSeeDay));
-    expect(opened, ['depois', 'dia']);
+    await tester.tap(find.text(l10n.homeSeeCalendar));
+    expect(opened, ['dia']);
+  });
+
+  testAt('its + writes into the backlog', (tester) async {
+    await pump(tester);
+
+    await tester.tap(find.text(l10n.timelineAdd).last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byType(AppPromptSheet), findsOneWidget);
   });
 
   testAt('draws a loose task paused off the day in Pendentes, not later', (
@@ -348,7 +412,7 @@ void main() {
   });
 
   testAt(
-    'asks how much before playing over an hour with no tasks, and plays the piece',
+    'asks only how much for a delivery with no tasks, and begins a piece',
     (
       tester,
     ) async {
@@ -367,6 +431,8 @@ void main() {
 
       await tester.tap(find.byType(TaskPlayButton));
       await tester.pumpAndSettle();
+      // No task to queue: there is no when to ask.
+      expect(find.byType(PlayWhenSheet), findsNothing);
       expect(find.text(l10n.playPieceTitle), findsOneWidget);
       expect(find.text(l10n.playWhole('2h30')), findsOneWidget);
 
@@ -378,9 +444,21 @@ void main() {
     },
   );
 
-  testAt('asks to begin the next task when it is over an hour', (tester) async {
+  testAt('asks when for the next task of a delivery, and queues a piece', (
+    tester,
+  ) async {
     await pump(
       tester,
+      backlog: [
+        card(
+          't',
+          'Gravação',
+          TimelineSection.backlog,
+          minutes: 90,
+          artifactId: 'p',
+          artifactTitle: 'Vídeo',
+        ),
+      ],
       queue: [
         delivery(
           'p',
@@ -400,11 +478,26 @@ void main() {
 
     await tester.tap(find.byType(TaskPlayButton));
     await tester.pumpAndSettle();
-    expect(find.text(l10n.playNextTitle('Gravação')), findsOneWidget);
-
-    await tester.tap(find.text(l10n.playNextStart));
+    expect(find.text(l10n.playWhenTitle('Gravação')), findsOneWidget);
+    await tester.tap(find.text(l10n.playWhenNow));
+    await tester.pumpAndSettle();
+    // Over an hour: the second sheet asks how much.
+    expect(find.text(l10n.playPieceTitle), findsOneWidget);
+    await tester.tap(find.text(l10n.playWhole('1h30')));
     await tester.pumpAndSettle();
     verify(() => timeline.add(const ArtifactPlayed('p'))).called(1);
+
+    await playWith(
+      tester,
+      find.byType(TaskPlayButton),
+      '${l10n.feedNext} ·',
+      piece: '1h',
+    );
+    verify(
+      () => timeline.add(
+        const EventMoved(id: 't', index: 0, minutes: 60, split: true),
+      ),
+    ).called(1);
   });
 
   Future<void> carry(WidgetTester tester, Finder from, Finder to) async {
@@ -515,11 +608,24 @@ void main() {
     expect(find.text(l10n.feedNext), findsOneWidget);
     expect(find.text('10:40 – 11:25'), findsOneWidget);
     expect(find.byType(TaskPlayButton), findsNWidgets(2));
+    // Ver calendário sits beside Em seguida's heading.
+    expect(
+      top(tester, l10n.homeSeeCalendar),
+      closeTo(top(tester, l10n.feedNext), 12),
+    );
 
-    await tester.tap(find.byType(TaskPlayButton).last);
+    await playWith(tester, find.byType(TaskPlayButton).last, l10n.playWhenNow);
     verify(
       () => timeline.add(const EventMoved(id: 'b', index: 0, start: true)),
     ).called(1);
+
+    // Em seguida: right after what runs, at the end of its pause.
+    await playWith(
+      tester,
+      find.byType(TaskPlayButton).last,
+      l10n.playWhenNext('10:40'),
+    );
+    verify(() => timeline.add(const EventMoved(id: 'b', index: 0))).called(1);
   });
 
   group('Em seguida', () {
@@ -532,7 +638,7 @@ void main() {
       card('f', 'Ligar para a gráfica', TimelineSection.dia, at: 240),
     ];
 
-    testAt('queues four of the day under its heading, then + Adicionar', (
+    testAt('draws every card of the day, events too, then + Adicionar', (
       tester,
     ) async {
       await pump(tester, cards: day);
@@ -543,12 +649,16 @@ void main() {
         'Standup',
         'Responder e-mails',
         'Revisar contrato',
+        'Ligar para a gráfica',
       ]) {
         expect(find.text(title), findsOneWidget);
       }
-      expect(find.text('Ligar para a gráfica'), findsNothing);
+      expect(
+        top(tester, 'Revisar contrato'),
+        lessThan(top(tester, 'Ligar para a gráfica')),
+      );
       // Agora's pause and a play on each task; the event has the pin.
-      expect(find.byType(TaskPlayButton), findsNWidgets(4));
+      expect(find.byType(TaskPlayButton), findsNWidgets(5));
       expect(
         find.byWidgetPredicate(
           (w) => w is AppIcon && w.iconData == AppIcons.pin,
@@ -558,6 +668,49 @@ void main() {
       expect(find.byType(AppAddRow), findsWidgets);
       final add = tester.widget<AppAddRow>(find.byType(AppAddRow).first);
       expect(add.dense, isTrue);
+      expect(find.text(l10n.homeNextEmpty), findsNothing);
+    });
+
+    testAt('runs on into the tasks of the next days, under their day', (
+      tester,
+    ) async {
+      final tomorrow = card(
+        'g',
+        'Fechar o mês',
+        TimelineSection.dia,
+        at: 24 * 60,
+      );
+      final friday = card(
+        'h',
+        'Planejar novembro',
+        TimelineSection.dia,
+        at: 2 * 24 * 60,
+      );
+      await pump(
+        tester,
+        cards: day,
+        tasks: [
+          for (final c in day)
+            if (c.isTask) c,
+          tomorrow,
+          friday,
+        ],
+      );
+
+      expect(find.text(l10n.sectionTomorrow), findsOneWidget);
+      expect(
+        top(tester, 'Ligar para a gráfica'),
+        lessThan(top(tester, l10n.sectionTomorrow)),
+      );
+      expect(
+        top(tester, l10n.sectionTomorrow),
+        lessThan(top(tester, 'Fechar o mês')),
+      );
+      expect(find.textContaining('30 de outubro'), findsOneWidget);
+      expect(
+        top(tester, 'Fechar o mês'),
+        lessThan(top(tester, 'Planejar novembro')),
+      );
     });
 
     testAt('+ Adicionar opens the sheet to write one down', (tester) async {
@@ -571,7 +724,7 @@ void main() {
       expect(find.byType(AppPromptSheet), findsOneWidget);
     });
 
-    testAt('play on a task over an hour asks how much first', (tester) async {
+    testAt('play over an hour asks how much, and when', (tester) async {
       await pump(
         tester,
         cards: [
@@ -579,15 +732,55 @@ void main() {
         ],
       );
 
-      await tester.tap(find.byType(TaskPlayButton));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.playPieceTitle), findsOneWidget);
+      await playWith(
+        tester,
+        find.byType(TaskPlayButton),
+        l10n.playWhenNow,
+        piece: formatMinutes(l10n, 30),
+      );
+      verify(
+        () => timeline.add(
+          const EventMoved(id: 'b', index: 0, start: true, minutes: 30),
+        ),
+      ).called(1);
+
+      await playWith(
+        tester,
+        find.byType(TaskPlayButton),
+        '${l10n.feedNext} ·',
+        piece: formatMinutes(l10n, 60),
+      );
+      verify(
+        () => timeline.add(
+          const EventMoved(id: 'b', index: 0, minutes: 60, split: true),
+        ),
+      ).called(1);
+    });
+
+    testAt('a task over an hour let go in it asks how much goes there', (
+      tester,
+    ) async {
+      final b = card('b', 'Planejar a semana', TimelineSection.dia, at: 40);
+      await pump(
+        tester,
+        cards: [b],
+        tasks: [b],
+        backlog: [loose('1', 'Escrever o roteiro', minutes: 120)],
+      );
+
+      await carry(
+        tester,
+        find.text('Escrever o roteiro'),
+        find.text('Planejar a semana'),
+      );
+      expect(find.byType(PlaceSheet), findsOneWidget);
+      expect(find.text(l10n.placePieceTitle('10:05')), findsOneWidget);
 
       await tester.tap(find.text(formatMinutes(l10n, 30)));
       await tester.pumpAndSettle();
       verify(
         () => timeline.add(
-          const EventMoved(id: 'b', index: 0, start: true, minutes: 30),
+          const EventMoved(id: '1', index: 0, minutes: 30, split: true),
         ),
       ).called(1);
     });
@@ -603,8 +796,8 @@ void main() {
         now,
       );
 
-      // a, b, d, e drawn: after e, the fourth of a b d e f.
-      expect(queueEndOf(tasks, items(day)), 4);
+      // Every card drawn: after f, the last of a b d e f.
+      expect(queueEndOf(tasks, items(day)), 5);
       // The last drawn an event: after the task above it.
       expect(queueEndOf(tasks, items(day.take(3).toList())), 2);
       // Nothing in Em seguida: right under what runs.

@@ -1413,7 +1413,6 @@
   "feedNow": "Agora",
   "feedNext": "Em seguida",
   "feedBreak": "Nada em andamento",
-  "feedSeeDay": "Ver o dia",
   "feedMainDelivery": "Entrega principal",
   "feedNoDelivery": "Nenhuma entrega em andamento",
   "feedSeeDeliveries": "Entregas",
@@ -1862,15 +1861,6 @@
   "@homePending": {
     "description": "The home's section of tasks begun and not finished."
   },
-  "homeLaterOpen": "{count, plural, =0{Abrir a lista} other{Abrir a lista · mais {count}}}",
-  "@homeLaterOpen": {
-    "description": "Under the home's four first tasks of Para depois: opens the whole queue.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "dayPageTitle": "Calendário",
   "@dayPageTitle": {
     "description": "The page Ver o dia opens: the calendar alone."
@@ -1932,17 +1922,6 @@
     }
   },
   "playPieceTitle": "Quanto você vai fazer agora?",
-  "playPieceBody": "{title} tem {length} pela frente. Um pedaço vira uma tarefa dentro dela.",
-  "@playPieceBody": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      },
-      "length": {
-        "type": "String"
-      }
-    }
-  },
   "playWhole": "Tudo · {length}",
   "@playWhole": {
     "placeholders": {
@@ -1951,26 +1930,6 @@
       }
     }
   },
-  "playNextTitle": "Começar {task}?",
-  "@playNextTitle": {
-    "placeholders": {
-      "task": {
-        "type": "String"
-      }
-    }
-  },
-  "playNextBody": "A próxima de {parent} · {length}",
-  "@playNextBody": {
-    "placeholders": {
-      "parent": {
-        "type": "String"
-      },
-      "length": {
-        "type": "String"
-      }
-    }
-  },
-  "playNextStart": "Começar",
   "guardBusyBody": "{title} está rodando, {start}–{end}. O que fazer com ela?",
   "@guardBusyBody": {
     "placeholders": {
@@ -2130,16 +2089,6 @@
   "@playWhenTitle": {
     "placeholders": {
       "title": {
-        "type": "String"
-      }
-    }
-  },
-  "playWhenHowMuch": "Quanto",
-  "playWhenWhole": "Tudo de uma vez.",
-  "playRestWaits": "O resto, {rest}, continua esperando.",
-  "@playRestWaits": {
-    "placeholders": {
-      "rest": {
         "type": "String"
       }
     }

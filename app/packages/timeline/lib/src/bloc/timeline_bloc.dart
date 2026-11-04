@@ -206,6 +206,7 @@ class TimelineBloc extends Bloc<TimelineBlocEvent, TimelineState> {
           pending: event.pending,
           after: event.after,
           minutes: event.minutes,
+          split: event.split,
           days: _days,
         ),
         emit,

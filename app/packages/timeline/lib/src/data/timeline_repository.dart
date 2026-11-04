@@ -80,6 +80,10 @@ class TimelineRepository {
   /// [index] counts the backlog. Nothing there has an hour, so a drop there
   /// never starts anything and never asks. With [pending] too, it was
   /// dropped into Pendentes: it waits there begun.
+  ///
+  /// With [split], [minutes] is a piece: only that much takes the place,
+  /// and the rest stays where the task was (its turn, its hour, the
+  /// backlog or Pendentes).
   Future<Timeline> moveTask(
     String id,
     int index, {
@@ -88,6 +92,7 @@ class TimelineRepository {
     bool pending = false,
     DateTime? after,
     int? minutes,
+    bool split = false,
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(
@@ -99,6 +104,7 @@ class TimelineRepository {
         if (pending) 'pending': true,
         if (after != null) 'after': after.toUtc().toIso8601String(),
         'minutes': ?minutes,
+        if (split) 'split': true,
       },
     ),
   );

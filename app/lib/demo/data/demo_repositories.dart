@@ -172,10 +172,22 @@ class DemoTimelineRepository implements TimelineRepository {
     bool pending = false,
     DateTime? after,
     int? minutes,
+    bool split = false,
     int days = TimelineRepository.defaultDays,
   }) async {
     final task = _task(id);
     if (task != null) {
+      // A piece split off: the rest, a task of its own, keeps the place.
+      if (split && minutes != null && minutes < task.minutes) {
+        final rest = _Task(
+          'demo-task-${_next++}',
+          task.title,
+          task.minutes - minutes,
+          backlog: task.backlog,
+          anchor: task.anchor,
+        )..notes = task.notes;
+        _tasks.insert(_tasks.indexOf(task) + 1, rest);
+      }
       _tasks.remove(task);
       // The index counts only the list it was dropped in, so it is turned
       // into a place among all of them by finding that list's neighbour.

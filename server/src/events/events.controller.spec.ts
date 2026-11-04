@@ -938,6 +938,97 @@ describe('the day', () => {
       expect(backlog(response)).toEqual([]);
     });
 
+    it('puts a piece in a place, and the rest stays in the backlog (#87)', async () => {
+      await add('Primeiro', 30).expect(201);
+      await shelve('Escrever o roteiro', 120).expect(201);
+      const id = backlog(await (async () => ({ body: await read() }))())[0].id;
+
+      const response = await drag(id, 0, { minutes: 30, split: true }).expect(
+        201,
+      );
+
+      expect(titles(tasks(response))).toEqual([
+        'Escrever o roteiro',
+        'Primeiro',
+      ]);
+      expect(tasks(response)[0]).toMatchObject({ id, durationMinutes: 30 });
+      expect(backlog(response)).toHaveLength(1);
+      expect(backlog(response)[0]).toMatchObject({
+        title: 'Escrever o roteiro',
+        durationMinutes: 90,
+      });
+      expect(backlog(response)[0].id).not.toBe(id);
+      expect(backlog(response)[0].pending).toBeFalsy();
+    });
+
+    it('keeps a pending rest in Pendentes', async () => {
+      await shelve('Relatório', 120).expect(201);
+      const id = (await read()).backlog[0].id;
+      await drag(id, 0, { backlog: true, pending: true }).expect(201);
+
+      const response = await drag(id, 0, { minutes: 60, split: true }).expect(
+        201,
+      );
+
+      expect(tasks(response)[0]).toMatchObject({ id, durationMinutes: 60 });
+      expect(backlog(response)[0]).toMatchObject({
+        title: 'Relatório',
+        durationMinutes: 60,
+        pending: true,
+      });
+    });
+
+    it('leaves the rest of a queued task in its turn, after the piece', async () => {
+      await add('A', 30).expect(201);
+      await add('Longa', 120).expect(201);
+      await add('B', 30).expect(201);
+      const id = (await task('Longa')).id;
+
+      const moved = await drag(id, 0, { minutes: 30, split: true }).expect(201);
+      expect(titles(tasks(moved))).toEqual(['Longa', 'A', 'Longa', 'B']);
+      expect(tasks(moved)[0]).toMatchObject({ id, durationMinutes: 30 });
+      expect(tasks(moved)[2].durationMinutes).toBe(90);
+
+      // Let go on its own place: the piece first, the rest right after.
+      await add('Outra', 120).expect(201);
+      const other = (await task('Outra')).id;
+      const kept = await drag(other, 4, { minutes: 60, split: true }).expect(
+        201,
+      );
+      expect(titles(tasks(kept)).slice(-2)).toEqual(['Outra', 'Outra']);
+      expect(tasks(kept).at(-2)).toMatchObject({
+        id: other,
+        durationMinutes: 60,
+      });
+    });
+
+    it('moves the whole when the piece is all of it, and splits nothing begun', async () => {
+      await add('Curta', 45).expect(201);
+      const whole = await drag((await task('Curta')).id, 0, {
+        minutes: 60,
+        split: true,
+      }).expect(201);
+      expect(titles(tasks(whole))).toEqual(['Curta']);
+      expect(tasks(whole)[0].durationMinutes).toBe(45);
+
+      await begin('Curta');
+      const refused = await drag((await task('Curta')).id, 0, {
+        minutes: 30,
+        split: true,
+      }).expect(400);
+      expect((refused.body as { message: string }).message).toContain(
+        'não se divide',
+      );
+    });
+
+    it('refuses a split with no piece, or with start', async () => {
+      await add('Longa', 120).expect(201);
+      const id = (await task('Longa')).id;
+      await drag(id, 0, { split: true }).expect(400);
+      await drag(id, 0, { split: true, start: true, minutes: 30 }).expect(400);
+      await drag(id, 0, { split: true, minutes: 600 }).expect(400);
+    });
+
     it('refuses a piece over eight hours, in Portuguese', async () => {
       await add('Maratona', 600).expect(201);
 
@@ -1281,6 +1372,45 @@ describe('the day', () => {
       expect(hhmm(stretched.endTime)).toBe('10:37');
       expect(stretched.workMinutes).toBe(30);
       expect(gapBetween(stretched, next)).toBe(5);
+    });
+
+    it('lays out what follows a pause after the next fixed block (#87)', async () => {
+      const [running] = tasks(await add('Escrever', 30).expect(201));
+      await begin('Escrever');
+      await fix('Reunião', 30, new Date(NOW.getTime() + 45 * 60_000)).expect(
+        201,
+      );
+      await add('Depois', 30).expect(201);
+      await add('Ancorada', 30, {
+        notBefore: new Date(NOW.getTime() + 90 * 60_000).toISOString(),
+      }).expect(201);
+
+      later(10);
+      await post(`/tasks/${running.id}/pause`).expect(201);
+
+      // Paused through the meeting's start: the meeting keeps its hour,
+      // and what the paused block owes and everything after it come after.
+      later(55);
+      const day = await read();
+      const meeting = day.cards.find((it) => it.title === 'Reunião')!;
+      const paused = day.tasks.find((it) => it.title === 'Escrever')!;
+      const next = day.tasks.find((it) => it.title === 'Depois')!;
+      const anchored = day.tasks.find((it) => it.title === 'Ancorada')!;
+      expect(hhmm(meeting.startTime)).toBe('10:45');
+      expect(hhmm(meeting.endTime)).toBe('11:15');
+      expect(paused.workMinutes).toBe(30);
+      expect(Date.parse(paused.endTime)).toBeGreaterThan(
+        Date.parse(meeting.endTime),
+      );
+      for (const after of [next, anchored]) {
+        expect(gapBetween(paused, after)).toBeGreaterThanOrEqual(5);
+        expect(gapBetween(meeting, after)).toBeGreaterThanOrEqual(5);
+      }
+      // 20 minutes owed from 11:05: the anchor keeps 11:30, and the queue
+      // flows on after it.
+      expect(hhmm(paused.endTime)).toBe('11:25');
+      expect(hhmm(anchored.startTime)).toBe('11:30');
+      expect(hhmm(next.startTime)).toBe('12:05');
     });
 
     it('is still paused when read long after its hour would have run out', async () => {

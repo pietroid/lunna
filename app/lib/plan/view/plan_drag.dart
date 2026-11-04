@@ -113,10 +113,10 @@ Future<void> dropOnPlan(
     case (CarryCard(:final card), PlanSection.next):
       if (card.id == before?.id) return;
       final index = _placeIn(bloc.state.tasks, items, card.id, before);
-      // Over an hour, how much goes there (#87), as play asks.
+      // Over an hour, how much goes there (#87), as play asks. A task
+      // begun owes what it owes, whole.
       int? minutes;
-      if (playCardAsks(card) ||
-          card.artifactId != null && card.workMinutes > kPlayAsksOver) {
+      if (!card.started && card.isTask && card.workMinutes > kPlayAsksOver) {
         final choice = await PlaceSheet.show(
           context,
           PlaceSheet(
@@ -134,8 +134,15 @@ Future<void> dropOnPlan(
             return;
         }
       }
-      // Build: a piece is split off, the rest staying where it was.
-      bloc.add(EventMoved(id: card.id, index: index, minutes: minutes));
+      // A piece is split off, the rest staying where it was.
+      bloc.add(
+        EventMoved(
+          id: card.id,
+          index: index,
+          minutes: minutes,
+          split: minutes != null,
+        ),
+      );
     case (CarryDelivery(:final artifact), PlanSection.next):
       final task = nextTaskOf(artifact);
       if (task == null) return;

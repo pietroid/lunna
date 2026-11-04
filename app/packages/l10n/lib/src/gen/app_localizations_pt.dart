@@ -1838,9 +1838,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get feedBreak => 'Nada em andamento';
 
   @override
-  String get feedSeeDay => 'Ver o dia';
-
-  @override
   String get feedMainDelivery => 'Entrega principal';
 
   @override
@@ -2162,17 +2159,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get homePending => 'Pendentes';
 
   @override
-  String homeLaterOpen(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'Abrir a lista · mais $count',
-      zero: 'Abrir a lista',
-    );
-    return '$_temp0';
-  }
-
-  @override
   String get dayPageTitle => 'Calendário';
 
   @override
@@ -2229,27 +2215,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get playPieceTitle => 'Quanto você vai fazer agora?';
 
   @override
-  String playPieceBody(String title, String length) {
-    return '$title tem $length pela frente. Um pedaço vira uma tarefa dentro dela.';
-  }
-
-  @override
   String playWhole(String length) {
     return 'Tudo · $length';
   }
-
-  @override
-  String playNextTitle(String task) {
-    return 'Começar $task?';
-  }
-
-  @override
-  String playNextBody(String parent, String length) {
-    return 'A próxima de $parent · $length';
-  }
-
-  @override
-  String get playNextStart => 'Começar';
 
   @override
   String guardBusyBody(String title, String start, String end) {
@@ -2370,17 +2338,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String playWhenTitle(String title) {
     return 'Quando fazer $title?';
-  }
-
-  @override
-  String get playWhenHowMuch => 'Quanto';
-
-  @override
-  String get playWhenWhole => 'Tudo de uma vez.';
-
-  @override
-  String playRestWaits(String rest) {
-    return 'O resto, $rest, continua esperando.';
   }
 
   @override

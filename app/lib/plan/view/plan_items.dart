@@ -11,8 +11,8 @@ import 'package:lunna/plan/view/play_sheet.dart';
 import 'package:timeline/timeline.dart';
 
 /// The room between two cards of Plano (Agora, Em seguida, Pendentes and
-/// Para depois) and of Para depois's own page: one spacing everywhere, so
-/// each section reads as one list.
+/// Para depois): one spacing everywhere, so each section reads as one
+/// list.
 const double kQueueGap = AppSpacing.s1;
 
 /// {@template plan_items}
@@ -197,40 +197,52 @@ void openCard(BuildContext context, TimelineEvent card) {
   unawaited(context.push<void>('/evento/${Uri.encodeComponent(card.id)}'));
 }
 
-/// Plays a task that waits (#87): asks when first, always
-/// ([PlayWhenSheet]): begun now, as a drop on Agora is ([beginCard], the
-/// guard and all), or put first in Em seguida at the next hour the day has
-/// room for ([nextSlotOf]). Over an hour it asks how much too.
+/// Plays a task that waits (#87), asking first **when** ([askPlay]):
+/// begun now, as a drop on Agora is (the guard and all), or put first in
+/// Em seguida at the next hour the day has room for ([nextSlotOf]). Over
+/// an hour a second sheet asks **how much**: a piece begun leaves the rest
+/// in Pendentes, a piece queued leaves it where the task was.
+///
+/// A task already waiting on Agora is next already: it begins
+/// ([beginCard]).
 Future<void> playCard(BuildContext context, TimelineEvent card) async {
+  if (card.section == TimelineSection.agora) return beginCard(context, card);
   final bloc = context.read<TimelineBloc>();
   final day = bloc.state;
-  final choice = await PlayWhenSheet.show(
+  final l10n = context.l10n;
+  final owed = formatMinutes(l10n, card.workMinutes);
+  final answer = await askPlay(
     context,
-    PlayWhenSheet(
-      title: card.title,
-      subtitle: card.artifactTitle,
-      owed: card.workMinutes,
-      nextAt: (minutes) => nextSlotOf(day, card, minutes: minutes),
-    ),
+    title: card.title,
+    subtitle: card.artifactTitle,
+    owed: card.workMinutes,
+    nextAt: nextSlotOf(day, card.workMinutes, id: card.id),
+    restBody: card.artifactId == null
+        ? l10n.playPieceBodyLoose(card.title, owed)
+        : l10n.placePieceBody(card.title, owed),
+    onTalk: () => showAgentSheet(context, about: AgentSubject.task(card.id)),
   );
-  if (!context.mounted) return;
-  switch (choice) {
-    case null || PlayWhole() || PlayPiece():
+  switch (answer) {
+    case null:
       return;
-    case PlayNow(:final minutes):
+    case (now: true, :final minutes):
       bloc.add(
         EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
       );
-    case PlayNext(:final minutes):
-      // Build: a piece queued is split as a piece begun is, the rest
-      // staying where the task was (`move { index, minutes, split }`).
-      bloc.add(
-        EventMoved(id: card.id, index: nextIndexOf(day), minutes: minutes),
-      );
-    case PlayTalk():
-      await showAgentSheet(context, about: AgentSubject.task(card.id));
+    case (now: false, :final minutes):
+      bloc.add(queueFirst(day, card.id, minutes));
   }
 }
+
+/// The move that puts task [id] first in Em seguida ([nextIndexOf]): the
+/// whole, or a piece of [minutes] split off, the rest staying where it
+/// was.
+EventMoved queueFirst(TimelineState day, String id, int? minutes) => EventMoved(
+  id: id,
+  index: nextIndexOf(day),
+  minutes: minutes,
+  split: minutes != null,
+);
 
 /// Begins a task that waits: the same as letting it go on Agora. A loose
 /// task over an hour asks how much first ([PlaySheet.task]): a piece
@@ -241,7 +253,10 @@ Future<void> beginCard(BuildContext context, TimelineEvent card) async {
     EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
   );
   if (!playCardAsks(card)) return begin();
-  final choice = await PlaySheet.show(context, PlaySheet.task(card: card));
+  final choice = await PlaySheet.show(
+    context,
+    PlaySheet.task(card: card, l10n: context.l10n),
+  );
   if (!context.mounted) return;
   switch (choice) {
     case null || PlayNow() || PlayNext():
@@ -262,30 +277,30 @@ int nextIndexOf(TimelineState day) {
   return running != null && running.started ? 1 : 0;
 }
 
-/// The hour Em seguida's first place would give [card], or [minutes] of
-/// it: the first room after what runs (and its pause) long enough for it,
-/// around the events;
-/// the queue moves after it. The server's layout has the last word.
+/// The hour Em seguida's first place would give [minutes] of task [id]:
+/// the first room after what runs (and its pause) long enough for it,
+/// around the events; the queue moves after it. The server's layout has
+/// the last word.
 DateTime nextSlotOf(
   TimelineState day,
-  TimelineEvent card, {
-  int? minutes,
+  int minutes, {
+  String? id,
   DateTime? now,
 }) {
   final at = now ?? clock.now();
   final busy = [
     for (final c in day.cards)
-      if (c.id != card.id && (!c.isTask || c.started)) c,
+      if (c.id != id && (!c.isTask || c.started)) c,
   ];
   final running = day.cards
-      .where((c) => c.section == TimelineSection.agora && c.id != card.id)
+      .where((c) => c.section == TimelineSection.agora && c.id != id)
       .firstOrNull;
   final from = running == null || running.endTime.isBefore(at)
       ? at
       : running.endTime.add(TimelinePlan.gap);
   return TimelinePlan.nextFreeStart(
     busy,
-    Duration(minutes: minutes ?? card.workMinutes),
+    Duration(minutes: minutes),
     now: from,
   );
 }
