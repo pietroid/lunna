@@ -39,29 +39,48 @@ void main() {
     ),
   );
 
-  testWidgets('answers finish, pause into Pendentes, or Para depois', (
+  testWidgets('asks one yes or no: yes pauses into Pendentes, no cancels', (
     tester,
   ) async {
     await pump(tester);
 
-    // Text only: none of the three carries an icon.
-    expect(find.byType(AppIcon), findsOneWidget);
+    expect(find.text(l10n.guardPauseTitle('Roteiro')), findsOneWidget);
+    expect(find.text(l10n.guardPauseBody('Roteiro')), findsOneWidget);
+    // The old answers are gone (#89).
+    expect(find.byType(AppButton), findsNWidgets(2));
 
-    for (final (text, decision) in [
-      (l10n.guardFinishCurrent, TimingDecision.solveCurrent),
-      (l10n.guardToPending, TimingDecision.pauseCurrent),
-      (l10n.guardToLater, TimingDecision.laterCurrent),
-    ]) {
-      await tester.tap(find.text(text));
-      verify(() => bloc.add(GuardAnswered(decision))).called(1);
-    }
+    await tester.tap(find.text(l10n.guardPauseYes));
+    verify(
+      () => bloc.add(const GuardAnswered(TimingDecision.pauseCurrent)),
+    ).called(1);
+    await tester.tap(find.text(l10n.guardPauseNo));
+    verify(() => bloc.add(const GuardDismissed())).called(1);
     expect(
       guard.answer(TimingDecision.pauseCurrent)['decision'],
       'pause_current',
     );
-    expect(
-      guard.answer(TimingDecision.laterCurrent)['decision'],
-      'later_current',
+  });
+
+  testWidgets('over a fixed block, asks to begin after it', (tester) async {
+    final block = TimelineEvent(
+      id: 'a',
+      title: 'Roteiro',
+      section: TimelineSection.agora,
+      kind: CardKind.event,
+      started: true,
+      startTime: guard.currentStart,
+      endTime: guard.currentEnd,
+      durationMinutes: 50,
+      workMinutes: 50,
     );
+    when(() => bloc.state).thenReturn(TimelineState(cards: [block]));
+    await pump(tester);
+
+    expect(find.text(l10n.guardWaitTitle('Roteiro')), findsOneWidget);
+    expect(find.text(l10n.guardWaitBody('Roteiro', '10:30')), findsOneWidget);
+    await tester.tap(find.text(l10n.guardWaitYes));
+    verify(
+      () => bloc.add(const GuardAnswered(TimingDecision.pauseCurrent)),
+    ).called(1);
   });
 }

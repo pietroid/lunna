@@ -123,20 +123,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get commonCancel => 'Cancelar';
 
   @override
-  String get guardStartNowTitle => 'Começar agora?';
-
-  @override
-  String guardStartNowRunning(String title, String start, String end) {
-    return '$title está rodando, $start–$end.';
-  }
-
-  @override
-  String get guardFinishCurrent => 'Concluir o atual';
-
-  @override
-  String get guardPostponeCurrent => 'Deixar para depois';
-
-  @override
   String durationMinutes(int minutes) {
     return '$minutes min';
   }
@@ -2212,23 +2198,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get playPieceTitle => 'Quanto você vai fazer agora?';
-
-  @override
   String playWhole(String length) {
     return 'Tudo · $length';
   }
-
-  @override
-  String guardBusyBody(String title, String start, String end) {
-    return '$title está rodando, $start–$end. O que fazer com ela?';
-  }
-
-  @override
-  String get guardToPending => 'Pausar em Pendentes';
-
-  @override
-  String get guardToLater => 'Mandar para Para depois';
 
   @override
   String get stepDayLess => '−1d';
@@ -2239,11 +2211,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String pendingTaskLeft(String length) {
     return 'Falta $length';
-  }
-
-  @override
-  String playPieceBodyLoose(String title, String length) {
-    return '$title tem $length pela frente. O resto espera em Pendentes.';
   }
 
   @override
@@ -2344,17 +2311,100 @@ class AppLocalizationsPt extends AppLocalizations {
   String get playWhenNow => 'Começar agora';
 
   @override
-  String playWhenNext(String hour) {
-    return 'Em seguida · $hour';
+  String playWhenIdle(String length) {
+    return 'Nada rodando agora · $length';
   }
 
   @override
-  String placePieceTitle(String hour) {
+  String playWhenBusy(String title, String end, String length) {
+    return '$title roda até $end · $length';
+  }
+
+  @override
+  String playWhenSoon(String hour) {
+    return 'Daqui a 15 min · $hour';
+  }
+
+  @override
+  String playWhenAt(String hour) {
+    return 'Às $hour';
+  }
+
+  @override
+  String playWhenAfter(String title, String hour) {
+    return 'Depois de $title · $hour';
+  }
+
+  @override
+  String get playMuchNowTitle => 'Quanto você vai fazer agora?';
+
+  @override
+  String playMuchAtTitle(String hour) {
     return 'Quanto vai para as $hour?';
   }
 
   @override
-  String placePieceBody(String title, String length) {
-    return '$title tem $length. O resto fica onde está.';
+  String playMuchRoomUntil(String title, String length, String room, String next) {
+    return '$title tem $length. Há $room livres até $next.';
+  }
+
+  @override
+  String get playMuchRestNow => 'O resto vira outra subtarefa, em Pendentes.';
+
+  @override
+  String get playMuchRestStays => 'O resto vira outra subtarefa e fica onde está.';
+
+  @override
+  String playMuchShortTitle(String room, String next) {
+    return 'Só cabem $room até $next';
+  }
+
+  @override
+  String playMuchShortBody(String title, String length, String room, String rest) {
+    return '$title tem $length. Fazer $room e deixar $rest como outra subtarefa?';
+  }
+
+  @override
+  String playMuchDo(String length) {
+    return 'Fazer $length';
+  }
+
+  @override
+  String guardPauseTitle(String title) {
+    return 'Pausar $title?';
+  }
+
+  @override
+  String guardPauseBody(String title) {
+    return '$title vai para Pendentes.';
+  }
+
+  @override
+  String get guardPauseYes => 'Sim, pausar e começar';
+
+  @override
+  String get guardPauseNo => 'Não';
+
+  @override
+  String guardWaitTitle(String title) {
+    return 'Começar depois de $title?';
+  }
+
+  @override
+  String guardWaitBody(String title, String end) {
+    return '$title é fixo e segue até $end.';
+  }
+
+  @override
+  String get guardWaitYes => 'Sim, começar depois';
+
+  @override
+  String playMuchUntil(String title, String hour) {
+    return '$title, às $hour';
+  }
+
+  @override
+  String playMuchDayEnd(String hour) {
+    return 'o fim do dia, às $hour';
   }
 }

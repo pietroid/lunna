@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:clock/clock.dart';
@@ -197,113 +196,11 @@ void openCard(BuildContext context, TimelineEvent card) {
   unawaited(context.push<void>('/evento/${Uri.encodeComponent(card.id)}'));
 }
 
-/// Plays a task that waits (#87), asking first **when** ([askPlay]):
-/// begun now, as a drop on Agora is (the guard and all), or put first in
-/// Em seguida at the next hour the day has room for ([nextSlotOf]). Over
-/// an hour a second sheet asks **how much**: a piece begun leaves the rest
-/// in Pendentes, a piece queued leaves it where the task was.
-///
-/// A task already waiting on Agora is next already: it begins
-/// ([beginCard]).
-Future<void> playCard(BuildContext context, TimelineEvent card) async {
-  if (card.section == TimelineSection.agora) return beginCard(context, card);
-  final bloc = context.read<TimelineBloc>();
-  final day = bloc.state;
-  final l10n = context.l10n;
-  final owed = formatMinutes(l10n, card.workMinutes);
-  final answer = await askPlay(
-    context,
-    title: card.title,
-    subtitle: card.artifactTitle,
-    owed: card.workMinutes,
-    nextAt: nextSlotOf(day, card.workMinutes, id: card.id),
-    restBody: card.artifactId == null
-        ? l10n.playPieceBodyLoose(card.title, owed)
-        : l10n.placePieceBody(card.title, owed),
-    onTalk: () => showAgentSheet(context, about: AgentSubject.task(card.id)),
-  );
-  switch (answer) {
-    case null:
-      return;
-    case (now: true, :final minutes):
-      bloc.add(
-        EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
-      );
-    case (now: false, :final minutes):
-      bloc.add(queueFirst(day, card.id, minutes));
-  }
-}
-
-/// The move that puts task [id] first in Em seguida ([nextIndexOf]): the
-/// whole, or a piece of [minutes] split off, the rest staying where it
-/// was.
-EventMoved queueFirst(TimelineState day, String id, int? minutes) => EventMoved(
-  id: id,
-  index: nextIndexOf(day),
-  minutes: minutes,
-  split: minutes != null,
-);
-
-/// Begins a task that waits: the same as letting it go on Agora. A loose
-/// task over an hour asks how much first ([PlaySheet.task]): a piece
-/// begins that long and the rest waits in Pendentes.
-Future<void> beginCard(BuildContext context, TimelineEvent card) async {
-  final bloc = context.read<TimelineBloc>();
-  void begin({int? minutes}) => bloc.add(
-    EventMoved(id: card.id, index: 0, start: true, minutes: minutes),
-  );
-  if (!playCardAsks(card)) return begin();
-  final choice = await PlaySheet.show(
-    context,
-    PlaySheet.task(card: card, l10n: context.l10n),
-  );
-  if (!context.mounted) return;
-  switch (choice) {
-    case null || PlayNow() || PlayNext():
-      return;
-    case PlayWhole():
-      begin();
-    case PlayPiece(:final minutes):
-      begin(minutes: minutes);
-    case PlayTalk():
-      await showAgentSheet(context, about: AgentSubject.task(card.id));
-  }
-}
-
-/// The place in the list of tasks that is first in Em seguida: right
-/// after the task running on Agora, else the top.
-int nextIndexOf(TimelineState day) {
-  final running = day.tasks.firstOrNull;
-  return running != null && running.started ? 1 : 0;
-}
-
-/// The hour Em seguida's first place would give [minutes] of task [id]:
-/// the first room after what runs (and its pause) long enough for it,
-/// around the events; the queue moves after it. The server's layout has
-/// the last word.
-DateTime nextSlotOf(
-  TimelineState day,
-  int minutes, {
-  String? id,
-  DateTime? now,
-}) {
-  final at = now ?? clock.now();
-  final busy = [
-    for (final c in day.cards)
-      if (c.id != id && (!c.isTask || c.started)) c,
-  ];
-  final running = day.cards
-      .where((c) => c.section == TimelineSection.agora && c.id != id)
-      .firstOrNull;
-  final from = running == null || running.endTime.isBefore(at)
-      ? at
-      : running.endTime.add(TimelinePlan.gap);
-  return TimelinePlan.nextFreeStart(
-    busy,
-    Duration(minutes: minutes),
-    now: from,
-  );
-}
+/// Plays a task that waits, by play's strict rules (#89): when, the
+/// pause, how much ([playTask], in `timeline`). A task already waiting on
+/// Agora is next already: it begins ([beginTask]).
+Future<void> playCard(BuildContext context, TimelineEvent card) =>
+    playTask(context, card);
 
 /// {@template pending_card}
 /// A task begun and not finished, drawn as Agora is: play on the left (its

@@ -10,6 +10,7 @@ import 'package:l10n/l10n.dart';
 import 'package:timeline/src/bloc/timeline_bloc.dart';
 import 'package:timeline/src/bloc/timeline_mode_cubit.dart';
 import 'package:timeline/src/models/models.dart';
+import 'package:timeline/src/play/play.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
 /// A place a card can land, and where it is on the screen.
@@ -1222,7 +1223,7 @@ class _TimelineListState extends State<TimelineList> {
         unawaited(HapticFeedback.heavyImpact());
         return;
       }
-      _now(card);
+      _dropNow(card);
       return;
     }
 
@@ -1256,6 +1257,12 @@ class _TimelineListState extends State<TimelineList> {
         ahead &&
         !closed &&
         top == null;
+    // At the top it is begun: a task asks as a drop on Agora does (#89).
+    final lifted = _state.byId(id);
+    if (start && lifted != null && lifted.isTask && !lifted.started) {
+      unawaited(beginTask(context, lifted));
+      return;
+    }
     context.read<TimelineBloc>().add(
       EventMoved(
         id: id,
@@ -1277,7 +1284,7 @@ class _TimelineListState extends State<TimelineList> {
       if (card.section == TimelineSection.agora && card.started) return;
       final play = widget.onPlay;
       if (play != null) return play(card);
-      bloc.add(EventMoved(id: card.id, index: 0, start: true));
+      unawaited(playTask(context, card));
       return;
     }
 
@@ -1288,6 +1295,16 @@ class _TimelineListState extends State<TimelineList> {
         startTime: DateTime(now.year, now.month, now.day, now.hour, now.minute),
       ),
     );
+  }
+
+  /// Let go on Agora: a task that waits is begun as a drop there asks
+  /// (#89: the pause, then how much); anything else is [_now].
+  void _dropNow(TimelineEvent card) {
+    if (card.isTask && !card.started) {
+      unawaited(beginTask(context, card));
+      return;
+    }
+    _now(card);
   }
 
   /// Begins a task waiting on Agora: through the app's play when it has
@@ -1341,6 +1358,17 @@ class _TimelineListState extends State<TimelineList> {
 
     if (start == card.startTime) return;
 
+    // A task that waits asks how much goes there, against the room up to
+    // the next thing that keeps its hour (#89); a piece leaves the rest
+    // where the task was.
+    if (card.isTask && !card.started) {
+      final amount = await askHowMuch(context, card, at: start);
+      if (amount == null || !mounted) return;
+      final minutes = amount.minutes;
+      _placeAt(card, slot, start, minutes, split: minutes != null);
+      return;
+    }
+
     if (card.durationMinutes <= room) {
       _place(card, slot, start);
       return;
@@ -1362,7 +1390,15 @@ class _TimelineListState extends State<TimelineList> {
     FreeSlot slot,
     DateTime start, [
     int? minutes,
-  ]) {
+  ]) => _placeAt(card, slot, start, minutes);
+
+  void _placeAt(
+    TimelineEvent card,
+    FreeSlot slot,
+    DateTime start,
+    int? minutes, {
+    bool split = false,
+  }) {
     context.read<TimelineBloc>().add(
       card.isTask
           ? EventMoved(
@@ -1370,6 +1406,7 @@ class _TimelineListState extends State<TimelineList> {
               index: _placeOf(card.id, slot.index).index,
               after: start,
               minutes: minutes,
+              split: split,
             )
           : EventEdited(card.id, startTime: start, workMinutes: minutes),
     );

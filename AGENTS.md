@@ -500,17 +500,20 @@ Dragging a task to the top of the day while something else is running is
 the only move that destroys something, so it is the only one that asks. The
 server answers the move with `guard: { kind: 'start_now', … }` and changes
 nothing; the app draws `GuardSheet` and posts the answer to
-`POST /tasks/timing`:
+`POST /tasks/timing`. Play asks first (#89, `PauseQuestion`) and posts
+the answer on the move itself (`move { start: true, decision }`), so the
+guard is left to the roads that do not ask. The app offers only
+`pause_current` (yes) or nothing (no):
 
 | Answer | What happens |
 |--------|--------------|
 | `solve_current` | the running block is finished and gives its hour away |
-| `pause_current` | a running task stops, owing what it had left, and waits in **Pendentes** (top of the backlog, `task.pending_at` set); a fixed block stays, and the task waits for it |
+| `pause_current` | a running task that ran 5 min or more is **split** (#89): what ran is a subtask done, what it owed a new subtask at the top of its delivery's Para depois (a loose task becomes one with subtasks, begun, so in **Pendentes**); under 5 min it stops whole, owing what it had left, in **Pendentes** (`task.pending_at` set); a fixed block stays, and the task waits for it |
 | `later_current` | the same, into **Para depois** (top of the backlog, not pending) |
 | `postpone_current` | older apps: a running task goes back in the queue, next after this one |
 
 A loose task is **pending** when `pending_at` is set: a drop into
-Pendentes (`move { backlog: true, pending: true }`) or `pause_current`
+Pendentes (`move { backlog: true, pending: true }`) or a whole `pause_current`
 sets it; any other move clears it. The card carries `pending: true`.
 
 ### The app shell
@@ -530,20 +533,23 @@ heading, and a queue **with no limit**: every card of the first day
 after Agora, events too, then the queue's tasks on the following days
 under their day, each at the hour the server's layout gives it; play on
 every task, an event in `fixedFill` with the pin, then *+ Adicionar*; a
-card carried to a place in it is `move { index }`, and one over an hour
-asks how much goes there (`PlaceSheet`, `move { index, minutes, split:
-true }`: the rest stays where it was); **Pendentes**, the deliveries
+card carried to a place in it is `move { index }`, asking how much goes
+there by play's rules (`move { index, minutes, split: true }`: the rest
+stays where it was); **Pendentes**, the deliveries
 begun (their day in the corner, −1d +1d ✓ and their bar; urgent once
 past their day) and the loose tasks paused off the day; **Para depois**,
 the whole of everything not begun, then *+ Adicionar*; a card is carried
 between the four, a drop showing only the card's quiet copy where it
-lands; **play on any task that waits asks when** (`PlayWhenSheet`), on
-Plano and on the calendar: only *Começar agora* (a drop on Agora, guard
-and all) or *Em seguida · 10:40* (first in the queue, after what runs);
-over an hour a **second sheet** asks how much (`PlaySheet` after now,
-`PlaceSheet` after Em seguida, `askPlay`): a piece begun leaves the rest in
-Pendentes (`move { start, minutes }`), a piece queued leaves it where it
-was (`split: true`); a task already waiting on Agora just begins),
+lands; **play on any task that waits goes by strict rules** (#89,
+`timeline`'s `play.dart`): **when** (*Começar agora*, or one later hour:
+*Daqui a 15 min*, *Às 13:00*, *Depois de X · 10:38*; never an hour with
+under 20 minutes of room before the next thing that keeps its hour),
+**the pause** while a task runs (yes or no), **how much** (`playPieces`:
+over an hour 30 min, 1h and the whole or the room; an hour or less that
+fits asks nothing), then one move; **a piece splits the task into two
+subtasks** on the server, and so does pausing one that ran; a task
+already waiting on Agora skips *when*; see
+[product/spec/home.md](./product/spec/home.md)),
 **Objetivos** (`GoalsPage`) and **Menu**, which opens Rotina,
 **Feitas**, **Produtos** (the catalogue), sets when the day starts and
 ends, and signs out. *Ver calendário* pushes `DayPage` (the calendar).

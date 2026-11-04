@@ -281,30 +281,6 @@ abstract class AppLocalizations {
   /// **'Cancelar'**
   String get commonCancel;
 
-  /// No description provided for @guardStartNowTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Começar agora?'**
-  String get guardStartNowTitle;
-
-  /// No description provided for @guardStartNowRunning.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} está rodando, {start}–{end}.'**
-  String guardStartNowRunning(String title, String start, String end);
-
-  /// No description provided for @guardFinishCurrent.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir o atual'**
-  String get guardFinishCurrent;
-
-  /// No description provided for @guardPostponeCurrent.
-  ///
-  /// In pt, this message translates to:
-  /// **'Deixar para depois'**
-  String get guardPostponeCurrent;
-
   /// No description provided for @durationMinutes.
   ///
   /// In pt, this message translates to:
@@ -3431,35 +3407,11 @@ abstract class AppLocalizations {
   /// **'Urgente · {status}'**
   String pendingUrgentStatus(String status);
 
-  /// No description provided for @playPieceTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Quanto você vai fazer agora?'**
-  String get playPieceTitle;
-
   /// No description provided for @playWhole.
   ///
   /// In pt, this message translates to:
   /// **'Tudo · {length}'**
   String playWhole(String length);
-
-  /// No description provided for @guardBusyBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} está rodando, {start}–{end}. O que fazer com ela?'**
-  String guardBusyBody(String title, String start, String end);
-
-  /// No description provided for @guardToPending.
-  ///
-  /// In pt, this message translates to:
-  /// **'Pausar em Pendentes'**
-  String get guardToPending;
-
-  /// No description provided for @guardToLater.
-  ///
-  /// In pt, this message translates to:
-  /// **'Mandar para Para depois'**
-  String get guardToLater;
 
   /// No description provided for @stepDayLess.
   ///
@@ -3478,12 +3430,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Falta {length}'**
   String pendingTaskLeft(String length);
-
-  /// Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} tem {length} pela frente. O resto espera em Pendentes.'**
-  String playPieceBodyLoose(String title, String length);
 
   /// The one button at the foot of every screen, to a screen reader: opens the composer.
   ///
@@ -3647,23 +3593,137 @@ abstract class AppLocalizations {
   /// **'Começar agora'**
   String get playWhenNow;
 
-  /// No description provided for @playWhenNext.
+  /// Under the when sheet title when nothing runs: the task's length.
   ///
   /// In pt, this message translates to:
-  /// **'Em seguida · {hour}'**
-  String playWhenNext(String hour);
+  /// **'Nada rodando agora · {length}'**
+  String playWhenIdle(String length);
 
-  /// No description provided for @placePieceTitle.
+  /// Under the when sheet title while something runs.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} roda até {end} · {length}'**
+  String playWhenBusy(String title, String end, String length);
+
+  /// Play when nothing runs: start in 15 minutes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Daqui a 15 min · {hour}'**
+  String playWhenSoon(String hour);
+
+  /// Play: the first hour with at least 20 minutes of room, when the nearer one has none.
+  ///
+  /// In pt, this message translates to:
+  /// **'Às {hour}'**
+  String playWhenAt(String hour);
+
+  /// Play while something runs: right after it, at the first hour with 20 minutes of room.
+  ///
+  /// In pt, this message translates to:
+  /// **'Depois de {title} · {hour}'**
+  String playWhenAfter(String title, String hour);
+
+  /// No description provided for @playMuchNowTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto você vai fazer agora?'**
+  String get playMuchNowTitle;
+
+  /// No description provided for @playMuchAtTitle.
   ///
   /// In pt, this message translates to:
   /// **'Quanto vai para as {hour}?'**
-  String placePieceTitle(String hour);
+  String playMuchAtTitle(String hour);
 
-  /// No description provided for @placePieceBody.
+  /// How much: the task, and the room from its hour to what comes next.
   ///
   /// In pt, this message translates to:
-  /// **'{title} tem {length}. O resto fica onde está.'**
-  String placePieceBody(String title, String length);
+  /// **'{title} tem {length}. Há {room} livres até {next}.'**
+  String playMuchRoomUntil(String title, String length, String room, String next);
+
+  /// No description provided for @playMuchRestNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'O resto vira outra subtarefa, em Pendentes.'**
+  String get playMuchRestNow;
+
+  /// No description provided for @playMuchRestStays.
+  ///
+  /// In pt, this message translates to:
+  /// **'O resto vira outra subtarefa e fica onde está.'**
+  String get playMuchRestStays;
+
+  /// How much, a task of an hour or less that does not fit.
+  ///
+  /// In pt, this message translates to:
+  /// **'Só cabem {room} até {next}'**
+  String playMuchShortTitle(String room, String next);
+
+  /// No description provided for @playMuchShortBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} tem {length}. Fazer {room} e deixar {rest} como outra subtarefa?'**
+  String playMuchShortBody(String title, String length, String room, String rest);
+
+  /// No description provided for @playMuchDo.
+  ///
+  /// In pt, this message translates to:
+  /// **'Fazer {length}'**
+  String playMuchDo(String length);
+
+  /// The guard, after play now while something runs.
+  ///
+  /// In pt, this message translates to:
+  /// **'Pausar {title}?'**
+  String guardPauseTitle(String title);
+
+  /// No description provided for @guardPauseBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} vai para Pendentes.'**
+  String guardPauseBody(String title);
+
+  /// No description provided for @guardPauseYes.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sim, pausar e começar'**
+  String get guardPauseYes;
+
+  /// No description provided for @guardPauseNo.
+  ///
+  /// In pt, this message translates to:
+  /// **'Não'**
+  String get guardPauseNo;
+
+  /// The guard when what runs is a fixed block (#89): it is not paused, and the task begins after it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar depois de {title}?'**
+  String guardWaitTitle(String title);
+
+  /// Under guardWaitTitle: the fixed block and its end.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} é fixo e segue até {end}.'**
+  String guardWaitBody(String title, String end);
+
+  /// Yes on the guard over a fixed block: the task begins after it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sim, começar depois'**
+  String get guardWaitYes;
+
+  /// What the room runs up to: the next fixed block.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title}, às {hour}'**
+  String playMuchUntil(String title, String hour);
+
+  /// What the room runs up to: the end of the working day.
+  ///
+  /// In pt, this message translates to:
+  /// **'o fim do dia, às {hour}'**
+  String playMuchDayEnd(String hour);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

@@ -492,7 +492,7 @@ export class EventLayoutService {
     now = new Date(),
   ): Promise<StartNowGuard | undefined> {
     const day = await this._timeline.day(user, 1, now);
-    const task = pendingOf(day, action.taskId);
+    let task = pendingOf(day, action.taskId);
 
     if (action.backlog === true) {
       await this._shelve(
@@ -537,6 +537,15 @@ export class EventLayoutService {
     if (action.start === true && running !== undefined) {
       if (action.decision === 'solve_current') {
         await this._finishRunning(user, running, trace, now);
+      } else if (
+        running.kind === 'task' &&
+        action.decision === 'pause_current' &&
+        ranMinutes(running.event, now) >= BLOCK_GAP_MINUTES
+      ) {
+        // Paused after some work (#89): what ran is a subtask done, and
+        // what it still owes another, waiting in Pendentes.
+        await this._pauseSplit(user, day, running, trace, now);
+        shelved = running.task.id;
       } else if (
         running.kind === 'task' &&
         (action.decision === 'pause_current' ||
@@ -601,6 +610,8 @@ export class EventLayoutService {
     if (action.start === true && own === undefined && action.minutes) {
       minutes = Math.min(action.minutes, task.minutes);
       if (minutes < task.minutes) {
+        // A piece and its rest are two subtasks (#89).
+        task = await this._withSubtasks(user, task, trace);
         await this._splitRest(user, day, task, task.minutes - minutes, trace);
       }
     }
@@ -616,6 +627,7 @@ export class EventLayoutService {
       }
       minutes = Math.min(action.minutes, task.minutes);
       if (minutes < task.minutes) {
+        task = await this._withSubtasks(user, task, trace);
         const written = await this._tasks.insert(user, {
           title: task.title,
           minutes: task.minutes - minutes,
@@ -1132,6 +1144,74 @@ export class EventLayoutService {
       trace,
       task.artifactId === undefined,
     );
+  }
+
+  /**
+   * Makes a loose task one with subtasks (#89), as `+ Subtarefa` does: a
+   * delivery in storage, with its title, length and notes, at the end of
+   * the open ones, and the task its first subtask. [startedAt] begins it
+   * (a task that ran); a task waiting in Pendentes was begun already, so
+   * its delivery is begun when it was put there. A task of a delivery
+   * already, or a server with no deliveries, is answered as it was.
+   */
+  private async _withSubtasks(
+    user: CalendarUser,
+    task: Task,
+    trace: Trace,
+    startedAt?: Date,
+  ): Promise<Task> {
+    if (task.artifactId !== undefined || this._artifacts === undefined) {
+      return task;
+    }
+    const open = (await this._artifacts.list(user)).filter(
+      (it) => it.doneAt === undefined,
+    );
+    const begun =
+      startedAt ??
+      (task.pendingAt === undefined ? undefined : new Date(task.pendingAt));
+    const made = await this._artifacts.insert(user, {
+      title: task.title,
+      minutes: task.minutes,
+      position: Math.max(-1, ...open.map((it) => it.position)) + 1,
+      ...(begun === undefined ? {} : { startedAt: begun.toISOString() }),
+    });
+    if (task.notes !== '') {
+      await this._artifacts.update(user, { ...made, notes: task.notes });
+    }
+    trace.log('task.subtasks', { taskId: task.id, artifactId: made.id });
+    return this._tasks.update(user, { ...task, artifactId: made.id });
+  }
+
+  /**
+   * Pauses a running task by splitting it (#89): the hour it ran is kept
+   * and ticked off as a subtask of [ran] minutes, and what it still owed is
+   * a new subtask, not done, at the top of its delivery's Para depois. The
+   * delivery is begun, so it waits in Pendentes, and its sum of what is
+   * left is exactly what was owed.
+   */
+  private async _pauseSplit(
+    user: CalendarUser,
+    day: Day,
+    running: Extract<Running, { kind: 'task' }>,
+    trace: Trace,
+    now: Date,
+  ): Promise<void> {
+    const owed = owedMinutes(running.event, now);
+    const ran = ranMinutes(running.event, now);
+    const task = await this._withSubtasks(
+      user,
+      running.task,
+      trace,
+      new Date(running.event.startTime),
+    );
+    await this._finish(user, running.event, trace, now);
+    trace.log('task.done', { taskId: task.id, minutes: ran });
+    await this._tasks.update(user, {
+      ...task,
+      minutes: ran,
+      doneAt: now.toISOString(),
+    });
+    await this._splitRest(user, day, task, owed, trace);
   }
 
   private async _shelve(
@@ -1859,6 +1939,20 @@ function owedMinutes(event: CalendarEvent, now: Date): number {
   const left = workSecondsOf(event) - done;
 
   return Math.max(BLOCK_GAP_MINUTES, Math.ceil(left / 60));
+}
+
+/**
+ * The work [event] has done by [now], in whole minutes (rounded): what a
+ * paused task's subtask done keeps (#89).
+ */
+function ranMinutes(event: CalendarEvent, now: Date): number {
+  const start = Date.parse(event.startTime);
+  const until =
+    event.pausedAt === undefined
+      ? Math.min(now.getTime(), Date.parse(event.endTime))
+      : Date.parse(event.pausedAt);
+  const done = Math.max(0, (until - start) / 1000 - (event.pausedSeconds ?? 0));
+  return Math.round(done / 60);
 }
 
 /**

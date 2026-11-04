@@ -93,6 +93,21 @@ export function requireMove(taskId: string, dto: MoveEventDto): TimingAction {
     if (dto.split) action.split = true;
   }
 
+  if (dto.decision !== undefined) {
+    // The guard answered before the move was posted (#89): play asks
+    // whether to pause what runs before it asks how much.
+    if (
+      typeof dto.decision !== 'string' ||
+      !TIMING_DECISIONS.includes(dto.decision as TimingDecision)
+    ) {
+      throw new BadRequestException(`Unknown decision "${dto.decision}"`);
+    }
+    if (!action.start) {
+      throw new BadRequestException('only a drop that starts takes a decision');
+    }
+    action.decision = dto.decision as TimingDecision;
+  }
+
   if (dto.minutes !== undefined) {
     // With start, a piece of the task to begin: the rest waits in Pendentes.
     // With split, a piece to put in that place: the rest stays where it was.

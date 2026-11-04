@@ -173,6 +173,7 @@ class DemoTimelineRepository implements TimelineRepository {
     DateTime? after,
     int? minutes,
     bool split = false,
+    TimingDecision? decision,
     int days = TimelineRepository.defaultDays,
   }) async {
     final task = _task(id);

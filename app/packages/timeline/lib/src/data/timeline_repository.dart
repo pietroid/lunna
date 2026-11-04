@@ -84,6 +84,8 @@ class TimelineRepository {
   /// With [split], [minutes] is a piece: only that much takes the place,
   /// and the rest stays where the task was (its turn, its hour, the
   /// backlog or Pendentes).
+  ///
+  /// With [start], [decision] is the guard's answer, asked first (#89).
   Future<Timeline> moveTask(
     String id,
     int index, {
@@ -93,6 +95,7 @@ class TimelineRepository {
     DateTime? after,
     int? minutes,
     bool split = false,
+    TimingDecision? decision,
     int days = defaultDays,
   }) => _day(
     () => apiClient.post<Map<String, dynamic>>(
@@ -105,6 +108,7 @@ class TimelineRepository {
         if (after != null) 'after': after.toUtc().toIso8601String(),
         'minutes': ?minutes,
         if (split) 'split': true,
+        'decision': ?decision?.wire,
       },
     ),
   );

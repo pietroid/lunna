@@ -22,6 +22,7 @@ String hhmm(DateTime at) =>
     '${at.minute.toString().padLeft(2, '0')}';
 
 void main() {
+  final l10n = lookupAppLocalizations(const Locale('pt'));
   setUpAll(() => registerFallbackValue(const TimelineRequested()));
 
   /// Ten in the morning, on the wall clock of whatever machine runs this.
@@ -327,20 +328,23 @@ void main() {
 
       await drag(tester, 'Longo', tester.getCenter(gap).dy);
 
-      // Twenty-five minutes of room: the gap less the pause after "Primeiro".
-      expect(find.text('Não cabe inteiro aqui'), findsOneWidget);
+      // How much goes there (#89): the room runs to the next thing that
+      // keeps its hour, the meeting, less the pause: twenty minutes.
+      expect(find.byType(PlayMuchQuestion), findsOneWidget);
       verifyNever(() => bloc.add(any(that: isA<EventMoved>())));
 
-      await tester.tap(find.text('Ajustar para 25 min'));
+      await tester.tap(find.text(l10n.playMuchDo('20 min')));
       await settle(tester);
 
+      // A piece: the rest stays where the task was.
       verify(
         () => bloc.add(
           EventMoved(
             id: 'long',
             index: 1,
             after: first.endTime.add(const Duration(minutes: 5)),
-            minutes: 25,
+            minutes: 20,
+            split: true,
           ),
         ),
       ).called(1);
@@ -715,7 +719,6 @@ void main() {
       );
       await pump(tester, [running, far], mode: TimelineMode.list);
 
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       // Nothing else today: the day kept is tomorrow, and the task two
       // days out is only counted.
       expect(find.text(l10n.sectionNow), findsOneWidget);
@@ -765,7 +768,6 @@ void main() {
     testAt('always draws both stages, saying when each is empty', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       await pump(tester, [meeting], mode: TimelineMode.list);
 
       expect(find.text(l10n.sectionToday), findsOneWidget);
@@ -807,7 +809,6 @@ void main() {
     testAt('draws the backlog under the queue, with lengths for hours', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       await pumpStages(tester, [running], [shelved('x', 'Armário')]);
 
       final line = tester.getTopLeft(find.text(l10n.stageBacklog)).dy;
@@ -853,7 +854,6 @@ void main() {
     testAt('tells the end of the queue from the top of the backlog', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final bloc = await pumpStages(
         tester,
         [running, later],
@@ -874,7 +874,6 @@ void main() {
     testAt('puts a task into an empty queue without starting it', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final bloc = await pumpStages(tester, [], [shelved('x', 'Armário')]);
 
       final empty = tester.getCenter(find.text(l10n.stageDayEmpty));
@@ -884,7 +883,6 @@ void main() {
     });
 
     testAt('drops into an empty backlog', (tester) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final bloc = await pumpStages(tester, [running, later], []);
 
       final empty = tester.getCenter(find.text(l10n.stageBacklogEmpty));
@@ -1163,6 +1161,11 @@ void main() {
       final play = find.byType(TaskPlayButton);
       expect(play, findsNWidgets(2));
       await tester.tap(play.last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      // When (#89): now; it fits, so nothing more is asked.
+      await tester.tap(find.text(l10n.playWhenNow));
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
       verify(
@@ -1207,6 +1210,10 @@ void main() {
 
       // The run's play, after Agora's round pause.
       await tester.tap(find.byType(TaskPlayButton).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text(l10n.playWhenNow));
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
       verify(
@@ -1691,7 +1698,6 @@ void main() {
     }
 
     testAt('draws only those, under the day Tempo keeps', (tester) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final (_, tapped) = await pumpKept(tester);
 
       double top(String text) => tester.getTopLeft(find.text(text)).dy;
@@ -1710,7 +1716,6 @@ void main() {
     testAt('keeps Agora and one day, and draws the days after when asked', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final inTwoDays = DateTime(now.year, now.month, now.day + 2, 9);
       TimelineEvent far(String id, int minutes) => TimelineEvent(
         id: id,
@@ -1765,7 +1770,6 @@ void main() {
     testAt('counts a drop in the whole queue, right over the card under it', (
       tester,
     ) async {
-      final l10n = lookupAppLocalizations(const Locale('pt'));
       final (bloc, _) = await pumpKept(tester);
 
       final heading = tester.getBottomLeft(find.text(l10n.sectionToday)).dy;

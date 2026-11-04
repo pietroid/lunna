@@ -1,17 +1,18 @@
 import 'package:app_ui/app_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:l10n/l10n.dart';
 import 'package:timeline/src/bloc/timeline_bloc.dart';
 import 'package:timeline/src/models/models.dart';
-import 'package:timeline/src/widgets/format.dart';
+import 'package:timeline/src/play/play.dart';
 
 /// {@template guard_sheet}
 /// The one question a drag can raise, drawn over the timeline.
 ///
-/// Something is running and a card was just dropped at the top of the day.
-/// Each answer starts the dropped card now; they differ in what becomes of
-/// the running one: finished, paused into Pendentes, or sent to Para
-/// depois. The server decides what that does to the rest of the
+/// Something is running and a card was just dropped at the top of the day,
+/// by a road that did not ask first (play asks before it posts, #89). One
+/// yes or no ([PauseQuestion]): yes pauses what runs into Pendentes
+/// (`pause_current`, split by the server into what was done and what is
+/// left) and begins the card; a fixed block is not paused, and the card
+/// begins after it. The server decides what that does to the rest of the
 /// day — this only asks.
 ///
 /// While it is open the timeline behind it is the one from before the drag.
@@ -45,96 +46,26 @@ class GuardSheet extends StatelessWidget {
           left: 0,
           right: 0,
           bottom: 0,
-          child: _Panel(guard: guard, busy: busy),
+          child: Builder(
+            builder: (context) {
+              final bloc = context.read<TimelineBloc>();
+              final current = bloc.state.byId(guard.currentId);
+              return PauseQuestion(
+                current: guard.currentTitle,
+                fixedUntil: current != null && !current.isTask
+                    ? guard.currentEnd
+                    : null,
+                busy: busy,
+                onAnswer: (yes) => bloc.add(
+                  yes
+                      ? const GuardAnswered(TimingDecision.pauseCurrent)
+                      : const GuardDismissed(),
+                ),
+              );
+            },
+          ),
         ),
       ],
-    );
-  }
-}
-
-class _Panel extends StatelessWidget {
-  const _Panel({required this.guard, required this.busy});
-
-  final StartNowGuard guard;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final bloc = context.read<TimelineBloc>();
-
-    void answer(TimingDecision decision) {
-      if (!busy) bloc.add(GuardAnswered(decision));
-    }
-
-    return Material(
-      color: AppColors.bg,
-      borderRadius: const BorderRadius.vertical(
-        top: Radius.circular(AppSpacing.cardRadius),
-      ),
-      child: SafeArea(
-        top: false,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSpacing.maxContentWidth,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.s6,
-              AppSpacing.s5,
-              AppSpacing.s6,
-              AppSpacing.s5,
-            ),
-            child: Opacity(
-              // The panel goes quiet while the server works out what the
-              // answer did, rather than closing and reopening.
-              opacity: busy ? 0.5 : 1,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  AppListItem(
-                    iconData: AppIcons.timer,
-                    title: l10n.guardStartNowTitle,
-                    subtitle: l10n.guardBusyBody(
-                      guard.currentTitle,
-                      hhmm(guard.currentStart),
-                      hhmm(guard.currentEnd),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.s4),
-                  AppButton(
-                    text: l10n.guardFinishCurrent,
-                    expand: true,
-                    onPressed: () => answer(TimingDecision.solveCurrent),
-                  ),
-                  const SizedBox(height: AppSpacing.s2),
-                  AppButton(
-                    text: l10n.guardToPending,
-                    variant: AppButtonVariant.secondary,
-                    expand: true,
-                    onPressed: () => answer(TimingDecision.pauseCurrent),
-                  ),
-                  const SizedBox(height: AppSpacing.s2),
-                  AppButton(
-                    text: l10n.guardToLater,
-                    variant: AppButtonVariant.secondary,
-                    expand: true,
-                    onPressed: () => answer(TimingDecision.laterCurrent),
-                  ),
-                  const SizedBox(height: AppSpacing.s2),
-                  AppButton.text(
-                    text: l10n.commonCancel,
-                    color: AppColors.ink2,
-                    expand: true,
-                    onPressed: () => bloc.add(const GuardDismissed()),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

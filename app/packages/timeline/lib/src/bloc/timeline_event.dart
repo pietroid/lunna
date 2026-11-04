@@ -107,6 +107,7 @@ final class EventMoved extends TimelineBlocEvent {
     this.after,
     this.minutes,
     this.split = false,
+    this.decision,
   });
 
   /// The task that was dragged.
@@ -138,6 +139,10 @@ final class EventMoved extends TimelineBlocEvent {
   /// place, and the rest stays where the task was.
   final bool split;
 
+  /// With [start]: the guard's answer, asked before the move (#89), so
+  /// the server raises none.
+  final TimingDecision? decision;
+
   @override
   List<Object?> get props => [
     id,
@@ -148,6 +153,7 @@ final class EventMoved extends TimelineBlocEvent {
     after,
     minutes,
     split,
+    decision,
   ];
 }
 
