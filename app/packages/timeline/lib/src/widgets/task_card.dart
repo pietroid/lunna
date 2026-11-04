@@ -74,6 +74,8 @@ class TaskCard extends StatelessWidget {
     this.bar,
     this.onTap,
     this.keepPlaySlot = false,
+    this.mark,
+    this.markInk,
     super.key,
   });
 
@@ -135,6 +137,14 @@ class TaskCard extends StatelessWidget {
   /// among tasks lines its title up with theirs.
   final bool keepPlaySlot;
 
+  /// Without [onPlay], what the button's room shows instead: an event's
+  /// pin (a routine's repeat), as the calendar marks it.
+  final AppIconData? mark;
+
+  /// The colour of [mark] and of [trailing] on a [fill] that grey would
+  /// sink into ([AppColors.fixedInk] on [AppColors.fixedFill]).
+  final Color? markInk;
+
   /// [subtitle], unless it only says the title again: a task whose one
   /// task is itself is drawn by its name alone.
   String? get _subtitle {
@@ -166,6 +176,18 @@ class TaskCard extends StatelessWidget {
               if (onPlay != null) ...[
                 TaskPlayButton(playing: playing, onPressed: onPlay),
                 const SizedBox(width: AppSpacing.s3),
+              ] else if (mark case final mark?) ...[
+                SizedBox.square(
+                  dimension: TaskPlayButton.size,
+                  child: Center(
+                    child: AppIcon(
+                      iconData: mark,
+                      size: AppSpacing.s4,
+                      color: markInk ?? AppColors.ink3,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s3),
               ] else if (keepPlaySlot)
                 const SizedBox(width: TaskPlayButton.size + AppSpacing.s3)
               else
@@ -191,7 +213,7 @@ class TaskCard extends StatelessWidget {
                           Text(
                             trailing!,
                             style: AppTypography.label.copyWith(
-                              color: AppColors.ink3,
+                              color: trailingInk ?? markInk ?? AppColors.ink3,
                             ),
                           ),
                         ],

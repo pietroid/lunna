@@ -135,7 +135,8 @@ void main() {
   ) async {
     final (bloc, tapped) = await pump(tester, [running, later]);
 
-    await tester.tap(find.byIcon(AppIcons.pause.iconData!));
+    // Agora's round button, before the title, as on Plano.
+    await tester.tap(find.byType(TaskPlayButton).first);
     await tester.pump(const Duration(milliseconds: 400));
 
     verify(() => bloc.add(const EventPauseToggled('a'))).called(1);
@@ -253,7 +254,8 @@ void main() {
     // Nothing is running yet, so there is nothing to pause.
     expect(find.byIcon(AppIcons.pause.iconData!), findsNothing);
 
-    await tester.tap(find.byIcon(AppIcons.play.iconData!));
+    // Begun from the round button before its title.
+    await tester.tap(find.byType(TaskPlayButton));
     await tester.pump(const Duration(milliseconds: 400));
     verify(() => bloc.add(const EventStarted('w'))).called(1);
 
@@ -354,7 +356,9 @@ void main() {
       await pump(tester, [later]);
       final empty = find.byType(FreeTile);
 
-      expect(tester.getSize(empty).height, busy);
+      // Within a pixel: the round button before a running task's title is
+      // a hair taller than the title's line.
+      expect(tester.getSize(empty).height, moreOrLessEquals(busy, epsilon: 1));
       // It is now, and the card after it says when now ends.
       // An hour, not any colon: some of the break's lines have one.
       expect(
@@ -1155,10 +1159,10 @@ void main() {
     ) async {
       final (bloc, tapped) = await pump(tester, [running, later]);
 
-      // Agora has its own controls; the later task has the one play.
+      // Agora's round pause, and the later task's play.
       final play = find.byType(TaskPlayButton);
-      expect(play, findsOneWidget);
-      await tester.tap(play);
+      expect(play, findsNWidgets(2));
+      await tester.tap(play.last);
       await tester.pump(const Duration(milliseconds: 400));
 
       verify(
@@ -1180,7 +1184,8 @@ void main() {
       );
       await pump(tester, [running, meeting]);
 
-      expect(find.byType(TaskPlayButton), findsNothing);
+      // Only Agora's round pause: the meeting has none.
+      expect(find.byType(TaskPlayButton), findsOneWidget);
     });
 
     testAt('play on a delivery run begins its next task', (tester) async {
@@ -1200,7 +1205,8 @@ void main() {
         step('s2', 60),
       ]);
 
-      await tester.tap(find.byType(TaskPlayButton));
+      // The run's play, after Agora's round pause.
+      await tester.tap(find.byType(TaskPlayButton).last);
       await tester.pump(const Duration(milliseconds: 400));
 
       verify(

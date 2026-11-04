@@ -1,3 +1,4 @@
+import 'package:agent/src/compose_cubit.dart';
 import 'package:agent/src/models.dart';
 import 'package:api_client/api_client.dart';
 import 'package:timeline/timeline.dart';
@@ -83,6 +84,20 @@ class AgentRepository {
   const AgentRepository({required this.apiClient});
 
   final ApiClient apiClient;
+
+  /// Reads one line of the composer (`POST /agent/compose`): what it
+  /// would write down, which nothing does until Adicionar. [about] is the
+  /// page it was opened on.
+  Future<ComposeDraft> compose(String text, {AgentSubject? about}) =>
+      _guard(() async {
+        final response = await apiClient.post<Map<String, dynamic>>(
+          '/agent/compose',
+          data: {'text': text, if (about != null) 'about': about.toJson()},
+        );
+        return ComposeDraft.fromJson(
+          response.data?['draft'] as Map<String, dynamic>? ?? const {},
+        );
+      });
 
   /// Answers the last of [history], in the conversation [conversationId]
   /// (a new one when null). Changes nothing on the day.

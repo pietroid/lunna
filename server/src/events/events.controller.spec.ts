@@ -117,7 +117,12 @@ function answerOf(
 ): Record<string, unknown> {
   if (guard === undefined) throw new Error('No guard to answer');
 
-  return { taskId: guard.taskId, index: guard.index, decision };
+  return {
+    taskId: guard.taskId,
+    index: guard.index,
+    decision,
+    ...(guard.minutes === undefined ? {} : { minutes: guard.minutes }),
+  };
 }
 
 function body(response: { body: unknown }): Timeline {
@@ -892,6 +897,79 @@ describe('the day', () => {
         title: 'Segundo',
         started: true,
       });
+    });
+
+    it('begins a piece of a long task, and the rest waits in Pendentes', async () => {
+      await add('Escrever o roteiro', 120).expect(201);
+      const id = (await task('Escrever o roteiro')).id;
+
+      const response = await drag(id, 0, { start: true, minutes: 30 }).expect(
+        201,
+      );
+
+      expect(tasks(response)[0]).toMatchObject({
+        id,
+        title: 'Escrever o roteiro',
+        started: true,
+        durationMinutes: 30,
+      });
+      const rest = backlog(response);
+      expect(rest).toHaveLength(1);
+      expect(rest[0]).toMatchObject({
+        title: 'Escrever o roteiro',
+        durationMinutes: 90,
+        pending: true,
+      });
+    });
+
+    it('begins the whole task when the piece is all of it', async () => {
+      await add('Revisar', 60).expect(201);
+
+      const response = await drag((await task('Revisar')).id, 0, {
+        start: true,
+        minutes: 90,
+      }).expect(201);
+
+      expect(tasks(response)[0]).toMatchObject({
+        title: 'Revisar',
+        started: true,
+        durationMinutes: 60,
+      });
+      expect(backlog(response)).toEqual([]);
+    });
+
+    it('refuses a piece over eight hours, in Portuguese', async () => {
+      await add('Maratona', 600).expect(201);
+
+      const refused = await drag((await task('Maratona')).id, 0, {
+        start: true,
+        minutes: 500,
+      }).expect(400);
+
+      expect((refused.body as { message: string }).message).toContain(
+        'Um pedaço',
+      );
+    });
+
+    it('keeps the piece through the guard', async () => {
+      await add('Em andamento', 60).expect(201);
+      await add('Longa', 120).expect(201);
+      await begin('Em andamento');
+
+      const guard = body(
+        await drag((await task('Longa')).id, 0, { start: true, minutes: 60 }),
+      ).guard;
+      expect(guard?.minutes).toBe(60);
+      const after = await answer(answerOf(guard, 'solve_current')).expect(201);
+
+      expect(tasks(after)[0]).toMatchObject({
+        title: 'Longa',
+        started: true,
+        durationMinutes: 60,
+      });
+      expect(
+        backlog(after).find((it) => it.title === 'Longa')?.durationMinutes,
+      ).toBe(60);
     });
 
     it('asks what to do with what is running before starting something else', async () => {

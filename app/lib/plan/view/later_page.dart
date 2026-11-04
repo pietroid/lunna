@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
@@ -7,7 +6,6 @@ import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/plan/view/plan_items.dart';
-import 'package:lunna/plan/view/write_task.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template later_page}
@@ -79,13 +77,8 @@ class LaterPage extends StatelessWidget {
           if (guard != null) GuardSheet(guard: guard, busy: day.guardBusy),
         ],
       ),
-      // The + writes at the end of the list on screen.
-      floatingActionButton: AskDock(
-        fab: AppFab(
-          tooltip: l10n.shellWriteDown,
-          onPressed: () => unawaited(writeTask(context)),
-        ),
-      ),
+      // The composer's +, as on every screen.
+      floatingActionButton: const AskDock(),
       floatingActionButtonLocation: AskDock.location,
       floatingActionButtonAnimator: AskDock.animator,
     );

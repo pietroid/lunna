@@ -59,6 +59,7 @@ class EventTile extends StatelessWidget {
     this.landing,
     this.preview = false,
     this.actionsKey,
+    this.leadKey,
     this.onPauseToggled,
     this.onAdjusted,
     this.onDone,
@@ -100,6 +101,9 @@ class EventTile extends StatelessWidget {
   /// Put on the row of buttons, so the list's own gesture can leave a tap on
   /// one of them alone.
   final Key? actionsKey;
+
+  /// Put on Agora's round button before the title, for the same reason.
+  final Key? leadKey;
 
   /// Pauses or resumes. The buttons are only drawn when this is given.
   final VoidCallback? onPauseToggled;
@@ -202,6 +206,15 @@ class EventTile extends StatelessWidget {
                   onPressed: onPlay,
                 ),
                 const SizedBox(width: AppSpacing.s2),
+              ] else if (_leadingToggle case final toggle?) ...[
+                // Agora's task plays and pauses from the same round button
+                // as on Plano, before its title.
+                TaskPlayButton(
+                  key: leadKey,
+                  playing: card.started && !card.isPaused,
+                  onPressed: toggle,
+                ),
+                const SizedBox(width: AppSpacing.s2),
               ],
               // The mark comes before the title, where it reads as "this one
               // is a meeting" or "this one is pinned", rather than after it,
@@ -298,12 +311,24 @@ class EventTile extends StatelessWidget {
     return EventControls(
       key: actionsKey,
       card: card,
+      // The round button before the title plays and pauses a task.
+      play: _leadingToggle == null,
       onPauseToggled: onPauseToggled,
       onStarted: onStarted,
       onSnoozed: onSnoozed,
       onAdjusted: onAdjusted!,
       onDone: onDone,
     );
+  }
+
+  /// What the round button before the title does on Agora: a task waiting
+  /// to be begun begins, a begun one pauses or resumes. None for an event,
+  /// which keeps its quiet row, nor for a task in overtime.
+  VoidCallback? get _leadingToggle {
+    if (!_isNow || !card.isTask || !card.isInteractive || card.isLate) {
+      return null;
+    }
+    return card.awaitingStart ? onStarted : onPauseToggled;
   }
 
   /// Whether the card is drawn as a fixed block, which wins over a
@@ -344,6 +369,7 @@ class EventControls extends StatelessWidget {
   const EventControls({
     required this.card,
     required this.onAdjusted,
+    this.play = true,
     this.onDone,
     this.onPauseToggled,
     this.onStarted,
@@ -353,6 +379,10 @@ class EventControls extends StatelessWidget {
 
   /// The block.
   final TimelineEvent card;
+
+  /// Whether the row draws play and pause itself; false where the card
+  /// draws them as its round button before the title.
+  final bool play;
 
   /// Pauses or resumes. Only drawn while it runs.
   final VoidCallback? onPauseToggled;
@@ -382,7 +412,9 @@ class EventControls extends StatelessWidget {
       children: [
         // A block waiting to be begun is running on the clock and not in
         // fact, so its button begins it rather than pausing it.
-        if (card.awaitingStart && onStarted != null)
+        if (!play)
+          const SizedBox.shrink()
+        else if (card.awaitingStart && onStarted != null)
           _Action(
             tooltip: context.l10n.controlStart,
             onTap: onStarted,

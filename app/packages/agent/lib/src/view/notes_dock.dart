@@ -11,8 +11,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
 /// {@template notes_dock}
-/// The foot of a page of notes (a task's, an artifact's): the agent's bar,
-/// and beside it, where the + is on Tempo, a microphone that dictates.
+/// The foot of a page of notes (a task's, an artifact's): the composer's
+/// +, about the page, and beside it a microphone that dictates.
 ///
 /// Dictating is not talking to the agent. The words go straight into
 /// [notes] as they are heard, each recording a paragraph of its own (at
@@ -21,10 +21,10 @@ import 'package:l10n/l10n.dart';
 /// keeps them; discarding takes that paragraph back out. The recording runs
 /// until it is stopped, so one can speak freely.
 ///
-/// The bar keeps its own microphone, which talks to the agent as it does on
-/// Tempo ([AskDock]): the small one inside the bar asks, the big one beside
-/// it writes. The dock never moves or changes shape: with the keyboard up it
-/// sits on top of it, so one can type and dictate in the same breath.
+/// The + opens the composer about the page ([AskDock]), whose own
+/// microphone asks; the one beside it writes. The dock never moves: with
+/// the keyboard up it sits on top of it, so one can type and dictate in the
+/// same breath.
 ///
 /// There is one microphone: dictating stops the agent's recording, and the
 /// agent's starting stops dictation, keeping its words. A microphone that is
@@ -236,13 +236,16 @@ class _NotesDockViewState extends State<_NotesDockView> {
                       onDiscard: () => unawaited(_discard()),
                     ),
                   )
-                : AskDock(
-                    about: widget.about,
-                    hero: false,
-                    fab: AppFab(
-                      iconData: AppIcons.microphone,
-                      tooltip: l10n.dictationStart,
-                      onPressed: () => unawaited(_start()),
+                : Align(
+                    alignment: Alignment.centerRight,
+                    child: AskDock(
+                      about: widget.about,
+                      hero: false,
+                      beside: AppFab(
+                        iconData: AppIcons.microphone,
+                        tooltip: l10n.dictationStart,
+                        onPressed: () => unawaited(_start()),
+                      ),
                     ),
                   ),
           ),

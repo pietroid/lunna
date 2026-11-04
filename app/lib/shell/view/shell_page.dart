@@ -92,15 +92,6 @@ class _ShellPageState extends State<ShellPage> {
     }
   }
 
-  Future<void> _onFabPressed(BuildContext context) async {
-    if (_index == _goalsIndex) {
-      await showGoalSheet(context);
-      return;
-    }
-    if (_index == _menuIndex) _onSelected(_planIndex);
-    await writeTask(context);
-  }
-
   void _openLater(BuildContext context) {
     unawaited(AnalyticsScope.of(context).screen('Para depois'));
     unawaited(
@@ -118,7 +109,6 @@ class _ShellPageState extends State<ShellPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final goals = _index == _goalsIndex;
 
     return MultiRepositoryProvider(
       providers: [
@@ -151,15 +141,9 @@ class _ShellPageState extends State<ShellPage> {
                 const MenuPage(),
               ],
             ),
-            // One dock for the three tabs: the bar and a recording on it stay
-            // as they are when the tab changes, and only the + beside it
-            // changes what it writes.
-            floatingActionButton: AskDock(
-              fab: AppFab(
-                tooltip: goals ? l10n.goalsNew : l10n.shellWriteDown,
-                onPressed: () => unawaited(_onFabPressed(context)),
-              ),
-            ),
+            // One button for the three tabs: the composer's +, which reads
+            // a task, an event, a goal or a change to the day from the words.
+            floatingActionButton: const AskDock(),
             floatingActionButtonLocation: AskDock.location,
             floatingActionButtonAnimator: AskDock.animator,
             bottomNavigationBar: AppBottomBar(

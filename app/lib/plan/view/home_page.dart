@@ -227,7 +227,7 @@ class _HomePageState extends State<HomePage> {
                       PlanDropTarget(
                         section: PlanSection.now,
                         onDrop: planDropper(context, PlanSection.now, items),
-                        builder: (context, {required hovering}) => _Pad(
+                        builder: (context, {hovering}) => _Pad(
                           child: NowDropZone(
                             hovering: hovering,
                             child: _carry(
@@ -238,36 +238,42 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
-                      if (items.next case final next?)
-                        PlanDropTarget(
-                          section: PlanSection.next,
-                          onDrop: planDropper(context, PlanSection.next, items),
-                          builder: (context, {required hovering}) => Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.s6,
-                                  AppSpacing.s3,
-                                  AppSpacing.s6,
-                                  AppSpacing.s2,
-                                ),
-                                child: Text(
-                                  l10n.feedNext,
-                                  style: AppTypography.caption,
-                                ),
-                              ),
-                              if (hovering) const _Pad(child: PlanDropGap()),
-                              _Pad(
-                                child: _carry(
-                                  next,
-                                  PlanSection.next,
-                                  _NextCard(card: next),
-                                ),
-                              ),
-                            ],
+                      // Em seguida is a heading as Agora is, and a queue:
+                      // every task plays, and is carried to another place
+                      // in it or to another section.
+                      if (items.next.isNotEmpty || _carrying) ...[
+                        _Heading(title: l10n.feedNext),
+                        PlanQueue(
+                          cards: items.next,
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.s6,
+                            0,
+                            AppSpacing.s6,
+                            kQueueGap,
+                          ),
+                          onDrop: queueDropper(context, items),
+                          itemBuilder: (context, card) => _carry(
+                            card,
+                            PlanSection.next,
+                            _NextCard(card: card),
                           ),
                         ),
+                        // The queue ends in a +, as Lista's day did: it
+                        // writes a task right after the last one here.
+                        _Pad(
+                          child: AppAddRow(
+                            dense: true,
+                            onTap: () => unawaited(
+                              writeTask(
+                                context,
+                                placement: Placement.queue(
+                                  queueEndOf(day.tasks, items),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       if (items.pending.isNotEmpty || _carrying)
                         PlanDropTarget(
                           section: PlanSection.pending,
@@ -276,11 +282,12 @@ class _HomePageState extends State<HomePage> {
                             PlanSection.pending,
                             items,
                           ),
-                          builder: (context, {required hovering}) => Column(
+                          builder: (context, {hovering}) => Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               _Heading(title: l10n.homePending),
-                              if (hovering) const _Pad(child: PlanDropGap()),
+                              if (hovering != null)
+                                _Pad(child: PlanDropGhost(carry: hovering)),
                               for (final item in items.pending)
                                 _Pad(
                                   key: ValueKey(item.id),
@@ -292,12 +299,13 @@ class _HomePageState extends State<HomePage> {
                       PlanDropTarget(
                         section: PlanSection.later,
                         onDrop: planDropper(context, PlanSection.later, items),
-                        builder: (context, {required hovering}) => Column(
+                        builder: (context, {hovering}) => Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _Heading(title: l10n.stageBacklog),
-                            if (hovering) const _Pad(child: PlanDropGap()),
-                            if (later.isEmpty && !hovering)
+                            if (hovering != null)
+                              _Pad(child: PlanDropGhost(carry: hovering)),
+                            if (later.isEmpty && hovering == null)
                               _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
                             for (final item in later)
                               _Pad(
@@ -390,11 +398,23 @@ class _NextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parent = card.artifactTitle;
+    // An event is drawn as the calendar draws it: its own fill and its pin
+    // (a routine's day, its repeat) where a task's play would be.
+    final (fill, mark, ink) = card.isTask
+        ? (null, null, null)
+        : card.isRoutine
+        ? (AppColors.routineFill, AppIcons.repeat, AppColors.routineInk)
+        : (AppColors.fixedFill, AppIcons.pin, AppColors.fixedInk);
     return TaskCard(
       title: parent ?? card.title,
       subtitle: parent == null ? null : card.title,
       trailing: '${hhmm(card.startTime)} – ${hhmm(card.endTime)}',
-      onPlay: card.isTask ? () => playCard(context, card) : null,
+      fill: fill,
+      mark: mark,
+      markInk: ink,
+      onPlay: card.isTask
+          ? () => unawaited(playCard(context, card))
+          : null,
       keepPlaySlot: true,
       onTap: () => openCard(context, card),
     );
@@ -552,56 +572,30 @@ class _Quiet extends StatelessWidget {
 }
 
 /// {@template now_drop_zone}
-/// Agora while a card is carried over it: what runs fades under an
-/// accent outline that says letting go begins the card. Pendentes, Em
-/// seguida and Para depois open a gap at their top ([PlanDropGap]); only
-/// Agora says what a drop does, since only there it starts something.
+/// Agora while a card is carried over it: the card it would begin, quiet
+/// ([PlanDropGhost]), in place of what runs, which keeps its room so
+/// nothing under it jumps. No words: as everywhere on Plano, the preview
+/// is the card where it would land.
 /// {@endtemplate}
 class NowDropZone extends StatelessWidget {
   /// {@macro now_drop_zone}
   const NowDropZone({required this.hovering, required this.child, super.key});
 
-  /// Whether a card is over it.
-  final bool hovering;
+  /// The card carried over it, or none.
+  final PlanCarry? hovering;
 
   /// Agora's card.
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    if (!hovering) return child;
-    final radius = BorderRadius.circular(AppSpacing.chipRadius);
+    final carried = hovering;
+    if (carried == null) return child;
     return Stack(
+      alignment: Alignment.center,
       children: [
-        Opacity(opacity: 0.25, child: child),
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.bg.withValues(alpha: 0.6),
-              borderRadius: radius,
-              border: Border.all(color: AppColors.accent, width: 2),
-            ),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppIcon(
-                    iconData: AppIcons.play,
-                    size: AppSpacing.s4,
-                    color: AppColors.accent,
-                  ),
-                  const SizedBox(width: AppSpacing.s2),
-                  Text(
-                    context.l10n.planDropStart,
-                    style: AppTypography.labelStrong.copyWith(
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        Visibility.maintain(visible: false, child: child),
+        PlanDropGhost(carry: carried),
       ],
     );
   }

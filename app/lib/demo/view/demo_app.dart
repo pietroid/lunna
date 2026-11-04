@@ -280,7 +280,7 @@ class _DemoShellState extends State<_DemoShell> {
         children: const [_DemoTempo(), ArtifactsPage()],
       ),
       // The agent's bar on every tab, as in the app.
-      floatingActionButton: AskDock(day: clock.now, fab: fab),
+      floatingActionButton: AskDock(fab: fab),
       floatingActionButtonLocation: AskDock.location,
       floatingActionButtonAnimator: AskDock.animator,
       bottomNavigationBar: AppBottomBar(

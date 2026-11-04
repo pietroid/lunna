@@ -3497,12 +3497,6 @@ abstract class AppLocalizations {
   /// **'Mandar para Para depois'**
   String get guardToLater;
 
-  /// No description provided for @planDropStart.
-  ///
-  /// In pt, this message translates to:
-  /// **'Solte para começar agora'**
-  String get planDropStart;
-
   /// No description provided for @stepDayLess.
   ///
   /// In pt, this message translates to:
@@ -3521,11 +3515,11 @@ abstract class AppLocalizations {
   /// **'Falta {length}'**
   String pendingTaskLeft(String length);
 
-  /// The gap a section of Plano opens while a card is carried over it.
+  /// Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.
   ///
   /// In pt, this message translates to:
-  /// **'Solte aqui'**
-  String get planDropHere;
+  /// **'{title} tem {length} pela frente. O resto espera em Pendentes.'**
+  String playPieceBodyLoose(String title, String length);
 
   /// The one button at the foot of every screen, to a screen reader: opens the composer.
   ///
@@ -3634,6 +3628,36 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Conversar'**
   String get composeTalk;
+
+  /// The summary's kind for a goal: an amount to bill by a day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivo'**
+  String get composeKindGoal;
+
+  /// A goal's line in the summary: the amount by its last day.
+  ///
+  /// In pt, this message translates to:
+  /// **'{value} até {day}'**
+  String composeGoalBy(String value, String day);
+
+  /// Snackbar after the composer wrote something down.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adicionado'**
+  String get composeAdded;
+
+  /// The composer's read failed (no connection, the model down).
+  ///
+  /// In pt, this message translates to:
+  /// **'Não consegui entender agora. Tente de novo.'**
+  String get composeFailed;
+
+  /// The button on a loose task's page that gives it a subtask.
+  ///
+  /// In pt, this message translates to:
+  /// **'Subtarefa'**
+  String get subtaskAdd;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

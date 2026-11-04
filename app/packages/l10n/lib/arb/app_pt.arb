@@ -1987,7 +1987,6 @@
   },
   "guardToPending": "Pausar em Pendentes",
   "guardToLater": "Mandar para Para depois",
-  "planDropStart": "Solte para começar agora",
   "stepDayLess": "−1d",
   "stepDayMore": "+1d",
   "pendingTaskLeft": "Falta {length}",
@@ -1999,9 +1998,17 @@
       }
     }
   },
-  "planDropHere": "Solte aqui",
-  "@planDropHere": {
-    "description": "The gap a section of Plano opens while a card is carried over it."
+  "playPieceBodyLoose": "{title} tem {length} pela frente. O resto espera em Pendentes.",
+  "@playPieceBodyLoose": {
+    "description": "Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
   },
   "composeOpen": "Anotar ou pedir",
   "@composeOpen": {
@@ -2092,5 +2099,29 @@
   "composeTalk": "Conversar",
   "@composeTalk": {
     "description": "The summary's button that opens the conversation about the request."
+  },
+  "composeKindGoal": "Objetivo",
+  "@composeKindGoal": {
+    "description": "The summary's kind for a goal: an amount to bill by a day."
+  },
+  "composeGoalBy": "{value} até {day}",
+  "@composeGoalBy": {
+    "description": "A goal's line in the summary: the amount by its last day.",
+    "placeholders": {
+      "value": {"type": "String"},
+      "day": {"type": "String"}
+    }
+  },
+  "composeAdded": "Adicionado",
+  "@composeAdded": {
+    "description": "Snackbar after the composer wrote something down."
+  },
+  "composeFailed": "Não consegui entender agora. Tente de novo.",
+  "@composeFailed": {
+    "description": "The composer's read failed (no connection, the model down)."
+  },
+  "subtaskAdd": "Subtarefa",
+  "@subtaskAdd": {
+    "description": "The button on a loose task's page that gives it a subtask."
   }
 }

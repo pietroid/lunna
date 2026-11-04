@@ -462,6 +462,7 @@ class StartNowGuard extends Equatable {
     required this.currentTitle,
     required this.currentStart,
     required this.currentEnd,
+    this.minutes,
   });
 
   /// Creates a [StartNowGuard] from the API's JSON.
@@ -475,8 +476,13 @@ class StartNowGuard extends Equatable {
       currentTitle: current['title'] as String? ?? '',
       currentStart: _date(current['startTime']),
       currentEnd: _date(current['endTime']),
+      minutes: json['minutes'] as int?,
     );
   }
+
+  /// The piece of the task asked for, when play was of a piece: the answer
+  /// carries it back, so the split survives the question.
+  final int? minutes;
 
   /// The task that was dropped.
   final String taskId;
@@ -501,12 +507,14 @@ class StartNowGuard extends Equatable {
     'taskId': taskId,
     'index': index,
     'decision': decision.wire,
+    'minutes': ?minutes,
   };
 
   @override
   List<Object?> get props => [
     taskId,
     index,
+    minutes,
     currentId,
     currentTitle,
     currentStart,

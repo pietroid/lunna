@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:agent/agent.dart';
 import 'package:analytics/analytics.dart';
 import 'package:app_ui/app_ui.dart';
+import 'package:artifacts/artifacts.dart';
 import 'package:auth/auth.dart';
 import 'package:cycle/cycle.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -44,6 +45,13 @@ class App extends StatelessWidget {
              builder: (context, state) => EventPage(
                id: state.pathParameters['id']!,
                dock: NotesDock.task,
+               onAddSubtask: (id, title, minutes) => unawaited(
+                 context.read<ArtifactsCubit>().addSubtask(
+                   id,
+                   title,
+                   minutes: minutes,
+                 ),
+               ),
              ),
            ),
            // The routines: what happens every day, and on which days.
@@ -82,14 +90,9 @@ class App extends StatelessWidget {
                  return cubit;
                },
                child: DoneArchivePage(
-                 // Nothing here to write down but the day's: the + puts a
-                 // task in Para depois, as it would from anywhere.
-                 dock: AskDock(
-                   fab: AppFab(
-                     tooltip: context.l10n.shellWriteDown,
-                     onPressed: () => unawaited(writeDownOnTimeline(context)),
-                   ),
-                 ),
+                 // Nothing here to write down but the day's: the composer's
+                 // +, as from anywhere.
+                 dock: const AskDock(),
                  // A finished task is not on the timeline, so its page is
                  // handed the card the archive drew.
                  onOpen: (card) => Navigator.of(context).push(
@@ -117,14 +120,9 @@ class App extends StatelessWidget {
          ],
        );
 
-  /// The agent's bar on a page with nothing of its own to write: the +
-  /// writes something down on the day, as from anywhere.
-  static Widget _dockOnTheDay(BuildContext context) => AskDock(
-    fab: AppFab(
-      tooltip: context.l10n.shellWriteDown,
-      onPressed: () => unawaited(writeDownOnTimeline(context)),
-    ),
-  );
+  /// The foot of a page with nothing of its own to write: the composer's
+  /// +, as from anywhere.
+  static Widget _dockOnTheDay(BuildContext context) => const AskDock();
 
   /// Where screens are reported, and what wraps the app for replays.
   final Analytics analytics;

@@ -2263,9 +2263,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get guardToLater => 'Mandar para Para depois';
 
   @override
-  String get planDropStart => 'Solte para começar agora';
-
-  @override
   String get stepDayLess => '−1d';
 
   @override
@@ -2277,7 +2274,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get planDropHere => 'Solte aqui';
+  String playPieceBodyLoose(String title, String length) {
+    return '$title tem $length pela frente. O resto espera em Pendentes.';
+  }
 
   @override
   String get composeOpen => 'Anotar ou pedir';
@@ -2344,4 +2343,21 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get composeTalk => 'Conversar';
+
+  @override
+  String get composeKindGoal => 'Objetivo';
+
+  @override
+  String composeGoalBy(String value, String day) {
+    return '$value até $day';
+  }
+
+  @override
+  String get composeAdded => 'Adicionado';
+
+  @override
+  String get composeFailed => 'Não consegui entender agora. Tente de novo.';
+
+  @override
+  String get subtaskAdd => 'Subtarefa';
 }

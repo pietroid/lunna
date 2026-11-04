@@ -36,6 +36,9 @@ Future<void> showComposer(
   BuildContext context, {
   required ComposeCubit cubit,
   required VoiceCubit voice,
+  void Function(ComposeDraft draft)? onAdd,
+  void Function(ComposeDraft draft)? onAdjust,
+  void Function(ComposeDraft draft)? onTalk,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -47,7 +50,7 @@ Future<void> showComposer(
         BlocProvider<ComposeCubit>.value(value: cubit),
         BlocProvider<VoiceCubit>.value(value: voice),
       ],
-      child: const ComposerSheet(),
+      child: ComposerSheet(onAdd: onAdd, onAdjust: onAdjust, onTalk: onTalk),
     ),
   );
 }
@@ -285,7 +288,12 @@ class ComposeSummary extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
         alignment: Alignment.bottomCenter,
-        child: draft == null || state.status == ComposeStatus.reading
+        child: state.status == ComposeStatus.failed
+            ? Text(
+                context.l10n.composeFailed,
+                style: AppTypography.label.copyWith(color: AppColors.ink2),
+              )
+            : draft == null || state.status == ComposeStatus.reading
             ? const _Reading()
             : _Read(
                 draft: draft,
@@ -341,7 +349,9 @@ class _Read extends StatelessWidget {
     final l10n = context.l10n;
     final plan = draft.kind == ComposeKind.plan;
     final parent = draft.parent;
-    final lines = plan ? draft.changes : draft.subtasks;
+    final lines = plan
+        ? draft.changes
+        : [for (final it in draft.subtasks) it.title];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -411,7 +421,9 @@ class _Read extends StatelessWidget {
               onPressed: () => (plan ? onTalk : onAdjust)?.call(draft),
             ),
             const Spacer(),
-            AppButton.icon(
+            // A turn that proposed nothing has nothing to apply: only the
+            // conversation.
+            if (!plan || draft.planId != null) AppButton.icon(
               icon: const AppIcon(
                 iconData: AppIcons.check,
                 size: 18,
@@ -431,10 +443,16 @@ class _Read extends StatelessWidget {
     final kind = switch (draft.kind) {
       ComposeKind.task => l10n.composeKindTask,
       ComposeKind.event => l10n.composeKindEvent,
+      ComposeKind.goal => l10n.composeKindGoal,
       ComposeKind.plan => l10n.composeKindPlan,
     };
     final start = draft.start;
     final minutes = draft.minutes;
+    final value = draft.value;
+    final due = draft.due;
+    if (draft.kind == ComposeKind.goal && value != null && due != null) {
+      return '$kind · ${l10n.composeGoalBy(_money(value), _day(l10n, due))}';
+    }
     return [
       kind,
       if (start != null)
@@ -454,6 +472,16 @@ class _Read extends StatelessWidget {
       1 => l10n.composeTomorrow,
       _ => '${day.day}/${day.month}',
     };
+  }
+
+  /// "R\$ 10.000".
+  static String _money(int reais) {
+    final digits = reais.toString();
+    final grouped = digits.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => '.',
+    );
+    return 'R\$ $grouped';
   }
 
   static String _hour(DateTime time) =>
@@ -485,6 +513,7 @@ class _KindMark extends StatelessWidget {
         AppIcons.pin,
         AppColors.fixedInk,
       ),
+      ComposeKind.goal => (AppColors.fill, AppIcons.goal, AppColors.ink),
       ComposeKind.plan => (AppColors.accentWash, AppIcons.agent, null),
     };
     return Container(

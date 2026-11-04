@@ -24,7 +24,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:local": "node scripts/local-db.mjs",
-    "eval:agent": "tsx src/agent/evals/run.ts"
+    "eval:agent": "tsx src/agent/evals/run.ts",
+    "eval:compose": "tsx src/agent/evals/compose.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

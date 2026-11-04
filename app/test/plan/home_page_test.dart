@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/plan/plan.dart';
+import 'package:lunna/plan/view/plan_drag.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeline/timeline.dart';
@@ -42,6 +43,7 @@ void main() {
     bool started = false,
     String? artifactId,
     String? artifactTitle,
+    int minutes = 45,
   }) {
     final start = now.add(Duration(minutes: at));
     return TimelineEvent(
@@ -51,9 +53,9 @@ void main() {
       kind: kind,
       started: started,
       startTime: start,
-      endTime: start.add(const Duration(minutes: 45)),
-      durationMinutes: 45,
-      workMinutes: 45,
+      endTime: start.add(Duration(minutes: minutes)),
+      durationMinutes: minutes,
+      workMinutes: minutes,
       artifactId: artifactId,
       artifactTitle: artifactTitle,
     );
@@ -124,6 +126,7 @@ void main() {
     WidgetTester tester, {
     List<TimelineEvent> cards = const [],
     List<TimelineEvent> backlog = const [],
+    List<TimelineEvent> tasks = const [],
     List<Artifact> queue = const [],
     ArtifactsRepository? artifactsRepository,
   }) async {
@@ -135,6 +138,7 @@ void main() {
       TimelineState(
         status: TimelineStatus.success,
         cards: cards,
+        tasks: tasks,
         backlog: backlog,
       ),
     );
@@ -181,7 +185,7 @@ void main() {
   ) async {
     await pump(tester);
 
-    expect(find.text(l10n.feedBreak), findsOneWidget);
+    expect(find.byType(AgoraIdleTile), findsOneWidget);
     expect(find.text(l10n.homePending), findsNothing);
     expect(find.text(l10n.homeLaterEmpty), findsOneWidget);
   });
@@ -422,7 +426,7 @@ void main() {
     await carry(
       tester,
       find.text('Notas fiscais'),
-      find.text(l10n.feedBreak),
+      find.byType(AgoraIdleTile),
     );
 
     verify(
@@ -516,5 +520,95 @@ void main() {
     verify(
       () => timeline.add(const EventMoved(id: 'b', index: 0, start: true)),
     ).called(1);
+  });
+
+  group('Em seguida', () {
+    final day = [
+      card('a', 'Roteiro', TimelineSection.agora, at: -10, started: true),
+      card('b', 'Planejar a semana', TimelineSection.dia, at: 40),
+      card('c', 'Standup', TimelineSection.dia, at: 90, kind: CardKind.event),
+      card('d', 'Responder e-mails', TimelineSection.dia, at: 140),
+      card('e', 'Revisar contrato', TimelineSection.dia, at: 190),
+      card('f', 'Ligar para a gráfica', TimelineSection.dia, at: 240),
+    ];
+
+    testAt('queues four of the day under its heading, then + Adicionar', (
+      tester,
+    ) async {
+      await pump(tester, cards: day);
+
+      expect(find.text(l10n.feedNext), findsOneWidget);
+      for (final title in [
+        'Planejar a semana',
+        'Standup',
+        'Responder e-mails',
+        'Revisar contrato',
+      ]) {
+        expect(find.text(title), findsOneWidget);
+      }
+      expect(find.text('Ligar para a gráfica'), findsNothing);
+      // Agora's pause and a play on each task; the event has the pin.
+      expect(find.byType(TaskPlayButton), findsNWidgets(4));
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is AppIcon && w.iconData == AppIcons.pin,
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(AppAddRow), findsWidgets);
+      final add = tester.widget<AppAddRow>(find.byType(AppAddRow).first);
+      expect(add.dense, isTrue);
+    });
+
+    testAt('+ Adicionar opens the sheet to write one down', (tester) async {
+      await pump(tester, cards: day);
+
+      await tester.tap(find.text(l10n.timelineAdd).first);
+      // The sheet's field blinks its cursor: pumped, not settled.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(AppPromptSheet), findsOneWidget);
+    });
+
+    testAt('play on a task over an hour asks how much first', (tester) async {
+      await pump(
+        tester,
+        cards: [
+          card('b', 'Escrever o roteiro', TimelineSection.dia, minutes: 120),
+        ],
+      );
+
+      await tester.tap(find.byType(TaskPlayButton));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.playPieceTitle), findsOneWidget);
+
+      await tester.tap(find.text(formatMinutes(l10n, 30)));
+      await tester.pumpAndSettle();
+      verify(
+        () => timeline.add(
+          const EventMoved(id: 'b', index: 0, start: true, minutes: 30),
+        ),
+      ).called(1);
+    });
+
+    test('its + writes right after the last task it draws', () {
+      final tasks = [
+        for (final c in day)
+          if (c.isTask) c,
+      ];
+      PlanItems items(List<TimelineEvent> cards) => PlanItems.of(
+        TimelineState(cards: cards, tasks: tasks),
+        null,
+        now,
+      );
+
+      // a, b, d, e drawn: after e, the fourth of a b d e f.
+      expect(queueEndOf(tasks, items(day)), 4);
+      // The last drawn an event: after the task above it.
+      expect(queueEndOf(tasks, items(day.take(3).toList())), 2);
+      // Nothing in Em seguida: right under what runs.
+      expect(queueEndOf(tasks, items(day.take(1).toList())), 1);
+    });
   });
 }

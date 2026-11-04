@@ -291,6 +291,44 @@ export class ArtifactsService {
   }
 
   /**
+   * A subtask of the task [taskId]: one level, so a task of a delivery
+   * gets it in its delivery, at the end of its tasks.
+   *
+   * The first subtask of a loose task makes it a task with tasks: a
+   * delivery is written with the task's title, notes and length, and the
+   * task's own row becomes its first task, untouched (a begun one keeps
+   * running, its hour and its place in the queue as they were). The new
+   * subtask, as every later one, goes at the end. Answers the delivery.
+   */
+  async addSubtask(
+    user: CalendarUser,
+    taskId: string,
+    input: { title: string; minutes: number },
+    trace: Trace,
+  ): Promise<string> {
+    const task = await this._tasks.get(user, taskId);
+    if (task === undefined || task.doneAt !== undefined) {
+      throw new NotFoundException('Essa tarefa não existe mais.');
+    }
+
+    let artifactId = task.artifactId;
+    if (artifactId === undefined) {
+      artifactId = await this.create(
+        user,
+        { title: task.title, minutes: task.minutes },
+        'end',
+      );
+      const made = await this._require(user, artifactId);
+      await this._artifacts.update(user, { ...made, notes: task.notes });
+      await this._tasks.update(user, { ...task, artifactId });
+      trace.log('task.subtasks', { taskId, artifactId });
+    }
+
+    await this.addTask(user, artifactId, input, trace);
+    return artifactId;
+  }
+
+  /**
    * Writes a kind down in the catalogue, at the end of its shelf.
    *
    * The shelf is one she has ([categoryId]), or one named ([category]):

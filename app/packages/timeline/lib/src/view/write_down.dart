@@ -23,6 +23,7 @@ Future<void> writeDownOnTimeline(
   String? artifactId,
   List<String> products = const [],
   ValueChanged<AppPromptResult>? withProduct,
+  String? initialText,
 }) async {
   final bloc = context.read<TimelineBloc>();
   final l10n = context.l10n;
@@ -43,6 +44,7 @@ Future<void> writeDownOnTimeline(
         ? l10n.promptToBacklog
         : l10n.promptToQueue,
     initialStart: at,
+    initialText: initialText,
     initialDuration: minutes == null ? null : Duration(minutes: minutes),
     // An artifact holds tasks; a fixed block is the calendar's alone.
     fixable: artifactId == null,

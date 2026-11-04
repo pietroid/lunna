@@ -75,6 +75,11 @@ export interface StartNowGuard {
   /** The task that was dropped at the top. */
   taskId: string;
   index: number;
+  /**
+   * The piece asked for, when the play was of a piece of a longer task: the
+   * answer carries it back, so the split is not lost to the question.
+   */
+  minutes?: number;
   /** What is running now, which the answer decides the fate of. */
   current: {
     id: string;
