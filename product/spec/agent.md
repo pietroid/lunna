@@ -216,7 +216,7 @@ when it lands. Only a sheet or the conversation's page covers it.
 | Screen | The round button | The composer is about |
 |--------|------------------|-----------------------|
 | Plano, Objetivos, Menu | the composer's + | nothing more |
-| Ver o dia, Para depois, Feitas, Ciclo, Folgas | the composer's + | nothing more |
+| Ver calendário, Feitas, Ciclo, Folgas | the composer's + | nothing more |
 | Rotina | + Nova rotina, at the next whole hour of the working day | (no composer) |
 | Produtos (`AllArtifactsPage`) | + Nova entrega | (no composer) |
 | A delivery, Pendentes | the composer's + | the delivery |

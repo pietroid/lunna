@@ -11,7 +11,7 @@ import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:timeline/timeline.dart';
 
 /// {@template day_page}
-/// Ver o dia: the calendar, to scale, day after day, on a page of its own
+/// Ver calendário: the calendar, to scale, day after day, on a page of its own
 /// over Plano. The same calendar Tempo drew: a drop on Agora begins a task,
 /// free room and its + write there, and the + at the foot writes on the
 /// first free hour in sight.

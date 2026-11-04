@@ -1,0 +1,159 @@
+{
+  "title": "Plano consistente (#87)",
+  "screens": [
+    {
+      "png": "img/mockup-1.png",
+      "title": "Carregando: o esqueleto",
+      "why": "The first read draws each section's cards as skeletons, never an empty page.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 300,
+          "y": 150,
+          "label": "Agora's skeleton",
+          "text": "PlanSkeletonCard (tall): the card's fill, the play's round room, a name line, the hours and the controls' line, pulsing (AppSkeleton)."
+        },
+        {
+          "id": "B",
+          "x": 300,
+          "y": 300,
+          "label": "Real headings",
+          "text": "Headings and Ver calendário are drawn at once; only the cards wait. A reload keeps the cards on screen (isInitialLoad)."
+        },
+        {
+          "id": "C",
+          "x": 300,
+          "y": 560,
+          "label": "Para depois too",
+          "text": "Three skeleton rows; Pendentes is left out until it has something, as today."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-2.png",
+      "title": "Em seguida: tudo com hora",
+      "why": "Every card of the day after Agora, events too, then the tasks of the next days, with no limit.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 380,
+          "y": 203,
+          "label": "Ver calendário",
+          "text": "Was 'Ver o dia' beside Agora; now 'Ver calendário' beside Em seguida (same pill, calendar icon). Agora keeps the day's mark."
+        },
+        {
+          "id": "B",
+          "x": 380,
+          "y": 257,
+          "label": "Concrete hours",
+          "text": "Every row has its start–end from the server's layout. A pause, a move, a task done early: on the next read every task moves to its new hour; events never move."
+        },
+        {
+          "id": "C",
+          "x": 28,
+          "y": 413,
+          "label": "All the day's events",
+          "text": "Standup, lunch, the call: every event of the day, sand fill and pin, in clock order between the tasks."
+        },
+        {
+          "id": "D",
+          "x": 120,
+          "y": 618,
+          "label": "Later days",
+          "text": "Then the tasks the queue puts on the next days, under the day's name (Amanhã, Sexta, 6 de nov.). Events of later days stay on the calendar."
+        },
+        {
+          "id": "E",
+          "x": 150,
+          "y": 764,
+          "label": "+ Adicionar, no cap",
+          "text": "No 'up to four': the queue ends in + Adicionar, which writes right after the last task."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-3.png",
+      "title": "Para depois, a lista inteira",
+      "why": "No more 'Abrir a lista': the whole backlog, and a + at its end like Em seguida's.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 300,
+          "y": 175,
+          "label": "Pendentes as is",
+          "text": "Unchanged, as the issue asks."
+        },
+        {
+          "id": "B",
+          "x": 330,
+          "y": 537,
+          "label": "Whole list",
+          "text": "Every loose task, then every delivery not begun, in order; still carried between sections."
+        },
+        {
+          "id": "C",
+          "x": 130,
+          "y": 730,
+          "label": "+ Adicionar",
+          "text": "Same dense AppAddRow as Em seguida: writes a task at the end of Para depois (the backlog)."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-4.png",
+      "title": "Play pergunta quando",
+      "why": "Every play asks: now, or first in Em seguida at the next free hour; over an hour, how much too.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 380,
+          "y": 463,
+          "label": "Always asks",
+          "text": "PlayWhenSheet on every play of a waiting task: Plano, Pendentes, Para depois, the calendar; a delivery names its next task."
+        },
+        {
+          "id": "B",
+          "x": 330,
+          "y": 593,
+          "label": "Quanto (> 1 h)",
+          "text": "30 min | 1 h | Tudo · 2h, Tudo chosen; a piece says what is left. Under an hour this row is not drawn."
+        },
+        {
+          "id": "C",
+          "x": 28,
+          "y": 672,
+          "label": "Começar agora",
+          "text": "The accent. With something running, the guard asks as today (Concluir / Pausar em Pendentes / Para depois). A piece begun leaves the rest in Pendentes."
+        },
+        {
+          "id": "D",
+          "x": 28,
+          "y": 719,
+          "label": "Em seguida · hora",
+          "text": "First place in the queue, after what runs; the hour is the first room that fits the piece (2 h hops lunch and the call: 15:50; 30 min: 10:38). A piece queued leaves the rest where it was."
+        }
+      ]
+    },
+    {
+      "png": "img/mockup-5.png",
+      "title": "Soltar em Em seguida",
+      "why": "A task over an hour let go in Em seguida asks how much goes there, as Agora does.",
+      "pins": [
+        {
+          "id": "A",
+          "x": 330,
+          "y": 653,
+          "label": "The place's hour",
+          "text": "Titled with the hour of the slot it was let go on (after the card above and the pause)."
+        },
+        {
+          "id": "B",
+          "x": 140,
+          "y": 795,
+          "label": "30 min · 1 h · Tudo",
+          "text": "30 min the accent, as the play sheet was. The rest stays where it was (Para depois here). A drop on Agora keeps PlaySheet.task, the rest to Pendentes."
+        }
+      ]
+    }
+  ]
+}

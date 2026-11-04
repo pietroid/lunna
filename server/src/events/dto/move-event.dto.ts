@@ -12,4 +12,9 @@ export class MoveEventDto {
   after?: string;
   /** The length it was cut to so it fits that gap. */
   minutes?: number;
+  /**
+   * With [minutes] and not [start]: only a piece that long takes the place,
+   * and the rest stays where the task was (#87).
+   */
+  split?: boolean;
 }

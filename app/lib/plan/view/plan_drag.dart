@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:lunna/plan/view/plan_items.dart';
@@ -104,15 +105,44 @@ Future<void> dropOnPlan(
 
   switch ((carry, to)) {
     case (CarryCard(:final card), PlanSection.now):
-      // Let go on Agora is play: a task over an hour asks how much first.
-      await playCard(context, card);
+      // Let go on Agora is now: a task over an hour asks how much first.
+      await beginCard(context, card);
     case (CarryDelivery(:final artifact), PlanSection.now):
       await playPending(context, artifact);
 
     case (CarryCard(:final card), PlanSection.next):
       if (card.id == before?.id) return;
       final index = _placeIn(bloc.state.tasks, items, card.id, before);
-      bloc.add(EventMoved(id: card.id, index: index));
+      // Over an hour, how much goes there (#87), as play asks. A task
+      // begun owes what it owes, whole.
+      int? minutes;
+      if (!card.started && card.isTask && card.workMinutes > kPlayAsksOver) {
+        final choice = await PlaceSheet.show(
+          context,
+          PlaceSheet(
+            title: card.title,
+            owed: card.workMinutes,
+            at: slotHourOf(items, before),
+          ),
+        );
+        switch (choice) {
+          case PlayPiece(minutes: final m):
+            minutes = m;
+          case PlayWhole():
+            break;
+          case _:
+            return;
+        }
+      }
+      // A piece is split off, the rest staying where it was.
+      bloc.add(
+        EventMoved(
+          id: card.id,
+          index: index,
+          minutes: minutes,
+          split: minutes != null,
+        ),
+      );
     case (CarryDelivery(:final artifact), PlanSection.next):
       final task = nextTaskOf(artifact);
       if (task == null) return;
@@ -143,6 +173,16 @@ Future<void> dropOnPlan(
   }
 }
 
+/// The hour a drop in Em seguida [before] a card lands at: the end of the
+/// card above it (or of Agora's) and the pause.
+DateTime slotHourOf(PlanItems items, TimelineEvent? before) {
+  final above = before == null
+      ? items.next.lastOrNull
+      : items.next.takeWhile((c) => c.id != before.id).lastOrNull;
+  final end = (above ?? items.now)?.endTime ?? clock.now();
+  return end.add(TimelinePlan.gap);
+}
+
 /// The place in the list of tasks ([tasks], the day's) that a drop in Em
 /// seguida [before] a card means, counted with [id] taken out, as a move
 /// counts: that task's place, or right after the last task of Em seguida
@@ -154,7 +194,10 @@ int _placeIn(
   String id,
   TimelineEvent? before,
 ) {
-  final rest = [for (final t in tasks) if (t.id != id) t];
+  final rest = [
+    for (final t in tasks)
+      if (t.id != id) t,
+  ];
   if (before != null && before.isTask) {
     final i = rest.indexWhere((t) => t.id == before.id);
     if (i >= 0) return i;
@@ -301,8 +344,7 @@ class PlanQueue extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget slot(TimelineEvent? before, Widget? child) {
       return DragTarget<PlanCarry>(
-        onWillAcceptWithDetails: (details) =>
-            details.data.id != before?.id,
+        onWillAcceptWithDetails: (details) => details.data.id != before?.id,
         onAcceptWithDetails: (details) => onDrop(details.data, before),
         builder: (context, candidates, _) {
           final carried = candidates.firstOrNull;

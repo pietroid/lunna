@@ -2831,12 +2831,6 @@ abstract class AppLocalizations {
   /// **'Nada em andamento'**
   String get feedBreak;
 
-  /// No description provided for @feedSeeDay.
-  ///
-  /// In pt, this message translates to:
-  /// **'Ver o dia'**
-  String get feedSeeDay;
-
   /// No description provided for @feedMainDelivery.
   ///
   /// In pt, this message translates to:
@@ -3359,12 +3353,6 @@ abstract class AppLocalizations {
   /// **'Pendentes'**
   String get homePending;
 
-  /// Under the home's four first tasks of Para depois: opens the whole queue.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =0{Abrir a lista} other{Abrir a lista · mais {count}}}'**
-  String homeLaterOpen(int count);
-
   /// The page Ver o dia opens: the calendar alone.
   ///
   /// In pt, this message translates to:
@@ -3449,35 +3437,11 @@ abstract class AppLocalizations {
   /// **'Quanto você vai fazer agora?'**
   String get playPieceTitle;
 
-  /// No description provided for @playPieceBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} tem {length} pela frente. Um pedaço vira uma tarefa dentro dela.'**
-  String playPieceBody(String title, String length);
-
   /// No description provided for @playWhole.
   ///
   /// In pt, this message translates to:
   /// **'Tudo · {length}'**
   String playWhole(String length);
-
-  /// No description provided for @playNextTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Começar {task}?'**
-  String playNextTitle(String task);
-
-  /// No description provided for @playNextBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'A próxima de {parent} · {length}'**
-  String playNextBody(String parent, String length);
-
-  /// No description provided for @playNextStart.
-  ///
-  /// In pt, this message translates to:
-  /// **'Começar'**
-  String get playNextStart;
 
   /// No description provided for @guardBusyBody.
   ///
@@ -3658,6 +3622,48 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Subtarefa'**
   String get subtaskAdd;
+
+  /// No description provided for @homeSeeCalendar.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ver calendário'**
+  String get homeSeeCalendar;
+
+  /// No description provided for @homeNextEmpty.
+  ///
+  /// In pt, this message translates to:
+  /// **'Nada marcado daqui para a frente.'**
+  String get homeNextEmpty;
+
+  /// No description provided for @playWhenTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quando fazer {title}?'**
+  String playWhenTitle(String title);
+
+  /// No description provided for @playWhenNow.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar agora'**
+  String get playWhenNow;
+
+  /// No description provided for @playWhenNext.
+  ///
+  /// In pt, this message translates to:
+  /// **'Em seguida · {hour}'**
+  String playWhenNext(String hour);
+
+  /// No description provided for @placePieceTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Quanto vai para as {hour}?'**
+  String placePieceTitle(String hour);
+
+  /// No description provided for @placePieceBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} tem {length}. O resto fica onde está.'**
+  String placePieceBody(String title, String length);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

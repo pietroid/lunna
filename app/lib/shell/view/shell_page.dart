@@ -17,10 +17,10 @@ import 'package:timeline/timeline.dart';
 /// The app's three destinations, and the button that writes something down.
 ///
 /// **Plano** is the home ([HomePage]): the agent's offer, what runs now and
-/// what follows, the tasks under way (Pendentes) and the first of those
-/// waiting (Para depois). **Objetivos** is the goals ([GoalsPage]).
-/// **Menu** is the rest. The calendar (*Ver o dia*, [DayPage]) and the
-/// whole of Para depois ([LaterPage]) are pages pushed over Plano.
+/// what follows, the tasks under way (Pendentes) and those waiting (Para
+/// depois). **Objetivos** is the goals ([GoalsPage]). **Menu** is the
+/// rest. The calendar (*Ver calendário*, [DayPage]) is a page pushed over
+/// Plano.
 ///
 /// The destinations are kept alive behind an [IndexedStack] rather than
 /// rebuilt on every tap: moving between them is not navigation, it is looking
@@ -92,15 +92,6 @@ class _ShellPageState extends State<ShellPage> {
     }
   }
 
-  void _openLater(BuildContext context) {
-    unawaited(AnalyticsScope.of(context).screen('Para depois'));
-    unawaited(
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const LaterPage()),
-      ),
-    );
-  }
-
   void _seeDay(BuildContext context) {
     unawaited(AnalyticsScope.of(context).screen('Calendário'));
     unawaited(DayPage.open(context));
@@ -135,7 +126,6 @@ class _ShellPageState extends State<ShellPage> {
                 HomePage(
                   shown: _index == _planIndex,
                   onSeeDay: () => _seeDay(context),
-                  onOpenLater: () => _openLater(context),
                 ),
                 const GoalsPage(),
                 const MenuPage(),

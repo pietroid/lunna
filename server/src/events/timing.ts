@@ -38,6 +38,12 @@ export interface TimingAction {
   after?: string;
   /** The length it was cut to, to fit that gap. */
   minutes?: number;
+  /**
+   * With [minutes] and not [start]: a piece that long takes the place, and
+   * a task of its own, the rest, stays where the task was: its turn, its
+   * hour, the backlog or Pendentes (#87).
+   */
+  split?: boolean;
 }
 
 /**

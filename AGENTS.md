@@ -80,7 +80,7 @@ app/
                         iOS 17): SwiftUI views, intents, the shared state
   tool/brand_web.sh     stamps a brand on a web build
   lib/                  shell, plan (Plano, the home: Agora, Pendentes,
-                        Para depois; its LaterPage, writeTask), tempo
+                        Para depois; the play sheets, writeTask), tempo
                         (DayPage, the calendar), feed (the demo's
                         greeting), routines page, landing + demo
                         (the signed-out page, the app on fakes),
@@ -281,7 +281,7 @@ with the same shape.
 ## The timeline
 
 `TimelineList` draws the day two ways. **Since #77 the app shows only
-Calendário** (Ver o dia, `DayPage`): Plano is the list. Lista below is
+Calendário** (Ver calendário, `DayPage`): Plano is the list. Lista below is
 still what `TimelineList(mode: list)` and the landing's demo draw
 (`TimelineModeCubit`):
 
@@ -523,22 +523,31 @@ task at work under it). Play is a drop on Agora (`move { start: true }`;
 a delivery's `POST /tasks/of/:id/play` begins its next task). Storage is
 still `artifact` and `task.artifact_id`.
 
-Three tabs: **Plano** (`HomePage`, the home: the agent's one offer;
-Agora with today's mark and *Ver o dia*, the running task; **Em
-seguida**, headed as Agora is and a queue: up to four of the day's cards,
-play on every task, an event in `fixedFill` with the pin, then *+
-Adicionar*, a card carried to a place in it is `move { index }`;
-**Pendentes**, the deliveries begun (their day in the corner,
-−1d +1d ✓ and their bar; urgent once past their day) and the loose tasks
-paused off the day; **Para depois**, the first four of everything not
-begun and *Abrir a lista*; a card is carried between the four, a drop
-showing only the card's quiet copy where it lands; **play on any task
-over an hour asks how much first** (`PlaySheet`), on Plano and on the
-calendar: a delivery's piece becomes a task in it, a loose task's piece
-begins and the rest waits in Pendentes, `move { start, minutes }`), **Objetivos** (`GoalsPage`) and **Menu**, which
-opens Rotina, **Feitas**, **Produtos** (the catalogue), sets when the day
-starts and ends, and signs out. *Ver o dia* pushes `DayPage` (the
-calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano,
+Three tabs: **Plano** (`HomePage`, the home, drawn as skeletons until
+the day first arrives: the agent's one offer; Agora with today's mark,
+the running task; **Em seguida**, with *Ver calendário* beside its
+heading, and a queue **with no limit**: every card of the first day
+after Agora, events too, then the queue's tasks on the following days
+under their day, each at the hour the server's layout gives it; play on
+every task, an event in `fixedFill` with the pin, then *+ Adicionar*; a
+card carried to a place in it is `move { index }`, and one over an hour
+asks how much goes there (`PlaceSheet`, `move { index, minutes, split:
+true }`: the rest stays where it was); **Pendentes**, the deliveries
+begun (their day in the corner, −1d +1d ✓ and their bar; urgent once
+past their day) and the loose tasks paused off the day; **Para depois**,
+the whole of everything not begun, then *+ Adicionar*; a card is carried
+between the four, a drop showing only the card's quiet copy where it
+lands; **play on any task that waits asks when** (`PlayWhenSheet`), on
+Plano and on the calendar: only *Começar agora* (a drop on Agora, guard
+and all) or *Em seguida · 10:40* (first in the queue, after what runs);
+over an hour a **second sheet** asks how much (`PlaySheet` after now,
+`PlaceSheet` after Em seguida, `askPlay`): a piece begun leaves the rest in
+Pendentes (`move { start, minutes }`), a piece queued leaves it where it
+was (`split: true`); a task already waiting on Agora just begins),
+**Objetivos** (`GoalsPage`) and **Menu**, which opens Rotina,
+**Feitas**, **Produtos** (the catalogue), sets when the day starts and
+ends, and signs out. *Ver calendário* pushes `DayPage` (the calendar).
+The app opens on Plano,
 which asks for the offer again each time it comes forward and when a new
 day begins. **The + opens the composer** (#81, `openComposer`): one
 field, typed or spoken, read by `POST /agent/compose` into one summary
