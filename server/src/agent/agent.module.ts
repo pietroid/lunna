@@ -8,6 +8,8 @@ import { RhythmModule } from '../rhythm/rhythm.module';
 import { UsersModule } from '../users/users.module';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
+import { ComposeController } from './compose.controller';
+import { ComposeService } from './compose';
 import { ConversationStore } from './conversation.store';
 import { PgConversationStore } from './pg-conversation.store';
 import { OpenRouterClient } from './openrouter.client';
@@ -28,9 +30,10 @@ import { SuggestionTimer } from './suggestion.timer';
     UsersModule,
     RhythmModule,
   ],
-  controllers: [AgentController],
+  controllers: [AgentController, ComposeController],
   providers: [
     AgentService,
+    ComposeService,
     OpenRouterClient,
     { provide: ConversationStore, useClass: PgConversationStore },
     { provide: PlanStore, useClass: PgPlanStore },

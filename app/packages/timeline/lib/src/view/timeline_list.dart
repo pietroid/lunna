@@ -171,8 +171,14 @@ class TimelineList extends StatefulWidget {
     this.onDeliveryTap,
     this.onWorkOn,
     this.only,
+    this.onPlay,
     super.key,
   });
+
+  /// Begins a task from the calendar: its play, a drop on Agora, or Agora's
+  /// round button on a task waiting to be begun. The app's play, which asks
+  /// how much first when the task is over an hour. Null drops it on Agora.
+  final ValueChanged<TimelineEvent>? onPlay;
 
   /// Puts a day of the weekend back to work, from its rest row on the
   /// calendar. Null offers nothing.
@@ -338,6 +344,9 @@ class _TimelineListState extends State<TimelineList> {
   /// One key per row of buttons on a running card, so a tap on a button is
   /// left to the button rather than read as a tap on the card.
   final _actionKeys = <String, GlobalKey>{};
+
+  /// One key per round button before a running card's title, for the same.
+  final _leadKeys = <String, GlobalKey>{};
 
   Timer? _hold;
   Offset? _down;
@@ -899,7 +908,7 @@ class _TimelineListState extends State<TimelineList> {
   }
 
   void _onDown(PointerDownEvent event) {
-    final onButton = _actionKeys.values.any(
+    final onButton = [..._actionKeys.values, ..._leadKeys.values].any(
       (key) => _rectOf(key)?.contains(event.position) ?? false,
     );
     if (onButton) return;
@@ -1266,6 +1275,8 @@ class _TimelineListState extends State<TimelineList> {
     final bloc = context.read<TimelineBloc>();
     if (card.isTask) {
       if (card.section == TimelineSection.agora && card.started) return;
+      final play = widget.onPlay;
+      if (play != null) return play(card);
       bloc.add(EventMoved(id: card.id, index: 0, start: true));
       return;
     }
@@ -1277,6 +1288,14 @@ class _TimelineListState extends State<TimelineList> {
         startTime: DateTime(now.year, now.month, now.day, now.hour, now.minute),
       ),
     );
+  }
+
+  /// Begins a task waiting on Agora: through the app's play when it has
+  /// one (which asks how much of a long task), otherwise at once.
+  void _start(TimelineEvent card) {
+    final play = widget.onPlay;
+    if (play != null && card.isTask) return play(card);
+    context.read<TimelineBloc>().add(EventStarted(card.id));
   }
 
   /// Takes a block off the day, and throws its card off screen.
@@ -2214,11 +2233,12 @@ class _TimelineListState extends State<TimelineList> {
           hidden: dragging,
           pressed: lead.id == _pressed,
           actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+          leadKey: _leadKeys.putIfAbsent(lead.id, GlobalKey.new),
           onPauseToggled: () => bloc.add(EventPauseToggled(lead.id)),
           onAdjusted: (minutes) =>
               unawaited(adjustTime(context, lead, minutes)),
           onDone: () => bloc.add(EventFinished(lead.id)),
-          onStarted: () => bloc.add(EventStarted(lead.id)),
+          onStarted: () => _start(lead),
           onSnoozed: () => bloc.add(EventSnoozed(lead.id)),
         ),
       ),
@@ -2315,10 +2335,11 @@ class _TimelineListState extends State<TimelineList> {
       // only holds its place open.
       hidden: card.id == dragging,
       actionsKey: _actionKeys.putIfAbsent(card.id, GlobalKey.new),
+      leadKey: _leadKeys.putIfAbsent(card.id, GlobalKey.new),
       onPauseToggled: () => bloc.add(EventPauseToggled(card.id)),
       onAdjusted: (minutes) => unawaited(adjustTime(context, card, minutes)),
       onDone: () => bloc.add(EventFinished(card.id)),
-      onStarted: () => bloc.add(EventStarted(card.id)),
+      onStarted: () => _start(card),
       onSnoozed: () => bloc.add(EventSnoozed(card.id)),
       onPlay: _plays(card) ? () => _now(card) : null,
     );
@@ -2442,10 +2463,11 @@ class _TimelineListState extends State<TimelineList> {
         lineKeys: keys,
         hidden: dragging,
         actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+        leadKey: _leadKeys.putIfAbsent(lead.id, GlobalKey.new),
         onPauseToggled: () => bloc.add(EventPauseToggled(lead.id)),
         onAdjusted: (minutes) => unawaited(adjustTime(context, lead, minutes)),
         onDone: () => bloc.add(EventFinished(lead.id)),
-        onStarted: () => bloc.add(EventStarted(lead.id)),
+        onStarted: () => _start(lead),
         onSnoozed: () => bloc.add(EventSnoozed(lead.id)),
       );
     }
@@ -2465,6 +2487,7 @@ class _TimelineListState extends State<TimelineList> {
       lineKeys: keys,
       hidden: dragging,
       actionsKey: _actionKeys.putIfAbsent(lead.id, GlobalKey.new),
+      leadKey: _leadKeys.putIfAbsent(lead.id, GlobalKey.new),
       // Play begins the run's next task, as it does on Plano.
       onPlay: _plays(lead) ? () => _now(lead) : null,
     );

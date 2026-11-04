@@ -202,29 +202,81 @@ only the conversation being had; the past reaches it only through
 sight until it is pulled down, dimmed and read only, each under the day and
 hour it began, their plans one line (aplicado, desfeito, não aplicado).
 
-On the app, the ask bar and a round button are one row (`AskDock`),
-**on every screen, in the same place**: every tab and every page floats it
-at `AskDock.location` (centred) with `AskDock.animator` (no animation), and
-its lists leave room under their last row for it (`kNotesDockClearance`).
-The three tabs share one dock, so changing tabs moves nothing and only the
-button beside the bar changes what it writes. Between pages the dock is a
-`Hero` (`DockHero`, one tag): a push, a pop or a swipe back slides the page
-under a still picture of the bar beside the arriving page's button (no
-pointer, nothing live), and the arriving page's dock takes over when it
-lands. Only a sheet or the conversation's page covers it.
+On the app **there is no ask bar** (#81, built in #85): one round button
+(`AskDock`) is **on every screen, in the same place**, the + at
+`AskDock.location` (`AppFab.location`) with `AskDock.animator` (no
+animation), and its lists leave room under their last row for it
+(`kNotesDockClearance`). By default it is the composer's + (see "The
+composer" below), about the page it sits on; a screen with a button of
+its own keeps it. Between pages the dock is a `Hero` (`DockHero`, one
+tag): a push, a pop or a swipe back slides the page under a still picture
+of the arriving page's button, and the arriving page's dock takes over
+when it lands. Only a sheet or the conversation's page covers it.
 
-| Screen | The round button | The conversation is about |
-|--------|------------------|---------------------------|
-| Feed | + writes on the day in sight, staying on the home | the day in sight |
-| Plano › Tarefas | + writes on the day in sight | the day in sight |
-| Plano › Entregas | + Nova entrega | the day in sight |
-| Plano › Objetivos | + Novo objetivo | the day in sight |
-| Menu | + writes on Tempo's day, bringing Tarefas forward | the day in sight |
-| Rotina | + Nova rotina, at the next whole hour of the working day | nothing more |
-| Feitas | + writes a task into Para depois | nothing more |
-| Todas as entregas | + Nova entrega | nothing more |
-| A delivery, Tarefas | + writes one of its tasks | the delivery |
-| A delivery's or a task's notes | microphone that dictates (`NotesDock`) | the delivery / the task |
+| Screen | The round button | The composer is about |
+|--------|------------------|-----------------------|
+| Plano, Objetivos, Menu | the composer's + | nothing more |
+| Ver o dia, Para depois, Feitas, Ciclo, Folgas | the composer's + | nothing more |
+| Rotina | + Nova rotina, at the next whole hour of the working day | (no composer) |
+| Produtos (`AllArtifactsPage`) | + Nova entrega | (no composer) |
+| A delivery, Pendentes | the composer's + | the delivery |
+| A delivery's or a task's notes | the composer's +, and beside it the microphone that dictates (`NotesDock`) | the delivery / the task |
+
+## The composer
+
+`POST /api/agent/compose { text, about? }` → `{ draft }`
+(`server/src/agent/compose.ts`, `ComposeService`, its own
+`ComposeController`). **One line is read once into one draft, and nothing
+is written until the person says Adicionar** (or Aplicar).
+
+- **The fast read**: one call on the agent's own model
+  (`OPENROUTER_MODEL`, the same client and key; no new env var), forcing
+  one tool (`read_request`, `tool_choice` named) over a short context: the
+  date and weekday, tomorrow, the zone, the working day, the open
+  deliveries by ref (`p1 · Post…`) and, opened on a delivery's page, that
+  it goes under it. It answers `kind` (`task` | `event` | `goal` |
+  `plan`), `title`, `day` (`YYYY-MM-DD`), `time` (`HH:MM`), `minutes`,
+  `parent` (a ref), `subtasks[]` and a goal's `value`. **The server fills
+  every fact** (`draftOf`): the hour in the person's zone, the delivery
+  by its ref (`parent: { id, title }`), an event's length 60 when unsaid,
+  at most 12 subtasks.
+- **Anything else goes to the agent's whole turn**: a read of `plan`, a
+  read not to be trusted (an event with no hour, a goal with no amount or
+  day, no tool call), a failed call, or one past **8 s**
+  (`COMPOSE_TIMEOUT_MS`). The draft is then `kind: plan`, its title the
+  agent's answer, with `conversationId`, `planId` when it proposed one,
+  and `changes` (one line per change: title · hour, or · Para depois).
+- The draft: `kind`, `title`, `start?` (ISO), `minutes?`, `parent?`,
+  `subtasks` (`{ title, minutes? }`), `value?`, `due?`, `conversationId?`,
+  `planId?`, `changes`. Refusals in Portuguese: an empty line, one over
+  2000 characters, no model (503, as a turn).
+- **No new write route**: the app writes a draft through the routes the
+  old sheet used (`openComposer` → `writeDraft` in
+  `app/lib/plan/view/compose.dart`): a task `POST /tasks` (in Para depois,
+  or at its hour; under its delivery with `artifactId`), **a task with
+  subtasks as a delivery** with its tasks (`ArtifactsCubit.createWithTasks`:
+  `POST /artifacts`, then `POST /artifacts/:id/tasks` each, an even share
+  of the length when unsaid), an event `POST /events`, a goal
+  `POST /goals`, a plan `POST /agent/plans/:id/apply` (its undo the
+  `UndoChip`).
+- **The app** (`ComposeCubit`, `ComposerSheet`, `ComposeSummary` in
+  `packages/agent`): the field with the mic on the left and ↑ on the
+  right; recording, the words rise in the field and stop sends. Sent, the
+  box over the sheet says "Entendendo…", then the kind's mark (check,
+  pin on `fixedFill`, target for a goal, the crescent for changes), the
+  title, "Evento · amanhã, 15:00 · 1h" / "Tarefa · na fila · 2h" /
+  "Objetivo · R$ 10.000 até 30/11", the delivery as `AppTag` "em …", the
+  subtasks listed, and *Ajustar* (the creation sheet, filled) or
+  *Conversar* (the conversation, with the words in its field) beside
+  *Adicionar* / *Aplicar* (not drawn when the turn proposed nothing).
+  Editing the field drops the box; a read that comes back after an edit
+  is ignored; a failed read says so and keeps the words.
+- The app finds the composer through `ComposeLauncher` (above the router
+  in `main.dart`), since what it writes goes through the app's blocs.
+- Measured: `compose.read` in the trace (kind, ms, fast) and
+  `compose_kind` in PostHog (kind, ms, fast; never the text);
+  `npm run eval:compose -- --model <m> --k 3` grades five lines on a real
+  model and prints p50/p95. Not run yet: no figures here.
 
 **The conversation is a page**, full screen, pushed as a
 `fullscreenDialog` from wherever it was asked (`showAgentSheet`, the name
@@ -421,35 +473,14 @@ recognizer through `speech_to_text`, in pt-BR: on the device where it has
 Portuguese, in Apple's or Google's cloud where it does not. The audio never
 reaches our server.
 
-The microphone on the ask bar records on the spot, with no sheet: the row
-becomes the recorder (`VoiceBar`: discard, a breathing dot, the time, the
-live wave, stop), and the words rise above it in a card as they are heard
-(settled in ink, still provisional in ink3). In the sheet, an empty
-composer offers the microphone and draws the same recorder. There is one
-recording for the app (`VoiceCubit`, provided in `main.dart`), so tapping
-the card opens the sheet with the recording carrying on, and closing the
-sheet leaves it on the bar it was started on. Changing tabs keeps it
-going, since the bar is still there; it is sent with the day Tempo is
-showing.
-
-The microphone records as soon as a finger lands on it, the way WhatsApp
-records a voice message (`VoiceHold`, caught above the microphone, since
-the recorder replaces it while the finger is down):
-
-- **Held** (0.4 s or longer), the bar stays where it is, the same size,
-  with nothing animated between states. Inside it the microphone swells to
-  72 px on its own centre, the + beside it goes invisible (keeping its
-  room), a dot and the time sit on the left with "← Deslize para cancelar",
-  and a lock waits above (`AskRecorder`). **Letting go sends**: the
-  conversation opens with the message already said. Sliding 100 px left
-  drops it; sliding 80 px up locks it, recording on without the finger
-  (`VoiceHold.abandon`). The microphone and the hint follow the finger.
-  In the conversation's composer, letting go of a hold sends too.
-- **Tapped** (or locked), the bar is the recorder and the + becomes send
-  (↑). The words above it open the conversation with them in the field,
-  unsent, to be fixed first (`showAgentSheet(draft:)`). In the
-  conversation, **stopping sends**: the recorder's round button is send
-  (↑), and the trash is the only way not to.
+The composer's microphone records in its sheet: the row becomes the
+recorder (`VoiceBar`: discard, a breathing dot, the time, the live wave),
+the words rise in the field as they are heard, and its stop (↑) sends
+them to be read. In the conversation, an empty composer offers the
+microphone and draws the same recorder, and a hold (`VoiceHold`) sends on
+letting go. There is one recording for the app (`VoiceCubit`, provided in
+`main.dart`). (Until #85 a bar at the foot of every screen recorded on
+the spot, WhatsApp-style; it went with the bar.)
 
 If the permission dialog takes the finger, the recording goes on as if
 tapped. The trash discards; at one minute it stops on its own and says so. Silence
@@ -462,15 +493,15 @@ crashes when two calls touch the audio engine at once. A message
 that was spoken carries `UserEntry.voice`, its length, shown as "por voz",
 and kept on the device. A refused microphone, or a device with no
 recognizer, is said in the composer and the microphone is no longer offered
-there; tapped on Tempo's bar, it opens the sheet to say so.
+there.
 
 ### Dictation
 
 Dictation is not the agent. At the foot of a task's notes (`EventPage.dock`)
-and an artifact's Notas, `NotesDock` puts the bar, and beside it, where the +
-is on Tempo, a microphone (`AppFab`, `AppIcons.microphone`) that writes what
-is said straight into the notes: **the small microphone inside the bar asks
-the agent, the big one beside it writes.**
+and an artifact's Notas, `NotesDock` puts the composer's + (about the
+page), and beside it a microphone (`AppFab`, `AppIcons.microphone`) that
+writes what is said straight into the notes: **the composer's microphone
+asks, the one beside its + writes.**
 
 - Each recording is a paragraph of its own, a blank line on each side: at
   the cursor while the notes have the keyboard, at the end otherwise. The words appear as they are heard; the ones the recognizer

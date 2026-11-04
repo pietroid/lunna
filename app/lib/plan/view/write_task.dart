@@ -15,6 +15,7 @@ import 'package:timeline/timeline.dart';
 Future<void> writeTask(
   BuildContext context, {
   Placement placement = const Placement.backlog(),
+  String? initialText,
 }) {
   final cubit = context.read<ArtifactsCubit>();
   final kinds = [
@@ -25,6 +26,7 @@ Future<void> writeTask(
   return writeDownOnTimeline(
     context,
     placement: placement,
+    initialText: initialText,
     products: [for (final kind in kinds) kind.name],
     withProduct: (result) {
       final kind = kinds.where((k) => k.name == result.product).firstOrNull;

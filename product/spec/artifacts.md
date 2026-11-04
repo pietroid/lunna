@@ -154,6 +154,7 @@ schedule: { needMinutes, freeMinutes, until }, topTypes: [typeId] }`.
 | `DELETE /artifacts/:id` | backlog tasks go with it; the rest stay |
 | `POST /artifacts/:id/move` | `{ index, started?: false }` in the queue; `started: false` stops it (one call for a drop into Não iniciadas) |
 | `POST /artifacts/:id/tasks` | `{ title, minutes }`, at the end of the backlog |
+| `POST /tasks/:id/subtasks` | `{ title, minutes? }` (30 when unsaid): a subtask of a task. The first one of a loose task makes it a task with tasks: a delivery with the task's title, notes and length, the task's own row its first task, untouched (a begun one keeps running, its hour and place as they were). Every subtask goes at the end of its tasks (the backlog). Answers Entregas and `artifactId`; 404 "Essa tarefa não existe mais." |
 | `POST /tasks/of/:id/play?days=` | `{ minutes? }`; play: begins its next task (the queue's first, else its backlog's first, else a new one of its name for what it owes, 30 min when nothing, or a piece of `minutes`, 5 to 480, when given), as a drop on Agora, guard and all; answers the timeline. Refuses a delivered one |
 | `POST /catalog/types` | `{ name, minutes, price?, blockMinutes?, categoryId \| category }` |
 | `POST /goals`, `PATCH /goals/:id`, `DELETE /goals/:id` | see [goals.md](./goals.md) |

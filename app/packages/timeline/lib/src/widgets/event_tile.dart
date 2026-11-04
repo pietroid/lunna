@@ -59,6 +59,7 @@ class EventTile extends StatelessWidget {
     this.landing,
     this.preview = false,
     this.actionsKey,
+    this.leadKey,
     this.onPauseToggled,
     this.onAdjusted,
     this.onDone,
@@ -100,6 +101,9 @@ class EventTile extends StatelessWidget {
   /// Put on the row of buttons, so the list's own gesture can leave a tap on
   /// one of them alone.
   final Key? actionsKey;
+
+  /// Put on Agora's round button before the title, for the same reason.
+  final Key? leadKey;
 
   /// Pauses or resumes. The buttons are only drawn when this is given.
   final VoidCallback? onPauseToggled;
@@ -206,6 +210,7 @@ class EventTile extends StatelessWidget {
                 // Agora's task plays and pauses from the same round button
                 // as on Plano, before its title.
                 TaskPlayButton(
+                  key: leadKey,
                   playing: card.started && !card.isPaused,
                   onPressed: toggle,
                 ),

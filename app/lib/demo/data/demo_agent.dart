@@ -39,6 +39,12 @@ class DemoAgentRepository implements AgentRepository {
 
   final _plans = <String, AgentPlan>{};
 
+  /// The demo reads every line as a task in Para depois: it shows the
+  /// summary, not what the model would make of every sentence.
+  @override
+  Future<ComposeDraft> compose(String text, {AgentSubject? about}) async =>
+      ComposeDraft(kind: ComposeKind.task, title: text, minutes: 30);
+
   /// What each applied plan found, to put back on undo.
   final _before = <String, (DemoDay, ArtifactsData)>{};
 

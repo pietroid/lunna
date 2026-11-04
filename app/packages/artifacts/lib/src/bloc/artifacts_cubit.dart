@@ -125,6 +125,35 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
     ),
   );
 
+  /// Writes a task with tasks of its own down, its [tasks] in order: the
+  /// composer's task with subtasks. The day is read again, as the tasks
+  /// land in its backlog.
+  Future<bool> createWithTasks({
+    required String title,
+    required int minutes,
+    required List<({String title, int? minutes})> tasks,
+  }) async {
+    final done = await _run(
+      () => _repository.createWithTasks(
+        title: title,
+        minutes: minutes,
+        tasks: tasks,
+      ),
+    );
+    if (done) onDayChanged?.call();
+    return done;
+  }
+
+  /// A subtask of the task [taskId]: the first one of a loose task makes it
+  /// a task with tasks. The day is read again, since the task now names it.
+  Future<bool> addSubtask(String taskId, String title, {int? minutes}) async {
+    final done = await _run(
+      () => _repository.addSubtask(taskId, title: title, minutes: minutes),
+    );
+    if (done) onDayChanged?.call();
+    return done;
+  }
+
   /// Renames a delivery.
   Future<void> rename(String id, String title) =>
       _run(() => _repository.update(id, title: title));

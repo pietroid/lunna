@@ -517,6 +517,7 @@ export class EventLayoutService {
         kind: 'start_now',
         taskId: task.id,
         index: action.index,
+        ...(action.minutes === undefined ? {} : { minutes: action.minutes }),
         current: {
           id: running.kind === 'task' ? running.task.id : running.event.id,
           title:
@@ -592,6 +593,18 @@ export class EventLayoutService {
       ]),
     );
 
+    // Play on a piece of a task not begun: the piece begins, and the rest
+    // is a task of its own at the top of the backlog, owing what is left
+    // (in Pendentes, when the task is a loose one). A piece at or over the
+    // task's length is the whole.
+    let minutes = action.minutes ?? owed ?? task.minutes;
+    if (action.start === true && own === undefined && action.minutes) {
+      minutes = Math.min(action.minutes, task.minutes);
+      if (minutes < task.minutes) {
+        await this._splitRest(user, day, task, task.minutes - minutes, trace);
+      }
+    }
+
     trace.log('task.move', {
       taskId: task.id,
       index,
@@ -601,7 +614,7 @@ export class EventLayoutService {
       ...task,
       position: await this._positionAt(user, queue, index),
       notBefore: anchor?.toISOString(),
-      minutes: action.minutes ?? owed ?? task.minutes,
+      minutes,
       backlog: false,
       // Back on the day, it no longer waits in Pendentes.
       pendingAt: undefined,
@@ -1044,6 +1057,36 @@ export class EventLayoutService {
    * A running one stops running and gives back the rest of its hour; it
    * owes what it had left, as when it is dragged back down the queue.
    */
+  /**
+   * The rest of a task begun in a piece: the same name and notes, [minutes]
+   * long, at the top of the backlog. A loose task's rest waits in
+   * Pendentes; a delivery's stays in it, in its Para depois.
+   */
+  private async _splitRest(
+    user: CalendarUser,
+    day: Day,
+    task: Task,
+    minutes: number,
+    trace: Trace,
+  ): Promise<void> {
+    const written = await this._tasks.insert(user, {
+      title: task.title,
+      minutes,
+      position: 0,
+      backlog: true,
+      ...(task.artifactId === undefined ? {} : { artifactId: task.artifactId }),
+    });
+    trace.log('task.split', { taskId: task.id, rest: written.id, minutes });
+    await this._shelve(
+      user,
+      day,
+      { ...written, notes: task.notes },
+      0,
+      trace,
+      task.artifactId === undefined,
+    );
+  }
+
   private async _shelve(
     user: CalendarUser,
     day: Day,

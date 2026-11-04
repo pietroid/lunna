@@ -48,6 +48,12 @@ export type ModelOutcome = (
   | { kind: 'tool_calls'; toolCalls: ToolCall[] }
 ) & { usage?: ModelUsage };
 
+/** How one generation is asked for. */
+export interface GenerateOptions {
+  /** The one tool the model must call, by name. */
+  force?: string;
+}
+
 /** Raised when OpenRouter could not answer, or is not configured. */
 export class ModelUnavailableError extends Error {
   constructor(
@@ -113,13 +119,14 @@ export class OpenRouterClient {
   async generate(
     messages: ChatMessage[],
     tools: ToolDefinition[],
+    options: GenerateOptions = {},
   ): Promise<ModelOutcome> {
     if (!this.configured) {
       throw new ModelUnavailableError('OpenRouter is not configured');
     }
 
     try {
-      return await this._once(messages, tools);
+      return await this._once(messages, tools, options);
     } catch (error) {
       const again =
         error instanceof ModelEmptyError ||
@@ -129,13 +136,14 @@ export class OpenRouterClient {
             error.status >= 500));
       if (!again) throw error;
 
-      return this._once(messages, tools);
+      return this._once(messages, tools, options);
     }
   }
 
   private async _once(
     messages: ChatMessage[],
     tools: ToolDefinition[],
+    { force }: GenerateOptions,
   ): Promise<ModelOutcome> {
     let response: Response;
     let data: Record<string, unknown>;
@@ -154,7 +162,15 @@ export class OpenRouterClient {
             ? { models: [this.model, ...this._fallbacks] }
             : {}),
           messages,
-          ...(tools.length > 0 ? { tools, tool_choice: 'auto' } : {}),
+          ...(tools.length > 0
+            ? {
+                tools,
+                tool_choice:
+                  force === undefined
+                    ? 'auto'
+                    : { type: 'function', function: { name: force } },
+              }
+            : {}),
           temperature: 0.3,
           reasoning: { effort: this._effort },
           provider: { sort: 'latency' },

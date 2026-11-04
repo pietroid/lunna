@@ -72,6 +72,46 @@ class ArtifactsRepository {
     ),
   );
 
+  /// Writes a task with tasks of its own down (a delivery: [title],
+  /// [minutes] in all), and then each of [tasks] into it, in order, at the
+  /// end of its backlog. A task with no length takes an even share of
+  /// [minutes].
+  Future<ArtifactsData> createWithTasks({
+    required String title,
+    required int minutes,
+    required List<({String title, int? minutes})> tasks,
+  }) async {
+    final before = await create(title: title, minutes: minutes);
+    final made = before.artifacts
+        .where((it) => it.title == title && it.doneAt == null)
+        .lastOrNull;
+    if (made == null || tasks.isEmpty) return before;
+    final share = (minutes / tasks.length).ceil().clamp(5, 480);
+    var data = before;
+    for (final task in tasks) {
+      data = await _data(
+        () => apiClient.post<Map<String, dynamic>>(
+          '/artifacts/${Uri.encodeComponent(made.id)}/tasks',
+          data: {'title': task.title, 'minutes': task.minutes ?? share},
+        ),
+      );
+    }
+    return data;
+  }
+
+  /// A subtask of the task [taskId], at the end of its tasks: the first of
+  /// a loose task makes it a task with tasks, keeping it as its first.
+  Future<ArtifactsData> addSubtask(
+    String taskId, {
+    required String title,
+    int? minutes,
+  }) => _data(
+    () => apiClient.post<Map<String, dynamic>>(
+      '/tasks/${Uri.encodeComponent(taskId)}/subtasks',
+      data: {'title': title, 'minutes': ?minutes},
+    ),
+  );
+
   /// Changes a delivery's name, deadline, value, notes or doneness, or
   /// begins it ([started], which needs a deadline). A [deadline] or
   /// [value] function that answers null takes it away.

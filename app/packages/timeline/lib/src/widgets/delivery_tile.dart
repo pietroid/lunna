@@ -49,6 +49,7 @@ class DeliveryTile extends StatelessWidget {
     this.hidden,
     this.pressed = false,
     this.actionsKey,
+    this.leadKey,
     this.onPauseToggled,
     this.onAdjusted,
     this.onDone,
@@ -95,6 +96,9 @@ class DeliveryTile extends StatelessWidget {
   /// The key of the row of buttons, so a tap on a button is left to it.
   final Key? actionsKey;
 
+  /// Put on Agora's round button before the name, for the same reason.
+  final Key? leadKey;
+
   /// Pauses or resumes the running task.
   final VoidCallback? onPauseToggled;
 
@@ -115,6 +119,16 @@ class DeliveryTile extends StatelessWidget {
   final VoidCallback? onPlay;
 
   bool get _isNow => tasks.first.section == TimelineSection.agora;
+
+  /// What the round button before the name does on Agora: the run's task
+  /// waiting to be begun begins, a begun one pauses or resumes. None in
+  /// overtime, nor with no one to tell.
+  VoidCallback? get _leadingToggle {
+    if (!_isNow || onAdjusted == null || !_next.isInteractive || _next.isLate) {
+      return null;
+    }
+    return _next.awaitingStart ? onStarted : onPauseToggled;
+  }
 
   TimelineEvent get _next => tasks.first;
 
@@ -142,8 +156,18 @@ class DeliveryTile extends StatelessWidget {
                   )
                 : '${hhmm(_next.startTime)}–${hhmm(tasks.last.endTime)}',
             routine: routine,
-            // On the calendar, play begins the run's next task.
-            play: _isNow || onPlay == null
+            // On the calendar, play begins the run's next task; on Agora the
+            // same round button plays and pauses it, as on Plano.
+            play: _isNow
+                ? switch (_leadingToggle) {
+                    final toggle? => TaskPlayButton(
+                      key: leadKey,
+                      playing: _next.started && !_next.isPaused,
+                      onPressed: toggle,
+                    ),
+                    null => null,
+                  }
+                : onPlay == null
                 ? null
                 : TaskPlayButton(
                     key: actionsKey,
@@ -172,6 +196,7 @@ class DeliveryTile extends StatelessWidget {
                   : EventControls(
                       key: actionsKey,
                       card: _next,
+                      play: _leadingToggle == null,
                       onPauseToggled: onPauseToggled,
                       onStarted: onStarted,
                       onSnoozed: onSnoozed,

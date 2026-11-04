@@ -9,7 +9,7 @@ void main() {
     body: const SizedBox.expand(),
     floatingActionButton: DockHero(
       fabIcon: icon,
-      child: SizedBox(key: key, width: 358, height: AskBar.height),
+      child: SizedBox(key: key, width: 358, height: AskPill.height),
     ),
     floatingActionButtonLocation: AskDock.location,
     floatingActionButtonAnimator: AskDock.animator,
@@ -58,7 +58,7 @@ void main() {
     expect(shuttle, findsOneWidget);
     expect(
       tester.getRect(
-        find.ancestor(of: shuttle, matching: find.byType(Row)).first,
+        find.ancestor(of: shuttle, matching: find.byType(Align)).first,
       ),
       rectMoreOrLessEquals(before),
     );

@@ -319,6 +319,61 @@ describe('ArtifactsController', () => {
     expect(day.backlog).toEqual([]);
   });
 
+  describe('subtasks of a task', () => {
+    it('makes a loose task a task with tasks, itself first and untouched', async () => {
+      const written = await http()
+        .post('/tasks')
+        .send({ title: 'Post: Lua cheia', minutes: 60, backlog: false })
+        .expect(201);
+      const id = (written.body as Timeline).tasks[0].id;
+      await http().post(`/tasks/${id}/start`).expect(201);
+
+      const answer = await http()
+        .post(`/tasks/${id}/subtasks`)
+        .send({ title: 'Editar' })
+        .expect(201);
+
+      const { artifactId } = answer.body as { artifactId: string };
+      const made = artifacts(answer).find((it) => it.id === artifactId)!;
+      expect(made.title).toBe('Post: Lua cheia');
+      expect(made.tasks.map((it) => [it.title, it.place])).toEqual([
+        ['Post: Lua cheia', 'queue'],
+        ['Editar', 'backlog'],
+      ]);
+      const day = await timeline();
+      expect(day.tasks[0]).toMatchObject({ id, started: true });
+      expect(day.tasks[0].artifact?.id).toBe(artifactId);
+    });
+
+    it('appends every later subtask at the end, and refuses a missing task', async () => {
+      const written = await http()
+        .post('/tasks')
+        .send({ title: 'Vídeo', minutes: 60 })
+        .expect(201);
+      const id = (written.body as Timeline).backlog[0].id;
+      await http()
+        .post(`/tasks/${id}/subtasks`)
+        .send({ title: 'Roteiro', minutes: 20 })
+        .expect(201);
+      const answer = await http()
+        .post(`/tasks/${id}/subtasks`)
+        .send({ title: 'Gravar' })
+        .expect(201);
+
+      const made = artifacts(answer).find((it) => it.title === 'Vídeo')!;
+      expect(made.tasks.map((it) => it.title)).toEqual([
+        'Vídeo',
+        'Roteiro',
+        'Gravar',
+      ]);
+      expect(artifacts(answer)).toHaveLength(1);
+      await http()
+        .post('/tasks/no-such-task/subtasks')
+        .send({ title: 'X' })
+        .expect(404);
+    });
+  });
+
   it('answers 404 for an artifact that is not there', async () => {
     await http()
       .post('/artifacts/no-such-artifact/tasks')

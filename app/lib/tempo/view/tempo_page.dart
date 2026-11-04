@@ -54,8 +54,6 @@ class DayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final aim = context.read<TimelineAim>();
-
     return Scaffold(
       appBar: AppBar(
         leading: AppIconButton(
@@ -71,19 +69,9 @@ class DayPage extends StatelessWidget {
         ],
       ),
       body: const _Threads(),
-      floatingActionButton: AskDock(
-        // The conversation is about the day on screen.
-        day: () => aim.value?.at,
-        fab: AppFab(
-          tooltip: context.l10n.shellWriteDown,
-          onPressed: () => unawaited(
-            writeTask(
-              context,
-              placement: aim.value ?? const Placement.backlog(),
-            ),
-          ),
-        ),
-      ),
+      // The composer's +, as on every screen; a tap on the day's empty
+      // room still opens the sheet at that hour.
+      floatingActionButton: const AskDock(),
       floatingActionButtonLocation: AskDock.location,
       floatingActionButtonAnimator: AskDock.animator,
     );
@@ -166,6 +154,9 @@ class _Threads extends StatelessWidget {
           onAdjustDay: context.read<OpenDayHours>().open,
           // A weekend day off can be put back to work from the calendar.
           onWorkOn: context.read<WorkOnDay>().workOn,
+          // Play on the calendar is Plano's: a task over an hour asks how
+          // much of it to begin.
+          onPlay: (card) => unawaited(playCard(context, card)),
         ),
         // The guard is drawn over the timeline rather than pushed as a route:
         // the question is about a card that is still on screen, and the

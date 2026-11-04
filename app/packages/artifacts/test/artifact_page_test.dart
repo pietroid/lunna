@@ -194,7 +194,7 @@ void main() {
     expect(find.byType(PaceBars), findsOneWidget);
   });
 
-  testAt('Notas and Pendentes draw the bar in the same place', (tester) async {
+  testAt('Notas and Pendentes draw the + in the same place', (tester) async {
     SharedPreferences.setMockInitialValues({});
     // A phone with a home indicator, which lifts the floating slot.
     tester.view
@@ -205,7 +205,8 @@ void main() {
     // Notas: the notes' own dock, the microphone beside the bar.
     expect(find.byType(NotesDock), findsOneWidget);
     expect(find.byType(DockHero), findsOneWidget);
-    final notes = tester.getRect(find.byType(AskBar));
+    final compose = find.byTooltip(l10n.composeOpen);
+    final notes = tester.getRect(compose);
 
     await tester.tap(find.text(l10n.artifactPendingTab(2)));
     await tester.pump();
@@ -214,7 +215,7 @@ void main() {
     // where the other was.
     expect(find.byType(NotesDock), findsNothing);
     expect(find.byType(DockHero), findsOneWidget);
-    expect(tester.getRect(find.byType(AskBar)), notes);
+    expect(tester.getRect(compose), notes);
   });
 
   testAt('dictates into the notes, a paragraph each time, saved as typed', (
@@ -235,9 +236,10 @@ void main() {
     addTearDown(dictation.close);
     await pump(tester, dictation: dictation);
 
-    // Lunna's bar and the microphone that dictates, at the foot of Notas.
+    // The composer's + and the microphone that dictates, at the foot of
+    // Notas.
     expect(find.byType(NotesDock), findsOneWidget);
-    expect(find.bySemanticsLabel(RegExp('Pergunte')), findsOneWidget);
+    expect(find.byTooltip(l10n.composeOpen), findsOneWidget);
 
     await tester.tap(find.byTooltip(l10n.dictationStart));
     await tester.pump();

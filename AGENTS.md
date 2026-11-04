@@ -86,8 +86,9 @@ app/
                         (the signed-out page, the app on fakes),
                         links (the real LinkPreviews)
   packages/
-    agent/              the agent: ask bar, sheet, the answer's surface
-                        (decoder, peeks, plan card), suggestion, voice
+    agent/              the agent: the dock (one +), the composer, sheet,
+                        the answer's surface (decoder, peeks, plan card),
+                        suggestion, voice
     analytics/          PostHog behind one seam (Analytics, NoAnalytics)
     api_client/         Dio + bearer token interceptor
     app_ui/             the design system: AppBrand, theme, tokens, widgets
@@ -103,6 +104,7 @@ server/
                         (refs, dates, artifacts), actions/ (the registry:
                         one Action per verb), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
+                        the composer's read (compose.ts, POST /agent/compose),
                         the suggestion (SuggestionStore, work-quality.ts,
                         SuggestionTimer),
                         conversations (ConversationStore), plans
@@ -314,7 +316,10 @@ still what `TimelineList(mode: list)` and the landing's demo draw
 - **Calendário**: everything, to scale, day after day. Scrolling near the
   end asks for another week (`TimelineExtended`), up to 120 days. **Agora**
   is always drawn, the break with its line whenever nothing runs, and a
-  task let go on it is begun. A card tall enough for a second line (72 px
+  task let go on it is begun. Its task plays and pauses from the round
+  button before the title, as on Plano (a waiting task begins from it);
+  the quiet row keeps −10, +10 and ✓. Play on the calendar is the app's
+  (`TimelineList.onPlay`), so a task over an hour asks how much. A card tall enough for a second line (72 px
   drawn) shows its delivery and the start of its notes under the title
   (`notesPreview`, up to 3 lines); a shorter one shows no notes at all and
   marks a delivery's task with the stack. A card is never taller for it.
@@ -519,29 +524,41 @@ a delivery's `POST /tasks/of/:id/play` begins its next task). Storage is
 still `artifact` and `task.artifact_id`.
 
 Three tabs: **Plano** (`HomePage`, the home: the agent's one offer;
-Agora with today's mark and *Ver o dia*, the running task and the one
-after it; **Pendentes**, the deliveries begun (their day in the corner,
+Agora with today's mark and *Ver o dia*, the running task; **Em
+seguida**, headed as Agora is and a queue: up to four of the day's cards,
+play on every task, an event in `fixedFill` with the pin, then *+
+Adicionar*, a card carried to a place in it is `move { index }`;
+**Pendentes**, the deliveries begun (their day in the corner,
 −1d +1d ✓ and their bar; urgent once past their day) and the loose tasks
 paused off the day; **Para depois**, the first four of everything not
-begun and *Abrir a lista*; a card is carried between the four, and play
-on a delivery over an hour asks how much first, `PlaySheet`), **Objetivos** (`GoalsPage`) and **Menu**, which
+begun and *Abrir a lista*; a card is carried between the four, a drop
+showing only the card's quiet copy where it lands; **play on any task
+over an hour asks how much first** (`PlaySheet`), on Plano and on the
+calendar: a delivery's piece becomes a task in it, a loose task's piece
+begins and the rest waits in Pendentes, `move { start, minutes }`), **Objetivos** (`GoalsPage`) and **Menu**, which
 opens Rotina, **Feitas**, **Produtos** (the catalogue), sets when the day
 starts and ends, and signs out. *Ver o dia* pushes `DayPage` (the
 calendar); *Abrir a lista* pushes `LaterPage`. The app opens on Plano,
 which asks for the offer again each time it comes forward and when a new
-day begins. The `AppFab` (a `+`) writes a goal on Objetivos and a task
-anywhere else (`writeTask`: Tarefa | Evento, and a Produto chip that
-writes a delivery of that kind). See
+day begins. **The + opens the composer** (#81, `openComposer`): one
+field, typed or spoken, read by `POST /agent/compose` into one summary
+(a task, a task under a delivery or with subtasks, an event, a goal, or
+the agent's plan), and nothing written until Adicionar; *Ajustar* opens
+the creation sheet (`writeTask`: Tarefa | Evento, and a Produto chip),
+which a tap on the calendar's room still opens directly. A loose task's
+page has *+ Subtarefa* (`POST /tasks/:id/subtasks`). See
 [product/spec/home.md](./product/spec/home.md).
 The landing's demo shell keeps
 its old three tabs (Tempo, Entregas, Menu), as the landing has three chapters. It sits in the same spot on
 every tab and never animates between them (`noAnimation`).
-**The agent's bar is on every screen, in the same place**: one `AskDock`
-for the tabs and one per page, floated at `AskDock.location` with
-`AskDock.animator`, a `DockHero` held still while pages slide under it,
-with the screen's own round button beside it (the `AppFab` on the tabs,
-Nova rotina on Rotina, a task on Feitas, the microphone on notes). A new
-page floats an `AskDock` too and leaves `kNotesDockClearance` under its
+**There is no agent bar; one round button is on every screen, in the
+same place**: one `AskDock` for the tabs and one per page, floated at
+`AskDock.location` (`AppFab.location`) with `AskDock.animator`, a
+`DockHero` held still while pages slide under it. It is the composer's +
+(found through `ComposeLauncher`, above the router), about the page it is
+on, unless the screen has a button of its own (Nova rotina on Rotina, a
+delivery on Produtos); the notes put the dictation microphone beside it.
+A new page floats an `AskDock` too and leaves `kNotesDockClearance` under its
 last row (plus `MediaQuery.paddingOf(context).bottom` on a tab, whose body
 runs under the bottom bar); see "The agent" in [product/spec/agent.md](./product/spec/agent.md).
 

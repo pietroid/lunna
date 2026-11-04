@@ -18,6 +18,7 @@ import 'package:lunna/demo/demo_clock.dart';
 import 'package:lunna/links/api_link_previews.dart';
 import 'package:lunna/notifications/background_refresh.dart';
 import 'package:lunna/notifications/live_activity.dart';
+import 'package:lunna/plan/view/compose.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
 
@@ -158,9 +159,16 @@ Future<void> _main() async {
         // Above the router, so the notes of every page draw their links.
         child: LinkPreviewScope(
           previews: linkPreviews,
-          child: AnalyticsScope(
-            analytics: analytics,
-            child: App(initialLocation: initialLocation, analytics: analytics),
+          // The composer's + on every page writes through the blocs above.
+          child: ComposeLauncher(
+            open: openComposer,
+            child: AnalyticsScope(
+              analytics: analytics,
+              child: App(
+                initialLocation: initialLocation,
+                analytics: analytics,
+              ),
+            ),
           ),
         ),
       ),

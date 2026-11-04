@@ -3628,6 +3628,36 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Conversar'**
   String get composeTalk;
+
+  /// The summary's kind for a goal: an amount to bill by a day.
+  ///
+  /// In pt, this message translates to:
+  /// **'Objetivo'**
+  String get composeKindGoal;
+
+  /// A goal's line in the summary: the amount by its last day.
+  ///
+  /// In pt, this message translates to:
+  /// **'{value} até {day}'**
+  String composeGoalBy(String value, String day);
+
+  /// Snackbar after the composer wrote something down.
+  ///
+  /// In pt, this message translates to:
+  /// **'Adicionado'**
+  String get composeAdded;
+
+  /// The composer's read failed (no connection, the model down).
+  ///
+  /// In pt, this message translates to:
+  /// **'Não consegui entender agora. Tente de novo.'**
+  String get composeFailed;
+
+  /// The button on a loose task's page that gives it a subtask.
+  ///
+  /// In pt, this message translates to:
+  /// **'Subtarefa'**
+  String get subtaskAdd;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

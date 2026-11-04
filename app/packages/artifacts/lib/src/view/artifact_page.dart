@@ -234,18 +234,9 @@ class _ArtifactPageState extends State<ArtifactPage> {
           // microphone writes into them.
           floatingActionButton: artifact == null || _tab != _tasksTab
               ? null
-              : AskDock(
-                  about: AgentSubject.artifact(widget.id),
-                  fab: AppFab(
-                    tooltip: context.l10n.artifactAddTask,
-                    onPressed: () => unawaited(
-                      writeDownOnTimeline(
-                        context,
-                        artifactId: widget.id,
-                      ),
-                    ),
-                  ),
-                ),
+              // The composer's +, about the delivery: a task written here
+              // goes under it.
+              : AskDock(about: AgentSubject.artifact(widget.id)),
           floatingActionButtonLocation: AskDock.location,
           // Notas draws its own dock in the same place: Pendentes' comes in
           // without growing out of nothing.

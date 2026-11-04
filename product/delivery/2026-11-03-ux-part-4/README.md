@@ -4,7 +4,8 @@
 > (it changes Em seguida, the drag's preview, the play sheet and the
 > calendar's Agora, and ships the composer #81 designed). Designed
 > unattended; **approved on the issue** after round 3 (Adicionar
-> tightened). Next: the build, `/create build ux-part-4`.
+> tightened), and **built** unattended: server, app, specs and prints
+> of the real build in both brands (section 3).
 
 ## 1. The prompt
 
@@ -153,82 +154,145 @@ block's control on the left, where every block's is).
 ### Open questions
 
 - When a loose task of two hours is played for 30 min, should the rest
-  wait in **Pendentes** (begun, as recommended here) or go back to
-  where it was in the queue?
+  wait in **Pendentes** (begun) or go back to where it was in the queue?
+  **Built as recommended (Pendentes)**, since the issue's approval did
+  not say otherwise; going back to the queue is one line in
+  `_splitRest` (`pending` false and a queue position).
 
-## Build brief
+## 3. What was built
 
-### Files the design session wrote (uncommitted, kept for the build)
+### Prints of the real build
 
-| File | What |
-|------|------|
-| `app/lib/ux_part_4_preview.dart` | the preview entry point, `?s=1..4` (delete at Phase 4) |
-| `app/lib/plan/view/plan_items.dart` | `PlanItems.next` is a list (`kNextOnHome`); `playCard` asks over an hour |
-| `app/lib/plan/view/play_sheet.dart` | `PlaySheet.task` (a loose task), `playCardAsks`, `PlaySheet.show(context, sheet)` |
-| `app/lib/plan/view/plan_drag.dart` | `PlanQueue` (a slot before each card and one at the end), `PlanDropGhost`, `queueDropper`, `dropOnPlan(before:)` with `_placeIn`, `queueEndOf` (where Em seguida's + writes); `PlanDropGap` gone; the carried card's place closes |
-| `app/lib/plan/view/home_page.dart` | Em seguida under a `_Heading`, as a `PlanQueue`, ending in `AppAddRow`; `_NextCard` draws an event with `fixedFill` and the pin (a routine's day, `routineFill` and repeat); ghosts on Pendentes, Para depois and Agora (`NowDropZone`) |
-| `app/packages/timeline/lib/src/widgets/task_card.dart` | `TaskCard.mark` (an icon in the play's room when there is no play) and `markInk` (the mark and the hours); `trailingInk` now applied |
-| `app/packages/timeline/lib/src/widgets/event_tile.dart` | Agora's task: `TaskPlayButton` before the title (`_leadingToggle`); `EventControls(play:)` |
-| `app/packages/app_ui/lib/src/widgets/app_add_row.dart` | `AppAddRow.dense` (round 3), used by Em seguida |
-| `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`) | `playPieceBodyLoose`; `planDropHere`, `planDropStart` removed (`homeNextMore`, added in round 1, removed again in round 2) |
+Drawn by the real app through the preview entry point (deleted after
+shooting): the real `HomePage`, `DayPage`, `PlaySheet` and
+`ComposerSheet` on the demo's day at 10:00, the composer's two scenes on
+canned reads.
+
+**Lunna**
+
+![Lunna](img/build-lunna.png)
+
+**Focus**
+
+![Focus](img/build-focus.png)
+
+| # | Scene |
+|---|-------|
+| 1 | Plano: Em seguida headed as Agora is, play on every task, lunch as the calendar draws it, + Adicionar, and the composer's one button (no bar) |
+| 2 | A card of Em seguida carried: its quiet copy where it would land, its old place closed |
+| 3 | Play on a loose task of two hours: how much now |
+| 4 | Ver o dia: Agora's task with the round play/pause before its title |
+| 5 | The composer (#81): "dentista amanhã às 15h" read as an event |
+| 6 | The composer: a task under a delivery with its three subtasks |
+
+### The contract
+
+- **Play over an hour asks how much, for any task not begun, wherever it
+  is pressed** (Em seguida, Pendentes, Para depois, `LaterPage`, the
+  calendar's play and Agora's waiting task, a drop on Agora). A loose
+  task's piece is `POST /tasks/:id/move { index: 0, start: true, minutes }`:
+  **the server splits it**, the piece begins, the rest (same name and
+  notes) waits at the top of Pendentes owing what is left. A piece at or
+  over the length is the whole; outside 5–480 it is refused in
+  Portuguese. The guard carries the piece and its answer posts it back.
+- **Em seguida is a queue**: a drop is a place in the list of tasks
+  (`move { index }`), counted as the server counts a move (the carried
+  task taken out, the running one counted, an event skipped: before an
+  event is right after the task above it). Its + writes there too
+  (`queueEndOf`), also when the last card drawn is an event and when Em
+  seguida is empty.
+- **The composer reads, the person writes**: `POST /api/agent/compose`
+  writes nothing; Adicionar writes through the routes the old sheet used,
+  so the time rules hold.
 
 ### Server
 
-- **The composer (#81)**: everything in
-  [its build brief](../2026-11-03-composer/README.md#server):
-  `POST /api/agent/compose`, the fast read on `OPENROUTER_MODEL` with its
-  8 s fallback to the agent's turn, `POST /api/tasks/:id/subtasks`, the
-  analytics rows, the eval cases.
-- **A piece of a loose task**: `POST /tasks/:id/move { start: true,
-  minutes }` on a task that has not begun and is longer than `minutes`
-  splits it: the task takes `minutes` and begins (the guard still asks
-  when something runs); a new loose task with the same title and notes
-  and the rest of the minutes is written at the top of the backlog,
-  `pending_at` set. Through `EventLayoutService`, undoable as a move. A
-  `minutes` at or over the task's length is the whole (no split). Refused
-  in Portuguese outside 5–480. Today `minutes` on a move only cuts a task
-  to fit room; the split is only with `start: true`.
+| File | What |
+|------|------|
+| `events/event-layout.service.ts` | `moveTask`: with `start` and `minutes` under the task's length, `_splitRest` writes the rest at the top of the backlog (`pending_at` for a loose task) before the piece begins; the guard carries `minutes` |
+| `events/request.ts`, `events/timing.ts` | `requireMove` reads `minutes` with `start` as a piece (5–480, refused in Portuguese); `requireTiming` takes it back from the guard's answer; `StartNowGuard.minutes` |
+| `agent/compose.ts`, `agent/compose.controller.ts` | `POST /api/agent/compose`: the fast read (one forced `read_request` on `OPENROUTER_MODEL`, 8 s), `draftOf` (the server fills the facts), the fallback to the agent's turn |
+| `agent/openrouter.client.ts` | `generate(…, { force })`: a named `tool_choice` |
+| `artifacts/artifacts.service.ts`, `artifacts.controller.ts` | `POST /api/tasks/:id/subtasks`: the first subtask makes a loose task a task with tasks, keeping its row as the first; later ones at the end |
+| `analytics/events.ts` | `compose_read` and `subtask_created` rows; `compose_kind` (kind, ms, fast) from the service |
+| `agent/evals/compose.ts` | `npm run eval:compose`: five lines on a real model, p50/p95 |
 
 ### App
 
-- **Composer (#81)**: [its app list](../2026-11-03-composer/README.md#app),
-  whole: the dock's bar goes, `ComposeButton` everywhere at
-  `AppFab.location`, wired to the compose route, Adicionar / Ajustar /
-  Conversar / Aplicar, "+ Subtarefa" on a loose task's page.
-- **Em seguida**: as drawn. Its + (`queueEndOf`) must land after the
-  last task drawn, also when the last card is an event (it counts the
-  last *task* above it) and when Em seguida is empty (after Agora's task,
-  or first). Check `_placeIn` against the server's move
-  counting on a reorder downwards (the carried task taken out first) and
-  around a fixed block in the queue; an event in Em seguida is not
-  carriable.
-- **Play everywhere**: `playCard` is the one play of a loose task (Em
-  seguida, Pendentes, Para depois, `LaterPage`), and the calendar's play
-  (`TimelineList._now`, through a callback the app hands in, since the
-  sheet lives in `lib/plan`) and a drop on Agora of a task over an hour go
-  through it too. `ArtifactPlayed` stays for deliveries.
-- **The calendar**: `DeliveryTile` on Agora gets the same round button as
-  `EventTile` (scene 4 shows a loose task only).
-- **Tests**: the design's changes were not run against the existing
-  tests; `test/plan/home_page_test.dart` still expects the old Em seguida
-  (one card under a caption) and the old drop: after round 2 it runs 11
-  passing, 2 failing ("draws the break and an empty Para depois on an
-  empty day" looks for "Nada em andamento"; "carries a task of Para depois
-  to Agora, which begins it"). Update it with
-  `home_page_test` (Em seguida's heading, a card per task, play
-  on each, an event with the pin and `fixedFill` and no play, + Adicionar
-  opens the sheet and writes at the queue's end, no "Mais N hoje", a
-  reorder posts the right index, the ghost and no "Solte aqui"),
-  `task_card` (a mark in the play's room, its ink on the hours),
-  `app_add_row` (dense keeps the + and Adicionar, with the smaller padding), `play_sheet` for a loose task (piece, whole, talk, cancel),
-  `event_tile` (Agora's round button pauses, begins a waiting task, none
-  for an event or in overtime); server e2e for the split (piece begins,
-  rest pending, whole, refused).
-- Update `product/spec/home.md` (Em seguida, the drop, play),
-  `product/spec/agent.md` and the shell paragraph of `AGENTS.md` (the
-  composer), and the timeline paragraph (Agora's button).
+| Piece | What |
+|-------|------|
+| `lib/plan/view/compose.dart` | `openComposer` (the cubit on `AgentRepository.compose`, Adicionar / Ajustar / Conversar) and `writeDraft` (each kind through its route) |
+| `packages/agent`: `ask_bar.dart` | `AskDock` is one button: the composer's + by default (`ComposeLauncher`), the screen's own when handed one, the notes' mic `beside` it; the bar, `AskRecorder` and the hold-to-record dock are gone; `DockHero` draws the arriving button |
+| `packages/agent`: `compose_cubit.dart`, `view/composer.dart` | `ComposeDraft.fromJson`, `ComposeKind.goal`, `ComposeSubtask`, a failed read; the summary's goal line, no Aplicar when the turn proposed nothing |
+| `packages/artifacts` | `createWithTasks` (a task with subtasks), `addSubtask` |
+| `packages/timeline` | `TimelineList.onPlay` (the calendar's play and Agora's waiting task go through the app's play); `DeliveryTile` gets Agora's round button as `EventTile` has, and both put it under a key the list's tap test leaves alone (`leadKey`: without it a tap on Agora's pause also opened the card, a bug the design session's change had and its tests caught); `EventPage.onAddSubtask` (+ Subtarefa); `StartNowGuard.minutes`; `writeDownOnTimeline(initialText:)` |
+| `lib/plan/view/plan_drag.dart` | a drop on Agora is `playCard` |
+| `lib/main.dart`, shell, pages | `ComposeLauncher` above the router; every `AskDock` that wrote a task is now the composer's |
+| From the design session (kept) | Em seguida as a `PlanQueue` under a heading, `PlanDropGhost`, `TaskCard.mark`, `AppAddRow.dense`, `PlaySheet.task`, `EventTile`'s round button |
 
-### Cost of the design session
+### Tests
 
-Not recorded here: the queue measures every run and writes the figures in
-the PR.
+- **Server** (`npm test`): 12 new: the split (piece begins and the rest is
+  pending, the whole, refused over 8 h, kept through the guard), subtasks
+  (a loose task made a task with tasks, its begun row untouched; later
+  ones appended; 404), the compose route on a scripted model (an event in
+  the person's zone in one forced call, a task under a delivery with
+  subtasks, a goal, a plan handed to the turn, the fallback on a failed or
+  untrustworthy read, an empty line refused).
+- **App**: `home_page_test` 17 (Em seguida's four cards, play on each, the
+  pin, the dense + Adicionar, its sheet, play over an hour asking and
+  posting the piece, `queueEndOf` after a task, after an event, empty;
+  the two that failed after the design fixed), `compose_test` 7 (the
+  cubit: send, a stale read dropped, a failed read; the draft's JSON; the
+  goal's line; no Aplicar without a plan; the failure), `agora_play_test`
+  5 (the round button pauses, begins a waiting task, none for an event or
+  in overtime; `TaskCard.mark` in the play's room), the dock (one button
+  and no bar, the screen's own button, the notes' + about the page, the
+  hero), and the tests that measured the bar now measure the +.
+  `timeline_list_test`: five tests written before Agora's round button
+  now find it (the pause and a waiting task's begin are the round
+  button; Agora's pause counts beside a later card's play), and "an empty
+  Agora is as tall as a running one" allows one pixel, the round button
+  being a hair taller than the title's line.
+- `.tool/check`: the first full run passed app-analyze, server eslint,
+  tsc and tests, and every package under both brands **except timeline**
+  (5 tests in `timeline_list_test` written before Agora's round button,
+  and the tap bug above). Both are fixed, and `timeline_list_test` passes
+  (60). **The final full run passed**, every line ✓: app-analyze,
+  every package (agent, analytics, api_client, app_ui, artifacts, cycle,
+  notifications, timeline) under Focus and Lunna, and the server's
+  eslint, tsc and tests. The app's own tests (`app/test`, not run by CI) pass
+  under Focus and Lunna (63 each).
+
+### Where the build differs from the design
+
+- **Conversar opens the conversation with the words in its field**, not on
+  the turn the read already had: the app's conversation always starts a
+  new one (`AgentCubit.open`), and reopening a server conversation is not
+  something it can do yet. The turn the read took is in the history above
+  it.
+- **No "Desfazer" on the "Adicionado" snackbar**: a task, event or goal
+  written from the composer is undone as any other (deleted on its page);
+  a plan keeps its `UndoChip`.
+- **The compose evals are their own script** (`npm run eval:compose`),
+  not cases in `eval:agent`, whose harness grades the day a plan leaves;
+  the fast read has no day to grade. **It was not run** (it costs money
+  and the run is unattended), so the spec has no latency figures yet.
+- **Undoing a subtask** is deleting it; the delivery the first one made
+  stays (the brief asked for "undoable": there is no single undo route).
+- **A delivery's task over an hour on the calendar** begins whole, as
+  before: the play sheet asks for loose tasks and for deliveries (through
+  `playPending`), and a delivery's run on the calendar plays its next
+  task through the day's own play.
+
+## 4. How to turn it on
+
+Nothing to set: the composer uses the agent's `OPENROUTER_MODEL` and key.
+Without them `POST /agent/compose` answers 503 ("A Lunna ainda não está
+conectada a um modelo."), and the composer says it could not read the
+line, keeping the words. No migration (the split and the subtasks use
+the columns there were).
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

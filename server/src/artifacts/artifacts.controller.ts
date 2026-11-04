@@ -44,6 +44,9 @@ import {
  * never works out what a change did. A delivery's tasks are moved, begun
  * and finished on the day, through the day's own routes.
  */
+/** How long a subtask is when nobody said. */
+const SUBTASK_MINUTES = 30;
+
 @Controller()
 @UseGuards(SessionGuard)
 @UseInterceptors(CatchUpInterceptor)
@@ -117,6 +120,26 @@ export class ArtifactsController {
       Trace.start(user.id),
     );
     return this._answer(user);
+  }
+
+  /**
+   * A subtask of a task: the first one of a loose task makes it a task
+   * with tasks, keeping the task as its first. Answers Entregas, with the
+   * delivery the subtask went into.
+   */
+  @Post('tasks/:id/subtasks')
+  async addSubtask(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: CreateArtifactTaskDto,
+  ): Promise<ArtifactsAnswer & { artifactId: string }> {
+    const artifactId = await this.artifacts.addSubtask(
+      owner(user),
+      id,
+      requireArtifactTask({ ...dto, minutes: dto.minutes ?? SUBTASK_MINUTES }),
+      Trace.start(user.id, id),
+    );
+    return { ...(await this._answer(user)), artifactId };
   }
 
   /** Writes a kind down in the catalogue, on a shelf she has or a new one. */

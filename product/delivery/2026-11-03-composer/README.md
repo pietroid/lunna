@@ -7,6 +7,10 @@
 > answered (round 3). This is the hand-off:
 > sections 1 and 2 and the Build brief. `/create build composer` takes it
 > from here.
+>
+> **Built in #85** ([UI and UX, part 4](../2026-11-03-ux-part-4/README.md)):
+> its build session never ran here, so that delivery built this brief, and
+> says where the build differs from it.
 
 ## 1. The prompt
 

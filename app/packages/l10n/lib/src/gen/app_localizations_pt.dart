@@ -2343,4 +2343,21 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get composeTalk => 'Conversar';
+
+  @override
+  String get composeKindGoal => 'Objetivo';
+
+  @override
+  String composeGoalBy(String value, String day) {
+    return '$value até $day';
+  }
+
+  @override
+  String get composeAdded => 'Adicionado';
+
+  @override
+  String get composeFailed => 'Não consegui entender agora. Tente de novo.';
+
+  @override
+  String get subtaskAdd => 'Subtarefa';
 }

@@ -82,13 +82,35 @@ export function requireMove(taskId: string, dto: MoveEventDto): TimingAction {
   }
 
   if (dto.minutes !== undefined) {
-    if (!Number.isInteger(dto.minutes) || dto.minutes < 5) {
-      throw new BadRequestException('minutes must be an integer of at least 5');
+    // With start, a piece of the task to begin: the rest waits in Pendentes.
+    if (action.start) {
+      action.minutes = requirePlayPiece(dto.minutes);
+    } else {
+      if (!Number.isInteger(dto.minutes) || dto.minutes < 5) {
+        throw new BadRequestException(
+          'minutes must be an integer of at least 5',
+        );
+      }
+      action.minutes = dto.minutes;
     }
-    action.minutes = dto.minutes;
   }
 
   return action;
+}
+
+/** A piece of a task begun by play: 5 minutes to 8 hours, said in Portuguese. */
+function requirePlayPiece(minutes: unknown): number {
+  if (
+    typeof minutes !== 'number' ||
+    !Number.isInteger(minutes) ||
+    minutes < 5 ||
+    minutes > 480
+  ) {
+    throw new BadRequestException(
+      'Um pedaço de tarefa vai de 5 minutos a 8 horas.',
+    );
+  }
+  return minutes;
 }
 
 /** Reads a guard's answer off the wire, refusing anything it cannot trust. */
@@ -96,6 +118,7 @@ export function requireTiming(action: {
   taskId?: string;
   index?: number;
   decision?: string;
+  minutes?: unknown;
 }): TimingAction {
   const taskId = action.taskId?.trim() ?? '';
   if (taskId === '') throw new BadRequestException('taskId is required');
@@ -114,6 +137,9 @@ export function requireTiming(action: {
     index: requireIndex(action.index ?? 0),
     start: true,
     decision: decision as TimingDecision | undefined,
+    ...(action.minutes === undefined || action.minutes === null
+      ? {}
+      : { minutes: requirePlayPiece(action.minutes) }),
   };
 }
 

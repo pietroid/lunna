@@ -104,7 +104,8 @@ Future<void> dropOnPlan(
 
   switch ((carry, to)) {
     case (CarryCard(:final card), PlanSection.now):
-      bloc.add(EventMoved(id: card.id, index: 0, start: true));
+      // Let go on Agora is play: a task over an hour asks how much first.
+      await playCard(context, card);
     case (CarryDelivery(:final artifact), PlanSection.now):
       await playPending(context, artifact);
 
