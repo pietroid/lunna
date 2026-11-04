@@ -29,10 +29,10 @@
         },
         {
           "id": "D",
-          "x": 160,
-          "y": 476,
+          "x": 140,
+          "y": 467,
           "label": "+ Adicionar",
-          "text": "Up to four cards, then '+ Adicionar', as Lista's day ended: it writes a task right after the last one here."
+          "text": "Up to four cards, then '+ Adicionar', tight under the last card, its + in line with the cards' edge: it writes a task right after the last one here."
         },
         {
           "id": "E",

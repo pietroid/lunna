@@ -3,7 +3,8 @@
 > Issue [#85](https://github.com/pietroid/lunna/issues/85), **mockup track**
 > (it changes Em seguida, the drag's preview, the play sheet and the
 > calendar's Agora, and ships the composer #81 designed). Designed
-> unattended; the person approves on the issue.
+> unattended; **approved on the issue** after round 3 (Adicionar
+> tightened). Next: the build, `/create build ux-part-4`.
 
 ## 1. The prompt
 
@@ -20,6 +21,10 @@ From the issue, verbatim:
 The design was reviewed on the issue, and the person replied:
 
 > The events on the home page should have the same color and the pin icon  to maintain consistency. Also, remove the "Mais 4 hoje" and add instead a + adicionar, very similar to what we had before
+
+The design was reviewed again, and the person replied:
+
+> just decrese the spacing of adicionar, the rest approved
 
 ## 2. The design
 
@@ -53,7 +58,8 @@ Here **every play of a task over an hour asks**, wherever it is pressed.
 
 - **Em seguida is a section, headed as Agora is**, and a queue: the rest
   of the day's cards in order, up to four, then **+ Adicionar**
-  (`AppAddRow`, as Lista's day ended), which writes a task right after
+  (`AppAddRow`, as Lista's day ended, but dense: close under the last
+  card, its + in line with the cards' edge), which writes a task right after
   the last one drawn. Every task plays. **An event is drawn as the
   calendar draws it**: the sand fill (`fixedFill`) and the pin in the
   play's room, its hours in `fixedInk` (a routine's day: `routineFill`
@@ -82,7 +88,7 @@ Here **every play of a task over an hour asks**, wherever it is pressed.
 | 1A | Heading | Em seguida is a section heading, the same size as Agora and Pendentes, no longer a caption. |
 | 1B | Play on all | Every task in the queue has the round play on its left; over an hour it asks first (3). |
 | 1C | Event, as on the calendar | An event has the calendar's sand fill and its pin where the play would be, so titles line up; it is not carried. |
-| 1D | + Adicionar | The rest of the day's cards, up to four, then '+ Adicionar', as Lista's day ended: it writes a task right after the last one drawn. |
+| 1D | + Adicionar | The rest of the day's cards, up to four, then '+ Adicionar', tight under the last card (`AppAddRow(dense: true)`: 4 px around it instead of 12), its + in line with the cards' edge: it writes a task right after the last one drawn. |
 | 1E | Composer (#81) | The + opens #81's composer, built in this delivery: no agent bar on Plano. |
 | 2A | Quiet copy | The carried card's own copy at 40 %, name and length, opens where it would land; the cards under it make room. |
 | 2B | Under the finger | The lifted card, as today. |
@@ -117,6 +123,10 @@ block's control on the left, where every block's is).
   (today while it has any left), at most four, then + Adicionar. Four
   keeps Pendentes in sight on a phone. The rest of the day is no longer
   counted there: *Ver o dia*, beside Agora's heading, opens it.
+- **"Decrease the spacing" is read as the row's own padding**: `AppAddRow`
+  gets `dense` (4 px each way instead of 12), used only in Em seguida, so
+  the row sits right under the last card and its + lines up with the
+  cards' left edge. Lista, Entregas and Folgas keep the roomier row.
 - **Em seguida's + writes into the queue**, right after its last task
   (`Placement.queue`, counted as a drop after the last card counts), not
   into Para depois as the `AppFab` does: it ends that list, as Lista's
@@ -159,6 +169,7 @@ block's control on the left, where every block's is).
 | `app/lib/plan/view/home_page.dart` | Em seguida under a `_Heading`, as a `PlanQueue`, ending in `AppAddRow`; `_NextCard` draws an event with `fixedFill` and the pin (a routine's day, `routineFill` and repeat); ghosts on Pendentes, Para depois and Agora (`NowDropZone`) |
 | `app/packages/timeline/lib/src/widgets/task_card.dart` | `TaskCard.mark` (an icon in the play's room when there is no play) and `markInk` (the mark and the hours); `trailingInk` now applied |
 | `app/packages/timeline/lib/src/widgets/event_tile.dart` | Agora's task: `TaskPlayButton` before the title (`_leadingToggle`); `EventControls(play:)` |
+| `app/packages/app_ui/lib/src/widgets/app_add_row.dart` | `AppAddRow.dense` (round 3), used by Em seguida |
 | `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`) | `playPieceBodyLoose`; `planDropHere`, `planDropStart` removed (`homeNextMore`, added in round 1, removed again in round 2) |
 
 ### Server
@@ -208,7 +219,8 @@ block's control on the left, where every block's is).
   on each, an event with the pin and `fixedFill` and no play, + Adicionar
   opens the sheet and writes at the queue's end, no "Mais N hoje", a
   reorder posts the right index, the ghost and no "Solte aqui"),
-  `task_card` (a mark in the play's room, its ink on the hours), `play_sheet` for a loose task (piece, whole, talk, cancel),
+  `task_card` (a mark in the play's room, its ink on the hours),
+  `app_add_row` (dense keeps the + and Adicionar, with the smaller padding), `play_sheet` for a loose task (piece, whole, talk, cancel),
   `event_tile` (Agora's round button pauses, begins a waiting task, none
   for an event or in overtime); server e2e for the split (piece begins,
   rest pending, whole, refused).

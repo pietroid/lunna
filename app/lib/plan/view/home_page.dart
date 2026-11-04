@@ -262,6 +262,7 @@ class _HomePageState extends State<HomePage> {
                         // writes a task right after the last one here.
                         _Pad(
                           child: AppAddRow(
+                            dense: true,
                             onTap: () => unawaited(
                               writeTask(
                                 context,

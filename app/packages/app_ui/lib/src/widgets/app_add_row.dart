@@ -8,10 +8,14 @@ import 'package:l10n/l10n.dart';
 /// {@endtemplate}
 class AppAddRow extends StatelessWidget {
   /// {@macro app_add_row}
-  const AppAddRow({required this.onTap, super.key});
+  const AppAddRow({required this.onTap, this.dense = false, super.key});
 
   /// Writes something down there.
   final VoidCallback onTap;
+
+  /// Sits close under the card above it, its + in line with the cards'
+  /// edge: Plano's Em seguida, where the queue runs straight on into it.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +25,9 @@ class AppAddRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.s3,
-            vertical: AppSpacing.s3,
+          padding: EdgeInsets.symmetric(
+            horizontal: dense ? AppSpacing.s1 : AppSpacing.s3,
+            vertical: dense ? AppSpacing.s1 : AppSpacing.s3,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
