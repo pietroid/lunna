@@ -899,7 +899,7 @@ describe('the day', () => {
       });
     });
 
-    it('begins a piece of a long task, and the rest waits in Pendentes', async () => {
+    it('begins a piece of a long task as a subtask, and the rest is another (#89)', async () => {
       await add('Escrever o roteiro', 120).expect(201);
       const id = (await task('Escrever o roteiro')).id;
 
@@ -907,19 +907,60 @@ describe('the day', () => {
         201,
       );
 
-      expect(tasks(response)[0]).toMatchObject({
+      const piece = tasks(response)[0];
+      expect(piece).toMatchObject({
         id,
         title: 'Escrever o roteiro',
         started: true,
         durationMinutes: 30,
       });
+      // The loose task became one with subtasks: a delivery, begun, so it
+      // waits in Pendentes with the rest in it.
+      expect(piece.artifact?.title).toBe('Escrever o roteiro');
+      const parent = await artifactStore.get(owner, piece.artifact!.id);
+      expect(parent).toMatchObject({ minutes: 120 });
+      expect(parent?.startedAt).toBeDefined();
       const rest = backlog(response);
       expect(rest).toHaveLength(1);
       expect(rest[0]).toMatchObject({
         title: 'Escrever o roteiro',
         durationMinutes: 90,
-        pending: true,
+        artifact: piece.artifact,
       });
+    });
+
+    it('cuts a subtask to the piece and writes its rest in the same task (#89)', async () => {
+      const artifact = await artifactStore.insert(owner, { title: 'Site' });
+      await add('Home', 120, { artifactId: artifact.id });
+      const id = (await task('Home')).id;
+
+      const response = await drag(id, 0, { start: true, minutes: 40 }).expect(
+        201,
+      );
+
+      expect(tasks(response)[0]).toMatchObject({ id, durationMinutes: 40 });
+      const rest = backlog(response);
+      expect(rest).toHaveLength(1);
+      expect(rest[0]).toMatchObject({
+        title: 'Home',
+        durationMinutes: 80,
+        artifact: { id: artifact.id, title: 'Site' },
+      });
+      expect(await artifactStore.list(owner)).toHaveLength(1);
+    });
+
+    it('splits a piece put in a place into two subtasks (#89)', async () => {
+      await add('Primeiro', 30).expect(201);
+      await add('Longa', 120).expect(201);
+      const id = (await task('Longa')).id;
+
+      const moved = await drag(id, 0, { minutes: 60, split: true }).expect(201);
+
+      const [piece, , rest] = tasks(moved);
+      expect(piece).toMatchObject({ id, durationMinutes: 60 });
+      expect(rest).toMatchObject({ title: 'Longa', durationMinutes: 60 });
+      expect(rest.artifact).toEqual(piece.artifact);
+      expect(piece.artifact).toBeDefined();
     });
 
     it('begins the whole task when the piece is all of it', async () => {
@@ -1142,11 +1183,76 @@ describe('the day', () => {
 
       expect(titles(tasks(after))).toEqual(['Outra coisa']);
       expect(tasks(after)[0].started).toBe(true);
-      expect(backlog(after)[0]).toMatchObject({
+      // Split (#89): the ten minutes it ran are a subtask done, the fifty
+      // it owed another, in its task begun, so in Pendentes.
+      const [rest] = backlog(after);
+      expect(rest).toMatchObject({
         title: 'Em andamento',
         durationMinutes: 50,
+      });
+      expect(rest.artifact?.title).toBe('Em andamento');
+      const parent = await artifactStore.get(owner, rest.artifact!.id);
+      expect(parent?.startedAt).toBe(NOW.toISOString());
+      const done = (await taskStore.ofArtifacts(owner)).filter(
+        (it) => it.artifactId === parent!.id && it.doneAt !== undefined,
+      );
+      expect(done).toHaveLength(1);
+      expect(done[0]).toMatchObject({ title: 'Em andamento', minutes: 10 });
+      expect(done[0].minutes + rest.durationMinutes).toBe(60);
+    });
+
+    it('pauses a task that ran under five minutes whole, in Pendentes (#89)', async () => {
+      await add('Em andamento', 60).expect(201);
+      await add('Outra coisa', 30).expect(201);
+      await begin('Em andamento');
+      later(3);
+
+      const after = await drag((await task('Outra coisa')).id, 0, {
+        start: true,
+        decision: 'pause_current',
+      }).expect(201);
+
+      expect(body(after).guard).toBeUndefined();
+      expect(titles(tasks(after))).toEqual(['Outra coisa']);
+      expect(backlog(after)[0]).toMatchObject({
+        title: 'Em andamento',
         pending: true,
       });
+      expect(backlog(after)[0].artifact).toBeUndefined();
+      expect(await artifactStore.list(owner)).toEqual([]);
+    });
+
+    it('takes the guard answer on the move itself, with a piece (#89)', async () => {
+      await add('Em andamento', 60).expect(201);
+      await add('Longa', 120).expect(201);
+      await begin('Em andamento');
+      later(20);
+
+      const after = await drag((await task('Longa')).id, 0, {
+        start: true,
+        minutes: 30,
+        decision: 'pause_current',
+      }).expect(201);
+
+      expect(body(after).guard).toBeUndefined();
+      expect(tasks(after)[0]).toMatchObject({
+        title: 'Longa',
+        started: true,
+        durationMinutes: 30,
+      });
+      expect(
+        backlog(after).map((it) => [it.title, it.durationMinutes]),
+      ).toEqual([
+        ['Em andamento', 40],
+        ['Longa', 90],
+      ]);
+    });
+
+    it('refuses a decision on a move that starts nothing', async () => {
+      await add('Longa', 120).expect(201);
+      const id = (await task('Longa')).id;
+      await drag(id, 0, { decision: 'pause_current' }).expect(400);
+      await drag(id, 0, { start: true, decision: 'nope' }).expect(400);
     });
 
     it('sends the running task to Para depois, not pending', async () => {

@@ -123,20 +123,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get commonCancel => 'Cancelar';
 
   @override
-  String get guardStartNowTitle => 'Começar agora?';
-
-  @override
-  String guardStartNowRunning(String title, String start, String end) {
-    return '$title está rodando, $start–$end.';
-  }
-
-  @override
-  String get guardFinishCurrent => 'Concluir o atual';
-
-  @override
-  String get guardPostponeCurrent => 'Deixar para depois';
-
-  @override
   String durationMinutes(int minutes) {
     return '$minutes min';
   }
@@ -2212,23 +2198,9 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get playPieceTitle => 'Quanto você vai fazer agora?';
-
-  @override
   String playWhole(String length) {
     return 'Tudo · $length';
   }
-
-  @override
-  String guardBusyBody(String title, String start, String end) {
-    return '$title está rodando, $start–$end. O que fazer com ela?';
-  }
-
-  @override
-  String get guardToPending => 'Pausar em Pendentes';
-
-  @override
-  String get guardToLater => 'Mandar para Para depois';
 
   @override
   String get stepDayLess => '−1d';
@@ -2239,11 +2211,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String pendingTaskLeft(String length) {
     return 'Falta $length';
-  }
-
-  @override
-  String playPieceBodyLoose(String title, String length) {
-    return '$title tem $length pela frente. O resto espera em Pendentes.';
   }
 
   @override
@@ -2344,21 +2311,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get playWhenNow => 'Começar agora';
 
   @override
-  String playWhenNext(String hour) {
-    return 'Em seguida · $hour';
-  }
-
-  @override
-  String placePieceTitle(String hour) {
-    return 'Quanto vai para as $hour?';
-  }
-
-  @override
-  String placePieceBody(String title, String length) {
-    return '$title tem $length. O resto fica onde está.';
-  }
-
-  @override
   String playWhenIdle(String length) {
     return 'Nada rodando agora · $length';
   }
@@ -2432,6 +2384,19 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get guardPauseNo => 'Não';
+
+  @override
+  String guardWaitTitle(String title) {
+    return 'Começar depois de $title?';
+  }
+
+  @override
+  String guardWaitBody(String title, String end) {
+    return '$title é fixo e segue até $end.';
+  }
+
+  @override
+  String get guardWaitYes => 'Sim, começar depois';
 
   @override
   String playMuchUntil(String title, String hour) {

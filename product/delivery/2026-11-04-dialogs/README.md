@@ -2,8 +2,7 @@
 
 > Issue [#89](https://github.com/pietroid/lunna/issues/89), **mockup
 > track** (it changes the play sheets, the guard and what a drop asks).
-> Designed unattended; this is the draft the person approves on the
-> issue. The build (`/create build dialogs`) starts from the Build brief.
+> Designed and built unattended; the design was approved on the issue.
 
 ## 1. The prompt
 
@@ -58,6 +57,13 @@ From the issue, verbatim:
 The design was reviewed on the issue, and the person replied:
 
 > you just dont need to overexplain on "Pausar fazendo a Lunna". Just to "Fazendo a lunna vai para pendentes" is enough
+
+and then, on the revised board:
+
+> approve
+
+The two open questions were left unanswered, so the build kept the
+design's answers (see *Open questions*, below, and section 3).
 
 ## 2. The design
 
@@ -192,7 +198,7 @@ into chunks that fit the free blocks, each its own row.
 - **Falar com a Lunna leaves the how-much sheet**: the issue lists the
   options exactly. The composer's + stays the way to talk.
 
-### Open questions
+### Open questions (answered by the design's defaults)
 
 - *Daqui a 15 min*: is it also hidden when the task is **already** queued
   15 minutes or more from now (it would pull it earlier), or is it
@@ -201,68 +207,154 @@ into chunks that fit the free blocks, each its own row.
   should the done subtask still be written, or the task simply paused
   whole? The design writes nothing under 5 minutes (no 2-minute rows).
 
-## Build brief
+## 3. What was built
 
-Phase 3 starts here and Phase 4 removes this section.
+### The prints
 
-### Files from the design (uncommitted)
+The shipped sheets (`timeline`'s `play.dart`), over the demo's day at
+10:00, in both brands. Scenes as on the board: 1 when (idle), 2 when
+(busy), 3 the pause, 4 how much (4 h, 1h55 of room before the
+Standup), 5 an hour that does not fit.
 
-- `app/lib/dialogs_preview.dart`: the preview, five scenes (`?s=1..5`).
-- `app/lib/plan/view/play_sheet.dart`: appended `kPlayMinRoom`,
-  `playPieces` (the how-much table), `PlayLater`, `PlayWhenQuestion`,
-  `PlayMuchQuestion`, `PauseQuestion`; `_SheetFrame(cancel:)`. The old
-  `PlayWhenSheet`, `PlaySheet`, `PlaceSheet`, `askPlay` are still there:
-  the build replaces them with these.
-- `app/packages/l10n/lib/arb/app_pt.arb` (+ gen): `playWhenIdle`,
-  `playWhenBusy`, `playWhenSoon`, `playWhenAt`, `playWhenAfter`,
-  `playMuchNowTitle`, `playMuchAtTitle`, `playMuchRoomUntil`,
-  `playMuchRestNow`, `playMuchRestStays`, `playMuchShortTitle`,
-  `playMuchShortBody`, `playMuchDo`, `playMuchUntil`, `playMuchDayEnd`,
-  `guardPauseTitle`, `guardPauseBody` (`{title} vai para Pendentes.`,
-  after the review), `guardPauseYes`, `guardPauseNo`. `PauseQuestion`
-  takes only `current`.
-  The strings the old sheets used go when they do.
+**Lunna**
 
-### Server
+![Lunna](img/build-lunna.png)
 
-- **The room**: the timeline answers, for the hours play may offer, the
-  room at each (or a route `GET /timeline/room?taskId=&at=`): now, the
-  soon hour, the first hour after the running block, each moved to the
-  first hour with ≥ 20 min of room, plus what bounds it (title and hour,
-  or the day's end). One place, `TimelinePlan`, so the app does no
-  layout of its own.
-- **Split on a piece** (`move { start | index | after, minutes }` with a
-  piece under the whole): a loose task becomes a task with subtasks
-  (`ArtifactsService.addSubtask`'s road) — its row cut to the piece, a new
-  row for the rest (same title), at its old place (begun: the top of
-  Pendentes). A subtask is cut and duplicated in its delivery right after
-  itself. Replaces `split: true` and the begun piece's rest in Pendentes.
-- **Pause splits** (`timing { decision: pause_current }`): the running
-  task's begun hour closes as a subtask done with the minutes it ran; the
-  owed minutes are a new subtask, pending. Under 5 minutes run, it pauses
-  whole (open question).
-- **Soon** is an anchor (`move { after: now + 15 }`); *Depois de* is
-  `index` 1 with `after` the offered hour when that hour is not the
-  queue's own.
-- End-to-end specs with the frozen clock: each row of the how-much table,
-  the 20 min rule (a gap of 15 skipped), the two splits (sums of the
-  parent's owed minutes before and after are equal), a subtask's
-  duplicate.
+**Focus**
+
+![Focus](img/build-focus.png)
+
+### The contract
+
+**Play asks when, the pause, how much, and posts one move.** The room
+of an hour runs to the next thing that keeps its hour (an event, an
+anchored task, a begun task) or the day's end, less the pause; an hour
+with under 20 minutes of it is never offered. **A piece, and a pause
+after 5 minutes of work, split the task into subtasks**, so what a task
+still owes is always the sum of its subtasks not done.
+
+### Server (`server/src/events/`)
+
+- `POST /api/tasks/:id/move` takes **`decision`** (`pause_current`, …)
+  with `start: true` (`requireMove`, `MoveEventDto`): the guard answered
+  before the move, so none is raised. Without `start` it is a 400; an
+  unknown decision too.
+- `EventLayoutService._withSubtasks`: a loose task becomes a task with
+  subtasks (a delivery in storage: its title, length and notes, at the
+  end of the open ones; begun when it ran, or when it waited in
+  Pendentes). Used by both splits of a piece:
+  - begun (`move { start, minutes }`): the piece begins, the rest is a
+    subtask at the top of the delivery's Para depois (`_splitRest`), and
+    the delivery is begun, so it is in Pendentes;
+  - placed (`move { index, after?, minutes, split: true }`): the rest is
+    a subtask where the task was.
+  - A subtask (a delivery's task already) is cut and its rest written in
+    the same delivery; no new delivery.
+- `_pauseSplit` (`pause_current`, on the move or through
+  `/tasks/timing`): a running task that ran 5 minutes or more is closed
+  at this minute and ticked off with **the minutes it ran**
+  (`ranMinutes`), and **what it owed** (`owedMinutes`) is a new subtask
+  at the top of the delivery's Para depois. Under 5 minutes it pauses
+  whole, pending, as before.
+- `later_current`, `solve_current` and `postpone_current` are unchanged,
+  for older apps.
 
 ### App
 
-- Replace `askPlay` with the flow above (when → pause → how much), used by
-  `playPending`, Plano's play, the calendar's `onPlay` and a delivery's
-  page play on a subtask.
-- `GuardSheet` becomes `PauseQuestion` (move it to `timeline`, which
-  draws the guard), posting `pause_current` on yes. Its body is one line,
-  *{title} vai para Pendentes.*; the split is not explained on screen.
-- Drops: Agora → pause (if running) → how much at now; Em seguida and
-  free room → how much at that hour. Post once, after the last answer.
-- Widget tests: `playPieces` table, the when sheet's three shapes, the
-  pause's yes/no, a drop over an hour asking how much.
+- `app/packages/timeline/lib/src/play/play.dart` (new, exported):
+  `playRoomAt`, `playFirstRoom`, `playRunning`, `playWhenOf`,
+  `playPieces`, and the flows `playTask` (when → `beginTask` or how much
+  at the later hour), `beginTask` (the pause while a task runs, how much
+  at now, one `EventMoved(start, minutes, decision)`), `askHowMuch`; the
+  sheets `PlayWhenQuestion`, `PlayMuchQuestion`, `PauseQuestion`,
+  `PlaySheetFrame`. In `timeline` so Plano, the calendar and a
+  delivery's page share them.
+- `EventMoved.decision` → `TimelineRepository.moveTask(decision:)`.
+- `GuardSheet` is now the same yes/no (`PauseQuestion`), posting
+  `pause_current` or dismissing; over a fixed block it asks *Começar
+  depois de Reunião?* (`guardWaitTitle`, `guardWaitBody`,
+  `guardWaitYes`).
+- Plano: `playCard` is `playTask`; a drop on Agora is `beginTask`; a
+  drop in Em seguida asks `askHowMuch` at that place's hour.
+  `playPending` plays a delivery's next task through `playTask`, and
+  with none asks only how much.
+- Calendar (`TimelineList`): play is `playTask` when the app gives no
+  `onPlay`; a drop at the top or on Agora is `beginTask`; a drop of a
+  task not begun on free room asks how much there (`split: true`), where
+  it used to offer to cut it to fit and drop the rest.
+- A delivery's page: play on a subtask is `playTask`.
+- Gone: `askPlay`, `PlayWhenSheet`, `PlaySheet`, `PlaceSheet`,
+  `beginCard`, `queueFirst`, `nextSlotOf`, `playCardAsks`, and their
+  strings (`playPieceTitle`, `playPieceBodyLoose`, `placePieceTitle`,
+  `placePieceBody`, `playWhenNext`, `guardStartNowTitle`,
+  `guardStartNowRunning`, `guardBusyBody`, `guardFinishCurrent`,
+  `guardPostponeCurrent`, `guardToPending`, `guardToLater`).
 
-### Cost
+### Tests
 
-The queue measures this run and writes the figures in the PR
-(`.tool/cost` skipped, as the queue asks).
+- Server, `events.controller.spec.ts`: a piece of a loose task begun
+  as a subtask with the rest another, in a begun delivery; a subtask's
+  piece and its rest in the same delivery; a placed piece split into two
+  subtasks; the pause split (10 min done + 50 left = 60, the delivery
+  begun at the task's start); a pause under 5 minutes whole; the guard's
+  answer on the move with a piece; a decision without `start` refused.
+  Server suites: 268 passed in `events`, `artifacts` and `agent`.
+- App, `timeline/test/play_test.dart` (new, 15): every row of the
+  how-much table; the room to an event, to the day's end, inside a block
+  and with the pause; the 20-minute rule (a 15-minute gap skipped); the
+  when question's shapes (idle, idle without room, busy, next already,
+  no *Começar agora* in or 10 minutes before a fixed block); the sheets
+  end to end (a short task asks only when; when → pause → how much →
+  one move; *Não* posts nothing; a short task that does not fit offers
+  only the room).
+- Updated: `guard_sheet_test.dart` (the yes/no, the fixed block),
+  `timeline_list_test.dart` (play asks when; a drop on free room asks
+  how much), `artifact_page_test.dart`, `test/plan/home_page_test.dart`
+  (the pause on the move, the later hours, a drop in Em seguida).
+- `.tool/check`: all green: `app-analyze`, every touched package's
+  tests under both brands (agent, analytics, api_client, app_ui,
+  artifacts, cycle, notifications, timeline), `server-eslint`,
+  `server-tsc`, `server-test`. The root app's tests (`flutter test`,
+  which `.tool/check` doesn't list) pass too: 67 under Focus, 67 under
+  Lunna. The first run failed only on a long line in the preview
+  entry point (`app/lib/dialogs_preview.dart`); that file is deleted
+  after the prints, as the flow says, and the rerun passed. No flaky
+  test.
+
+### Where the build differs from the design
+
+- **The room is worked out on the phone**, from the cards the server
+  laid out (`playRoomAt` over `TimelinePlan.nextFreeStart`), not by a
+  new route: every hour it needs is already on the day, and the server
+  still has the last word on the move. The brief allowed either.
+- **The pause rides on the move** (`decision`) instead of a second
+  request, so the order is the design's (when → pause → how much) and
+  nothing is posted until the last answer.
+- **The guard stays** for the roads that do not ask first: a delivery's
+  play with no task left, and a drop while a **fixed block** runs.
+  There it is the same yes/no; over a fixed block it says the task
+  begins after it (new copy, not on the board).
+- **With a fixed block running, *Começar agora* is not offered** by
+  play: now has no room (rule 3), and the later hour is the accent.
+- **A subtask's rest** goes to the top of its delivery's Para depois,
+  which is next in that task, rather than a position right after the
+  piece.
+- **A drop on the calendar's free room** of a task not begun now asks
+  how much and keeps the rest; a begun task or an event dropped there
+  still offers to be cut to fit, as before.
+- **Side effect worth knowing**: a loose task split once is a task with
+  subtasks for good (a delivery in storage), so on a light day its
+  subtasks hop to the next working day, as a delivery's tasks do.
+- The prints are the shipped widgets over the demo's day with the
+  numbers the rules give for it; the flows behind them are proved by the
+  widget tests above, not by the prints.
+
+## 4. How to turn it on
+
+Nothing to set: no env var, no migration. The server change is
+backward compatible (older apps never send `decision`, and get the
+guard as before); a server deploy and an app release ship it.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

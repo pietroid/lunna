@@ -78,8 +78,7 @@ final class CarryDelivery extends PlanCarry {
 ///
 /// - **Agora** is play: a task is a drop at the top of the day
 ///   (`start: true`, and the guard asks when something else runs); a
-///   delivery is [playPending], which asks how much first when that is
-///   over an hour.
+///   delivery is [playPending]. Both ask by play's rules (#89).
 /// - **Em seguida** is a queue: the task (or a delivery's next task) takes
 ///   the place it was let go at, [before] that card, or after the last one
 ///   drawn when [before] is null. A card of Em seguida let go in it again
@@ -105,35 +104,24 @@ Future<void> dropOnPlan(
 
   switch ((carry, to)) {
     case (CarryCard(:final card), PlanSection.now):
-      // Let go on Agora is now: a task over an hour asks how much first.
-      await beginCard(context, card);
+      // Let go on Agora is now (#89): the pause when a task runs, then how
+      // much fits from now.
+      await beginTask(context, card);
     case (CarryDelivery(:final artifact), PlanSection.now):
       await playPending(context, artifact);
 
     case (CarryCard(:final card), PlanSection.next):
       if (card.id == before?.id) return;
       final index = _placeIn(bloc.state.tasks, items, card.id, before);
-      // Over an hour, how much goes there (#87), as play asks. A task
-      // begun owes what it owes, whole.
-      int? minutes;
-      if (!card.started && card.isTask && card.workMinutes > kPlayAsksOver) {
-        final choice = await PlaceSheet.show(
-          context,
-          PlaceSheet(
-            title: card.title,
-            owed: card.workMinutes,
-            at: slotHourOf(items, before),
-          ),
-        );
-        switch (choice) {
-          case PlayPiece(minutes: final m):
-            minutes = m;
-          case PlayWhole():
-            break;
-          case _:
-            return;
-        }
-      }
+      // How much goes there (#89), measured against the room at that
+      // place's hour. A task begun owes what it owes, whole.
+      final amount = await askHowMuch(
+        context,
+        card,
+        at: slotHourOf(items, before),
+      );
+      if (amount == null) return;
+      final minutes = amount.minutes;
       // A piece is split off, the rest staying where it was.
       bloc.add(
         EventMoved(

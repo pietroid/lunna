@@ -290,7 +290,12 @@ void main() {
     // What was done has its own tab.
     expect(find.text('Tarefa e'), findsNothing);
 
+    // Play on a subtask asks by play's rules (#89): when, then (it fits)
+    // nothing more.
     await tester.tap(find.byType(TaskPlayButton).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.playWhenNow));
+    await tester.pumpAndSettle();
     verify(
       () => timeline.add(const EventMoved(id: 'd', index: 0, start: true)),
     ).called(1);

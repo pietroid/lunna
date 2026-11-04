@@ -17,4 +17,9 @@ export class MoveEventDto {
    * and the rest stays where the task was (#87).
    */
   split?: boolean;
+  /**
+   * With [start]: the guard's answer, given before the move was posted
+   * (#89), so no guard is raised.
+   */
+  decision?: string;
 }

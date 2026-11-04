@@ -39,44 +39,73 @@ cards on screen. From the top:
 | Pendentes | every delivery begun and not delivered (`PendingCard`): its next task under the name, the day it is due in the corner (`dueLabel`: *hoje*, the weekday this week, *12/nov* beyond, *para ontem* once past), "1h30 de 6h15" (*Urgente ·* before it once past its day), −1d +1d ✓, the pace bar at 3 px; then the loose tasks paused off the day (`PendingTaskCard`: "Falta 40 min", −10 +10 ✓) | `PlanItems.pending`: `progressGroups(...).started` minus the one running on Agora, then the backlog's cards with `pending` | not drawn, unless a card is being carried |
 | Para depois | **the whole** of everything not begun (`LaterCard`), then **+ Adicionar** (`AppAddRow(dense: true)`), which writes into the backlog (`writeTask`) | `PlanItems.later`: the loose backlog in its order, then the deliveries not begun in the queue's | "Nada esperando." |
 
-- **Play asks when, always** (#87, `askPlay`), on every task that
-  waits, wherever its play is (Em seguida, Pendentes, Para depois, the
-  calendar). **First sheet, when** (`PlayWhenSheet`): *Quando fazer
-  Roteiro?*, what it owes under it, and only two answers:
-  - ***Começar agora*** (the accent): a drop on Agora, `POST
-    /tasks/:id/move { index: 0, start: true }` (`playCard`); for a
-    delivery `POST /tasks/of/:id/play`, which begins its next task (the
-    first the queue reaches, else the first of its backlog, else a new
-    task of its name for what it still owes). Both can raise the guard,
-    drawn over the page (`GuardSheet`).
-  - ***Em seguida · 10:40***: the first place in the queue, right after
-    what runs (`nextIndexOf`: 1 while a task runs, else 0), `move {
-    index }` (`queueFirst`), at the hour of the first room after what runs
-    and its pause long enough for the whole (`nextSlotOf`; the server's
-    layout has the last word). For a delivery it queues its next task;
-    with no task left there is nothing to queue, and the first sheet is
-    skipped.
+- **Play by strict rules** (#89, `timeline`'s `play.dart`: `playTask`,
+  `beginTask`, `askHowMuch`), on every task that waits, wherever its
+  play is (Em seguida, Pendentes, Para depois, the calendar, a
+  delivery's page on a subtask). **The room** of an hour is the minutes
+  from it to the next thing that does not move (an event, a task that
+  keeps its hour, a begun task) or the working day's end, less the
+  5-minute pause (`playRoomAt`); queued tasks take none of it. **An hour
+  with under 20 minutes of room is never offered** (`kPlayMinRoom`): the
+  first one that has is (`playFirstRoom`). Three questions, one sheet
+  each, and the move posted once, after the last:
+  1. **When** (`PlayWhenQuestion`, `playWhenOf`): *Quando fazer
+     Roteiro?*, under it *Nada rodando agora · 4h* or *Fazendo a Lunna
+     roda até 10:33 · 4h*. ***Começar agora*** (the accent; not offered
+     when now has under 20 minutes of room, as inside a fixed block)
+     and one later hour: nothing running, ***Daqui a 15 min · 10:15***
+     (an anchor, `move { index, after }`), or ***Às 13:00*** when 15
+     minutes from now has no room; something running, ***Depois de
+     Fazendo a Lunna · 10:38***, the first hour after it with room,
+     whether or not the whole fits (`move { index: 1 }`, plus `after`
+     when that is not where the queue would put it), not offered when
+     the task is next already.
+  2. **The pause** (`PauseQuestion`), after *Começar agora* while a task
+     runs: *Pausar Fazendo a Lunna?*, *Fazendo a Lunna vai para
+     Pendentes.*, *Sim, pausar e começar* or *Não* (nothing changes). The
+     answer rides on the move, `move { start: true, decision:
+     'pause_current' }`, so the server raises no guard.
+  3. **How much** (`PlayMuchQuestion`), measured at the hour chosen
+     (now with what runs paused, the later hour, or where a card was
+     dropped), on the task, or the subtask when play is a subtask's
+     (`playPieces`):
 
-  **Second sheet, over an hour** (`kPlayAsksOver`), **how much**: after
-  *Começar agora*, `PlaySheet` (*Quanto você vai fazer agora?*: *30 min*
-  the accent, *1 h*, *Tudo · 2h*, and *Falar com a Lunna*); after *Em
-  seguida*, `PlaceSheet` (*Quanto vai para as 10:40?*, the same pieces).
-  A piece **begun** posts `move { index: 0, start: true, minutes }`: the
-  server splits the task, the piece begins and **the rest is a task of
-  the same name and notes at the top of Pendentes** (`pending_at`; a
-  delivery's stays in it). A piece **queued** posts `move { index,
-  minutes, split: true }`: the piece takes the place and **the rest stays
-  where the task was** (its turn in the queue, right after the piece when
-  that is the same place; its hour; the backlog; Pendentes). A piece at
-  or over the task's length is the whole; outside 5–480 minutes it is
-  refused in Portuguese; a task already begun is not split (400). The
-  guard carries a begun piece (`guard.minutes`) and its answer posts it
-  back. A delivery's next task begun in a piece goes through `move {
-  start, minutes }` too; with no task, `play { minutes }` writes a piece
-  into it.
+     | Task | Room | Asks |
+     |------|------|------|
+     | over 1 h | ≥ the task | *30 min* · *1h* · *Tudo · 4h* |
+     | over 1 h | 1 h to less than the task | *30 min* · *1h* · *2h13* |
+     | over 1 h | under 1 h | only the room, *Fazer 40 min* |
+     | 1 h or less | ≥ the task | nothing |
+     | 1 h or less | less | only the room, *Fazer 20 min* |
+
+     A piece begun posts `move { index: 0, start: true, minutes }`; a
+     piece put at an hour or a place, `move { index, after?, minutes,
+     split: true }`.
+
+  **A piece splits into subtasks** (the server, `_withSubtasks`): a
+  loose task becomes a task with subtasks (a delivery in storage, its
+  title, length and notes, at the end of the open ones; begun when the
+  piece is, or when the task waited in Pendentes), its row the piece, a
+  new subtask of the same name the rest: begun, at the top of its Para
+  depois (so the delivery waits in Pendentes); queued, where the task
+  was. A subtask is cut to the piece and its rest written in the same
+  task. A piece at or over the length is the whole; outside 5–480
+  minutes it is refused in Portuguese; a task already begun is not split
+  (400).
+
+  **The pause splits too** (`_pauseSplit`): a task that ran 5 minutes or
+  more is closed at this minute and ticked off as a subtask of the
+  minutes it ran, and what it owed is a new subtask at the top of its
+  Para depois; under 5 minutes it is paused whole into Pendentes (as
+  before). So a task's Pendentes is the sum of its subtasks still to
+  do.
+
+  A delivery's play is its next task's (`playPending`); with no task, it
+  asks only how much at now and posts `POST /tasks/of/:id/play {
+  minutes }`, which can still raise the guard.
 - **A task already waiting on Agora begins**, without asking when
-  (`beginCard`; over an hour `PlaySheet.task` asks how much): it is next
-  already. Plano's Agora begins it from its own card (`EventStarted`).
+  (`beginTask`: the pause and how much still ask). Plano's Agora begins
+  it from its own card (`EventStarted`).
 - **A delivery's time is the larger of its own and its tasks' together**
   (the server's `minutes`); the green is its tasks done over that.
 - **Urgent is past its day** (`isUrgent`): `urgentFill`, *para ontem* in
@@ -91,24 +120,29 @@ cards on screen. From the top:
   carried card's own copy at 40 % ink (`PlanDropGhost`, its name and
   length) opening at the place it would take, the cards under it making
   room; on Agora (`NowDropZone`) the copy takes the place of what runs.
-  Let go on **Agora** is begun (`beginCard`: a loose task over an hour
-  asks how much with `PlaySheet.task`; `playPending` for a delivery),
-  guard and all. **Em seguida** is a queue (`PlanQueue`, a slot before
+  Let go on **Agora** is begun (`beginTask`: the pause while a task
+  runs, then how much at now; `playPending` for a delivery). A drop
+  has answered *when* by where it was let go. **Em seguida** is a queue (`PlanQueue`, a slot before
   each card and one at the end): a drop is that place in the list of
   tasks (`move { index }`), counted as a move counts, with the carried
   task taken out and the running one counted; before an event it is
   right after the last task above it (a delivery's next task, for a
-  delivery). **A task over an hour not begun asks how much goes there**
-  (`PlaceSheet`, *Quanto vai para as 11:25?*: 30 min the accent, 1 h,
-  *Tudo*), and a piece posts `move { index, minutes, split: true }`. **Pendentes**: a
+  delivery). **A task not begun asks how much goes there**, by the
+  table above at that place's hour (`askHowMuch`, *Quanto vai para as
+  11:25?*), and a piece posts `move { index, minutes, split: true }`;
+  so does a drop on the calendar's free room (`after` that hour). **Pendentes**: a
   loose task `move { backlog: true, pending: true }` (it stops, owing
   what it had left); a delivery's task goes to its backlog and its
   delivery is begun (its day asked when it has none); a delivery not
   begun is begun. **Para depois**: `move { backlog: true }`, or a begun
   delivery stopped (`ArtifactsCubit.stop`). Out of Agora never asks.
-- **The guard's answers** (`GuardSheet`, here and on the calendar):
-  *Concluir o atual* (`solve_current`), *Pausar em Pendentes*
-  (`pause_current`), *Mandar para Para depois* (`later_current`).
+- **The guard** (`GuardSheet`, here and on the calendar), raised by a
+  road that did not ask first (a delivery's play, a fixed block
+  running): the same yes or no as the pause (`pause_current`, else
+  dismissed); over a fixed block, *Começar depois de Reunião?*, the
+  task waiting for it. *Concluir o atual* and *Para depois* are gone
+  (#89); `solve_current` and `later_current` stay on the server for
+  older apps.
 - A tap on a delivery opens its page on Pendentes; on a loose task its
   `EventPage`.
 - The offer is asked for when the tab comes forward, at midnight, and on

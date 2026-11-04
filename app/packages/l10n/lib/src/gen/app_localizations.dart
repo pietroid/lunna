@@ -281,30 +281,6 @@ abstract class AppLocalizations {
   /// **'Cancelar'**
   String get commonCancel;
 
-  /// No description provided for @guardStartNowTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Começar agora?'**
-  String get guardStartNowTitle;
-
-  /// No description provided for @guardStartNowRunning.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} está rodando, {start}–{end}.'**
-  String guardStartNowRunning(String title, String start, String end);
-
-  /// No description provided for @guardFinishCurrent.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir o atual'**
-  String get guardFinishCurrent;
-
-  /// No description provided for @guardPostponeCurrent.
-  ///
-  /// In pt, this message translates to:
-  /// **'Deixar para depois'**
-  String get guardPostponeCurrent;
-
   /// No description provided for @durationMinutes.
   ///
   /// In pt, this message translates to:
@@ -3431,35 +3407,11 @@ abstract class AppLocalizations {
   /// **'Urgente · {status}'**
   String pendingUrgentStatus(String status);
 
-  /// No description provided for @playPieceTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Quanto você vai fazer agora?'**
-  String get playPieceTitle;
-
   /// No description provided for @playWhole.
   ///
   /// In pt, this message translates to:
   /// **'Tudo · {length}'**
   String playWhole(String length);
-
-  /// No description provided for @guardBusyBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} está rodando, {start}–{end}. O que fazer com ela?'**
-  String guardBusyBody(String title, String start, String end);
-
-  /// No description provided for @guardToPending.
-  ///
-  /// In pt, this message translates to:
-  /// **'Pausar em Pendentes'**
-  String get guardToPending;
-
-  /// No description provided for @guardToLater.
-  ///
-  /// In pt, this message translates to:
-  /// **'Mandar para Para depois'**
-  String get guardToLater;
 
   /// No description provided for @stepDayLess.
   ///
@@ -3478,12 +3430,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Falta {length}'**
   String pendingTaskLeft(String length);
-
-  /// Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} tem {length} pela frente. O resto espera em Pendentes.'**
-  String playPieceBodyLoose(String title, String length);
 
   /// The one button at the foot of every screen, to a screen reader: opens the composer.
   ///
@@ -3647,24 +3593,6 @@ abstract class AppLocalizations {
   /// **'Começar agora'**
   String get playWhenNow;
 
-  /// No description provided for @playWhenNext.
-  ///
-  /// In pt, this message translates to:
-  /// **'Em seguida · {hour}'**
-  String playWhenNext(String hour);
-
-  /// No description provided for @placePieceTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Quanto vai para as {hour}?'**
-  String placePieceTitle(String hour);
-
-  /// No description provided for @placePieceBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'{title} tem {length}. O resto fica onde está.'**
-  String placePieceBody(String title, String length);
-
   /// Under the when sheet title when nothing runs: the task's length.
   ///
   /// In pt, this message translates to:
@@ -3766,6 +3694,24 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Não'**
   String get guardPauseNo;
+
+  /// The guard when what runs is a fixed block (#89): it is not paused, and the task begins after it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Começar depois de {title}?'**
+  String guardWaitTitle(String title);
+
+  /// Under guardWaitTitle: the fixed block and its end.
+  ///
+  /// In pt, this message translates to:
+  /// **'{title} é fixo e segue até {end}.'**
+  String guardWaitBody(String title, String end);
+
+  /// Yes on the guard over a fixed block: the task begins after it.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sim, começar depois'**
+  String get guardWaitYes;
 
   /// What the room runs up to: the next fixed block.
   ///

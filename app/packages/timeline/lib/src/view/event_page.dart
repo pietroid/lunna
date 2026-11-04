@@ -9,8 +9,7 @@ import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
 /// Writes a subtask called [title], [minutes] long, under the task [taskId].
-typedef SubtaskWriter =
-    void Function(String taskId, String title, int minutes);
+typedef SubtaskWriter = void Function(String taskId, String title, int minutes);
 
 /// {@template event_page}
 /// One task or one block of time, opened.
@@ -346,7 +345,6 @@ class _Summary extends StatelessWidget {
     );
   }
 
-
   /// Asks the subtask's name and length, and writes it.
   Future<void> _subtask(BuildContext context) async {
     final write = onAddSubtask;
@@ -359,6 +357,7 @@ class _Summary extends StatelessWidget {
     if (result == null || result.text.trim().isEmpty) return;
     write(card.id, result.text.trim(), result.duration.inMinutes);
   }
+
   Widget _controls(BuildContext context) {
     final bloc = context.read<TimelineBloc>();
 

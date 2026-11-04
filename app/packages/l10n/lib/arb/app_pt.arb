@@ -65,23 +65,6 @@
   "homeRoutines": "Rotina",
   "homeSignOut": "Sair",
   "commonCancel": "Cancelar",
-  "guardStartNowTitle": "Começar agora?",
-  "guardStartNowRunning": "{title} está rodando, {start}–{end}.",
-  "@guardStartNowRunning": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      },
-      "start": {
-        "type": "String"
-      },
-      "end": {
-        "type": "String"
-      }
-    }
-  },
-  "guardFinishCurrent": "Concluir o atual",
-  "guardPostponeCurrent": "Deixar para depois",
   "durationMinutes": "{minutes} min",
   "@durationMinutes": {
     "placeholders": {
@@ -1921,7 +1904,6 @@
       }
     }
   },
-  "playPieceTitle": "Quanto você vai fazer agora?",
   "playWhole": "Tudo · {length}",
   "@playWhole": {
     "placeholders": {
@@ -1930,40 +1912,12 @@
       }
     }
   },
-  "guardBusyBody": "{title} está rodando, {start}–{end}. O que fazer com ela?",
-  "@guardBusyBody": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      },
-      "start": {
-        "type": "String"
-      },
-      "end": {
-        "type": "String"
-      }
-    }
-  },
-  "guardToPending": "Pausar em Pendentes",
-  "guardToLater": "Mandar para Para depois",
   "stepDayLess": "−1d",
   "stepDayMore": "+1d",
   "pendingTaskLeft": "Falta {length}",
   "@pendingTaskLeft": {
     "description": "Under a loose task paused into Pendentes: what it still owes.",
     "placeholders": {
-      "length": {
-        "type": "String"
-      }
-    }
-  },
-  "playPieceBodyLoose": "{title} tem {length} pela frente. O resto espera em Pendentes.",
-  "@playPieceBodyLoose": {
-    "description": "Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.",
-    "placeholders": {
-      "title": {
-        "type": "String"
-      },
       "length": {
         "type": "String"
       }
@@ -2098,33 +2052,6 @@
     }
   },
   "playWhenNow": "Começar agora",
-  "playWhenNext": "Em seguida · {hour}",
-  "@playWhenNext": {
-    "placeholders": {
-      "hour": {
-        "type": "String"
-      }
-    }
-  },
-  "placePieceTitle": "Quanto vai para as {hour}?",
-  "@placePieceTitle": {
-    "placeholders": {
-      "hour": {
-        "type": "String"
-      }
-    }
-  },
-  "placePieceBody": "{title} tem {length}. O resto fica onde está.",
-  "@placePieceBody": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      },
-      "length": {
-        "type": "String"
-      }
-    }
-  },
   "playWhenIdle": "Nada rodando agora · {length}",
   "@playWhenIdle": {
     "description": "Under the when sheet title when nothing runs: the task's length.",
@@ -2264,6 +2191,18 @@
   },
   "guardPauseYes": "Sim, pausar e começar",
   "guardPauseNo": "Não",
+  "guardWaitTitle": "Começar depois de {title}?",
+  "@guardWaitTitle": {
+    "description": "The guard when what runs is a fixed block (#89): it is not paused, and the task begins after it.",
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "guardWaitBody": "{title} é fixo e segue até {end}.",
+  "@guardWaitBody": {
+    "description": "Under guardWaitTitle: the fixed block and its end.",
+    "placeholders": { "title": { "type": "String" }, "end": { "type": "String" } }
+  },
+  "guardWaitYes": "Sim, começar depois",
+  "@guardWaitYes": { "description": "Yes on the guard over a fixed block: the task begins after it." },
   "playMuchUntil": "{title}, às {hour}",
   "@playMuchUntil": {
     "description": "What the room runs up to: the next fixed block.",

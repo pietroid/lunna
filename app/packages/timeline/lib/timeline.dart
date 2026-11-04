@@ -9,5 +9,6 @@ export 'src/data/routines_repository.dart';
 export 'src/data/timeline_failure.dart';
 export 'src/data/timeline_repository.dart';
 export 'src/models/models.dart';
+export 'src/play/play.dart';
 export 'src/view/view.dart';
 export 'src/widgets/widgets.dart';

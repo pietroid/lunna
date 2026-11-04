@@ -661,9 +661,17 @@ class _Tasks extends StatelessWidget {
               trailing: task.at == null
                   ? formatMinutes(l10n, task.minutes)
                   : hhmm(task.at!),
-              onPlay: () => context.read<TimelineBloc>().add(
-                EventMoved(id: task.id, index: 0, start: true),
-              ),
+              // Play on a subtask asks by play's rules (#89), about the
+              // subtask alone.
+              onPlay: () {
+                final bloc = context.read<TimelineBloc>();
+                final card = bloc.state.byId(task.id);
+                if (card != null) {
+                  unawaited(playTask(context, card));
+                } else {
+                  bloc.add(EventMoved(id: task.id, index: 0, start: true));
+                }
+              },
               onTap: () => _open(context, task.id),
             ),
           ),
