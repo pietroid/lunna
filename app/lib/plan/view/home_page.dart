@@ -258,13 +258,20 @@ class _HomePageState extends State<HomePage> {
                             _NextCard(card: card),
                           ),
                         ),
-                        if (items.nextMore > 0)
-                          _Pad(
-                            child: _OpenRow(
-                              text: l10n.homeNextMore(items.nextMore),
-                              onTap: widget.onSeeDay,
+                        // The queue ends in a +, as Lista's day did: it
+                        // writes a task right after the last one here.
+                        _Pad(
+                          child: AppAddRow(
+                            onTap: () => unawaited(
+                              writeTask(
+                                context,
+                                placement: Placement.queue(
+                                  queueEndOf(day.tasks, items),
+                                ),
+                              ),
                             ),
                           ),
+                        ),
                       ],
                       if (items.pending.isNotEmpty || _carrying)
                         PlanDropTarget(
@@ -390,10 +397,20 @@ class _NextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parent = card.artifactTitle;
+    // An event is drawn as the calendar draws it: its own fill and its pin
+    // (a routine's day, its repeat) where a task's play would be.
+    final (fill, mark, ink) = card.isTask
+        ? (null, null, null)
+        : card.isRoutine
+        ? (AppColors.routineFill, AppIcons.repeat, AppColors.routineInk)
+        : (AppColors.fixedFill, AppIcons.pin, AppColors.fixedInk);
     return TaskCard(
       title: parent ?? card.title,
       subtitle: parent == null ? null : card.title,
       trailing: '${hhmm(card.startTime)} – ${hhmm(card.endTime)}',
+      fill: fill,
+      mark: mark,
+      markInk: ink,
       onPlay: card.isTask
           ? () => unawaited(playCard(context, card))
           : null,

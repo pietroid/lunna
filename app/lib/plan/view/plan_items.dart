@@ -15,7 +15,7 @@ import 'package:timeline/timeline.dart';
 /// each section reads as one list.
 const double kQueueGap = AppSpacing.s1;
 
-/// How many cards Em seguida draws before it counts the rest.
+/// How many cards Em seguida draws; the calendar has the rest.
 const kNextOnHome = 4;
 
 /// {@template plan_items}
@@ -25,7 +25,7 @@ const kNextOnHome = 4;
 ///
 /// - [now], the card on Agora, and [next], the queue after it: the cards
 ///   of the first day that has any (today, while it has some left), up
-///   to [kNextOnHome], with [nextMore] counting the rest of that day.
+///   to [kNextOnHome].
 /// - [pending]: every task begun and not finished: the deliveries begun
 ///   ([isStarted]), the most urgent first as Entregas put them, then the
 ///   loose tasks paused off the day ([TimelineEvent.pending]). The
@@ -59,7 +59,6 @@ class PlanItems {
     return PlanItems._(
       now: agora,
       next: sameDay.take(kNextOnHome).toList(),
-      nextMore: (sameDay.length - kNextOnHome).clamp(0, sameDay.length),
       pending: [
         for (final a in groups.started)
           if (a.id != running) PendingDelivery(a),
@@ -78,7 +77,6 @@ class PlanItems {
   const PlanItems._({
     required this.now,
     required this.next,
-    required this.nextMore,
     required this.pending,
     required this.later,
   });
@@ -89,9 +87,6 @@ class PlanItems {
   /// The queue after Agora, in its order: tasks to play and to carry, and
   /// the fixed blocks between them, which keep their place.
   final List<TimelineEvent> next;
-
-  /// How many more cards that day has after [next].
-  final int nextMore;
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;

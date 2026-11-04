@@ -17,6 +17,10 @@ From the issue, verbatim:
 > - The dragging should not show "solte aqui". It should be just a discrete preview of the task in the future position
 > - When playing a task that is greater than 1h im not asked about the dialog as should be here https://github.com/pietroid/lunna/issues/83. I doubt this is imlpemented to the end
 
+The design was reviewed on the issue, and the person replied:
+
+> The events on the home page should have the same color and the pin icon  to maintain consistency. Also, remove the "Mais 4 hoje" and add instead a + adicionar, very similar to what we had before
+
 ## 2. The design
 
 ![The board](img/mockup-board.png)
@@ -48,8 +52,12 @@ Here **every play of a task over an hour asks**, wherever it is pressed.
 ### The rules
 
 - **Em seguida is a section, headed as Agora is**, and a queue: the rest
-  of the day's cards in order, up to four, then *Mais N hoje · Ver o
-  dia*. Every task plays (a fixed block keeps the play's room, as now). A
+  of the day's cards in order, up to four, then **+ Adicionar**
+  (`AppAddRow`, as Lista's day ended), which writes a task right after
+  the last one drawn. Every task plays. **An event is drawn as the
+  calendar draws it**: the sand fill (`fixedFill`) and the pin in the
+  play's room, its hours in `fixedInk` (a routine's day: `routineFill`
+  and the repeat). A
   card is held and carried to **a place** in it (before a card, or after
   the last) or to another section; a drop between two tasks is that
   place in the queue (`move { index }`), counted as a move counts.
@@ -73,8 +81,8 @@ Here **every play of a task over an hour asks**, wherever it is pressed.
 |-----|----------|--------|
 | 1A | Heading | Em seguida is a section heading, the same size as Agora and Pendentes, no longer a caption. |
 | 1B | Play on all | Every task in the queue has the round play on its left; over an hour it asks first (3). |
-| 1C | Fixed block | An event keeps the play's room empty, so titles line up; it is not carried. |
-| 1D | Four, then count | The rest of the day's cards, up to four; 'Mais N hoje · Ver o dia' opens the calendar. |
+| 1C | Event, as on the calendar | An event has the calendar's sand fill and its pin where the play would be, so titles line up; it is not carried. |
+| 1D | + Adicionar | The rest of the day's cards, up to four, then '+ Adicionar', as Lista's day ended: it writes a task right after the last one drawn. |
 | 1E | Composer (#81) | The + opens #81's composer, built in this delivery: no agent bar on Plano. |
 | 2A | Quiet copy | The carried card's own copy at 40 %, name and length, opens where it would land; the cards under it make room. |
 | 2B | Under the finger | The lifted card, as today. |
@@ -89,7 +97,7 @@ Here **every play of a task over an hour asks**, wherever it is pressed.
 | 4C | Play on cards | Each task not begun keeps its play; over an hour it asks (3). |
 | 4D | Bar goes | The ask bar is replaced by the composer's + here too, with #81's build. |
 
-No new icon: the round play and pause are `TaskPlayButton` (Phosphor `AppIcons.play`, `AppIcons.pause`), the + is `AppFab`'s.
+No new icon: the round play and pause are `TaskPlayButton` (Phosphor `AppIcons.play`, `AppIcons.pause`), an event's mark is the calendar's `AppIcons.pin` (a routine's `AppIcons.repeat`), the + is `AppFab`'s and `AppAddRow`'s.
 
 ### References
 
@@ -106,8 +114,17 @@ block's control on the left, where every block's is).
 - **#81 is built here as approved**, not redesigned: its decisions and
   open questions (none left) carry over, in its own README.
 - **Em seguida draws one day**: the first day after Agora that has cards
-  (today while it has any left), at most four, then the counting row to
-  the calendar. Four keeps Pendentes in sight on a phone.
+  (today while it has any left), at most four, then + Adicionar. Four
+  keeps Pendentes in sight on a phone. The rest of the day is no longer
+  counted there: *Ver o dia*, beside Agora's heading, opens it.
+- **Em seguida's + writes into the queue**, right after its last task
+  (`Placement.queue`, counted as a drop after the last card counts), not
+  into Para depois as the `AppFab` does: it ends that list, as Lista's
+  day's + did. It opens the same sheet as the `AppFab` (`writeTask`:
+  Tarefa | Evento, Produto).
+- **The event's mark sits in the play's room** (centred in the 24 px a
+  play takes) rather than before the title as on the calendar, so every
+  title in Em seguida starts on one line.
 - **Em seguida is drawn while a card is carried even when empty**, so a
   card from Pendentes or Para depois can be queued.
 - **The drop's copy is the card at 40 %**, with its name and length and an
@@ -136,12 +153,13 @@ block's control on the left, where every block's is).
 | File | What |
 |------|------|
 | `app/lib/ux_part_4_preview.dart` | the preview entry point, `?s=1..4` (delete at Phase 4) |
-| `app/lib/plan/view/plan_items.dart` | `PlanItems.next` is a list (`kNextOnHome`, `nextMore`); `playCard` asks over an hour |
+| `app/lib/plan/view/plan_items.dart` | `PlanItems.next` is a list (`kNextOnHome`); `playCard` asks over an hour |
 | `app/lib/plan/view/play_sheet.dart` | `PlaySheet.task` (a loose task), `playCardAsks`, `PlaySheet.show(context, sheet)` |
-| `app/lib/plan/view/plan_drag.dart` | `PlanQueue` (a slot before each card and one at the end), `PlanDropGhost`, `queueDropper`, `dropOnPlan(before:)` with `_placeIn`; `PlanDropGap` gone; the carried card's place closes |
-| `app/lib/plan/view/home_page.dart` | Em seguida under a `_Heading`, as a `PlanQueue`; ghosts on Pendentes, Para depois and Agora (`NowDropZone`) |
+| `app/lib/plan/view/plan_drag.dart` | `PlanQueue` (a slot before each card and one at the end), `PlanDropGhost`, `queueDropper`, `dropOnPlan(before:)` with `_placeIn`, `queueEndOf` (where Em seguida's + writes); `PlanDropGap` gone; the carried card's place closes |
+| `app/lib/plan/view/home_page.dart` | Em seguida under a `_Heading`, as a `PlanQueue`, ending in `AppAddRow`; `_NextCard` draws an event with `fixedFill` and the pin (a routine's day, `routineFill` and repeat); ghosts on Pendentes, Para depois and Agora (`NowDropZone`) |
+| `app/packages/timeline/lib/src/widgets/task_card.dart` | `TaskCard.mark` (an icon in the play's room when there is no play) and `markInk` (the mark and the hours); `trailingInk` now applied |
 | `app/packages/timeline/lib/src/widgets/event_tile.dart` | Agora's task: `TaskPlayButton` before the title (`_leadingToggle`); `EventControls(play:)` |
-| `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`) | `homeNextMore`, `playPieceBodyLoose`; `planDropHere`, `planDropStart` removed |
+| `app/packages/l10n/lib/arb/app_pt.arb` (+ `gen/`) | `playPieceBodyLoose`; `planDropHere`, `planDropStart` removed (`homeNextMore`, added in round 1, removed again in round 2) |
 
 ### Server
 
@@ -166,7 +184,10 @@ block's control on the left, where every block's is).
   whole: the dock's bar goes, `ComposeButton` everywhere at
   `AppFab.location`, wired to the compose route, Adicionar / Ajustar /
   Conversar / Aplicar, "+ Subtarefa" on a loose task's page.
-- **Em seguida**: as drawn. Check `_placeIn` against the server's move
+- **Em seguida**: as drawn. Its + (`queueEndOf`) must land after the
+  last task drawn, also when the last card is an event (it counts the
+  last *task* above it) and when Em seguida is empty (after Agora's task,
+  or first). Check `_placeIn` against the server's move
   counting on a reorder downwards (the carried task taken out first) and
   around a fixed block in the queue; an event in Em seguida is not
   carriable.
@@ -179,10 +200,15 @@ block's control on the left, where every block's is).
   `EventTile` (scene 4 shows a loose task only).
 - **Tests**: the design's changes were not run against the existing
   tests; `test/plan/home_page_test.dart` still expects the old Em seguida
-  (one card under a caption) and the old drop. Update it with
+  (one card under a caption) and the old drop: after round 2 it runs 11
+  passing, 2 failing ("draws the break and an empty Para depois on an
+  empty day" looks for "Nada em andamento"; "carries a task of Para depois
+  to Agora, which begins it"). Update it with
   `home_page_test` (Em seguida's heading, a card per task, play
-  on each, a reorder posts the right index, the ghost and no "Solte
-  aqui"), `play_sheet` for a loose task (piece, whole, talk, cancel),
+  on each, an event with the pin and `fixedFill` and no play, + Adicionar
+  opens the sheet and writes at the queue's end, no "Mais N hoje", a
+  reorder posts the right index, the ghost and no "Solte aqui"),
+  `task_card` (a mark in the play's room, its ink on the hours), `play_sheet` for a loose task (piece, whole, talk, cancel),
   `event_tile` (Agora's round button pauses, begins a waiting task, none
   for an event or in overtime); server e2e for the split (piece begins,
   rest pending, whole, refused).

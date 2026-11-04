@@ -4,7 +4,7 @@
     {
       "png": "img/mockup-1.png",
       "title": "Em seguida, uma fila",
-      "why": "Headed as Agora is; every task plays; the composer's one button.",
+      "why": "Headed as Agora is; every task plays; events as on the calendar; it ends in + Adicionar.",
       "pins": [
         {
           "id": "A",
@@ -22,17 +22,17 @@
         },
         {
           "id": "C",
-          "x": 24,
+          "x": 200,
           "y": 361,
-          "label": "Fixed block",
-          "text": "An event keeps the play's room empty, so titles line up; it is not carried."
+          "label": "Event, as on the calendar",
+          "text": "An event has the calendar's sand fill and its pin in the play's room, so titles line up; it is not carried."
         },
         {
           "id": "D",
-          "x": 200,
-          "y": 484,
-          "label": "Four, then count",
-          "text": "The rest of the day's cards, up to four; 'Mais N hoje · Ver o dia' opens the calendar."
+          "x": 160,
+          "y": 476,
+          "label": "+ Adicionar",
+          "text": "Up to four cards, then '+ Adicionar', as Lista's day ended: it writes a task right after the last one here."
         },
         {
           "id": "E",

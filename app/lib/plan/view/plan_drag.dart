@@ -170,6 +170,11 @@ int _placeIn(
   return now != null && now.isTask && now.id != id ? 1 : 0;
 }
 
+/// The place in the list of tasks ([tasks]) right after the last task Em
+/// seguida draws: where its + writes.
+int queueEndOf(List<TimelineEvent> tasks, PlanItems items) =>
+    _placeIn(tasks, items, '', null);
+
 /// Begins [artifact], asking its day first when it has none.
 Future<void> _begin(BuildContext context, Artifact artifact) async {
   final cubit = context.read<ArtifactsCubit>();

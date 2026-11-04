@@ -1998,15 +1998,6 @@
       }
     }
   },
-  "homeNextMore": "{count, plural, =1{Mais 1 hoje · Ver o dia} other{Mais {count} hoje · Ver o dia}}",
-  "@homeNextMore": {
-    "description": "Under Em seguida's first cards: how many more the day has; opens the calendar.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
   "playPieceBodyLoose": "{title} tem {length} pela frente. O resto espera em Pendentes.",
   "@playPieceBodyLoose": {
     "description": "Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.",

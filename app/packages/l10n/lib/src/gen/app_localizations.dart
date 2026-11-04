@@ -3515,12 +3515,6 @@ abstract class AppLocalizations {
   /// **'Falta {length}'**
   String pendingTaskLeft(String length);
 
-  /// Under Em seguida's first cards: how many more the day has; opens the calendar.
-  ///
-  /// In pt, this message translates to:
-  /// **'{count, plural, =1{Mais 1 hoje · Ver o dia} other{Mais {count} hoje · Ver o dia}}'**
-  String homeNextMore(int count);
-
   /// Play on a loose task over an hour: a piece begins, the rest waits in Pendentes.
   ///
   /// In pt, this message translates to:
