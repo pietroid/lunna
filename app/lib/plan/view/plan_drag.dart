@@ -122,7 +122,7 @@ Future<void> dropOnPlan(
       );
       if (amount == null) return;
       final minutes = amount.minutes;
-      // A piece is split off, the rest staying where it was.
+      // A piece is split off, the rest waiting in Pendentes (#92).
       bloc.add(
         EventMoved(
           id: card.id,

@@ -956,11 +956,17 @@ describe('the day', () => {
 
       const moved = await drag(id, 0, { minutes: 60, split: true }).expect(201);
 
-      const [piece, , rest] = tasks(moved);
+      const [piece] = tasks(moved);
+      expect(titles(tasks(moved))).toEqual(['Longa', 'Primeiro']);
       expect(piece).toMatchObject({ id, durationMinutes: 60 });
+      // The rest waits in Pendentes (#92): its delivery is begun, and it is
+      // at the top of its Para depois.
+      const [rest] = backlog(moved);
       expect(rest).toMatchObject({ title: 'Longa', durationMinutes: 60 });
       expect(rest.artifact).toEqual(piece.artifact);
       expect(piece.artifact).toBeDefined();
+      const delivery = await artifactStore.get(owner, piece.artifact!.id);
+      expect(delivery?.startedAt).toBeDefined();
     });
 
     it('begins the whole task when the piece is all of it', async () => {
@@ -999,10 +1005,13 @@ describe('the day', () => {
         durationMinutes: 90,
       });
       expect(backlog(response)[0].id).not.toBe(id);
-      expect(backlog(response)[0].pending).toBeFalsy();
+      const piece = tasks(response)[0];
+      expect(backlog(response)[0].artifact).toEqual(piece.artifact);
+      const delivery = await artifactStore.get(owner, piece.artifact!.id);
+      expect(delivery?.startedAt).toBeDefined();
     });
 
-    it('keeps a pending rest in Pendentes', async () => {
+    it('keeps the rest of a pending task in Pendentes', async () => {
       await shelve('Relatório', 120).expect(201);
       const id = (await read()).backlog[0].id;
       await drag(id, 0, { backlog: true, pending: true }).expect(201);
@@ -1012,35 +1021,57 @@ describe('the day', () => {
       );
 
       expect(tasks(response)[0]).toMatchObject({ id, durationMinutes: 60 });
+      const piece = tasks(response)[0];
       expect(backlog(response)[0]).toMatchObject({
         title: 'Relatório',
         durationMinutes: 60,
-        pending: true,
+        artifact: piece.artifact,
       });
+      const delivery = await artifactStore.get(owner, piece.artifact!.id);
+      expect(delivery?.startedAt).toBeDefined();
     });
 
-    it('leaves the rest of a queued task in its turn, after the piece', async () => {
+    it('takes a task out of Pendentes back to Para depois (#92)', async () => {
+      await shelve('Relatório', 120).expect(201);
+      const id = (await read()).backlog[0].id;
+      await drag(id, 0, { backlog: true, pending: true }).expect(201);
+      expect((await read()).backlog[0].pending).toBe(true);
+
+      const response = await drag(id, 0, {
+        backlog: true,
+        pending: false,
+      }).expect(201);
+
+      expect(backlog(response)[0]).toMatchObject({ id, durationMinutes: 120 });
+      expect(backlog(response)[0].pending).toBeFalsy();
+    });
+
+    it('never leaves the rest of a queued task on the day (#92)', async () => {
       await add('A', 30).expect(201);
       await add('Longa', 120).expect(201);
       await add('B', 30).expect(201);
       const id = (await task('Longa')).id;
 
       const moved = await drag(id, 0, { minutes: 30, split: true }).expect(201);
-      expect(titles(tasks(moved))).toEqual(['Longa', 'A', 'Longa', 'B']);
+      expect(titles(tasks(moved))).toEqual(['Longa', 'A', 'B']);
       expect(tasks(moved)[0]).toMatchObject({ id, durationMinutes: 30 });
-      expect(tasks(moved)[2].durationMinutes).toBe(90);
+      expect(backlog(moved)[0]).toMatchObject({
+        title: 'Longa',
+        durationMinutes: 90,
+      });
 
-      // Let go on its own place: the piece first, the rest right after.
+      // Let go on its own place: the piece stays, the rest still waits.
       await add('Outra', 120).expect(201);
       const other = (await task('Outra')).id;
-      const kept = await drag(other, 4, { minutes: 60, split: true }).expect(
+      const kept = await drag(other, 3, { minutes: 60, split: true }).expect(
         201,
       );
-      expect(titles(tasks(kept)).slice(-2)).toEqual(['Outra', 'Outra']);
-      expect(tasks(kept).at(-2)).toMatchObject({
+      expect(titles(tasks(kept))).toEqual(['Longa', 'A', 'B', 'Outra']);
+      expect(tasks(kept).at(-1)).toMatchObject({
         id: other,
         durationMinutes: 60,
       });
+      expect(backlog(kept).map((it) => it.title)).toEqual(['Outra', 'Longa']);
     });
 
     it('moves the whole when the piece is all of it, and splits nothing begun', async () => {

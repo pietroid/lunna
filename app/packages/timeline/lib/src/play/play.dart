@@ -495,7 +495,8 @@ class PlayWhenQuestion extends StatelessWidget {
 /// Play's second question (#89): **how much**, measured against the room
 /// at the hour the first answer chose ([at], null for now) up to what
 /// comes next ([until]). The pieces are [playPieces]'s; a piece splits
-/// the task in two subtasks, the piece and the rest. Answers a
+/// the task in two subtasks, the piece and the rest, which always waits in
+/// Pendentes (#92), never beside the piece on the day. Answers a
 /// [PlayAmount].
 /// {@endtemplate}
 class PlayMuchQuestion extends StatelessWidget {

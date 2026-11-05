@@ -28,7 +28,8 @@ const double kQueueGap = AppSpacing.s1;
 /// - [pending]: every task begun and not finished: the deliveries begun
 ///   ([isStarted]), the most urgent first as Entregas put them, then the
 ///   loose tasks paused off the day ([TimelineEvent.pending]). The
-///   delivery whose task runs on Agora is left out: it is drawn there.
+///   delivery whose piece runs on Agora stays (#92): the rest of a task
+///   split waits here, and the piece at work is the yellow of its bar.
 /// - [later]: everything not begun, in one list: the loose tasks waiting in
 ///   the backlog, in its order, then the deliveries not begun, in the
 ///   queue's.
@@ -69,7 +70,10 @@ class PlanItems {
       next: [...sameDay, ...ahead],
       pending: [
         for (final a in groups.started)
-          if (a.id != running) PendingDelivery(a),
+          PendingDelivery(
+            a,
+            doingMinutes: a.id == running ? agora!.workMinutes : 0,
+          ),
         for (final task in day.backlog)
           if (task.artifactId == null && task.pending) PendingTask(task),
       ],
@@ -102,7 +106,7 @@ class PlanItems {
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  /// The tasks begun and not finished, Agora's left out.
+  /// The tasks begun and not finished, Agora's delivery too.
   final List<Pending> pending;
 
   /// Every task not begun, in order.
@@ -121,10 +125,13 @@ sealed class Pending {
 /// A delivery begun and not delivered.
 final class PendingDelivery extends Pending {
   /// Wraps [artifact].
-  const PendingDelivery(this.artifact);
+  const PendingDelivery(this.artifact, {this.doingMinutes = 0});
 
   /// The delivery.
   final Artifact artifact;
+
+  /// The minutes of its piece at work on Agora, or 0 (#92).
+  final int doingMinutes;
 
   @override
   String get id => artifact.id;
@@ -210,7 +217,9 @@ Future<void> playCard(BuildContext context, TimelineEvent card) =>
 /// "12/nov", "para ontem"). Under the name, its time done of the whole,
 /// the whole being its own time or its tasks' together when they add up
 /// to more, with −1d, +1d and ✓ beside it; and its bar: the time gone in
-/// red under the work done in green.
+/// red under the work done in green, and the piece at work on Agora, when
+/// one is, in yellow right after the green (#92). With no day there is no
+/// time: the green alone.
 ///
 /// Past its day it is **urgent**: the card takes the red tint, the corner
 /// says "para ontem" in the danger ink, the line says Urgente, and the red
@@ -221,12 +230,16 @@ class PendingCard extends StatelessWidget {
   const PendingCard({
     required this.artifact,
     required this.now,
+    this.doingMinutes = 0,
     this.onPlay,
     super.key,
   });
 
   /// The task with tasks.
   final Artifact artifact;
+
+  /// The minutes of its piece at work now, drawn yellow; 0 when none.
+  final int doingMinutes;
 
   /// The moment it is drawn at.
   final DateTime now;
@@ -261,7 +274,13 @@ class PendingCard extends StatelessWidget {
           : () => unawaited(cubit.shiftDeadline(a.id, -1)),
       onMore: () => unawaited(cubit.shiftDeadline(a.id, 1)),
       onDone: () => unawaited(cubit.setDone(a.id, done: true)),
-      bar: TaskBar(done: workDone(a), time: a.progressAt(now), late: late),
+      bar: TaskBar(
+        done: workDone(a),
+        time: a.progressAt(now),
+        late: late,
+        doing: a.minutes == 0 ? 0 : doingMinutes / a.minutes,
+        pace: true,
+      ),
       onTap: () => unawaited(openArtifact(context, a.id, tab: 1)),
     );
   }
