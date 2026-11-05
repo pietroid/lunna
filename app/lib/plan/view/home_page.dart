@@ -9,6 +9,7 @@ import 'package:l10n/l10n.dart';
 import 'package:lunna/plan/view/plan_drag.dart';
 import 'package:lunna/plan/view/plan_items.dart';
 import 'package:lunna/plan/view/plan_skeleton.dart';
+import 'package:lunna/plan/view/plan_swipe.dart';
 import 'package:lunna/plan/view/write_task.dart';
 import 'package:lunna/tempo/view/minute_refresh.dart';
 import 'package:lunna/tempo/view/tempo_page.dart';
@@ -141,27 +142,52 @@ class _HomePageState extends State<HomePage> {
 
   /// [child], the card of [card], made something to carry when it is a
   /// task (a fixed block is never moved by hand).
+  ///
+  /// A task is also swiped: right is done, left is deleted, each asked
+  /// first ([PlanSwipe]).
   Widget _carry(TimelineEvent? card, PlanSection from, Widget child) {
     if (card == null || !card.isTask || !card.isInteractive) return child;
-    return PlanDraggable(
-      carry: CarryCard(card, from),
-      onCarry: _setCarrying,
-      child: child,
+    return PlanSwipe.task(
+      card: card,
+      child: PlanDraggable(
+        carry: CarryCard(card, from),
+        onCarry: _setCarrying,
+        child: child,
+      ),
     );
   }
 
-  /// A card of Pendentes, to carry.
+  /// A card of Pendentes, to carry and to swipe.
   Widget _pending(Pending item, DateTime now) {
     return switch (item) {
-      PendingDelivery(:final artifact) => PlanDraggable(
-        carry: CarryDelivery(artifact, PlanSection.pending),
-        onCarry: _setCarrying,
-        child: PendingCard(artifact: artifact, now: now),
+      PendingDelivery(:final artifact) => PlanSwipe.delivery(
+        artifact: artifact,
+        child: PlanDraggable(
+          carry: CarryDelivery(artifact, PlanSection.pending),
+          onCarry: _setCarrying,
+          child: PendingCard(artifact: artifact, now: now),
+        ),
       ),
-      PendingTask(:final card) => PlanDraggable(
-        carry: CarryCard(card, PlanSection.pending),
-        onCarry: _setCarrying,
-        child: PendingTaskCard(card: card),
+      PendingTask(:final card) => _carry(
+        card,
+        PlanSection.pending,
+        PendingTaskCard(card: card),
+      ),
+    };
+  }
+
+  /// A card of Para depois, to carry and to swipe.
+  Widget _later(Later item, DateTime now) {
+    final drawn = LaterCard(item: item, now: now);
+    return switch (item) {
+      LaterTask(:final card) => _carry(card, PlanSection.later, drawn),
+      LaterDelivery(:final artifact) => PlanSwipe.delivery(
+        artifact: artifact,
+        child: PlanDraggable(
+          carry: CarryDelivery(artifact, PlanSection.later),
+          onCarry: _setCarrying,
+          child: drawn,
+        ),
       ),
     };
   }
@@ -266,8 +292,9 @@ class _HomePageState extends State<HomePage> {
                         // the finger moves; the card's copy opens under it.
                         if (items.next.isEmpty)
                           _Pad(child: _Quiet(text: l10n.homeNextEmpty)),
-                        PlanQueue(
-                          cards: items.next,
+                        PlanQueue<TimelineEvent>(
+                          items: items.next,
+                          idOf: (card) => card.id,
                           padding: const EdgeInsets.fromLTRB(
                             AppSpacing.s6,
                             0,
@@ -323,12 +350,20 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
+                        // Para depois is a queue as Em seguida is: a card
+                        // let go before another takes its place, so it is
+                        // reordered by hand. Let go on the heading, it goes
+                        // first.
                         PlanDropTarget(
                           section: PlanSection.later,
-                          onDrop: planDropper(
-                            context,
-                            PlanSection.later,
-                            items,
+                          onDrop: (carry) => unawaited(
+                            dropOnPlan(
+                              context,
+                              carry,
+                              PlanSection.later,
+                              items,
+                              beforeLater: later.firstOrNull,
+                            ),
                           ),
                           builder: (context, {hovering}) => Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -338,27 +373,22 @@ class _HomePageState extends State<HomePage> {
                                 _Pad(child: PlanDropGhost(carry: hovering)),
                               if (later.isEmpty && hovering == null)
                                 _Pad(child: _Quiet(text: l10n.homeLaterEmpty)),
-                              for (final item in later)
-                                _Pad(
-                                  key: ValueKey(item.id),
-                                  child: PlanDraggable(
-                                    carry: switch (item) {
-                                      LaterTask(:final card) => CarryCard(
-                                        card,
-                                        PlanSection.later,
-                                      ),
-                                      LaterDelivery(:final artifact) =>
-                                        CarryDelivery(
-                                          artifact,
-                                          PlanSection.later,
-                                        ),
-                                    },
-                                    onCarry: _setCarrying,
-                                    child: LaterCard(item: item, now: now),
-                                  ),
+                              PlanQueue<Later>(
+                                items: later,
+                                idOf: (item) => item.id,
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.s5,
+                                  0,
+                                  AppSpacing.s5,
+                                  kQueueGap,
                                 ),
+                                onDrop: laterDropper(context, items),
+                                itemBuilder: (context, item) =>
+                                    _later(item, now),
+                              ),
                               // Para depois has no limit, and ends as Em
-                              // seguida does: a + that writes at its end.
+                              // seguida does: room to aim at, then a + that
+                              // writes at its end.
                               _Pad(
                                 child: AppAddRow(
                                   dense: true,

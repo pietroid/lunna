@@ -134,8 +134,27 @@ cards on screen. From the top:
   loose task `move { backlog: true, pending: true }` (it stops, owing
   what it had left); a delivery's task goes to its backlog and its
   delivery is begun (its day asked when it has none); a delivery not
-  begun is begun. **Para depois**: `move { backlog: true }`, or a begun
-  delivery stopped (`ArtifactsCubit.stop`). Out of Agora never asks.
+  begun is begun. **Para depois** is a queue too (`PlanQueue<Later>`, a slot
+  before each card and one at the end): a loose task posts
+  `move { backlog: true, index }`, its place among the loose tasks
+  (`_backlogPlace`); a delivery `ArtifactsCubit.move(id, index)`, or
+  `stop(id, index)` if begun, its place among the open deliveries
+  (`_deliveryPlace`). Loose tasks are drawn first, deliveries after
+  (two orders), so a loose task let go among deliveries goes after the
+  last loose one, and a delivery among loose tasks before the first
+  delivery. A delivery's task goes to index 0 of its delivery's backlog.
+  Let go on the heading, it goes first. Out of Agora never asks.
+- **Swipe** (`plan_swipe.dart`, `PlanSwipe`): a `Dismissible` on every
+  task card (Agora, Em seguida, Pendentes, Para depois) and every
+  delivery card (Pendentes, Para depois). Right is done, left is delete,
+  **each asked first** by a bottom sheet, one per gesture and kind: task
+  *Concluir “x”?* (`confirmDone`, `EventFinished`) and *Excluir “x”?*
+  (`EventDeleted`); delivery *Entregar “x”?* (`ArtifactsCubit.setDone`)
+  and *Excluir “x”?* (`ArtifactsCubit.delete`). Cancel puts the card
+  back; once confirmed it draws as nothing until the list drops it, and
+  a delivery the server refused comes back. A delivery's card in Em
+  seguida is its next task: the swipe acts on that task. Fixed blocks
+  do not swipe.
 - **The guard** (`GuardSheet`, here and on the calendar), raised by a
   road that did not ask first (a delivery's play, a fixed block
   running): the same yes or no as the pause (`pause_current`, else

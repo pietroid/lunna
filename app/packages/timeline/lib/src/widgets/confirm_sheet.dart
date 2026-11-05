@@ -26,6 +26,29 @@ Future<bool> confirmDelete(
   );
 }
 
+/// Asks before a task is ticked off: it leaves the list for Feitas.
+///
+/// [title] names what is asked about (by default "Concluir “x”?"), [body]
+/// and [action] say what follows; a delivery asks to be delivered.
+/// Resolves to true only on the action's button.
+Future<bool> confirmDone(
+  BuildContext context,
+  String title, {
+  String? question,
+  String? body,
+  String? action,
+}) {
+  final l10n = context.l10n;
+
+  return _confirm(
+    context,
+    title: question ?? l10n.confirmDoneTitle(title),
+    body: body ?? l10n.confirmDoneBody,
+    action: action ?? l10n.confirmDoneAction,
+    color: AppColors.success,
+  );
+}
+
 /// Asks whether [card] may be cut to [minutes] so it fits a free stretch.
 ///
 /// The stretch is shorter than the block, so the drop cannot land as it is.

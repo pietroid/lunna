@@ -317,6 +317,48 @@ abstract class AppLocalizations {
   /// **'Excluir'**
   String get confirmDeleteAction;
 
+  /// No description provided for @confirmDoneTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluir “{title}”?'**
+  String confirmDoneTitle(String title);
+
+  /// No description provided for @confirmDoneBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sai da lista e vai para Feitas.'**
+  String get confirmDoneBody;
+
+  /// No description provided for @confirmDoneAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluir'**
+  String get confirmDoneAction;
+
+  /// No description provided for @confirmDeliverTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entregar “{title}”?'**
+  String confirmDeliverTitle(String title);
+
+  /// No description provided for @confirmDeliverBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Conta como entregue hoje, com o valor dela.'**
+  String get confirmDeliverBody;
+
+  /// No description provided for @confirmDeliverAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Entregar'**
+  String get confirmDeliverAction;
+
+  /// No description provided for @confirmDeleteTaskBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sai da lista e não volta.'**
+  String get confirmDeleteTaskBody;
+
   /// No description provided for @confirmShortenTitle.
   ///
   /// In pt, this message translates to:
