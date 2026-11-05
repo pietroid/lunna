@@ -155,12 +155,7 @@ class _Fill extends StatelessWidget {
 /// A dot in a bar's colour and what that bar counts.
 class PaceKey extends StatelessWidget {
   /// Creates the key.
-  const PaceKey({
-    required this.color,
-    required this.text,
-    this.ink,
-    super.key,
-  });
+  const PaceKey({required this.color, required this.text, this.ink, super.key});
 
   /// The bar's colour.
   final Color color;

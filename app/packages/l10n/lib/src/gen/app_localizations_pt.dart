@@ -149,6 +149,26 @@ class AppLocalizationsPt extends AppLocalizations {
   String get confirmDeleteAction => 'Excluir';
 
   @override
+  String confirmDoneTitle(String title) {
+    return 'Concluir “$title”?';
+  }
+
+  @override
+  String get confirmDoneBody => 'Ela vai para Feitas e sai da fila.';
+
+  @override
+  String get confirmDoneAction => 'Concluir';
+
+  @override
+  String get artifactPendingEmptyAction => 'Escrever uma tarefa';
+
+  @override
+  String get subtaskSwipeDone => 'Concluir';
+
+  @override
+  String get subtaskSwipeDelete => 'Excluir';
+
+  @override
   String get confirmShortenTitle => 'Não cabe inteiro aqui';
 
   @override

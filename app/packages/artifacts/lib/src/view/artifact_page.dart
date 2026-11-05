@@ -8,6 +8,7 @@ import 'package:artifacts/src/models/models.dart';
 import 'package:artifacts/src/view/artifact_format.dart';
 import 'package:artifacts/src/view/failure_listener.dart';
 import 'package:artifacts/src/view/pace_bars.dart';
+import 'package:artifacts/src/view/subtask_row.dart';
 import 'package:artifacts/src/view/value_sheet.dart';
 import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -50,8 +51,16 @@ class ArtifactPage extends StatefulWidget {
     required this.id,
     this.initialTab,
     this.dictation,
+    this.previewSwipe,
+    this.previewLifted,
     super.key,
   });
+
+  /// The subtask id and distance of a swipe drawn mid-way, for previews.
+  final (String, double)? previewSwipe;
+
+  /// The subtask id drawn lifted by a drag, for previews.
+  final String? previewLifted;
 
   /// The artifact's id.
   final String id;
@@ -214,7 +223,12 @@ class _ArtifactPageState extends State<ArtifactPage> {
                             ),
                             Expanded(
                               child: _tab == _tasksTab
-                                  ? _Tasks(artifact: artifact)
+                                  ? _Tasks(
+                                      artifact: artifact,
+                                      swipeId: widget.previewSwipe?.$1,
+                                      swipe: widget.previewSwipe?.$2 ?? 0,
+                                      liftedId: widget.previewLifted,
+                                    )
                                   : _tab == _doneTab
                                   ? _Done(artifact: artifact)
                                   : _Notes(
@@ -585,9 +599,19 @@ class _Action extends StatelessWidget {
 ///
 /// Tapped, a task opens its page and its notes.
 class _Tasks extends StatelessWidget {
-  const _Tasks({required this.artifact});
+  const _Tasks({
+    required this.artifact,
+    this.swipeId,
+    this.swipe = 0,
+    this.liftedId,
+  });
 
   final Artifact artifact;
+
+  /// A swipe or drag already under way, for the previews.
+  final String? swipeId;
+  final double swipe;
+  final String? liftedId;
 
   void _open(BuildContext context, String id) => unawaited(
     Navigator.of(context).push(
@@ -645,34 +669,58 @@ class _Tasks extends StatelessWidget {
         ],
         heading(l10n.stageBacklog),
         if (later.isEmpty)
-          Text(
-            l10n.artifactPendingEmpty,
-            style: AppTypography.label.copyWith(color: AppColors.ink3),
+          // The empty list offers the way out instead of describing it.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AppButton.icon(
+              icon: const AppIcon(iconData: AppIcons.plus, size: 20),
+              text: l10n.artifactPendingEmptyAction,
+              onPressed: () => ComposeLauncher.maybeOf(
+                context,
+              )?.open(context, about: AgentSubject.artifact(artifact.id)),
+            ),
           ),
         for (final task in later)
           Padding(
             key: ValueKey(task.id),
-            padding: const EdgeInsets.only(bottom: AppSpacing.s2),
-            child: TaskCard(
-              title: task.title,
-              subtitle: task.at == null
-                  ? null
-                  : AppWheelPicker.dayLabel(l10n, task.at!, now: now),
-              trailing: task.at == null
-                  ? formatMinutes(l10n, task.minutes)
-                  : hhmm(task.at!),
-              // Play on a subtask asks by play's rules (#89), about the
-              // subtask alone.
-              onPlay: () {
+            // The gap the home keeps between its cards (kQueueGap).
+            padding: const EdgeInsets.only(bottom: AppSpacing.s1),
+            child: SubtaskRow(
+              offset: swipeId == task.id ? swipe : 0,
+              lifted: liftedId == task.id,
+              onDone: () async {
                 final bloc = context.read<TimelineBloc>();
-                final card = bloc.state.byId(task.id);
-                if (card != null) {
-                  unawaited(playTask(context, card));
-                } else {
-                  bloc.add(EventMoved(id: task.id, index: 0, start: true));
+                if (await confirmDone(context, task.title)) {
+                  bloc.add(EventFinished(task.id));
                 }
               },
-              onTap: () => _open(context, task.id),
+              onDelete: () async {
+                final bloc = context.read<TimelineBloc>();
+                if (await confirmDelete(context, task.title)) {
+                  bloc.add(EventDeleted(task.id));
+                }
+              },
+              child: TaskCard(
+                title: task.title,
+                subtitle: task.at == null
+                    ? null
+                    : AppWheelPicker.dayLabel(l10n, task.at!, now: now),
+                trailing: task.at == null
+                    ? formatMinutes(l10n, task.minutes)
+                    : hhmm(task.at!),
+                // Play on a subtask asks by play's rules (#89), about the
+                // subtask alone.
+                onPlay: () {
+                  final bloc = context.read<TimelineBloc>();
+                  final card = bloc.state.byId(task.id);
+                  if (card != null) {
+                    unawaited(playTask(context, card));
+                  } else {
+                    bloc.add(EventMoved(id: task.id, index: 0, start: true));
+                  }
+                },
+                onTap: () => _open(context, task.id),
+              ),
             ),
           ),
       ],

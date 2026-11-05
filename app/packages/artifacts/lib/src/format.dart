@@ -36,10 +36,8 @@ String shortDay(AppLocalizations l10n, DateTime day) =>
 
 /// What a goal is called wherever it is named: `Faturar R$ 10.000 até 30
 /// nov`.
-String goalLabel(AppLocalizations l10n, Goal goal) => l10n.goalMoneyLabel(
-  formatMoney(goal.target),
-  shortDay(l10n, goal.lastDay),
-);
+String goalLabel(AppLocalizations l10n, Goal goal) =>
+    l10n.goalMoneyLabel(formatMoney(goal.target), shortDay(l10n, goal.lastDay));
 
 /// A goal's number: reais for money, a plain count otherwise.
 String goalAmount(Goal goal, int amount) =>

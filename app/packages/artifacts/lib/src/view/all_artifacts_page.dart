@@ -150,9 +150,7 @@ class _AllArtifactsPageState extends State<AllArtifactsPage> {
                     padding: const EdgeInsets.all(AppSpacing.s5),
                     child: Text(
                       l10n.artifactsNoResults(_search.text.trim()),
-                      style: AppTypography.body.copyWith(
-                        color: AppColors.ink3,
-                      ),
+                      style: AppTypography.body.copyWith(color: AppColors.ink3),
                     ),
                   ),
                 if (queue.isNotEmpty) ...[

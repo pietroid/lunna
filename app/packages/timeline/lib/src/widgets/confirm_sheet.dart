@@ -26,6 +26,18 @@ Future<bool> confirmDelete(
   );
 }
 
+/// Asks whether [title] may be ticked off, from a swipe.
+Future<bool> confirmDone(BuildContext context, String title) {
+  final l10n = context.l10n;
+
+  return _confirm(
+    context,
+    title: l10n.confirmDoneTitle(title),
+    body: l10n.confirmDoneBody,
+    action: l10n.confirmDoneAction,
+  );
+}
+
 /// Asks whether [card] may be cut to [minutes] so it fits a free stretch.
 ///
 /// The stretch is shorter than the block, so the drop cannot land as it is.

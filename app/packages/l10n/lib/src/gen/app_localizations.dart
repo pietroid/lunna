@@ -317,6 +317,42 @@ abstract class AppLocalizations {
   /// **'Excluir'**
   String get confirmDeleteAction;
 
+  /// No description provided for @confirmDoneTitle.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluir “{title}”?'**
+  String confirmDoneTitle(String title);
+
+  /// No description provided for @confirmDoneBody.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ela vai para Feitas e sai da fila.'**
+  String get confirmDoneBody;
+
+  /// No description provided for @confirmDoneAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluir'**
+  String get confirmDoneAction;
+
+  /// No description provided for @artifactPendingEmptyAction.
+  ///
+  /// In pt, this message translates to:
+  /// **'Escrever uma tarefa'**
+  String get artifactPendingEmptyAction;
+
+  /// No description provided for @subtaskSwipeDone.
+  ///
+  /// In pt, this message translates to:
+  /// **'Concluir'**
+  String get subtaskSwipeDone;
+
+  /// No description provided for @subtaskSwipeDelete.
+  ///
+  /// In pt, this message translates to:
+  /// **'Excluir'**
+  String get subtaskSwipeDelete;
+
   /// No description provided for @confirmShortenTitle.
   ///
   /// In pt, this message translates to:
