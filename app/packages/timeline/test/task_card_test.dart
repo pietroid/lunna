@@ -81,6 +81,34 @@ void main() {
       expect(find.byType(TaskCardBar), findsOneWidget);
     });
 
+    testWidgets('draws the piece at work yellow after the green (#92)', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const TaskCard(
+          title: 'Site',
+          controls: true,
+          bar: TaskBar(done: 0.25, doing: 0.25, pace: true),
+        ),
+      );
+
+      final fills = tester
+          .widgetList<ColoredBox>(
+            find.descendant(
+              of: find.byType(TaskCardBar),
+              matching: find.byType(ColoredBox),
+            ),
+          )
+          .map((it) => it.color)
+          .toList();
+      expect(fills, [
+        AppColors.line,
+        AppColors.paceDoing,
+        AppColors.paceDone,
+      ]);
+    });
+
     testWidgets('says a name once when its task is itself', (tester) async {
       await pump(
         tester,

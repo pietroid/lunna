@@ -160,14 +160,19 @@ class _HomePageState extends State<HomePage> {
   /// A card of Pendentes, to carry and to swipe.
   Widget _pending(Pending item, DateTime now) {
     return switch (item) {
-      PendingDelivery(:final artifact) => PlanSwipe.delivery(
-        artifact: artifact,
-        child: PlanDraggable(
-          carry: CarryDelivery(artifact, PlanSection.pending),
-          onCarry: _setCarrying,
-          child: PendingCard(artifact: artifact, now: now),
+      PendingDelivery(:final artifact, :final doingMinutes) =>
+        PlanSwipe.delivery(
+          artifact: artifact,
+          child: PlanDraggable(
+            carry: CarryDelivery(artifact, PlanSection.pending),
+            onCarry: _setCarrying,
+            child: PendingCard(
+              artifact: artifact,
+              now: now,
+              doingMinutes: doingMinutes,
+            ),
+          ),
         ),
-      ),
       PendingTask(:final card) => _carry(
         card,
         PlanSection.pending,

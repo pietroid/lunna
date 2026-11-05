@@ -136,7 +136,7 @@ final class EventMoved extends TimelineBlocEvent {
   final int? minutes;
 
   /// With [minutes] and not [start]: only a piece that long takes the
-  /// place, and the rest stays where the task was.
+  /// place, and the rest waits in Pendentes (#92).
   final bool split;
 
   /// With [start]: the guard's answer, asked before the move (#89), so

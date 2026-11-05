@@ -13,9 +13,16 @@ import 'package:timeline/src/widgets/now_surface.dart';
 /// The bar under a [TaskCard]: how much of its work is done and, when it
 /// is owed by a day, how much of its time has gone.
 class TaskBar {
-  /// Work done, 0 to 1, over [time] gone, 0 to 1. Without [time] the bar is
-  /// Agora's: one fill, the accent, the block's own minutes.
-  const TaskBar({required this.done, this.time, this.late = false});
+  /// Work done, 0 to 1, over [time] gone, 0 to 1. Without [time] and
+  /// [pace] the bar is Agora's: one fill, the accent, the block's own
+  /// minutes.
+  const TaskBar({
+    required this.done,
+    this.time,
+    this.late = false,
+    this.doing = 0,
+    this.pace = false,
+  });
 
   /// The work done, 0 to 1.
   final double done;
@@ -27,6 +34,14 @@ class TaskBar {
   /// Whether its day has gone by: the time runs the whole bar, red, with
   /// the work done still over it.
   final bool late;
+
+  /// The piece at work right now, 0 to 1 (#92): drawn yellow right after
+  /// the green.
+  final double doing;
+
+  /// Whether it is a task's pace bar even with no day ([time] null): the
+  /// work in green alone, never the accent.
+  final bool pace;
 }
 
 /// What −/+ on a [TaskCard] step by: ten minutes of its length (Agora),
@@ -411,8 +426,10 @@ class _Step extends StatelessWidget {
 }
 
 /// Agora's bar, 3 px, under a [TaskCard]: the accent alone for the running
-/// block; for a task owed by a day, its work in [AppColors.paceDone] over
-/// its time in [AppColors.paceTime].
+/// block; for a task with tasks, its work in [AppColors.paceDone] over its
+/// time in [AppColors.paceTime] when it is owed by a day (the green alone
+/// when not), and the piece at work in [AppColors.paceDoing] right after
+/// the green.
 class TaskCardBar extends StatelessWidget {
   /// The bar for [bar].
   const TaskCardBar({required this.bar, super.key});
@@ -423,7 +440,7 @@ class TaskCardBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final time = bar.late ? 1.0 : bar.time;
-    final pace = time != null;
+    final pace = bar.pace || time != null;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
       child: SizedBox(
@@ -432,7 +449,12 @@ class TaskCardBar extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             const ColoredBox(color: AppColors.line),
-            if (pace) _Fill(value: time, color: AppColors.paceTime),
+            if (time != null) _Fill(value: time, color: AppColors.paceTime),
+            if (bar.doing > 0)
+              _Fill(
+                value: bar.done + bar.doing,
+                color: AppColors.paceDoing,
+              ),
             _Fill(
               value: bar.done,
               color: pace ? AppColors.paceDone : AppColors.accent,
