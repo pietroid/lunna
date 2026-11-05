@@ -170,7 +170,45 @@ Related: [2026-11-03-cut-design-cost](../2026-11-03-cut-design-cost/README.md)
 (thumbnails, read caps; its #85 results), [2026-10-21-skill-flow](../2026-10-21-skill-flow/)
 (where the design/build split was first measured).
 
-## 7. Cost and time
+## 7. The first real issue (#91), and the fix
+
+> omg i ask to implement just a few of them, and it just responds by adding more issues facepalm https://github.com/pietroid/lunna/issues/91
+
+> Please consider my first response, and remove the other issues. Also you can push any improvement to main if needed.
+
+The split itself worked (1 turn, $0.14, six pieces, ~10 pt). But the
+parent understood only "approve" (start everything) and "no"; any other
+reply split it again. "build the first three for now" and "Start with
+the first three high impact" each closed the proposed pieces and opened a
+new, differently cut set: #92–#97, then #98–#104, then #105–#113.
+
+**Fixed:** a reply on the parent now goes to the split run with the
+current pieces listed, and comes back as decisions on them: `start`,
+`backlog`, `drop` (only for a piece a new one replaces), and `children`
+only for new pieces asked for. Nothing the reply doesn't name changes.
+The skill gains "A reply on the parent", requires `after` for a build that
+implements a mockup (#95 lacked it), and drops the summary's own total
+(it said 11.1 pt where the pieces summed to 10.0).
+
+Verified for real on #91's pieces (`split-dry-run.mjs … pieces.txt
+reply`, `data/reply-91.txt`), 2 turns and ~$0.09 each:
+
+| Reply | start | backlog | drop | new |
+|-------|-------|---------|------|-----|
+| build the first three for now | 92, 93, 94 | | | 0 |
+| Start with the first three high impact. | 92, 93, 94 | | | 0 |
+| not the calendar one, and also add dark mode to the composer | | 97 | | 1 |
+
+The first try of the third reply started five pieces nobody asked for and
+dropped #97 instead of shelving it; the second added no piece for "add
+dark mode". Each was a sentence in the skill; the table is the third try.
+`simulate.sh` gains the scenario (a reply starts the first piece, the
+other stays proposed, no new split): 16 checks pass.
+
+On #91 itself, by hand: #92, #93, #94 reopened and started; #105–#113
+closed as not planned.
+
+## 8. Cost and time
 
 This `/improve` run (from the request above): 56 turns, 15.5M tokens in
 (15.2M cache read), 86k out, peak context 344k (`.tool/cost b0027a4a`),

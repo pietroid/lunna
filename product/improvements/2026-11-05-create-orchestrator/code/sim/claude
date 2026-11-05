@@ -11,7 +11,9 @@ const emit = (e) => process.stdout.write(JSON.stringify(e) + '\n');
 if (p === '/usage') { process.stdout.write(JSON.stringify({ result: 'Current session 10% used\nCurrent week (all models) 50% used' })); process.exit(0); }
 
 let output;
-if (p.startsWith('/create')) {
+if (p.startsWith('/create') && p.includes('The person answered on the parent issue')) {
+  output = { summary: 'Started the first.', doc: '', start: [+p.match(/^- #(\d+)/m)[1]] }; // "build the first one"
+} else if (p.startsWith('/create')) {
   output = { summary: 'Two pieces.', doc: '', children: [
     { kind: 'mockup', title: 'Fila em Em seguida', body: 'Draw it.', estimate: 0.5, impact: 'high' },
     { kind: 'build', title: 'Construir a fila', body: 'Build it.', estimate: 2.5, impact: 'high', after: 0 },

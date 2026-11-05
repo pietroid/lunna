@@ -36,8 +36,9 @@ on the parent for all of them:
 - anything else is a note the piece starts with.
 
 An approved mockup closes its child; a merged build closes its child; the
-parent closes when no child is left open. Feedback on the parent itself
-splits again.
+parent closes when no child is left open. Any other reply on the parent
+("build the first three") is answered on the pieces that exist (see "A
+reply on the parent"); it never splits them again.
 
 **In a terminal.** Split the same way and show the pieces. On the
 person's go, open the parent issue (`gh issue create --label create`, the
@@ -88,9 +89,29 @@ Each piece has:
   change, where (package, widget, route), and the rule that matters. No
   background the session can read in `AGENTS.md`;
 - **kind** (`mockup` or `build`), **estimate** (points), **impact**;
-- **after**: the piece it starts from (a build after its mockup), if any.
+- **after**: the piece it starts from. **A build that implements what a
+  mockup draws always names that mockup here**, so it waits for the
+  approval and starts from the mockup's files.
 
 **Unattended** (`LUNNA_QUEUE=1`): return the pieces as `children` in the
-structured output, the summary saying the total and what was left out.
-Write nothing in the tree. On a reply to an earlier split, return the
-whole new list; pieces already started keep going.
+structured output. The summary says in a sentence or two why the pieces
+are cut that way and what was left out; no totals (the queue adds them up).
+Write nothing in the tree.
+
+## A reply on the parent
+
+The pieces already exist as issues; the prompt lists them with their
+state. **Answer the reply, don't split again.** Map what the person said
+onto those issues:
+
+- "build the first three", "start #92 and #94", "só os de alto impacto":
+  their numbers in `start`, in the order of the list as it was shown;
+- "not the calendar one", "later", "without X": in `backlog` (not `drop`:
+  `drop` is only for a piece a new one replaces);
+- "add …", "also …": **always** a new piece in `children`, whatever
+  happens to the pieces around it; "change #95 to …": the
+  new piece in `children` and #95 in `drop`.
+
+**Start only what the reply asks to start**: "add X" or "not Y" starts nothing. Leave every piece they didn't mention as it is. Return `children` empty
+unless they asked for something new. The summary says what you did, in a
+line.

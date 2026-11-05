@@ -208,6 +208,9 @@ export const SCHEMA = JSON.stringify({
         required: ['kind', 'title', 'body', 'estimate', 'impact'],
       },
     },
+    start: { type: 'array', items: { type: 'integer' }, description: 'Only when answering a reply on a split: issue numbers of existing pieces to start now.' },
+    backlog: { type: 'array', items: { type: 'integer' }, description: 'Only when answering a reply on a split: issue numbers of existing pieces the person does not want now.' },
+    drop: { type: 'array', items: { type: 'integer' }, description: 'Only when answering a reply on a split: issue numbers of existing pieces that new children replace.' },
   },
   required: ['summary'],
 });
@@ -231,7 +234,8 @@ export function prompt(st, phase, reply) {
   const ask = `${st.title}\n\n${st.body ?? ''}`.trim();
   switch (`${st.kind}:${phase}`) {
     case 'create:split':
-      return `/create ${ask}${reply ? `\n\nThe person answered the last split:\n\n${quote(reply)}` : ''}\n\n---\nUnattended: split it and return the pieces as children in the structured output. Write nothing in the tree; doc is "".`;
+      if (reply) return `/create ${ask}\n\nThis was already split into these pieces (issue, kind, title, estimate, state):\n\n${pieceList(st)}\n\nThe person answered on the parent issue:\n\n${quote(reply)}\n\n---\nUnattended: answer the reply (the skill's "A reply on the parent"). start: only the pieces the reply asks to start (none if it asks to start nothing). backlog: the pieces it says no to (\"not X\", \"without X\", \"later\"). drop: only pieces a new piece replaces (\"change #N to ...\"). children: only new pieces it asks for, usually none. Every piece the reply doesn't name stays as it is. Never split again what exists. Write nothing in the tree; doc is "".`;
+      return `/create ${ask}\n\n---\nUnattended: split it and return the pieces as children in the structured output. Write nothing in the tree; doc is "".`;
     case 'mockup:design':
       return `/mockup ${ask}${note(reply)}\n\n---\nUnattended. Write the draft delivery README with the strip as img/mockup-steps.png and the Build brief; keep the preview entry point and the widgets in the worktree for the build. Section 1 quotes this issue.`;
     case 'mockup:revise':
@@ -464,7 +468,7 @@ async function work(cfg, st) {
   const res = await claude(st, phase, prompt(st, phase, reply));
   st.runs.push(res.run);
   if (!res.ok) return stopped(cfg, st, phase, reply, res);
-  if (st.kind === 'create') return split(cfg, st, res.output);
+  if (st.kind === 'create') return split(cfg, st, res.output, reply);
 
   st.summary = res.output.summary;
   st.doc = res.output.doc || st.doc;
@@ -510,16 +514,32 @@ async function stopped(cfg, st, phase, reply, res) {
 const pt = (n) => `${n.toFixed(1)} pt`;
 const used = (runs) => pt(points(totals(runs).usd));
 
+const stateOf = (c) => (c.status === 'backlog' ? 'backlog' : c.status === 'done' ? 'done' : c.gate === 'proposed' && !c.next ? 'proposed' : 'started');
+// The parent's pieces, for the run that answers a reply on it.
+function pieceList(st) {
+  if (st.pieceText) return st.pieceText; // a dry run (code/split-dry-run.mjs) passes the list
+  return (st.children ?? []).map(load).filter((c) => c && !c.replaced)
+    .map((c) => `- #${c.issue} ${c.kind} "${c.title}" ~${pt(c.estimate ?? 0)}, ${stateOf(c)}`).join('\n') || '(none)';
+}
+
 // After the split: each piece becomes a child issue waiting at `proposed`,
-// and the parent lists them. Pieces of an earlier split that never started
-// are closed; the ones started keep going.
-async function split(cfg, st, out) {
-  for (const n of st.children ?? []) {
-    const c = load(n);
-    if (c?.gate !== 'proposed' || c.next) continue;
-    trySh('gh', ['issue', 'close', String(n), '-R', cfg.repo, '--reason', 'not planned', '--comment', `Replaced by a new split on #${st.issue}.\n\n${MARK}`]);
-    Object.assign(c, { status: 'done', gate: null, replaced: true });
-    save(c);
+// and the parent lists them. On a reply to the parent, the run's answer is
+// applied to the pieces that exist (start, backlog, drop) and only the new
+// pieces it names are opened: a reply never splits again what exists.
+async function split(cfg, st, out, reply) {
+  const did = [];
+  const mine = new Set(st.children ?? []);
+  const proposed = (n) => { const c = mine.has(n) && load(n); return c && c.gate === 'proposed' && !c.next && c.status !== 'done' && c.status !== 'backlog' ? c : null; };
+  for (const n of out.drop ?? []) {
+    const c = proposed(n); if (!c) continue;
+    trySh('gh', ['issue', 'close', String(n), '-R', cfg.repo, '--reason', 'not planned', '--comment', `Replaced on #${st.issue}.\n\n${MARK}`]);
+    Object.assign(c, { status: 'done', gate: null, replaced: true }); save(c); did.push(`dropped #${n}`);
+  }
+  for (const n of out.backlog ?? []) { const c = proposed(n); if (c) { backlog(cfg, c, ` (on #${st.issue})`); did.push(`#${n} to the backlog`); } }
+  for (const n of out.start ?? []) {
+    const c = proposed(n); if (!c) continue;
+    c.next = { phase: FIRST[c.kind], reply: reply ?? null }; c.gate = null; save(c);
+    comment(cfg, n, `▶ **Started**, as asked on #${st.issue}.`); did.push(`started #${n}`);
   }
   const pieces = out.children ?? [];
   const made = [];
@@ -537,15 +557,17 @@ async function split(cfg, st, out) {
   }
   st.children = [...(st.children ?? []).filter((n) => !load(n)?.replaced), ...made];
   st.summary = out.summary;
-  const total = pieces.reduce((s, p) => s + p.estimate, 0);
-  const rows = st.children.map(load).filter(Boolean)
-    .map((c) => `| #${c.issue} | ${c.kind} | ${c.title} | ~${pt(c.estimate)} | ${c.impact} |${c.after ? ` after #${c.after}` : ''}`);
+  if (made.length) did.push(`opened ${made.map((n) => `#${n}`).join(', ')}`);
+  const live = st.children.map(load).filter((c) => c && !c.replaced);
+  const total = live.filter((c) => c.status !== 'backlog').reduce((s, c) => s + (c.estimate ?? 0), 0);
+  const rows = live.map((c) => `| #${c.issue} | ${c.kind} | ${c.title} | ~${pt(c.estimate ?? 0)} | ${c.impact} | ${stateOf(c)}${c.after ? `, after #${c.after}` : ''} |`);
+  const head = reply ? `🧩 **Answered**: ${did.join('; ') || 'nothing to change'}` : `🧩 **Split into ${made.length}**, ~${pt(total)} of the week`;
   st.gate = 'split';
-  st.gateAt = comment(cfg, st.issue, `🧩 **Split into ${made.length}**, ~${pt(total)} of the week\n\n${st.summary}\n\n| | Kind | Piece | Estimate | Impact |\n|---|---|---|---|---|\n${rows.join('\n')}\n\nReply **approve** here to start them all, or answer on each: **approve**, **no** (to the backlog), or a note to start it with. Anything else here splits it again.\n\n<sub>split: ${usageLine(st.runs)}</sub>`);
+  st.gateAt = comment(cfg, st.issue, `${head}\n\n${st.summary}\n\n| | Kind | Piece | Estimate | Impact | State |\n|---|---|---|---|---|---|\n${rows.join('\n')}\n\nReply **approve** here to start every proposed piece, or say which (\"start the first two\", \"drop #N\", \"add …\"); or answer on each piece: **approve**, **no** (to the backlog), or a note to start it with.\n\n<sub>split: ${usageLine(st.runs)}</sub>`);
   st.next = null;
   setStatus(cfg, st, 'waiting');
   removeWorktree(st);
-  await push(cfg, { title: `#${st.issue} split into ${made.length}: ${st.title}`, message: `~${pt(total)} of the week. ${st.summary}`, tags: ['jigsaw'], priority: 4, click: st.url });
+  await push(cfg, { title: `#${st.issue} ${reply ? 'answered' : `split into ${made.length}`}: ${st.title}`, message: `${did.join('; ')} · ~${pt(total)} of the week. ${st.summary}`, tags: ['jigsaw'], priority: 4, click: st.url });
 }
 
 // An approved mockup: its PR closes unmerged and its branch stays, for the
