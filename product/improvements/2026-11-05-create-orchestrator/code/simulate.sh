@@ -49,5 +49,13 @@ check 8 "backlog - -" "its build follows it"
 tick
 check 6 "done - -" "parent closes: everything is in the backlog"
 
+gh issue create --title "Terceira" --label create --body-file - <<< "Mais." >/dev/null   # → #9
+tick; tick
+gh sim-say 9 "build the first one for now"; tick; tick   # answered on the pieces, not split again
+check 10 "waiting design -" "the first piece started (and ran) on a reply"
+check 11 "waiting proposed -" "the other piece stays proposed"
+node -e "const s=JSON.parse(require('fs').readFileSync('.git/queue/issues/9.json','utf8'));process.exit(JSON.stringify(s.children)==='[10,11]'?0:1)" \
+  && echo "✓ #9: still the same two pieces (no new split)" || { echo "✗ #9 was split again"; fail=1; }
+
 echo; cat "$SIM_LOG"
 [ $fail = 0 ] && echo "✓ all checks passed" || { echo "✗ some checks failed; daemon log: $sim/daemon.txt"; exit 1; }

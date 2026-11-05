@@ -1,0 +1,6 @@
+2 turns · $0.086 · 3 s · ✓ ok
+reply "build the first three for now" → start [92,93,94] · backlog [] · drop [] · new 0
+2 turns · $0.086 · 3 s · ✓ ok
+reply "Start with the first three high impact." → start [92,93,94] · backlog [] · drop [] · new 0
+2 turns · $0.088 · 4 s · ✓ ok
+reply "not the calendar one, and also add dark mode to the composer" → start [] · backlog [97] · drop [] · new 1

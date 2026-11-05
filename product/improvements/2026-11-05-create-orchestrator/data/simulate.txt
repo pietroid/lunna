@@ -11,4 +11,7 @@
 ✓ #7: backlog - - (mockup said no)
 ✓ #8: backlog - - (its build follows it)
 ✓ #6: done - - (parent closes: everything is in the backlog)
+✓ #10: waiting design - (the first piece started (and ran) on a reply)
+✓ #11: waiting proposed - (the other piece stays proposed)
+✓ #9: still the same two pieces (no new split)
 ✓ all checks passed
