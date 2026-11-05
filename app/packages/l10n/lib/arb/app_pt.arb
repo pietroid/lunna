@@ -102,6 +102,27 @@
   },
   "confirmDeleteBody": "Sai da agenda e não volta.",
   "confirmDeleteAction": "Excluir",
+  "confirmDoneTitle": "Concluir “{title}”?",
+  "@confirmDoneTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDoneBody": "Sai da lista e vai para Feitas.",
+  "confirmDoneAction": "Concluir",
+  "confirmDeliverTitle": "Entregar “{title}”?",
+  "@confirmDeliverTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDeliverBody": "Conta como entregue hoje, com o valor dela.",
+  "confirmDeliverAction": "Entregar",
+  "confirmDeleteTaskBody": "Sai da lista e não volta.",
   "confirmShortenTitle": "Não cabe inteiro aqui",
   "confirmShortenBody": "“{title}” leva {duration} min e esse intervalo tem espaço para {minutes} min, já contando a pausa. Ajustar para {minutes} min?",
   "@confirmShortenBody": {

@@ -144,30 +144,34 @@ class AppPillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.s3,
-          vertical: AppSpacing.s3 - 1,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.fill,
-          borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (iconData != null) ...[
-              AppIcon(
-                iconData: iconData!,
-                size: AppSpacing.s4,
-                color: AppColors.ink2,
-              ),
-              const SizedBox(width: AppSpacing.s1 + 2),
+    // The hand on the web, as every other place that opens something.
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.s3,
+            vertical: AppSpacing.s3 - 1,
+          ),
+          decoration: BoxDecoration(
+            color: AppColors.fill,
+            borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (iconData != null) ...[
+                AppIcon(
+                  iconData: iconData!,
+                  size: AppSpacing.s4,
+                  color: AppColors.ink2,
+                ),
+                const SizedBox(width: AppSpacing.s1 + 2),
+              ],
+              Text(label, style: AppTypography.label),
             ],
-            Text(label, style: AppTypography.label),
-          ],
+          ),
         ),
       ),
     );
