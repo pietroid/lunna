@@ -1,0 +1,14 @@
+✓ #1: waiting split - (parent split into 2 children)
+✓ #2: waiting proposed - (mockup proposed)
+✓ #3: waiting proposed - (build proposed, after #2)
+✓ #2: waiting design - (mockup ran, waits at its gate)
+✓ #3: waiting - build (build approved, waiting for its mockup)
+✓ #2: done - - (mockup accepted: PR closed, issue closed)
+✓ #3: waiting review - (build ran (a limit after its output still counts as done))
+✓ the build's branch has the mockup's preview
+✓ #3: done - - (build merged)
+✓ #1: done - - (parent closed)
+✓ #7: backlog - - (mockup said no)
+✓ #8: backlog - - (its build follows it)
+✓ #6: done - - (parent closes: everything is in the backlog)
+✓ all checks passed

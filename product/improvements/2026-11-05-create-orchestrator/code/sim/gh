@@ -1,0 +1,63 @@
+#!/usr/bin/env node
+// A fake `gh` for simulate.sh: issues, PRs, labels and comments in $SIM_DB.
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+
+const file = process.env.SIM_DB;
+const db = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : { next: 1, items: {} };
+const args = process.argv.slice(2);
+const flag = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : undefined; };
+const stdin = () => { try { return readFileSync(0, 'utf8'); } catch { return ''; } };
+const save = () => writeFileSync(file, JSON.stringify(db, null, 1));
+const now = () => new Date(Date.now() + (db.tick = (db.tick ?? 0) + 1)).toISOString();
+const log = (s) => writeFileSync(process.env.SIM_LOG, `${s}\n`, { flag: 'a' });
+const out = (v) => { process.stdout.write(typeof v === 'string' ? v : JSON.stringify(v)); save(); process.exit(0); };
+const item = (n) => db.items[n] ?? (console.error(`no #${n}`), process.exit(1));
+const repo = 'sim/lunna';
+
+const [a, b] = args;
+if (a === 'issue' && b === 'list') out(Object.values(db.items).filter((i) => !i.pr && i.state === 'open').map((i) => ({ number: i.number, title: i.title, body: i.body, url: `https://github.com/${repo}/issues/${i.number}`, labels: i.labels.map((name) => ({ name })) })));
+if (a === 'issue' && b === 'view') out({ labels: item(args[2]).labels.map((name) => ({ name })) });
+if (a === 'issue' && b === 'create') {
+  const n = db.next++;
+  db.items[n] = { number: n, title: flag('--title'), body: stdin(), labels: [flag('--label')].filter(Boolean), state: 'open', comments: [] };
+  log(`issue create #${n} [${flag('--label')}] ${flag('--title')}`);
+  out(`https://github.com/${repo}/issues/${n}\n`);
+}
+if (a === 'issue' && b === 'close') { item(args[2]).state = 'closed'; log(`issue close #${args[2]}${flag('--reason') ? ` (${flag('--reason')})` : ''}`); out(''); }
+if (a === 'pr' && b === 'create') {
+  const n = db.next++;
+  db.items[n] = { number: n, pr: true, title: flag('--title'), head: flag('--head'), body: stdin(), labels: [], state: 'open', comments: [] };
+  log(`pr create #${n} from ${flag('--head')}`);
+  out(`https://github.com/${repo}/pull/${n}\n`);
+}
+if (a === 'pr' && b === 'edit') { item(args[2]).body = stdin(); out(''); }
+if (a === 'pr' && b === 'ready') out('');
+if (a === 'pr' && b === 'close') { item(args[2]).state = 'closed'; log(`pr close #${args[2]} (unmerged)`); out(''); }
+if (a === 'api') {
+  const path = args.find((x) => x.startsWith('repos/'));
+  const method = flag('-X') ?? 'GET';
+  let m;
+  if ((m = path.match(/issues\/(\d+)\/labels$/)) && method === 'PUT') {
+    item(m[1]).labels = JSON.parse(stdin()).labels;
+    log(`labels #${m[1]} = ${item(m[1]).labels.join(',')}`);
+    out(item(m[1]).labels);
+  }
+  if ((m = path.match(/issues\/(\d+)\/comments$/)) && method === 'POST') {
+    const c = { id: db.next * 1000 + item(m[1]).comments.length, user: { login: 'owner' }, body: JSON.parse(stdin()).body, created_at: now() };
+    item(m[1]).comments.push(c);
+    log(`comment #${m[1]}: ${c.body.split('\n')[0]}`);
+    out(c);
+  }
+  if ((m = path.match(/issues\/(\d+)\/comments$/))) out([item(m[1]).comments]);
+  if (path.match(/pulls\/\d+\/(reviews|comments)$/)) out([[]]);
+  if (path.endsWith('/reactions')) out({});
+  if ((m = path.match(/pulls\/(\d+)\/merge$/))) { item(m[1]).state = 'merged'; log(`pr merge #${m[1]}`); out({ sha: 'abcdef1234567' }); }
+  if (path.endsWith('/pages')) process.exit(1);
+}
+if (a === 'sim-say') { // simulate.sh: the owner comments
+  item(b).comments.push({ id: Date.now(), user: { login: 'owner' }, body: args[2], created_at: now() });
+  log(`OWNER on #${b}: ${args[2]}`);
+  out('');
+}
+console.error(`fake gh: unhandled ${args.join(' ')}`);
+process.exit(1);

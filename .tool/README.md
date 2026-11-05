@@ -8,16 +8,18 @@ matters (paths, ✓/✗, the lines of a failure). That's the point: an agent
 re-reads the whole conversation on every call, so fewer calls and shorter
 output are what make a session cheap.
 
-**Cost conventions.** The queue runs design phases on `sonnet` and build
-phases on `opus`. Tools that produce images also write a `-thumb.png`
-(240 px wide) so the agent can review layout without loading full-resolution
-base64 into context. Reads are capped: prefer `Read(offset/limit)` or `grep`
-to whole-file `cat`, and keep any single tool result under ~20k chars.
+**Cost conventions.** Cost is turns × context. The queue runs the split
+on Sonnet (low effort), mockups on Sonnet (medium) and builds on Opus
+(high), each in a lean session (no account MCP servers or user plugins,
+eight tools). Tools that produce images also write a `-thumb.png` so the
+agent can review layout without loading full-resolution base64 into
+context. Reads are capped: prefer `Read(offset/limit)` or `grep` to
+whole-file `cat`, and keep any single tool result under ~20k chars.
 
 | Tool | One line |
 |------|----------|
 | `check` | CI's checks on what changed, one line per step |
-| `preview` | Build a preview entry point in both brands, screenshot it, lay out the board |
+| `preview` | Build a preview entry point in both brands, screenshot it, lay out the step strip |
 | `cost` | What a Claude Code session cost, per message, from its transcript |
 | `doc` | List, open and comment on the Markdown under `product/`; check an RFC's slides and print them |
 | `queue` | GitHub issues worked by Claude Code on this Mac, gate by gate |
@@ -40,13 +42,16 @@ prints `✓ name (12s)`, or `✗` with the lines that explain it and its log.
 ## `preview`: prints of a preview entry point
 
 ```bash
-.tool/preview <slug> 1 2 3 [--brands lunna,focus] [--out dir] [--board board.json] [--no-build]
+.tool/preview <slug> 1 2 3 [--brands lunna,focus] [--out dir] [--steps steps.txt] [--board board.json] [--no-build]
 ```
 
 Builds `app/lib/<slug>_preview.dart` (or `app/lib/<slug>.dart`) for each
 brand at once, screenshots each scene (`?s=<n>`) as a 390×844 phone into
 `<out>/<brand>/<n>.png` plus `strip.png`. It also writes a 240 px-wide
-`<n>-thumb.png` and `strip-thumb.png` for cheap LLM review. With `--board`
+`<n>-thumb.png` and `strip-thumb.png` for cheap LLM review. With `--steps`
+(one line per scene) it writes `<out>/<brand>/steps.png`, the scenes in a
+row with a numbered line under each (what `/mockup` sends), and
+`steps-thumb.png` (~140 px a scene, ~60k characters for two). With `--board`
 it lays out the annotated board in `<out>/board/` (full `board.png` and
 `board-thumb.png`, plus `screenN.png` and `screenN-thumb.png`). A failed
 build prints its errors.
@@ -141,21 +146,33 @@ behind a long build; each phase is a fresh `claude -p` in its own worktree
 running and for how long:
 
 ```
-issue ─▶ 👀 ─▶ design ─▶ draft PR + comment + push ─▶ you reply
-                  ▲                                   │
-                  └──────── anything else ◀───────────┤
-                                                      ▼ "approve"
-          build + .tool/check ─▶ PR ready + comment + push ─▶ you reply
-                  ▲                                   │
-                  └───────── what to fix ◀────────────┤
-                                                      ▼ "approve"
-          merge origin/main (a run resolves conflicts, .tool/check --all)
-          ─▶ squash into main ─▶ issue closed ─▶ push
+create issue ─▶ 👀 ─▶ split (/create, ~$0.15) ─▶ one child issue per piece,
+                      each with its brief and ~points of the week ─▶ you reply
+                      ("approve" on the parent starts them all; on a child:
+                       approve, "no" to the backlog, or a note)
+
+mockup child ─▶ /mockup ─▶ step strip + draft PR ─▶ you reply
+                  ▲                                  │
+                  └────── what to change ◀───────────┤
+                                                     ▼ "approve"
+                       PR closed unmerged, child closed, branch kept
+
+build child  ─▶ /build (from its mockup's branch) + .tool/check
+             ─▶ PR ready ─▶ you reply ─▶ "approve" ─▶ merge origin/main
+             ─▶ squash into main ─▶ child closed
+
+no child left open ─▶ the parent closes, estimate against what was used
 ```
 
-On a feature with nothing to draw (tooling, CI, a server rule), the design
-is a one-page plan instead of a board, and the gate says **Plan ready**.
-Research and improve skip the design gate. **An approved RFC goes on**:
+A piece with nothing to draw (tooling, CI, a server rule, a fix) is a build
+alone, its brief the plan. **"No"** (or *depois*, *backlog*) on a proposed
+piece or a mockup moves it out of its parent into the backlog: its labels
+become `backlog`, nobody works it, and labelling it again brings it back.
+The parent's comments give each piece's estimate and, at the end, what it
+used, in **points of the weekly window** (1 pt ≈ $2.70 of API-equivalent
+tokens; a full week is ~$270). An issue labelled `mockup` or `build` by
+hand works alone, without a parent. Research and improve run as before.
+**An approved RFC goes on**:
 once merged, the queue opens `Implement: <RFC title>` as a `create` issue
 pointing at it, and the next pass plans it and opens its PR, so research
 flows into a build with one "approve". **The PR description is short**:
@@ -263,11 +280,11 @@ Multica: its PRs carry the `multica` label (`queue setup` creates it).
 
 ## `mockup/`: the pieces under `preview`
 
-Used by `preview` and the `/create` skill (`.claude/skills/create/SKILL.md`).
-macOS and Google Chrome.
+Used by `preview` and the `/mockup` and `/build` skills
+(`.claude/skills/`). macOS and Google Chrome.
 
 | Script | What it does |
 |--------|--------------|
-| `shoot-flutter.sh <web_build> <out> <scene>…` | Screenshots a Flutter web build as a 390×844 phone, one `<n>.png` per `?s=<n>` scene, plus `strip.png` |
+| `shoot-flutter.sh <web_build> <out> <scene>…` | Screenshots a Flutter web build as a 390×844 phone, one `<n>.png` per `?s=<n>` scene, plus `strip.png`; with `STEPS=<file>`, also `steps.png` (a numbered line under each scene) |
 | `shoot.mjs` | One screenshot over the DevTools protocol; used by `shoot-flutter.sh` |
-| `board.mjs <board.json> <out>` | Lays the screenshots out as an annotated board with lettered pins: `board.png` and `screen1..n.png` |
+| `board.mjs <board.json> <out>` | The older annotated board with lettered pins (`board.png`, `screen1..n.png`); `/mockup` no longer uses it |

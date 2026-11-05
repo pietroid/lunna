@@ -10,16 +10,22 @@
 //   .tool/queue implement <rfc> [--dry-run]   open the create issue that builds an RFC on main
 //   .tool/queue adopt            move the LaunchAgent onto the runner by itself, once main has it
 //
-// An open issue of yours labelled create, research or improve is queued. Each
-// phase is a fresh headless `claude -p` in the issue's own worktree and
-// branch; the queue commits, pushes, keeps a PR whose description is the
-// topic's README with the usage on top, and stops at each gate with a
-// comment on the issue and a push to your phone. Your next comment on the
-// issue (or the PR) is the answer: "approve" alone goes on, anything else is
-// feedback for another round. At the last gate "approve" merges into main
-// (conflicts resolved by another run), closes the issue and tells you. An
-// approved RFC, once merged, opens its own `create` issue (`implement`), so
-// research flows on into a build.
+// An open issue of yours labelled create, mockup, build, research or improve
+// is queued. Each phase is a fresh headless `claude -p` in the issue's own
+// worktree and branch; the queue commits, pushes, keeps a PR whose
+// description is the topic's README with the usage on top, and stops at each
+// gate with a comment on the issue and a push to your phone. Your next
+// comment on the issue (or the PR) is the answer: "approve" alone goes on,
+// "no" moves it to the backlog, anything else is feedback for another round.
+// At the last gate "approve" merges into main (conflicts resolved by another
+// run), closes the issue and tells you. An approved RFC, once merged, opens
+// its own `create` issue (`implement`), so research flows on into a build.
+//
+// A `create` issue is a parent: one cheap run of /create splits it into
+// pieces, and the queue opens each as a child issue (`mockup` or `build`)
+// with its estimate in points of the weekly window. A build after a mockup
+// starts from the mockup's branch once the mockup is approved; the parent
+// closes when no child is left open.
 //
 // The LaunchAgent runs the queue from its own worktree of origin/main
 // (<worktrees>/.runner), moved to main's tip on every pass, so what merges
@@ -46,7 +52,7 @@ const logDir = join(home, 'logs');
 const AGENT = process.env.LUNNA_QUEUE_AGENT ?? 'dev.pietroid.lunna-queue'; // another label only to test a handover
 const plistPath = join(homedir(), 'Library', 'LaunchAgents', `${AGENT}.plist`);
 const MARK = '<!-- lunna-queue -->';
-const KINDS = ['create', 'research', 'improve'];
+const KINDS = ['create', 'mockup', 'build', 'research', 'improve'];
 const STATUS = { working: 'agent:working', waiting: 'agent:waiting', failed: 'agent:failed', done: 'agent:done' };
 const APPROVE = /^(approved?|aprovad[oa]|aprovo|aprova|lgtm|ok(ay)?|go|ship( it)?|build( it)?|merge( it)?|sim|pode|👍|✅|🚀)[\s.!]*$/iu;
 // A short reply that says go and asks for nothing else ("Great. Build it",
@@ -55,7 +61,27 @@ const GO = /\b(approved?|aprovad[oa]|aprovo|lgtm|ship it|build it|merge it|go ah
 const BUT = /\b(but|mas|except|exceto|change|muda|mude|troca|troque|remove|tira|tire|fix|however|porém|só que|instead|em vez)\b|\?/iu;
 const isApproval = (text) => { const t = text.trim(); return APPROVE.test(t) || (t.split(/\s+/).length <= 8 && GO.test(t) && !BUT.test(t)); };
 const RETRY = /^(retry|again|de novo|tenta de novo)[\s.!]*$/iu;
+// "No" to a piece: it leaves its parent for the backlog, and nobody works it.
+const DENY = /^(no|nope|não|nao|deny|denied|backlog|depois|later|skip|pula|pular|agora não|not now)[\s.!]*$/iu;
+export const denies = (said) => said.length > 0 && said.every((c) => c.kind !== 'line' && DENY.test(c.body.trim()));
 const RUN_LIMIT_MS = 4 * 3600e3;
+// API-equivalent USD per point of the weekly window: a full week is ~$270
+// (300 /usage readings against priced usage; see the 2026-11-05
+// create-orchestrator report, which also explains why fitting the queue
+// runs alone gives too low a figure).
+const USD_PER_POINT = 2.70;
+const points = (usd) => usd / USD_PER_POINT;
+// Model and effort per phase. Cache reads cost the same on Sonnet and Opus,
+// so Sonnet saves on cache writes and output: the split and the mockup are
+// reading and drawing, the build is the engineering.
+export const RUN = {
+  'create:split': ['sonnet', 'low'],
+  'mockup:design': ['sonnet', 'medium'], 'mockup:revise': ['sonnet', 'medium'],
+  'build:build': ['opus', 'high'], 'build:fix': ['opus', 'high'],
+};
+// A piece of work loads only what it uses: no account MCP servers, no user
+// plugins' skills, eight tools instead of 43 (~6k tokens less on every turn).
+export const LEAN = ['--setting-sources', 'project,local', '--strict-mcp-config', '--tools', 'Bash,Read,Edit,Write,Skill,Task,Monitor,TaskStop'];
 // Issues worked at once, so a short round waits for no long build. Only one
 // of them merges at a time: both would push to main and run .tool/check --all.
 const JOBS = 2;
@@ -155,7 +181,7 @@ function usageTable(runs) {
 
 // ---------------------------------------------------------------- the engine
 
-const SCHEMA = JSON.stringify({
+export const SCHEMA = JSON.stringify({
   type: 'object',
   properties: {
     summary: { type: 'string', description: 'Two to four sentences for the person, in the language of the issue: what you did and what to look at.' },
@@ -166,11 +192,27 @@ const SCHEMA = JSON.stringify({
       items: { type: 'object', properties: { thread: { type: 'integer' }, body: { type: 'string' } }, required: ['thread', 'body'] },
       description: 'One answer per comment the person left on a line of the PR, by its thread id: what you changed there, or the answer to the question. The queue posts each under their comment.',
     },
+    children: {
+      type: 'array',
+      description: 'Only for a /create split: the pieces, in order. The queue opens each as an issue.',
+      items: {
+        type: 'object',
+        properties: {
+          kind: { enum: ['mockup', 'build'] },
+          title: { type: 'string', description: 'What changes, in the language of the issue, at most 60 characters.' },
+          body: { type: 'string', description: 'The brief: two to six lines on what to change, where, and the rule that matters.' },
+          estimate: { type: 'number', description: 'Points of the weekly window.' },
+          impact: { enum: ['high', 'medium', 'low'] },
+          after: { type: 'integer', description: 'Index (from 0) in this list of the piece it starts from: a build after its mockup.' },
+        },
+        required: ['kind', 'title', 'body', 'estimate', 'impact'],
+      },
+    },
   },
-  required: ['summary', 'doc'],
+  required: ['summary'],
 });
 
-const rules = (st) => `You are running unattended, started by the Lunna queue (.tool/queue.mjs) for GitHub issue #${st.issue}: ${st.url}
+export const rules = (st) => `You are running unattended, started by the Lunna queue (.tool/queue.mjs) for GitHub issue #${st.issue}: ${st.url}
 Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion is not available.
 - Work only in this worktree (${st.worktree}), branch ${st.branch}. Leave the work in its files: the queue commits, pushes and keeps the PR. Don't run git commit, push, checkout, merge, rebase or stash pop of anything you didn't stash, and don't run .tool/doc open.
 - Where a skill says to ask, or to stop for the person, take the option you would recommend, list it in the document under "Decided unattended", and go on. Write a question you can't decide into the document and into the structured output's questions.
@@ -178,22 +220,26 @@ Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion i
 - Images the person must see go in the topic folder (img/ next to its README), not only in the scratchpad: they read the README on the review page, on a phone.
 - This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
 - A reply that starts "On \`<file>\` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
-- Finish with the structured output.`;
+- Every turn re-reads the whole conversation, so cost is turns × context. Batch independent reads and commands in one message; read slices (grep -n, Read with offset/limit), never a whole file, never a result over ~20k characters, never the same file twice; write with Edit or Write, not edit scripts in Bash. Look only at -thumb.png images, never a full-size PNG.
+- Finish with the structured output as soon as the work is done.`;
 
 const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');
+const note = (reply) => (reply ? `\n\nThe person's note when approving it:\n\n${quote(reply)}` : '');
 const slugOf = (doc) => basename(dirname(doc)).replace(/^\d{4}-\d{2}-\d{2}-/, '');
 
-function prompt(st, phase, reply) {
+export function prompt(st, phase, reply) {
   const ask = `${st.title}\n\n${st.body ?? ''}`.trim();
   switch (`${st.kind}:${phase}`) {
-    case 'create:design':
-      return `/create ${ask}\n\n---\nThis is the design session, unattended. Pick the track (Phase 0) and say which in the summary. Mockup track: do Phase 1, then write the hand-off at once instead of waiting for approval (the person approves on the issue): the draft product/delivery/<YYYY-MM-DD>-<slug>/README.md with sections 1 and 2 and the Build brief, the board as img/mockup-board.png with board.json, and each screen as img/mockup-<n>.png; keep the preview entry point and the new widgets in the worktree. Plan track: do Phase 1P and stop there, with no preview and no board. Section 1 quotes the issue.`;
-    case 'create:revise':
-      return `/create ${st.title}\n\nThe design in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo Phase 2 on it, unattended: change the widgets, re-shoot what changed, update the board, img/ and the README (the reply goes in section 1; update the decisions and the Build brief). On the plan track, change the plan instead. Stop at the hand-off again.`;
-    case 'create:build':
-      return `/create build ${slugOf(st.doc)}\n\nThe design was approved on the issue. Do Phases 3 and 4 unattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. In section 5 write "Measured by the queue: see the pull request." instead of .tool/cost tables.`;
-    case 'create:fix':
-      return `/create build ${slugOf(st.doc)}\n\nThis is a follow-up: the build in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo what they ask, unattended, by the rules of Phases 3 and 4: keep .tool/check green, re-shoot the prints if the UI changed, and update the README (the reply in section 1, what was built).`;
+    case 'create:split':
+      return `/create ${ask}${reply ? `\n\nThe person answered the last split:\n\n${quote(reply)}` : ''}\n\n---\nUnattended: split it and return the pieces as children in the structured output. Write nothing in the tree; doc is "".`;
+    case 'mockup:design':
+      return `/mockup ${ask}${note(reply)}\n\n---\nUnattended. Write the draft delivery README with the strip as img/mockup-steps.png and the Build brief; keep the preview entry point and the widgets in the worktree for the build. Section 1 quotes this issue.`;
+    case 'mockup:revise':
+      return `/mockup ${st.title}\n\nThe mockup in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nRevise it, unattended.`;
+    case 'build:build':
+      return `/build ${ask}${st.after ? `\n\nThe approved mockup and its Build brief are in ${st.doc}; this branch starts from its files.` : ''}${note(reply)}\n\n---\nUnattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README.`;
+    case 'build:fix':
+      return `/build ${st.title}\n\nThis is a follow-up: the build in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo what they ask, unattended: keep .tool/check green, re-shoot the prints if the UI changed, and update the README (the reply in section 1, what was built).`;
     case 'research:start':
       return `/research ${ask}\n\n---\nUnattended: do Phases 1 to 3 and write the RFC in its product/research/ folder. Leave Phase 4 (the deep-research pass) until the person asks for it.`;
     case 'research:fix':
@@ -220,12 +266,16 @@ async function claude(st, phase, text) {
   const out = createWriteStream(logPath);
   const args = ['-p', text, '--output-format', 'stream-json', '--verbose', '--permission-mode', 'auto', '--permission-prompts', 'none',
     '--max-turns', '500', '--json-schema', SCHEMA, '--append-system-prompt', rules(st)];
-  if (phase === 'create:design') args.push('--model', 'sonnet');
+  const [model, effort] = RUN[`${st.kind}:${phase}`] ?? [];
+  if (model) args.push('--model', model, '--effort', effort);
+  if (['create', 'mockup', 'build'].includes(st.kind)) args.push(...LEAN);
   const child = spawn('claude', args, { cwd: st.worktree, env: { ...process.env, LUNNA_QUEUE: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   const awake = spawn('caffeinate', ['-i', '-w', String(child.pid)], { stdio: 'ignore' });
   awake.on('error', () => {});
   const timer = setTimeout(() => child.kill('SIGINT'), RUN_LIMIT_MS);
-  let result = null, limit = null, lastText = '', buf = '', stderr = '';
+  // `done` is the first result that carries the structured output: a session
+  // that hits a limit after it (as #85's build did) has still finished.
+  let result = null, done = null, limit = null, lastText = '', buf = '', stderr = '';
   child.stdout.on('data', (chunk) => {
     out.write(chunk);
     buf += chunk;
@@ -233,7 +283,7 @@ async function claude(st, phase, text) {
     while ((i = buf.indexOf('\n')) >= 0) {
       const line = buf.slice(0, i); buf = buf.slice(i + 1);
       let ev; try { ev = JSON.parse(line); } catch { continue; }
-      if (ev.type === 'result') result = ev;
+      if (ev.type === 'result') { result = ev; if (!done && ev.structured_output && !ev.is_error) done = ev; }
       if (ev.type === 'rate_limit_event') limit = ev.rate_limit_info;
       if (ev.type === 'assistant') for (const c of ev.message?.content ?? []) if (c.type === 'text' && c.text.trim()) lastText = c.text;
     }
@@ -249,8 +299,8 @@ async function claude(st, phase, text) {
     tin: sum('inputTokens') + sum('cacheReadInputTokens') + sum('cacheCreationInputTokens'), cache: sum('cacheReadInputTokens'),
     tout: sum('outputTokens'), usd: result?.total_cost_usd ?? 0, before, after: usageNow(), session: result?.session_id, log: logPath,
   };
-  const output = result?.structured_output ?? null;
-  const ok = code === 0 && result && !result.is_error && output;
+  const output = (done ?? result)?.structured_output ?? null;
+  const ok = !!done || (code === 0 && result && !result.is_error && output);
   const limited = !ok && (limit?.status === 'rejected' || /usage limit|rate limit|limit reached/i.test(`${result?.result ?? ''} ${stderr} ${lastText}`));
   const why = ok ? null : (result?.result || lastText || stderr || `claude exited with ${code}`).slice(-1500);
   const resetsAt = limited ? Math.max(...Object.values(limit?.unifiedWindows ?? {}).filter((w) => w.utilization >= 1).map((w) => w.resetsAt), limit?.resetsAt ?? 0) : null;
@@ -323,8 +373,10 @@ export function reviewUrl(cfg, st) {
   return site ? `${site.replace(/^http:/, 'https:').replace(/\/?$/, '/')}review.html?repo=${cfg.repo}&pr=${st.pr}&path=${encodeURI(st.doc)}` : null;
 }
 const pageLine = (url) => (url ? `\n\n📝 [Read it as a page and comment on its text](${url})` : '');
-const boardOf = (st) => st.doc && posix.join(posix.dirname(st.doc), 'img/mockup-board.png');
-const hasBoard = (st) => !!st.doc && existsSync(join(st.worktree, boardOf(st)));
+// The design at a glance: a /mockup's step strip, or an older delivery's board.
+const boardOf = (st) => st.doc && ['img/mockup-steps.png', 'img/mockup-board.png'].map((f) => posix.join(posix.dirname(st.doc), f))
+  .find((f) => existsSync(join(st.worktree, f)));
+const hasBoard = (st) => !!st.doc && !!boardOf(st);
 
 // Short on purpose: the README is read on the review page (or in Files
 // changed, where its lines take comments), not pasted here. A board stays,
@@ -356,12 +408,15 @@ async function worktree(cfg, st) {
   if (existsSync(st.worktree)) return;
   sh('git', ['fetch', '-q', 'origin', 'main']);
   const exists = trySh('git', ['rev-parse', '--verify', '-q', `refs/heads/${st.branch}`]);
-  sh('git', ['worktree', 'add', '-q', ...(exists ? [st.worktree, st.branch] : ['-b', st.branch, st.worktree, 'origin/main'])]);
+  // A build after a mockup starts from the mockup's branch: its widgets and preview carry over.
+  const from = st.base && trySh('git', ['rev-parse', '--verify', '-q', `refs/heads/${st.base}`]) ? st.base : 'origin/main';
+  sh('git', ['worktree', 'add', '-q', ...(exists ? [st.worktree, st.branch] : ['-b', st.branch, st.worktree, from])]);
   // What git ignores but the app and the server need to run.
   // From the checkout the person works in: the runner has none of them.
   const src = checkout;
   const envs = ['server/.env', 'server/.env.local', ...readdirSync(join(src, 'app/env')).filter((f) => f.endsWith('.json') && !f.includes('example')).map((f) => `app/env/${f}`)];
   for (const f of envs) if (existsSync(join(src, f))) copyFileSync(join(src, f), join(st.worktree, f));
+  if (st.kind === 'create' || st.kind === 'mockup') return; // the split reads; a mockup builds only the app
   await shAsync('npm', ['ci', '--prefer-offline', '--no-audit', '--no-fund', '--silent'], { cwd: join(st.worktree, 'server'), timeout: 600e3 }).catch(() => {});
 }
 
@@ -379,30 +434,37 @@ function removeWorktree(st) {
 
 // ---------------------------------------------------------------- phases
 
-const FIRST = { create: 'design', research: 'start', improve: 'start' };
-const GATE = { 'create:design': 'design', 'create:revise': 'design' };
+const FIRST = { create: 'split', mockup: 'design', build: 'build', research: 'start', improve: 'start' };
+const GATE = { 'mockup:design': 'design', 'mockup:revise': 'design' };
 const gateOf = (st, phase) => GATE[`${st.kind}:${phase}`] ?? 'review';
-const NEXT = { design: { approve: 'build', feedback: 'revise' }, review: { approve: 'merge', feedback: 'fix' } };
+// A piece waits at `proposed` until approved (a note starts it too); a
+// mockup's approval accepts it, and its build may start.
+const NEXT = {
+  proposed: { approve: 'start', feedback: 'start' },
+  design: { approve: 'accept', feedback: 'revise' },
+  review: { approve: 'merge', feedback: 'fix' },
+};
 const HEADLINE = {
-  design: ['🎨', 'Design ready', 'Reply **approve** to build it, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'art'],
-  plan: ['📝', 'Plan ready', 'Reply **approve** to build it, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'memo'],
+  design: ['🎨', 'Mockup ready', 'Reply **approve** to accept it (its build starts from it), **no** to move it to the backlog, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'art'],
   review: ['✅', 'Ready for review', 'Reply **approve** to merge it into main (that deploys), or write what to fix: here, or on any line of the PR\'s **Files changed**.', 'white_check_mark'],
   rfc: ['✅', 'RFC ready', 'Reply **approve** to merge it and queue its build as a new issue, or write what to change: here, or on any line of the PR\'s **Files changed**.', 'white_check_mark'],
 };
-// A design gate with no board is the plan track (nothing to draw).
-const headline = (st, gate, board) => HEADLINE[gate === 'design' ? (board ? 'design' : 'plan') : st.kind === 'research' ? 'rfc' : 'review'];
+const headline = (st, gate) => HEADLINE[gate === 'design' ? 'design' : st.kind === 'research' ? 'rfc' : 'review'];
 
 async function work(cfg, st) {
   const { phase, reply } = st.next;
   log(`#${st.issue} ${phase}`);
   st.since = Date.now();
   setStatus(cfg, st, 'working');
+  if (phase === 'accept') return accept(cfg, st);
+  if (st.after) { const dep = load(st.after); st.base = dep?.branch; st.doc ??= dep?.doc; save(st); }
   await worktree(cfg, st);
   if (phase === 'merge') return merge(cfg, st);
 
   const res = await claude(st, phase, prompt(st, phase, reply));
   st.runs.push(res.run);
   if (!res.ok) return stopped(cfg, st, phase, reply, res);
+  if (st.kind === 'create') return split(cfg, st, res.output);
 
   st.summary = res.output.summary;
   st.doc = res.output.doc || st.doc;
@@ -411,7 +473,7 @@ async function work(cfg, st) {
   git(st.worktree, 'push', '-q', '-u', 'origin', st.branch);
 
   const gate = gateOf(st, phase);
-  const [icon, head, ask, tag] = headline(st, gate, hasBoard(st));
+  const [icon, head, ask, tag] = headline(st, gate);
   const sha = syncPr(cfg, st, `**${head}**, waiting for your reply on #${st.issue}.`);
   if (gate === 'review') trySh('gh', ['pr', 'ready', String(st.pr), '-R', cfg.repo]);
   for (const r of res.output.replies ?? []) {
@@ -441,6 +503,88 @@ async function stopped(cfg, st, phase, reply, res) {
   st.gateAt = comment(cfg, st.issue, `⚠️ **Stopped** during \`${phase}\`:\n\n\`\`\`\n${res.why}\n\`\`\`\n\nReply **retry** to run it again, or write how to go on. Log: \`${res.run.log}\`\n\n<sub>${usageLine(st.runs)}</sub>`);
   setStatus(cfg, st, 'failed');
   await push(cfg, { title: `#${st.issue} failed: ${st.title}`, message: `${phase}: ${res.why.slice(0, 300)}`, tags: ['warning'], priority: 4, click: st.url });
+}
+
+// ---------------------------------------------------------------- the parent and its pieces
+
+const pt = (n) => `${n.toFixed(1)} pt`;
+const used = (runs) => pt(points(totals(runs).usd));
+
+// After the split: each piece becomes a child issue waiting at `proposed`,
+// and the parent lists them. Pieces of an earlier split that never started
+// are closed; the ones started keep going.
+async function split(cfg, st, out) {
+  for (const n of st.children ?? []) {
+    const c = load(n);
+    if (c?.gate !== 'proposed' || c.next) continue;
+    trySh('gh', ['issue', 'close', String(n), '-R', cfg.repo, '--reason', 'not planned', '--comment', `Replaced by a new split on #${st.issue}.\n\n${MARK}`]);
+    Object.assign(c, { status: 'done', gate: null, replaced: true });
+    save(c);
+  }
+  const pieces = out.children ?? [];
+  const made = [];
+  for (const p of pieces) {
+    const after = Number.isInteger(p.after) ? made[p.after] : undefined;
+    const head = `Part of #${st.issue} · **~${pt(p.estimate)}** of the week · impact: ${p.impact}${after ? ` · starts from #${after} once it is approved` : ''}`;
+    const url = gh(['issue', 'create', '-R', cfg.repo, '--title', p.title, '--label', p.kind, '--body-file', '-'], `${head}\n\n${p.body}`);
+    const n = +url.trim().split('/').pop();
+    const branch = `queue/${n}-${slugify(p.title)}`;
+    const c = { issue: n, kind: p.kind, title: p.title, body: p.body, url: url.trim(), branch, worktree: join(cfg.worktrees, basename(branch)),
+      runs: [], next: null, parent: st.issue, after, estimate: p.estimate, impact: p.impact, gate: 'proposed' };
+    c.gateAt = comment(cfg, n, `📋 **Proposed** by #${st.issue}: ~${pt(p.estimate)} of the week. Reply **approve** to start it, **no** to move it to the backlog, or a note to start it with.`);
+    setStatus(cfg, c, 'waiting');
+    made.push(n);
+  }
+  st.children = [...(st.children ?? []).filter((n) => !load(n)?.replaced), ...made];
+  st.summary = out.summary;
+  const total = pieces.reduce((s, p) => s + p.estimate, 0);
+  const rows = st.children.map(load).filter(Boolean)
+    .map((c) => `| #${c.issue} | ${c.kind} | ${c.title} | ~${pt(c.estimate)} | ${c.impact} |${c.after ? ` after #${c.after}` : ''}`);
+  st.gate = 'split';
+  st.gateAt = comment(cfg, st.issue, `🧩 **Split into ${made.length}**, ~${pt(total)} of the week\n\n${st.summary}\n\n| | Kind | Piece | Estimate | Impact |\n|---|---|---|---|---|\n${rows.join('\n')}\n\nReply **approve** here to start them all, or answer on each: **approve**, **no** (to the backlog), or a note to start it with. Anything else here splits it again.\n\n<sub>split: ${usageLine(st.runs)}</sub>`);
+  st.next = null;
+  setStatus(cfg, st, 'waiting');
+  removeWorktree(st);
+  await push(cfg, { title: `#${st.issue} split into ${made.length}: ${st.title}`, message: `~${pt(total)} of the week. ${st.summary}`, tags: ['jigsaw'], priority: 4, click: st.url });
+}
+
+// An approved mockup: its PR closes unmerged and its branch stays, for the
+// build that starts from it.
+async function accept(cfg, st) {
+  if (st.pr) trySh('gh', ['pr', 'close', String(st.pr), '-R', cfg.repo, '--comment', `Approved on #${st.issue}. The build starts from this branch; only its PR merges.\n\n${MARK}`]);
+  const next = states().filter((s) => s.after === st.issue).map((s) => `#${s.issue}`);
+  comment(cfg, st.issue, `✅ **Mockup approved.**${next.length ? ` ${next.join(', ')} starts from it.` : ''}\n\n<sub>${usageLine(st.runs)} · ~${used(st.runs)} of ~${pt(st.estimate ?? 0)} estimated</sub>`);
+  trySh('gh', ['issue', 'close', String(st.issue), '-R', cfg.repo]);
+  st.next = null;
+  st.gate = null;
+  setStatus(cfg, st, 'done');
+  trySh('git', ['worktree', 'remove', '--force', st.worktree]);
+}
+
+// "No": out of its parent, into the backlog, with what started from it.
+function backlog(cfg, st, why = '') {
+  const labels = ghJson(['issue', 'view', String(st.issue), '-R', cfg.repo, '--json', 'labels']).labels.map((l) => l.name)
+    .filter((l) => !KINDS.includes(l) && !l.startsWith('agent:'));
+  gh(['api', '-X', 'PUT', `repos/${cfg.repo}/issues/${st.issue}/labels`, '--input', '-'], JSON.stringify({ labels: [...labels, 'backlog'] }));
+  comment(cfg, st.issue, `🗂 **Moved to the backlog**${why}. The queue won't work it; label it \`${st.kind}\` again to bring it back.`);
+  Object.assign(st, { status: 'backlog', next: null, gate: null });
+  save(st);
+  trySh('git', ['worktree', 'remove', '--force', st.worktree]);
+  for (const s of states().filter((s) => s.after === st.issue && s.status !== 'done' && s.status !== 'backlog')) backlog(cfg, s, `, since #${st.issue} went there`);
+}
+
+// The parent closes once none of its pieces is left open.
+async function finish(cfg, st) {
+  const kids = (st.children ?? []).map(load).filter((c) => c && !c.replaced);
+  if (!kids.length || kids.some((c) => c.status !== 'done' && c.status !== 'backlog')) return;
+  const runs = [...st.runs, ...kids.flatMap((c) => c.runs)];
+  const rows = kids.map((c) => `| #${c.issue} | ${c.kind} | ${c.title} | ${c.status === 'backlog' ? 'backlog' : c.kind === 'mockup' ? 'approved' : 'merged'} | ~${pt(c.estimate ?? 0)} | ${used(c.runs)} |`);
+  const estimate = kids.filter((c) => c.status === 'done').reduce((s, c) => s + (c.estimate ?? 0), 0);
+  comment(cfg, st.issue, `🏁 **Done.** Every piece is merged, approved or in the backlog.\n\n| | Kind | Piece | Outcome | Estimate | Used |\n|---|---|---|---|---|---|\n${rows.join('\n')}\n| | | split | | | ${used(st.runs)} |\n\n**${used(runs)}** used of **~${pt(estimate)}** estimated (1 pt ≈ $${USD_PER_POINT} API-eq). ${usageLine(runs)}`);
+  trySh('gh', ['issue', 'close', String(st.issue), '-R', cfg.repo]);
+  st.gate = null;
+  setStatus(cfg, st, 'done');
+  await push(cfg, { title: `#${st.issue} done: ${st.title}`, message: `${used(runs)} used of ~${pt(estimate)} estimated.`, tags: ['checkered_flag'], priority: 3, click: st.url });
 }
 
 const conflicted = (st) => git(st.worktree, 'diff', '--name-only', '--diff-filter=U');
@@ -558,6 +702,16 @@ async function tick(cfg) {
       log(`#${st.issue} queued (${kind})`);
       continue;
     }
+    if (st.status === 'backlog') { // labelled again: proposed again (the list may predate this pass's backlog)
+      const now = ghJson(['issue', 'view', String(st.issue), '-R', cfg.repo, '--json', 'labels']).labels.map((l) => l.name);
+      if (!now.includes(st.kind)) continue;
+      st.status = 'waiting'; st.gate = 'proposed'; st.gateAt = comment(cfg, st.issue, '📋 **Back in the queue.** Reply **approve** to start it.');
+      setStatus(cfg, st, 'waiting');
+      continue;
+    }
+    if (st.kind === 'create' && st.children?.length && st.status !== 'done') await finish(cfg, st);
+    const dep = st.after && load(st.after);
+    if (dep?.status === 'backlog' && st.status !== 'done') { backlog(cfg, st, `, since #${dep.issue} went there`); continue; }
     if (st.status === 'done' || st.next) continue;
     if (st.waitUntil) {
       if (Date.now() < st.waitUntil) continue;
@@ -570,18 +724,38 @@ async function tick(cfg) {
     for (const c of new_) if (c.kind !== 'review') react(cfg, `${c.kind === 'line' ? 'pulls' : 'issues'}/comments/${c.id}`);
     const text = feedback(new_);
     const approved = approves(new_);
-    if (st.status === 'failed') {
+    if (st.gate === 'split') { // the parent: approve or deny every piece still proposed, or split again
+      const proposed = (st.children ?? []).map(load).filter((c) => c?.gate === 'proposed' && !c.next);
+      if (approved || denies(new_)) {
+        for (const c of proposed) {
+          if (approved) { c.next = { phase: FIRST[c.kind], reply: null }; c.gate = null; save(c); } else backlog(cfg, c, ` (no on #${st.issue})`);
+        }
+        st.gateAt = new_.at(-1).at;
+        save(st);
+        log(`#${st.issue} answered: ${approved ? 'approve' : 'no'} all (${proposed.length})`);
+        continue;
+      }
+      st.next = { phase: 'split', reply: text };
+    } else if (denies(new_) && ['proposed', 'design'].includes(st.gate)) {
+      backlog(cfg, st, st.parent ? `, out of #${st.parent}` : '');
+      log(`#${st.issue} answered: backlog`);
+      continue;
+    } else if (st.status === 'failed') {
       const retry = new_.every((c) => c.kind !== 'line' && (RETRY.test(c.body) || isApproval(c.body)));
       st.next = { phase: st.resume.phase, reply: retry ? st.resume.reply : [st.resume.reply, text].filter(Boolean).join('\n\n') };
     } else {
-      st.next = { phase: NEXT[st.gate][approved ? 'approve' : 'feedback'], reply: approved ? null : text };
+      const phase = NEXT[st.gate][approved ? 'approve' : 'feedback'];
+      st.next = { phase: phase === 'start' ? FIRST[st.kind] : phase, reply: approved ? null : text };
+      if (st.gate === 'proposed') st.gate = null;
     }
     save(st);
     log(`#${st.issue} answered: ${st.next.phase}`);
   }
   // Fill the free slots: merges first, then whatever was asked first. The
   // jobs go on in the background; the next passes keep reading the answers.
+  // A build after a mockup waits for the mockup's approval.
   const ready = states().filter((s) => s.next && !running.has(s.issue) && open.some((i) => i.number === s.issue))
+    .filter((s) => !s.after || load(s.after)?.status === 'done')
     .sort((a, b) => (b.next.phase === 'merge') - (a.next.phase === 'merge') || a.issue - b.issue);
   for (const st of ready) {
     if (running.size >= JOBS) break;
@@ -747,7 +921,10 @@ async function loop(once) {
 // ---------------------------------------------------------------- setup
 
 const LABELS = [
-  ['create', '1f883d', 'Queue: design, approve, build, approve, merge'],
+  ['create', '1f883d', 'Queue: split into mockup and build pieces, each its own issue'],
+  ['mockup', 'bf8700', 'Queue: a step-by-step strip of screens, then approve'],
+  ['build', '0e8a16', 'Queue: build, approve, merge'],
+  ['backlog', 'ededed', 'Said no to: kept, not worked'],
   ['research', '0969da', 'Queue: an RFC under product/research, then its build'],
   ['improve', '8250df', 'Queue: an /improve run'],
   ['agent:working', 'fbca04', 'The queue is working on it'],
@@ -835,8 +1012,9 @@ function ls() {
   const all = states().sort((a, b) => a.issue - b.issue);
   if (!all.length) return console.log('  nothing yet');
   for (const s of all) {
+    const waits = s.after && load(s.after)?.status !== 'done';
     const where = s.next && s.status === 'working' && s.since ? `running: ${s.next.phase} (${fmtMin(Date.now() - s.since)})`
-      : s.next ? `next: ${s.next.phase}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
+      : s.next ? `next: ${s.next.phase}${waits ? ` after #${s.after}` : ''}` : s.waitUntil ? `paused until ${new Date(s.waitUntil).toLocaleTimeString()}` : s.status === 'waiting' ? `waiting on you (${s.gate})` : s.status;
     console.log(`#${s.issue}  ${s.kind.padEnd(8)} ${where.padEnd(26)} ${s.pr ? `PR #${s.pr}  ` : ''}${s.title}`);
     if (s.runs.length) console.log(`      ${usageLine(s.runs)}`);
   }

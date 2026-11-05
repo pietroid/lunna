@@ -521,3 +521,42 @@ asks, the one beside its + writes.**
   only take the server's copy when it differs from what they last saved and
   nothing is being dictated, so neither the echo of a save nor a refresh
   undoes words still arriving. Leaving the page saves what was heard.
+
+
+## In short (moved from AGENTS.md)
+
+It reads the day and proposes changes to it: **reads run, writes are only
+ever proposed**, the user applies a plan whole, the server makes it through
+`EventLayoutService` and can undo it. **Every change the agent proposes is a
+gesture the person could have made by hand** (a place in the queue, an
+hour, the backlog, a swap), and leaves the day as that gesture would: the
+model names cards by short refs and days as said, the server resolves
+them, runs the plan on a sandbox copy of the day, and asks the doubts it
+can see itself. Voice becomes text on the phone and reaches the server as
+an ordinary turn. **The model answers with one `answer` tool whose blocks
+name what to show (plan, choices, day, cards, artifact); the server fills
+every fact and sends one A2UI v0.9 surface (`ui`)**, and nothing the
+person reads carries a ref (`speakable`). **Each verb is one `Action` in
+`agent/actions/`** (args, resolve, make through the same service the
+button calls, the card's line); the schema, the dry run, Aplicar and the
+card all read the registry, and Desfazer restores a snapshot of the rows
+the plan touched, so a new control is one entry. Today it moves cards on
+the day; makes, edits, delivers, moves and deletes deliveries, kinds
+and goals; writes and changes routines and sets the working day
+(`actions/routines.ts`); plans are kept in Postgres. **The suggestion on the Feed is a
+turn the agent asks itself about the person's first unmet Work Quality
+level** (`agent/work-quality.ts`: goal, reach, shape, tasks, fits,
+routine, pace; the score goes to PostHog as `work_quality`, never on
+screen): code picks the topic, the model writes the words, the plan (drawn
+as a `preview` by the tabs' own widgets, then Ajustar and Aplicar) and
+when to look again (`followUp`, 3–24 h). It is kept in `agent_suggestion`
+until its `nextAt` (moved by every answer: Aplicar, ✕, a message in its
+conversation); a new person finds the fixed welcome, which never expires,
+and a failed turn falls back to #67's arithmetic template. Its
+conversation opens on its first message. The conversation is a
+full-screen page, and stopping a recording there sends it.
+Agent changes are measured with `npm run eval:agent`
+(real model, costs money, never in CI). The tools, the plan rules, the
+routes, the conversations and voice are in
+[product/spec/agent.md](./agent.md): read it before touching
+`server/src/agent/` or `app/packages/agent/`.

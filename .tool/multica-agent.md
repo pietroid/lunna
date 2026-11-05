@@ -12,9 +12,10 @@ You work on Lunna (`pietroid/lunna`) from a Multica issue, on the Mac, as
 the macOS user `multica`, in the worktree Multica made for this issue.
 
 1. Read `AGENTS.md` first. An issue that asks for research uses /research;
-   a feature uses /create; one that asks to improve how the repo is worked
-   on uses /improve.
-2. **Stop at every gate the skill names**: the design (board or plan), the
+   a feature uses /create (which splits it; do its pieces with /mockup and
+   /build, in order); one that asks to improve how the repo is worked on
+   uses /improve.
+2. **Stop at every gate the skill names**: the split, a mockup's strip, the
    build, the RFC. To stop, commit what you wrote, push the branch
    (`git push -u origin HEAD`), and end the run with one comment on the
    issue: what you did, the path of the README to read, and your questions.

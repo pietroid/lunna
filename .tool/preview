@@ -4,20 +4,22 @@
 # call. Prints the paths of what it made; a failed build prints its errors.
 #
 # Usage: .tool/preview <slug> <scene>... [--brands lunna,focus] [--out <dir>]
-#                      [--board <board.json>] [--no-build]
+#                      [--steps <steps.txt>] [--board <board.json>] [--no-build]
 #   <out>/<brand>/<n>.png and strip.png per brand; with --board, the board
-#   (board.png, screen1..n.png) in <out>/board/. --no-build reshoots the
+#   (board.png, screen1..n.png) in <out>/board/. With --steps (one line per
+#   scene), <out>/<brand>/steps.png: the step-by-step strip /mockup sends. --no-build reshoots the
 #   last build, for when only the board or a wait changed.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 slug=${1:?usage: .tool/preview <slug> <scene>... [--brands lunna,focus] [--out dir] [--board board.json] [--no-build]}
 shift
-scenes=""; brands="lunna"; out="${TMPDIR:-/tmp}/lunna-preview/$slug"; board=""; build=1
+scenes=""; brands="lunna"; out="${TMPDIR:-/tmp}/lunna-preview/$slug"; board=""; steps=""; build=1
 while [ $# -gt 0 ]; do
   case $1 in
     --brands) brands=${2//,/ }; shift ;;
     --out) out=$2; shift ;;
     --board) board=$2; shift ;;
+    --steps) steps=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift ;;
     --no-build) build=0 ;;
     *) scenes="$scenes $1" ;;
   esac
@@ -46,12 +48,13 @@ fi
 
 pids=""
 for brand in $brands; do
-  "$root/.tool/mockup/shoot-flutter.sh" "$out/web-$brand" "$out/$brand" $scenes >/dev/null 2>"$out/shoot-$brand.log" &
+  STEPS="$steps" "$root/.tool/mockup/shoot-flutter.sh" "$out/web-$brand" "$out/$brand" $scenes >/dev/null 2>"$out/shoot-$brand.log" &
   pids="$pids $!"
 done
 for pid in $pids; do wait "$pid" || { echo "✗ screenshots failed; see $out/shoot-*.log"; exit 1; }; done
 for brand in $brands; do
   echo "$brand: $out/$brand/strip.png ($(for s in $scenes; do printf '%s.png ' "$s"; done))"
+  [ -n "$steps" ] && echo "$brand steps: $out/$brand/steps.png (look at steps-thumb.png)"
 done
 
 if [ -n "$board" ]; then

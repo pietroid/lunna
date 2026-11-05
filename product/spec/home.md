@@ -198,3 +198,73 @@ the end of the queue, so it waits in Para depois too.
   `AllArtifactsPage`) and **Novo produto** (`TypeSheet`).
 - Screens reported to analytics: `Plano`, `Objetivos`, `Menu`,
   `Calendário` (`Para depois` went with its page, #87).
+
+
+## The app shell (moved from AGENTS.md)
+
+**One kind of task.** To the person a delivery is a task with tasks of
+its own (one level: its tasks have none); the cut is between tasks and
+events. Every task is one card (`TaskCard`): play on its left (pause while
+it runs, none for an event), the task's name as the title (a delivery's
+task at work under it). Play is a drop on Agora (`move { start: true }`;
+a delivery's `POST /tasks/of/:id/play` begins its next task). Storage is
+still `artifact` and `task.artifact_id`.
+
+Three tabs: **Plano** (`HomePage`, the home, drawn as skeletons until
+the day first arrives: the agent's one offer; Agora with today's mark,
+the running task; **Em seguida**, with *Ver calendário* beside its
+heading, and a queue **with no limit**: every card of the first day
+after Agora, events too, then the queue's tasks on the following days
+under their day, each at the hour the server's layout gives it; play on
+every task, an event in `fixedFill` with the pin, then *+ Adicionar*; a
+card carried to a place in it is `move { index }`, asking how much goes
+there by play's rules (`move { index, minutes, split: true }`: the rest
+stays where it was); **Pendentes**, the deliveries
+begun (their day in the corner, −1d +1d ✓ and their bar; urgent once
+past their day) and the loose tasks paused off the day; **Para depois**,
+the whole of everything not begun, then *+ Adicionar*; a card is carried
+between the four, a drop showing only the card's quiet copy where it
+lands; **play on any task that waits goes by strict rules** (#89,
+`timeline`'s `play.dart`): **when** (*Começar agora*, or one later hour:
+*Daqui a 15 min*, *Às 13:00*, *Depois de X · 10:38*; never an hour with
+under 20 minutes of room before the next thing that keeps its hour),
+**the pause** while a task runs (yes or no), **how much** (`playPieces`:
+over an hour 30 min, 1h and the whole or the room; an hour or less that
+fits asks nothing), then one move; **a piece splits the task into two
+subtasks** on the server, and so does pausing one that ran; a task
+already waiting on Agora skips *when*; see
+[product/spec/home.md](./home.md)),
+**Objetivos** (`GoalsPage`) and **Menu**, which opens Rotina,
+**Feitas**, **Produtos** (the catalogue), sets when the day starts and
+ends, and signs out. *Ver calendário* pushes `DayPage` (the calendar).
+The app opens on Plano,
+which asks for the offer again each time it comes forward and when a new
+day begins. **The + opens the composer** (#81, `openComposer`): one
+field, typed or spoken, read by `POST /agent/compose` into one summary
+(a task, a task under a delivery or with subtasks, an event, a goal, or
+the agent's plan), and nothing written until Adicionar; *Ajustar* opens
+the creation sheet (`writeTask`: Tarefa | Evento, and a Produto chip),
+which a tap on the calendar's room still opens directly. A loose task's
+page has *+ Subtarefa* (`POST /tasks/:id/subtasks`). See
+[product/spec/home.md](./home.md).
+The landing's demo shell keeps
+its old three tabs (Tempo, Entregas, Menu), as the landing has three chapters. It sits in the same spot on
+every tab and never animates between them (`noAnimation`).
+**There is no agent bar; one round button is on every screen, in the
+same place**: one `AskDock` for the tabs and one per page, floated at
+`AskDock.location` (`AppFab.location`) with `AskDock.animator`, a
+`DockHero` held still while pages slide under it. It is the composer's +
+(found through `ComposeLauncher`, above the router), about the page it is
+on, unless the screen has a button of its own (Nova rotina on Rotina, a
+delivery on Produtos); the notes put the dictation microphone beside it.
+A new page floats an `AskDock` too and leaves `kNotesDockClearance` under its
+last row (plus `MediaQuery.paddingOf(context).bottom` on a tab, whose body
+runs under the bottom bar); see "The agent" in [product/spec/agent.md](./agent.md).
+
+**Feitas** (`/feitas`, `DoneArchivePage` over `DoneArchiveCubit`) is every
+task ticked off, newest first under the calendar's day headings, searched
+on the server: `GET /api/tasks/done?q=&limit=&before=&beforeId=` answers
+`{ done: [card] }`, each card's `startTime` being its `doneAt`, paged by
+the last one's `doneAt` and id. A tap opens `EventPage(finished:)`. A task
+is ticked off only from the day (Agora's ✓, or the calendar's running
+card); its page has no done control.

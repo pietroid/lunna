@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+// A fake `claude` for simulate.sh: answers /usage, and each skill's run with
+// a file written in the worktree and the structured output the queue reads.
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const args = process.argv.slice(2);
+const p = args[args.indexOf('-p') + 1];
+const flag = (f) => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : '-'; };
+writeFileSync(process.env.SIM_LOG, `claude ${p.split('\n')[0].slice(0, 50)} · model ${flag('--model')} · effort ${flag('--effort')} · lean ${args.includes('--strict-mcp-config')}\n`, { flag: 'a' });
+const emit = (e) => process.stdout.write(JSON.stringify(e) + '\n');
+if (p === '/usage') { process.stdout.write(JSON.stringify({ result: 'Current session 10% used\nCurrent week (all models) 50% used' })); process.exit(0); }
+
+let output;
+if (p.startsWith('/create')) {
+  output = { summary: 'Two pieces.', doc: '', children: [
+    { kind: 'mockup', title: 'Fila em Em seguida', body: 'Draw it.', estimate: 0.5, impact: 'high' },
+    { kind: 'build', title: 'Construir a fila', body: 'Build it.', estimate: 2.5, impact: 'high', after: 0 },
+  ] };
+} else if (p.startsWith('/mockup')) {
+  mkdirSync('product/delivery/2026-11-05-fila/img', { recursive: true });
+  writeFileSync('product/delivery/2026-11-05-fila/README.md', '# Fila\n');
+  writeFileSync('product/delivery/2026-11-05-fila/img/mockup-steps.png', 'png');
+  writeFileSync('app/lib/fila_preview.dart', '// preview\n');
+  output = { summary: 'Strip of 3.', doc: 'product/delivery/2026-11-05-fila/README.md' };
+} else if (p.startsWith('/build')) {
+  writeFileSync('built.txt', 'built\n');
+  output = { summary: 'Built.', doc: 'product/delivery/2026-11-05-fila/README.md' };
+}
+emit({ type: 'system', subtype: 'init', model: flag('--model') });
+emit({ type: 'result', subtype: 'success', is_error: false, num_turns: 3, total_cost_usd: 0.5, structured_output: output, modelUsage: { m: { inputTokens: 1, outputTokens: 10, cacheReadInputTokens: 100, cacheCreationInputTokens: 10 } } });
+// As #85's build did: more turns after the output, then a limit.
+if (process.env.SIM_LIMIT_AFTER && p.startsWith('/build')) emit({ type: 'result', subtype: 'success', is_error: true, result: "You've hit your 5-hour limit", total_cost_usd: 0.6 });

@@ -4,6 +4,8 @@
 #
 # Usage: shoot-flutter.sh <web_build_dir> <out_dir> <scene> [scene...]
 # Each scene is loaded as /?s=<scene>; the preview entry point reads it.
+# With STEPS=<file> (one line per scene), also steps.png: the scenes in a row,
+# each with its number and line under it, and steps-thumb.png.
 #
 # Why not `chrome --screenshot`: headless windows are at least ~500px wide, so
 # Flutter lays out wider than the crop, and --virtual-time-budget freezes
@@ -42,4 +44,27 @@ HTML
 "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
   --window-size=$((24 + count * 414)),892 --screenshot="$out/strip.png" "file://$out/strip.html" 2>/dev/null
 sips --resampleWidth 240 "$out/strip.png" --out "$out/strip-thumb.png" >/dev/null 2>&1
+
+if [ -n "${STEPS:-}" ]; then
+  esc() { sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+  figs=""; n=0
+  for scene in "$@"; do
+    n=$((n + 1))
+    line=$(sed -n "${n}p" "$STEPS" | esc)
+    figs="$figs<figure><img src=\"$scene.png\"><figcaption><b>$n</b>$line</figcaption></figure>"
+  done
+  cat > "$out/steps.html" <<HTML
+<!doctype html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+body{background:#EFE9EA;display:flex;gap:32px;padding:32px;font:500 17px/1.35 -apple-system,'Helvetica Neue',sans-serif;color:#1F1416}
+figure{width:390px;display:flex;flex-direction:column;gap:14px}
+img{width:390px;height:844px;border-radius:40px;display:block;box-shadow:0 24px 48px -20px rgba(60,20,30,.35)}
+figcaption{display:flex;gap:10px;align-items:flex-start}
+b{flex:none;width:26px;height:26px;border-radius:99px;background:#1F1416;color:#fff;font-size:14px;display:grid;place-items:center}
+</style></head><body>$figs</body></html>
+HTML
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars --force-device-scale-factor=2 \
+    --window-size=$((32 + count * 422)),1010 --screenshot="$out/steps.png" "file://$out/steps.html" 2>/dev/null
+  sips --resampleWidth $((20 + count * 140)) "$out/steps.png" --out "$out/steps-thumb.png" >/dev/null 2>&1
+fi
 ls "$out"

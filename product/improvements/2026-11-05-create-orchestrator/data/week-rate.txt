@@ -1,0 +1,1 @@
+runs=141 usd=351.07 week_pts=165.0 usd_per_pt=2.13

@@ -140,33 +140,7 @@ product/
 
 ## Auth
 
-Better Auth runs inside the Nest server, mounted at `/api/auth/*` in
-`main.ts` ahead of Nest's body parser (it reads the raw request itself).
-Everything else under `/api` is Nest, protected by `SessionGuard`, which asks
-Better Auth for the session behind the request and puts an `AuthUser` on it.
-
-Google is the only way in, by two roads:
-
-- **Web:** the OAuth redirect. `POST /api/auth/sign-in/social` (provider
-  `google` on Lunna, `google-focus` on Focus) answers with Google's URL, the
-  browser leaves, comes back to `/`, and from then on sends the session
-  cookie. The web app is served from the same origin as the API,
-  so the cookie needs no CORS.
-- **iOS/Android:** the native `google_sign_in` SDK produces an ID token
-  (minted for the brand's web client, via `serverClientId`), the app posts
-  it to the same route as provider `google`, and the server verifies it against `GOOGLE_CLIENT_IDS` and
-  answers with a session token. The app keeps it in the Keychain/Keystore
-  (`TokenStore`) and sends it as `Authorization: Bearer` (Better Auth's
-  `bearer` plugin).
-
-`ALLOWED_EMAILS` gates sign-up: an address not on it never gets a user row.
-The user table carries `timeZone`, which is the zone that person's day is
-measured in.
-
-Better Auth is ESM-only and the server compiles to CommonJS. That works
-because Node ≥ 22.12 can `require()` ES modules; keep the images on Node 24.
-Code under test must not import `better-auth` at runtime (Jest's CommonJS
-sandbox cannot load it): `session.guard.ts` imports only its type.
+Better Auth runs inside Nest at `/api/auth/*`; everything else under `/api` is guarded by `SessionGuard`, which puts an `AuthUser` on the request. Google is the only way in (the web's OAuth redirect; phones post an ID token, then send `Authorization: Bearer`). `ALLOWED_EMAILS` gates sign-up, and the user row carries the `timeZone` that person's day is measured in. **Code under test must not import `better-auth` at runtime** (it is ESM-only and Jest's CommonJS can't load it): `session.guard.ts` imports only its type. Keep the images on Node 24. See [product/spec/auth.md](./product/spec/auth.md).
 
 ## The calendar
 
@@ -189,57 +163,11 @@ nothing to reconcile.
 
 ### Routines
 
-A routine is one row in `routine` with a rule (`daily`, `weekdays`,
-`weekend`), a first occurrence whose wall-clock hour, in the person's zone,
-is every day's, and `fixed`. **Reading a window writes down each day of each
-routine that falls in it**, with `INSERT … ON CONFLICT DO NOTHING` on
-(`routine_id`, `occurrence`):
-
-Every routine is **fixed** (`fixed` defaults to true; the flexible kind
-was removed with the reminders' lifecycle, see "Reminders"): each day is
-written as an `event` row, in `CalendarStore.window`. Nothing moves it.
-
-From then on that day is its own row and the other days are untouched.
-Taking a day off marks it `cancelled` rather than deleting it, so the next
-read does not bring it back.
-
-Changing a routine deletes its days that have not begun yet;
-the next read writes them again at the new hour and name. Removing a
-routine deletes the days ahead and keeps the ones that happened.
-
-A routine may have a **checklist** (`routine.checklist`, titles in order:
-breakfast is the coffee, meditating, the dishes). Each day is written down
-with its own copy (`task.checklist` or `event.checklist`, `[{ title, done
-}]`, null for no list), so ticking an item off today leaves tomorrow alone;
-a new list reaches the days not begun, like a new hour. The card carries it
-as `checklist`, and `PATCH /api/tasks|events/:id { checklist }` ticks it
-(the whole list, at most 30 items). Ticking the last item off finishes
-nothing. The card draws the list where the notes would go: the next item
-and "1 de 3" in Lista and Agora, every item on the calendar when the card
-has a line (20 px) for each; items are ticked on the event page.
+A routine is one row in `routine` with a rule (`daily`, `weekdays`, `weekend`) and an hour. **Reading a window writes down each of its days in it** as a fixed `event` row (`INSERT … ON CONFLICT DO NOTHING` on `routine_id`, `occurrence`); from then on that day is its own row, and a day off is marked `cancelled`, not deleted. Changing a routine rewrites only the days not begun. Its checklist is copied to each day (`checklist`, ticked through `PATCH /api/tasks|events/:id`). See [product/spec/routines.md](./product/spec/routines.md).
 
 ### Notes
 
-Every task and every block has free-text `notes`. The event page edits them
-in place and saves them through `PATCH /api/tasks/:id` or
-`PATCH /api/events/:id` a moment after typing stops, on blur, and when the
-page closes.
-
-A task's notes and a delivery's have the agent's bar at their foot, and
-beside it a microphone that **dictates**: plain speech to text, straight
-into the notes, each recording a paragraph of its own (at the cursor while
-typing), saved like typing.
-The bar's own microphone still asks the agent, which then knows the page
-it was opened on (`about`). See "Dictation" in
-[product/spec/agent.md](./product/spec/agent.md).
-
-A link on a line of its own in the notes is drawn as a **link card**
-(picture, title, site; a tap opens the browser). **The notes stay text**:
-the card is the URL on its own line, and pages read and write
-`LiveTextController.notes`, never `.text`. The server reads each link's
-page once, for everyone (`link_preview`), never from an address that is
-not public, and proxies the pictures for the web. See
-[product/spec/links.md](./product/spec/links.md).
+Every task and block has free-text `notes`, saved through `PATCH` a moment after typing stops, on blur and on close. **The notes stay text**: a link on a line of its own is drawn as a card, but pages read and write `LiveTextController.notes`, never `.text`. The microphone beside the notes dictates straight into them. See [product/spec/notes.md](./product/spec/notes.md) and [product/spec/links.md](./product/spec/links.md).
 
 ## Tasks and events
 
@@ -280,115 +208,7 @@ with the same shape.
 
 ## The timeline
 
-`TimelineList` draws the day two ways. **Since #77 the app shows only
-Calendário** (Ver calendário, `DayPage`): Plano is the list. Lista below is
-still what `TimelineList(mode: list)` and the landing's demo draw
-(`TimelineModeCubit`):
-
-- **Lista**: the tasks alone, each as tall as it needs, in three stages
-  that are always drawn, each headed like a day of the calendar: **Agora**
-  (the running task, the break, or `DayOverTile` outside the working day),
-  **one day** of tasks with an hour, **Ainda hoje** while the working day is
-  open and has tasks left (or nothing is queued at all), otherwise
-  **Amanhã** (`_listDay`), and **Para depois** (the backlog, the loose
-  tasks only: a delivery's backlog is drawn on its page, not here, and a
-  drop still counts it, `_wholeOf`). Tasks queued
-  after that day are not drawn: one line counts them, "Mais N tarefas
-  adiante · Ver no calendário", which switches to Calendário. The days of
-  routines are drawn on the calendar only, and come into the list once
-  their hour has come or they are running (`inList`, which is also what a
-  drop's `index` counts). A drag moves a task within either or across the
-  line; the move carries `backlog: true` when it lands below it. A running
-  task dropped in the backlog stops. The day and the backlog each end in a
-  **+** that writes something down at its end.
-
-  **The delivery is the card.** Tasks of one delivery that follow each
-  other (`deliveryRuns`) are one `DeliveryTile`: the delivery's name, the
-  run's hours, and under it only the **next** task. A tap opens the
-  **delivery** (`onDeliveryTap`, on Pendentes); to a drag the card is that
-  next task, and a drop under it lands after the whole run. Agora's run
-  keeps the running task's controls and ends in `RunBar`, a piece per task
-  of the run. A task with no delivery keeps its `EventTile` and opens its
-  own page. A delivery's own Pendentes (`only:`) has Tempo's stages, a card
-  per task: Agora when one of its tasks runs, the one day, a line counting
-  the later ones ("Ver os próximos dias", which draws them there under
-  their dates), and its Para depois.
-- **Calendário**: everything, to scale, day after day. Scrolling near the
-  end asks for another week (`TimelineExtended`), up to 120 days. **Agora**
-  is always drawn, the break with its line whenever nothing runs, and a
-  task let go on it is begun. Its task plays and pauses from the round
-  button before the title, as on Plano (a waiting task begins from it);
-  the quiet row keeps −10, +10 and ✓. Play on the calendar is the app's
-  (`TimelineList.onPlay`), so a task over an hour asks how much. A card tall enough for a second line (72 px
-  drawn) shows its delivery and the start of its notes under the title
-  (`notesPreview`, up to 3 lines); a shorter one shows no notes at all and
-  marks a delivery's task with the stack. A card is never taller for it.
-  Tasks of one delivery that follow each other with no room drawn between
-  them are **one block** as tall as theirs together, each task a line at
-  its hour when there is a line's room for each (else the next task alone),
-  and each line is its task to a drag, a nudge or a swap; a run's seam is
-  not pulled. A tap on any line, or on a delivery's lone task, opens the
-  delivery, as in Lista. Agora's run draws every line, with the running
-  one's controls. A delivery's lone task is the card it always was. Every free
-  stretch carries a small **+**
-  and its hours, both stuck to the top of the part of it in sight (placed
-  while painting, so they never lag the scroll); the hours run from the
-  first one in sight, which is where the + writes.
-
-  A drag on the calendar starts as a **nudge**: under 30 minutes of travel
-  a task keeps its place and slides in time, five minutes at a time, and
-  the run snapped to its end slides with it (`POST /tasks/:id/shift`).
-  Past 30 minutes it is looking for somewhere else, and stays so: let go
-  on another task that has not begun, the two **swap** (`POST
-  /tasks/:id/swap { with }`): each takes the other's turn in the queue or
-  its hour, so only what is between them moves, by the difference in
-  length; on a heading or in the gap between two cards it takes that
-  place; in free room, that hour. Held on its bottom
-  edge, a card's **seam** comes up: the block above takes the new length,
-  the snapped run below slides along keeping its own, and a block that is
-  not snapped is left alone (`POST /tasks|events/:id/resize`). A drop at
-  the top of a day asks for that day's first hour (`after`), since a place
-  in the queue would pack the task back into what is left of the day
-  before. While the running task is carried off Agora, Agora draws the
-  break ("Agora fica livre") and the card says it is being paused. Outside
-  the working day Agora is `DayOverTile`: nothing begins, a drop on it is
-  refused, and it offers the Menu's hours.
-
-In both, the heading of whatever is at the top stays pinned while it
-scrolls, a chip brings Agora back once it is out of sight, and a card held
-near the top or bottom edge scrolls the list, which is how a task goes to
-another day. The `AppFab` writes wherever Tempo is looking (`TimelineAim`):
-the first free hour in sight on the calendar, the end of the stage at the top
-of the list.
-
-There is one list per mode, in clock order, and the headings are cut out
-of it by the clock rather than stored anywhere. `sectionOf` in
-`events/event-sections.ts` is the whole filing system: `agora` for the hour
-being lived through, `dia` for everything after it, under its `day`
-(`YYYY-MM-DD` in the person's zone).
-
-**An hour that has run out is not a section.** A block booked 11:20 to 11:25
-is finished at 11:26 and is simply not drawn any more; the row stays,
-because the hour happened. The app asks for the list again on each minute
-boundary while it is in sight, and once at once when it is shown again
-(`MinuteRefresh`); hidden, it asks nothing. Only finishing something *early* removes the row, since that frees
-an hour still ahead.
-
-Between cards the calendar draws the **free stretches** of the working day
-(`TimelinePlan.freeSlots`). They are drop targets: a card lands where its
-top edge is let go, on the five minutes nearest, sticking to the start of
-the room or to the latest start that leaves a pause before the next block
-when it is within ten minutes of either (`TimelineScale.landingIn`). A task
-let go over one is posted as a move with `after` (that hour, its anchor)
-and, when it had to be cut to fit, `minutes`; an event gets that hour
-through `PATCH /api/events/:id`. A drop between two cards is a place in the
-list of tasks, counting the tasks above it; right under a card that keeps
-an hour (an event, or an anchored task) it is that card's end plus the
-pause, as `after`, since a place in the queue says nothing about where such
-a card is. Tapping empty room, or a +, opens the creation sheet on that
-hour: flexible, as everything is, unless switched to Fixo. Between two
-blocks, when the room left from that hour is 45 minutes or less, the sheet
-opens on all of it (`FreeStretch.placementAt`).
+`TimelineList` draws the day as **Lista** (the tasks alone, in stages: Agora, one day, Para depois; a delivery's run is one card) and **Calendário** (everything to scale; a drag nudges under 30 minutes, then swaps or takes a place or an hour; a card's seam resizes it). Since #77 the app shows only Calendário (`DayPage`); Plano is the list. **An hour that has run out is not a section**: a finished block is simply not drawn, and the app asks for the list again on each minute boundary while it is in sight (`MinuteRefresh`). Headings are cut out of one list by the clock (`sectionOf` in `events/event-sections.ts`). The free stretches are drop targets (`TimelinePlan.freeSlots`, `TimelineScale.landingIn`). Read [product/spec/timeline.md](./product/spec/timeline.md) before touching `app/packages/timeline/` or the drag routes.
 
 ### The time system
 
@@ -518,100 +338,11 @@ sets it; any other move clears it. The card carries `pending: true`.
 
 ### The app shell
 
-**One kind of task.** To the person a delivery is a task with tasks of
-its own (one level: its tasks have none); the cut is between tasks and
-events. Every task is one card (`TaskCard`): play on its left (pause while
-it runs, none for an event), the task's name as the title (a delivery's
-task at work under it). Play is a drop on Agora (`move { start: true }`;
-a delivery's `POST /tasks/of/:id/play` begins its next task). Storage is
-still `artifact` and `task.artifact_id`.
-
-Three tabs: **Plano** (`HomePage`, the home, drawn as skeletons until
-the day first arrives: the agent's one offer; Agora with today's mark,
-the running task; **Em seguida**, with *Ver calendário* beside its
-heading, and a queue **with no limit**: every card of the first day
-after Agora, events too, then the queue's tasks on the following days
-under their day, each at the hour the server's layout gives it; play on
-every task, an event in `fixedFill` with the pin, then *+ Adicionar*; a
-card carried to a place in it is `move { index }`, asking how much goes
-there by play's rules (`move { index, minutes, split: true }`: the rest
-stays where it was); **Pendentes**, the deliveries
-begun (their day in the corner, −1d +1d ✓ and their bar; urgent once
-past their day) and the loose tasks paused off the day; **Para depois**,
-the whole of everything not begun, then *+ Adicionar*; a card is carried
-between the four, a drop showing only the card's quiet copy where it
-lands; **play on any task that waits goes by strict rules** (#89,
-`timeline`'s `play.dart`): **when** (*Começar agora*, or one later hour:
-*Daqui a 15 min*, *Às 13:00*, *Depois de X · 10:38*; never an hour with
-under 20 minutes of room before the next thing that keeps its hour),
-**the pause** while a task runs (yes or no), **how much** (`playPieces`:
-over an hour 30 min, 1h and the whole or the room; an hour or less that
-fits asks nothing), then one move; **a piece splits the task into two
-subtasks** on the server, and so does pausing one that ran; a task
-already waiting on Agora skips *when*; see
-[product/spec/home.md](./product/spec/home.md)),
-**Objetivos** (`GoalsPage`) and **Menu**, which opens Rotina,
-**Feitas**, **Produtos** (the catalogue), sets when the day starts and
-ends, and signs out. *Ver calendário* pushes `DayPage` (the calendar).
-The app opens on Plano,
-which asks for the offer again each time it comes forward and when a new
-day begins. **The + opens the composer** (#81, `openComposer`): one
-field, typed or spoken, read by `POST /agent/compose` into one summary
-(a task, a task under a delivery or with subtasks, an event, a goal, or
-the agent's plan), and nothing written until Adicionar; *Ajustar* opens
-the creation sheet (`writeTask`: Tarefa | Evento, and a Produto chip),
-which a tap on the calendar's room still opens directly. A loose task's
-page has *+ Subtarefa* (`POST /tasks/:id/subtasks`). See
-[product/spec/home.md](./product/spec/home.md).
-The landing's demo shell keeps
-its old three tabs (Tempo, Entregas, Menu), as the landing has three chapters. It sits in the same spot on
-every tab and never animates between them (`noAnimation`).
-**There is no agent bar; one round button is on every screen, in the
-same place**: one `AskDock` for the tabs and one per page, floated at
-`AskDock.location` (`AppFab.location`) with `AskDock.animator`, a
-`DockHero` held still while pages slide under it. It is the composer's +
-(found through `ComposeLauncher`, above the router), about the page it is
-on, unless the screen has a button of its own (Nova rotina on Rotina, a
-delivery on Produtos); the notes put the dictation microphone beside it.
-A new page floats an `AskDock` too and leaves `kNotesDockClearance` under its
-last row (plus `MediaQuery.paddingOf(context).bottom` on a tab, whose body
-runs under the bottom bar); see "The agent" in [product/spec/agent.md](./product/spec/agent.md).
-
-**Feitas** (`/feitas`, `DoneArchivePage` over `DoneArchiveCubit`) is every
-task ticked off, newest first under the calendar's day headings, searched
-on the server: `GET /api/tasks/done?q=&limit=&before=&beforeId=` answers
-`{ done: [card] }`, each card's `startTime` being its `doneAt`, paged by
-the last one's `doneAt` and id. A tap opens `EventPage(finished:)`. A task
-is ticked off only from the day (Agora's ✓, or the calendar's running
-card); its page has no done control.
+**One kind of task**: every task is one `TaskCard` (play on its left, pause while it runs); a delivery is a task with tasks of its own. Three tabs: **Plano** (`HomePage`: the agent's offer, Agora, Em seguida, Pendentes, Para depois), **Objetivos** and **Menu**; *Ver calendário* pushes `DayPage`. Play on a waiting task goes by strict rules (`timeline`'s `play.dart`): when, the pause while a task runs, how much; a piece splits the task into two subtasks on the server. **The + opens the composer** (`openComposer`, `POST /agent/compose`): nothing is written until Adicionar. **One round button on every screen, in the same place** (`AskDock` at `AskDock.location`); a new page floats an `AskDock` and leaves `kNotesDockClearance` under its last row. Feitas (`/feitas`) is every task ticked off. Read [product/spec/home.md](./product/spec/home.md) before touching `app/lib/plan/` or the shell.
 
 ### Entregas (artifacts)
 
-Since #77 there is no Entregas tab: a delivery is drawn as a task on
-Plano (above). Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
-code), something owed by a day, with an optional kind from the person's
-**catalogue** (shelves and kinds, empty until they fill it), a total time,
-a value and how the day may cut it. The open ones are a queue of their
-own, drawn in two groups (`progressGroups`): **Em andamento**, those
-begun (`started_at`: dragged there, written down there, or a task of it
-begun on the day; **never without a deadline**), the **urgent** ones
-first (past their day, or time 15 points ahead of work: a red-tinged card
-tagged Urgente), then the one whose time has run furthest past its work
-(`lagOf`); and **Não iniciadas**, in the queue's order. One list: a row
-dragged up is begun (asking its day when it has none), dragged down is
-stopped where it was let go; each group ends in **+ Adicionar**
-(`AppAddRow`). A row is its name and, begun, **one bar**: the time since
-it was begun to the end of its day in red (`paceTime`) under its minutes
-done in green (`paceDone`), keyed with the time done and the day due.
-The line that set the month's deliveries against the agenda's free
-hours is not drawn. A delivery's tasks are ordinary tasks on the day
-(`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
-(Agora and Para depois of its tasks, play on each) and **Feitas** (what
-was done, newest first under Hoje / Ontem / the date), under the same
-`PaceBars` as its row in Entregas. Tempo opens it on Pendentes. **Money counts when a delivery is
-delivered** (`done_at`). The routes and the rules are in
-[product/spec/artifacts.md](./product/spec/artifacts.md): read it before
-touching `server/src/artifacts/` or `app/packages/artifacts/`.
+A **delivery** (*entrega*; `Artifact` in code) is something owed by a day, with an optional kind from the person's catalogue, a total time and a value; there is no Entregas tab, it is drawn as a task on Plano. Its tasks are ordinary tasks (`task.artifact_id`). **Money counts when it is delivered** (`done_at`). Read [product/spec/artifacts.md](./product/spec/artifacts.md) before touching `server/src/artifacts/` or `app/packages/artifacts/`.
 
 ### Objetivos (goals)
 
@@ -644,74 +375,11 @@ over `/api/rhythm`. The cycle is health data: never sent to PostHog. See
 
 ### Reminders
 
-A block has two edges, its start and its end, and **every reminder asks
-about one of them** (`askStart`, `askEnd`), at its hour and once more 10
-minutes later while nobody answers (the re-ask only within 24 h), titled
-with the card and asking one plain thing ("Terminando agora, certo?";
-asked again, "Atraso no término · 10 minutos"). A task not begun is asked
-about only when it is the next one; a fixed block, meetings included, is
-asked at both edges, plus a 15-minute `headsUp` when something runs right
-up to it. **A reminder has no buttons: a tap opens the app on
-`ReminderSheet`**, the same question read again from the day, with the
-card's own answers (the ten minutes on the left, Começar / Confirmar /
-Terminei on the right, Falar com a Lunna under them), posted with
-`X-Lunna-Via: notification`. An edge already answered opens Tempo.
-**One reminder on the Lock Screen at a time**: every sync (launch,
-resume, any change to the day, the background refresh) clears the ones
-shown but the last, and an answer clears them all.
-
-**The Live Activity is switched off** (`kLiveActivity = false`): every
-sync ends it. The extension stays, so turning it back on is that line. See
-[product/spec/live-activity.md](./product/spec/live-activity.md).
-
-**Nothing ends in silence.** A begun block whose end passes with no answer
-(`event.closed_at` unset) is in **overtime**: `catchUp` drags its end along
-with the clock, the queue after it slides, and the card drops its bar for
-"Atraso no término · N minutos" with +10 min and **Terminei**
-(`overtimeMinutes`). It is closed, its task done there, at the start
-of the next fixed block or at the end of the working day. A fixed block
-starts at its hour whether or not anyone confirms it (`confirmed_at`).
-Every "not yet" and "more time" is **10 minutes from the later of the
-planned hour and now** (`STEP_MINUTES`, the app's `stepMinutes`). See
-[product/spec/notifications.md](./product/spec/notifications.md).
+**Every reminder asks about one edge** of a block, its start or its end (`askStart`, `askEnd`), at its hour and once more 10 minutes later. **A reminder has no buttons**: a tap opens the app on `ReminderSheet`. One reminder on the Lock Screen at a time. **Nothing ends in silence**: a begun block past its end with no answer is in overtime (see "An end is answered" above). Every "not yet" and "more time" is 10 minutes from the later of the planned hour and now (`STEP_MINUTES`). The Live Activity is off (`kLiveActivity = false`). See [product/spec/notifications.md](./product/spec/notifications.md).
 
 ### The agent
 
-It reads the day and proposes changes to it: **reads run, writes are only
-ever proposed**, the user applies a plan whole, the server makes it through
-`EventLayoutService` and can undo it. **Every change the agent proposes is a
-gesture the person could have made by hand** (a place in the queue, an
-hour, the backlog, a swap), and leaves the day as that gesture would: the
-model names cards by short refs and days as said, the server resolves
-them, runs the plan on a sandbox copy of the day, and asks the doubts it
-can see itself. Voice becomes text on the phone and reaches the server as
-an ordinary turn. **The model answers with one `answer` tool whose blocks
-name what to show (plan, choices, day, cards, artifact); the server fills
-every fact and sends one A2UI v0.9 surface (`ui`)**, and nothing the
-person reads carries a ref (`speakable`). **Each verb is one `Action` in
-`agent/actions/`** (args, resolve, make through the same service the
-button calls, the card's line); the schema, the dry run, Aplicar and the
-card all read the registry, and Desfazer restores a snapshot of the rows
-the plan touched, so a new control is one entry. Today it moves cards on
-the day; makes, edits, delivers, moves and deletes deliveries, kinds
-and goals; writes and changes routines and sets the working day
-(`actions/routines.ts`); plans are kept in Postgres. **The suggestion on the Feed is a
-turn the agent asks itself about the person's first unmet Work Quality
-level** (`agent/work-quality.ts`: goal, reach, shape, tasks, fits,
-routine, pace; the score goes to PostHog as `work_quality`, never on
-screen): code picks the topic, the model writes the words, the plan (drawn
-as a `preview` by the tabs' own widgets, then Ajustar and Aplicar) and
-when to look again (`followUp`, 3–24 h). It is kept in `agent_suggestion`
-until its `nextAt` (moved by every answer: Aplicar, ✕, a message in its
-conversation); a new person finds the fixed welcome, which never expires,
-and a failed turn falls back to #67's arithmetic template. Its
-conversation opens on its first message. The conversation is a
-full-screen page, and stopping a recording there sends it.
-Agent changes are measured with `npm run eval:agent`
-(real model, costs money, never in CI). The tools, the plan rules, the
-routes, the conversations and voice are in
-[product/spec/agent.md](./product/spec/agent.md): read it before touching
-`server/src/agent/` or `app/packages/agent/`.
+It reads the day and proposes changes to it: **reads run, writes are only ever proposed**; the person applies a plan whole, the server makes it through `EventLayoutService` and can undo it. **Every change it proposes is a gesture the person could have made by hand.** The model answers with one `answer` tool; the server fills every fact and sends one A2UI surface, and nothing the person reads carries a ref. **Each verb is one `Action` in `agent/actions/`.** Agent changes are measured with `npm run eval:agent` (real model, costs money, never in CI). Read [product/spec/agent.md](./product/spec/agent.md) before touching `server/src/agent/` or `app/packages/agent/`.
 
 ### The landing page
 

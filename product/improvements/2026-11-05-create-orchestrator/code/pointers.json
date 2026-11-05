@@ -1,0 +1,34 @@
+{
+  "## Auth": {
+    "to": "product/spec/auth.md", "title": "# Auth",
+    "pointer": "Better Auth runs inside Nest at `/api/auth/*`; everything else under `/api` is guarded by `SessionGuard`, which puts an `AuthUser` on the request. Google is the only way in (the web's OAuth redirect; phones post an ID token, then send `Authorization: Bearer`). `ALLOWED_EMAILS` gates sign-up, and the user row carries the `timeZone` that person's day is measured in. **Code under test must not import `better-auth` at runtime** (it is ESM-only and Jest's CommonJS can't load it): `session.guard.ts` imports only its type. Keep the images on Node 24. See [product/spec/auth.md](./product/spec/auth.md)."
+  },
+  "### Routines": {
+    "to": "product/spec/routines.md", "title": "# Routines",
+    "pointer": "A routine is one row in `routine` with a rule (`daily`, `weekdays`, `weekend`) and an hour. **Reading a window writes down each of its days in it** as a fixed `event` row (`INSERT … ON CONFLICT DO NOTHING` on `routine_id`, `occurrence`); from then on that day is its own row, and a day off is marked `cancelled`, not deleted. Changing a routine rewrites only the days not begun. Its checklist is copied to each day (`checklist`, ticked through `PATCH /api/tasks|events/:id`). See [product/spec/routines.md](./product/spec/routines.md)."
+  },
+  "### Notes": {
+    "to": "product/spec/notes.md", "title": "# Notes",
+    "pointer": "Every task and block has free-text `notes`, saved through `PATCH` a moment after typing stops, on blur and on close. **The notes stay text**: a link on a line of its own is drawn as a card, but pages read and write `LiveTextController.notes`, never `.text`. The microphone beside the notes dictates straight into them. See [product/spec/notes.md](./product/spec/notes.md) and [product/spec/links.md](./product/spec/links.md)."
+  },
+  "## The timeline": {
+    "to": "product/spec/timeline.md", "title": "# The timeline: Lista and Calendário",
+    "pointer": "`TimelineList` draws the day as **Lista** (the tasks alone, in stages: Agora, one day, Para depois; a delivery's run is one card) and **Calendário** (everything to scale; a drag nudges under 30 minutes, then swaps or takes a place or an hour; a card's seam resizes it). Since #77 the app shows only Calendário (`DayPage`); Plano is the list. **An hour that has run out is not a section**: a finished block is simply not drawn, and the app asks for the list again on each minute boundary while it is in sight (`MinuteRefresh`). Headings are cut out of one list by the clock (`sectionOf` in `events/event-sections.ts`). The free stretches are drop targets (`TimelinePlan.freeSlots`, `TimelineScale.landingIn`). Read [product/spec/timeline.md](./product/spec/timeline.md) before touching `app/packages/timeline/` or the drag routes."
+  },
+  "### The app shell": {
+    "to": "product/spec/home.md", "title": "## The app shell (moved from AGENTS.md)",
+    "pointer": "**One kind of task**: every task is one `TaskCard` (play on its left, pause while it runs); a delivery is a task with tasks of its own. Three tabs: **Plano** (`HomePage`: the agent's offer, Agora, Em seguida, Pendentes, Para depois), **Objetivos** and **Menu**; *Ver calendário* pushes `DayPage`. Play on a waiting task asks when (`PlayWhenSheet`) and, over an hour, how much. **The + opens the composer** (`openComposer`, `POST /agent/compose`): nothing is written until Adicionar. **One round button on every screen, in the same place** (`AskDock` at `AskDock.location`); a new page floats an `AskDock` and leaves `kNotesDockClearance` under its last row. Feitas (`/feitas`) is every task ticked off. Read [product/spec/home.md](./product/spec/home.md) before touching `app/lib/plan/` or the shell."
+  },
+  "### Entregas (artifacts)": {
+    "to": "product/spec/artifacts.md", "title": "## In short (moved from AGENTS.md)",
+    "pointer": "A **delivery** (*entrega*; `Artifact` in code) is something owed by a day, with an optional kind from the person's catalogue, a total time and a value; there is no Entregas tab, it is drawn as a task on Plano. Its tasks are ordinary tasks (`task.artifact_id`). **Money counts when it is delivered** (`done_at`). Read [product/spec/artifacts.md](./product/spec/artifacts.md) before touching `server/src/artifacts/` or `app/packages/artifacts/`."
+  },
+  "### Reminders": {
+    "to": "product/spec/notifications.md", "title": "## In short (moved from AGENTS.md)",
+    "pointer": "**Every reminder asks about one edge** of a block, its start or its end (`askStart`, `askEnd`), at its hour and once more 10 minutes later. **A reminder has no buttons**: a tap opens the app on `ReminderSheet`. One reminder on the Lock Screen at a time. **Nothing ends in silence**: a begun block past its end with no answer is in overtime (see \"An end is answered\" above). Every \"not yet\" and \"more time\" is 10 minutes from the later of the planned hour and now (`STEP_MINUTES`). The Live Activity is off (`kLiveActivity = false`). See [product/spec/notifications.md](./product/spec/notifications.md)."
+  },
+  "### The agent": {
+    "to": "product/spec/agent.md", "title": "## In short (moved from AGENTS.md)",
+    "pointer": "It reads the day and proposes changes to it: **reads run, writes are only ever proposed**; the person applies a plan whole, the server makes it through `EventLayoutService` and can undo it. **Every change it proposes is a gesture the person could have made by hand.** The model answers with one `answer` tool; the server fills every fact and sends one A2UI surface, and nothing the person reads carries a ref. **Each verb is one `Action` in `agent/actions/`.** Agent changes are measured with `npm run eval:agent` (real model, costs money, never in CI). Read [product/spec/agent.md](./product/spec/agent.md) before touching `server/src/agent/` or `app/packages/agent/`."
+  }
+}

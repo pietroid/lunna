@@ -183,3 +183,32 @@ stored), the catalogue's own page (editing, ordering, removing kinds),
 keeping a one-off as a kind, paging the delivered list, and cycles. The
 agent cannot begin or stop a delivery yet (no `Action` for `started`), and
 the delivery's page has no control for it: both go through Entregas' drag.
+
+
+## In short (moved from AGENTS.md)
+
+Since #77 there is no Entregas tab: a delivery is drawn as a task on
+Plano (above). Projetos is gone: a project is now a **delivery** (*entrega*; `Artifact` in
+code), something owed by a day, with an optional kind from the person's
+**catalogue** (shelves and kinds, empty until they fill it), a total time,
+a value and how the day may cut it. The open ones are a queue of their
+own, drawn in two groups (`progressGroups`): **Em andamento**, those
+begun (`started_at`: dragged there, written down there, or a task of it
+begun on the day; **never without a deadline**), the **urgent** ones
+first (past their day, or time 15 points ahead of work: a red-tinged card
+tagged Urgente), then the one whose time has run furthest past its work
+(`lagOf`); and **Não iniciadas**, in the queue's order. One list: a row
+dragged up is begun (asking its day when it has none), dragged down is
+stopped where it was let go; each group ends in **+ Adicionar**
+(`AppAddRow`). A row is its name and, begun, **one bar**: the time since
+it was begun to the end of its day in red (`paceTime`) under its minutes
+done in green (`paceDone`), keyed with the time done and the day due.
+The line that set the month's deliveries against the agenda's free
+hours is not drawn. A delivery's tasks are ordinary tasks on the day
+(`task.artifact_id`). Its page has three tabs: Notas, **Pendentes**
+(Agora and Para depois of its tasks, play on each) and **Feitas** (what
+was done, newest first under Hoje / Ontem / the date), under the same
+`PaceBars` as its row in Entregas. Tempo opens it on Pendentes. **Money counts when a delivery is
+delivered** (`done_at`). The routes and the rules are in
+[product/spec/artifacts.md](./artifacts.md): read it before
+touching `server/src/artifacts/` or `app/packages/artifacts/`.
