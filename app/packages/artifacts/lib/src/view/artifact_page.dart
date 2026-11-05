@@ -670,17 +670,10 @@ class _Tasks extends StatelessWidget {
         heading(l10n.stageBacklog),
         if (later.isEmpty)
           // The empty list offers the way out instead of describing it.
-          Align(
-            alignment: Alignment.centerLeft,
-            child: AppButton.icon(
-              variant: AppButtonVariant.secondary,
-              color: AppColors.ink2,
-              icon: const AppIcon(iconData: AppIcons.plus, size: 20),
-              text: l10n.composeAdd,
-              onPressed: () => ComposeLauncher.maybeOf(
-                context,
-              )?.open(context, about: AgentSubject.artifact(artifact.id)),
-            ),
+          AppAddRow(
+            onTap: () => ComposeLauncher.maybeOf(
+              context,
+            )?.open(context, about: AgentSubject.artifact(artifact.id)),
           ),
         for (final task in later)
           Padding(

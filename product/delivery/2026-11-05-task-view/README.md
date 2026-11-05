@@ -17,7 +17,7 @@ From the issue, verbatim:
 
 1. With no subtasks the page opens on **Notas**: the same body a delivery's
    Notas tab has (just the hint, no title or text field of its own).
-2. An empty **Pendentes** shows the home's own button, **Adicionar**, that
+2. An empty **Pendentes** shows the home's own `AppAddRow`, **Adicionar**, that
    opens the composer about this task; the "Nada esperando…" sentence is gone.
 3. Subtasks are the home's `TaskCard`s with its spacing (`kQueueGap`, 4 px).
    A long press lifts one to drag it; swipe right ticks it off, as on the
@@ -33,7 +33,11 @@ Second reply (verbatim):
 
 > adicionar should not have red button. The rest seems good.
 
-Revised: the empty **Adicionar** is an outlined neutral button (`AppButton.icon`, `secondary`, `color: AppColors.ink2`), no longer accent red.
+Third reply (verbatim):
+
+> Adicionar should be the exact same component as home.
+
+Revised: the empty **Adicionar** is now `AppAddRow`, the very widget the home ends its sections with (a + and Adicionar in the quiet ink), not a button.
 
 Decided unattended: the home's list has no swipe; the calendar (`timeline_list.dart` ~1196) does, so "same as the home" is read as that: right = done at once with a green check, left = delete after `confirmDelete`. This drops the done dialog the first brief asked for.
  "the task page" is `ArtifactPage` (a task with
@@ -53,7 +57,7 @@ Written in this session (kept for the build):
   and `previewLifted` on `ArtifactPage`.
 - `app/packages/timeline/lib/src/widgets/confirm_sheet.dart`: `confirmDone`
   (now unused: remove it and `confirmDone*` from the arb).
-- Empty button reads `composeAdd` ("Adicionar"), neutral (`AppColors.ink2`, not red); `SubtaskRow` shows only the
+- Empty state is `AppAddRow` (same widget as the home); `SubtaskRow` shows only the
   icon, as the calendar does.
 
 The build must still:
