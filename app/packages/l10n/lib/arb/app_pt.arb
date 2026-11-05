@@ -112,9 +112,6 @@
   },
   "confirmDoneBody": "Ela vai para Feitas e sai da fila.",
   "confirmDoneAction": "Concluir",
-  "artifactPendingEmptyAction": "Escrever uma tarefa",
-  "subtaskSwipeDone": "Concluir",
-  "subtaskSwipeDelete": "Excluir",
   "confirmShortenTitle": "Não cabe inteiro aqui",
   "confirmShortenBody": "“{title}” leva {duration} min e esse intervalo tem espaço para {minutes} min, já contando a pausa. Ajustar para {minutes} min?",
   "@confirmShortenBody": {

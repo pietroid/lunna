@@ -11,7 +11,7 @@ import 'package:lunna/demo/data/demo_repositories.dart';
 import 'package:timeline/timeline.dart';
 
 /// Preview of the task page (#94): `?s=1` Notas empty, `2` Pendentes empty,
-/// `3` subtasks with a swipe and a drag, `4` the done dialog, `5` the
+/// `3` subtasks, a swipe right and a drag, `4` a swipe left, `5` the
 /// delete dialog.
 void main() => runApp(const _App());
 
@@ -73,13 +73,9 @@ class _SceneState extends State<_Scene> {
   @override
   void initState() {
     super.initState();
-    if (_scene >= 4) {
+    if (_scene == 5) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scene == 4) {
-          confirmDone(context, 'Montar a estrutura das páginas');
-        } else {
-          confirmDelete(context, 'Escrever os textos da home');
-        }
+        confirmDelete(context, 'Escrever os textos da home');
       });
     }
   }
@@ -118,7 +114,11 @@ class _SceneState extends State<_Scene> {
         child: ArtifactPage(
           id: 'p',
           initialTab: _scene == 1 ? 0 : 1,
-          previewSwipe: _scene == 3 ? ('b', 120) : null,
+          previewSwipe: _scene == 3
+              ? ('b', 80)
+              : _scene == 4
+              ? ('b', -80)
+              : null,
           previewLifted: _scene == 3 ? 'd' : null,
         ),
       ),

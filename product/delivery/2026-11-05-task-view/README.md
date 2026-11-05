@@ -17,14 +17,20 @@ From the issue, verbatim:
 
 1. With no subtasks the page opens on **Notas**: the same body a delivery's
    Notas tab has (just the hint, no title or text field of its own).
-2. An empty **Pendentes** shows a button, *Escrever uma tarefa*, that opens
-   the composer about this task; the "Nada esperando…" sentence is gone.
-3. Subtasks are cards spaced like the home's (`kQueueGap`, 4 px). A long
-   press lifts one to drag it; the second one is mid-swipe to the right.
-4. Swipe right (past 96 px) asks *Concluir “…”?* before ticking it off.
-5. Swipe left asks *Excluir “…”?* (the existing `confirmDelete`).
+2. An empty **Pendentes** shows the home's own button, **Adicionar**, that
+   opens the composer about this task; the "Nada esperando…" sentence is gone.
+3. Subtasks are the home's `TaskCard`s with its spacing (`kQueueGap`, 4 px).
+   A long press lifts one to drag it; swipe right ticks it off, as on the
+   calendar: a green check in the corner, no label, **no dialog**.
+4. Swipe left shows the red bin, as on the calendar.
+5. Letting go asks *Excluir “…”?* (the existing `confirmDelete`).
 
-Decided unattended: "the task page" is `ArtifactPage` (a task with
+Reply on the issue (verbatim):
+
+> keep design consistent. You should only use the same components as the home one. the "escrever uma tarefa" should be just adicionar and the swipe to left and to right must be the same as the home. But I liked it the swipe.
+
+Decided unattended: the home's list has no swipe; the calendar (`timeline_list.dart` ~1196) does, so "same as the home" is read as that: right = done at once with a green check, left = delete after `confirmDelete`. This drops the done dialog the first brief asked for.
+ "the task page" is `ArtifactPage` (a task with
 subtasks); the "Nova tarefa" row/`artifactAddTask` is read as the
 empty-state copy to drop, and the + dock stays as the one way to add.
 
@@ -39,9 +45,10 @@ Written in this session (kept for the build):
 - `app/packages/artifacts/lib/src/view/artifact_page.dart`: `_Tasks` uses
   `SubtaskRow`, gap `s1`, empty button (`ComposeLauncher`); `previewSwipe`
   and `previewLifted` on `ArtifactPage`.
-- `app/packages/timeline/lib/src/widgets/confirm_sheet.dart`: `confirmDone`.
-- `app_pt.arb`: `confirmDone*`, `artifactPendingEmptyAction`,
-  `subtaskSwipe*` (gen run).
+- `app/packages/timeline/lib/src/widgets/confirm_sheet.dart`: `confirmDone`
+  (now unused: remove it and `confirmDone*` from the arb).
+- Empty button reads `composeAdd` ("Adicionar"); `SubtaskRow` shows only the
+  icon, as the calendar does.
 
 The build must still:
 
@@ -61,5 +68,5 @@ The build must still:
 - Tests: swipe past the threshold asks, no answer leaves the task; the
   empty button opens the composer.
 
-Open questions: should the swipe also exist on the home's cards? Should a
+Open questions: should the swipe also exist on the home's cards? Should a right swipe ask, as the first brief wanted? Should a
 swipe-done on a running subtask be refused?

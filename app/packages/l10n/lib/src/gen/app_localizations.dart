@@ -335,24 +335,6 @@ abstract class AppLocalizations {
   /// **'Concluir'**
   String get confirmDoneAction;
 
-  /// No description provided for @artifactPendingEmptyAction.
-  ///
-  /// In pt, this message translates to:
-  /// **'Escrever uma tarefa'**
-  String get artifactPendingEmptyAction;
-
-  /// No description provided for @subtaskSwipeDone.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir'**
-  String get subtaskSwipeDone;
-
-  /// No description provided for @subtaskSwipeDelete.
-  ///
-  /// In pt, this message translates to:
-  /// **'Excluir'**
-  String get subtaskSwipeDelete;
-
   /// No description provided for @confirmShortenTitle.
   ///
   /// In pt, this message translates to:

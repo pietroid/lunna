@@ -674,7 +674,7 @@ class _Tasks extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: AppButton.icon(
               icon: const AppIcon(iconData: AppIcons.plus, size: 20),
-              text: l10n.artifactPendingEmptyAction,
+              text: l10n.composeAdd,
               onPressed: () => ComposeLauncher.maybeOf(
                 context,
               )?.open(context, about: AgentSubject.artifact(artifact.id)),
@@ -689,10 +689,7 @@ class _Tasks extends StatelessWidget {
               offset: swipeId == task.id ? swipe : 0,
               lifted: liftedId == task.id,
               onDone: () async {
-                final bloc = context.read<TimelineBloc>();
-                if (await confirmDone(context, task.title)) {
-                  bloc.add(EventFinished(task.id));
-                }
+                context.read<TimelineBloc>().add(EventFinished(task.id));
               },
               onDelete: () async {
                 final bloc = context.read<TimelineBloc>();

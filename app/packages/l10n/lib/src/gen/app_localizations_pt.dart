@@ -160,15 +160,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get confirmDoneAction => 'Concluir';
 
   @override
-  String get artifactPendingEmptyAction => 'Escrever uma tarefa';
-
-  @override
-  String get subtaskSwipeDone => 'Concluir';
-
-  @override
-  String get subtaskSwipeDelete => 'Excluir';
-
-  @override
   String get confirmShortenTitle => 'Não cabe inteiro aqui';
 
   @override
