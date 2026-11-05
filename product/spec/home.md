@@ -36,7 +36,7 @@ cards on screen. From the top:
 | Offer | `SuggestionCard`, the agent's one offer | `GET /agent/suggestion` | not drawn |
 | Agora | heading with today's mark (`TodayTag`: "Dia 2 · dia leve", or the day's own tag); the running task as `NowTaskCard`: titled by its delivery, the task under it, pause, −10 +10 ✓, the 3 px bar. A fixed block, a task waiting to be begun and one in overtime keep `EventTile` | the card in section `agora` | the break (`AgoraIdleTile`) |
 | Em seguida | a heading with **Ver calendário** beside it (`AppPillButton`, the calendar icon, pushes `DayPage`), and a queue with **no limit**: every card of the first day after Agora that has any (today, while it has some left), **its events too**, in clock order, then every task the queue puts on the days after it, under the day's name (*Amanhã*, *Sexta-feira, 30 de outubro*; `_DayOf`). Each row is its start and end as the server's layout gives them, re-read every minute and after every write, so a pause, a move or a task done early moves them all and an event never moves. A task is a `TaskCard` with play; an event is drawn as the calendar draws it (`fixedFill`, the pin in the play's room, its hours in `fixedInk`; a routine's day `routineFill` and the repeat), not carried. Later days' events stay on the calendar. Then **+ Adicionar** (`AppAddRow(dense: true)`), which writes a task right after the last task drawn (`queueEndOf`) | `PlanItems.next` | "Nada marcado daqui para a frente.", kept while a card is carried |
-| Pendentes | every delivery begun and not delivered (`PendingCard`): its next task under the name, the day it is due in the corner (`dueLabel`: *hoje*, the weekday this week, *12/nov* beyond, *para ontem* once past), "1h30 de 6h15" (*Urgente ·* before it once past its day), −1d +1d ✓, the pace bar at 3 px; then the loose tasks paused off the day (`PendingTaskCard`: "Falta 40 min", −10 +10 ✓) | `PlanItems.pending`: `progressGroups(...).started` minus the one running on Agora, then the backlog's cards with `pending` | not drawn, unless a card is being carried |
+| Pendentes | every delivery begun and not delivered (`PendingCard`): its next task under the name, the day it is due in the corner (`dueLabel`: *hoje*, the weekday this week, *12/nov* beyond, *para ontem* once past), "1h30 de 6h15" (*Urgente ·* before it once past its day), −1d +1d ✓, the pace bar at 3 px; then the loose tasks paused off the day (`PendingTaskCard`: "Falta 40 min", −10 +10 ✓) | `PlanItems.pending`: `progressGroups(...).started` (the delivery whose piece runs on Agora stays, its piece drawn as a yellow run, `doing`, right after the green; `paceDoing`), then the backlog's cards with `pending`. The bar is always a pace bar: with no day it is the green alone | not drawn, unless a card is being carried |
 | Para depois | **the whole** of everything not begun (`LaterCard`), then **+ Adicionar** (`AppAddRow(dense: true)`), which writes into the backlog (`writeTask`) | `PlanItems.later`: the loose backlog in its order, then the deliveries not begun in the queue's | "Nada esperando." |
 
 - **Play by strict rules** (#89, `timeline`'s `play.dart`: `playTask`,
@@ -86,9 +86,9 @@ cards on screen. From the top:
   loose task becomes a task with subtasks (a delivery in storage, its
   title, length and notes, at the end of the open ones; begun when the
   piece is, or when the task waited in Pendentes), its row the piece, a
-  new subtask of the same name the rest: begun, at the top of its Para
-  depois (so the delivery waits in Pendentes); queued, where the task
-  was. A subtask is cut to the piece and its rest written in the same
+  new subtask of the same name the rest: at the top of its Para
+  depois and the delivery begun, so it waits in Pendentes (#92: a queued
+  piece does not leave its rest on the day either). A subtask is cut to the piece and its rest written in the same
   task. A piece at or over the length is the whole; outside 5–480
   minutes it is refused in Portuguese; a task already begun is not split
   (400).
@@ -134,7 +134,7 @@ cards on screen. From the top:
   loose task `move { backlog: true, pending: true }` (it stops, owing
   what it had left); a delivery's task goes to its backlog and its
   delivery is begun (its day asked when it has none); a delivery not
-  begun is begun. **Para depois**: `move { backlog: true }`, or a begun
+  begun is begun. **Para depois**: `move { backlog: true, pending: false }` (also from Pendentes), or a begun
   delivery stopped (`ArtifactsCubit.stop`). Out of Agora never asks.
 - **The guard** (`GuardSheet`, here and on the calendar), raised by a
   road that did not ask first (a delivery's play, a fixed block
@@ -219,7 +219,7 @@ under their day, each at the hour the server's layout gives it; play on
 every task, an event in `fixedFill` with the pin, then *+ Adicionar*; a
 card carried to a place in it is `move { index }`, asking how much goes
 there by play's rules (`move { index, minutes, split: true }`: the rest
-stays where it was); **Pendentes**, the deliveries
+waits in Pendentes); **Pendentes**, the deliveries
 begun (their day in the corner, −1d +1d ✓ and their bar; urgent once
 past their day) and the loose tasks paused off the day; **Para depois**,
 the whole of everything not begun, then *+ Adicionar*; a card is carried

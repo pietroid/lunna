@@ -115,6 +115,13 @@ abstract final class AppColors {
       ? Color(0xFF1FA37A)
       : Color(0xFF00B481);
 
+  /// The piece of a task at work right now, in its pace bar (#92): a short
+  /// yellow run right after the [paceDone] green, as long as that piece's
+  /// minutes, so what is being done reads as on its way to green.
+  static const paceDoing = AppBrand.isLunna
+      ? Color(0xFFF2B705)
+      : Color(0xFFFFD43B);
+
   /// The fill behind a delivery that is late: [fill] with a little red in
   /// it, so the card reads as urgent before its tag is read.
   static const urgentFill = AppBrand.isLunna

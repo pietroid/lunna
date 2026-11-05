@@ -85,6 +85,7 @@ void main() {
     String title, {
     DateTime? startedAt,
     DateTime? deadline,
+    bool noDeadline = false,
     int minutes = 180,
     List<ArtifactTask> tasks = const [
       ArtifactTask(
@@ -100,7 +101,7 @@ void main() {
     minutes: minutes,
     doneMinutes: 90,
     createdAt: DateTime(2026, 10),
-    deadline: deadline ?? DateTime(2026, 11, 3),
+    deadline: noDeadline ? null : deadline ?? DateTime(2026, 11, 3),
     startedAt: startedAt,
     tasks: tasks,
   );
@@ -268,18 +269,29 @@ void main() {
       ],
     );
 
-    expect(top(tester, 'Post de novembro'), lessThan(top(tester, 'Roteiro')));
+    expect(
+      tester.getTopLeft(find.text('Post de novembro').first).dy,
+      lessThan(tester.getTopLeft(find.text('Roteiro').first).dy),
+    );
     final pause = tester.widget<TaskPlayButton>(
       find.byType(TaskPlayButton).first,
     );
     expect(pause.playing, isTrue);
     // The fixed block after it has no play.
     expect(find.text('Standup'), findsOneWidget);
-    expect(find.byType(TaskPlayButton), findsOneWidget);
-    // Agora's task is not drawn again in Pendentes.
-    expect(find.text(l10n.homePending), findsNothing);
+    // Its delivery stays in Pendentes (#92), where the rest of it waits:
+    // the piece at work is the yellow after the green.
+    expect(find.text(l10n.homePending), findsOneWidget);
+    expect(find.text('Post de novembro'), findsNWidgets(2));
+    expect(find.byType(TaskPlayButton), findsNWidgets(2));
+    final bar = tester
+        .widgetList<TaskCardBar>(find.byType(TaskCardBar))
+        .map((it) => it.bar)
+        .singleWhere((it) => it.pace);
+    expect(bar.done, 0.5);
+    expect(bar.doing, greaterThan(0));
 
-    await tester.tap(find.byType(TaskPlayButton));
+    await tester.tap(find.byType(TaskPlayButton).first);
     verify(() => timeline.add(const EventPauseToggled('a'))).called(1);
   });
 
@@ -576,6 +588,60 @@ void main() {
       () => timeline.add(
         const EventMoved(id: 'a', index: 0, backlog: true, pending: true),
       ),
+    ).called(1);
+  });
+
+  testAt('draws only the green bar for a pending task with no day (#92)', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      queue: [
+        delivery(
+          'p',
+          'Mapa · Renata',
+          startedAt: DateTime(2026, 10, 20),
+          noDeadline: true,
+        ),
+      ],
+    );
+
+    final bar = tester.widget<TaskCardBar>(find.byType(TaskCardBar)).bar;
+    expect(bar.pace, isTrue);
+    expect(bar.time, isNull);
+    expect(bar.doing, 0);
+    final fills = tester
+        .widgetList<ColoredBox>(
+          find.descendant(
+            of: find.byType(TaskCardBar),
+            matching: find.byType(ColoredBox),
+          ),
+        )
+        .map((it) => it.color);
+    expect(fills, contains(AppColors.paceDone));
+    expect(fills, isNot(contains(AppColors.paceTime)));
+    expect(fills, isNot(contains(AppColors.accent)));
+  });
+
+  testAt('carries a pending loose task back to Para depois (#92)', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      backlog: [
+        loose('1', 'Notas fiscais', pending: true),
+        loose('2', 'Planejar a semana'),
+      ],
+    );
+
+    await carry(
+      tester,
+      find.text('Notas fiscais'),
+      find.text(l10n.stageBacklog),
+    );
+
+    verify(
+      () => timeline.add(const EventMoved(id: '1', index: 0, backlog: true)),
     ).called(1);
   });
 
