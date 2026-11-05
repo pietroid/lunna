@@ -56,7 +56,8 @@ want otherwise, and how it will be proved.
 
 - While working, the one spec or package you touched:
   `flutter test -r failures-only <file>`, `npx jest <file>`.
-- At the end, `.tool/check` once (background): it prints one line per
+- At the end, `.tool/check` once, **in the foreground** (1–2 minutes;
+  never in the background with a loop waiting for it): it prints one line per
   step and only the lines of a failure. Read more of a log only if those
   lines aren't enough. A flaky test: stash and rerun to prove it isn't
   yours.
@@ -66,7 +67,7 @@ want otherwise, and how it will be proved.
 - **Something to see**: bring `app/lib/<slug>_preview.dart` up to the
   final code (the mockup's, or a small new one): fakes behind the real
   cubits, `?s=<n>` per scene. `.tool/preview <slug> 1 2 3 --brands
-  lunna,focus --steps <steps.txt> --out <scratchpad>/b` (background), then
+  lunna,focus --steps <steps.txt> --out <scratchpad>/b` (foreground), then
   read the two `steps-thumb.png`. Copy the two `steps.png` to the
   delivery's `img/build-lunna.png` and `img/build-focus.png`, and
   **delete the entry point**.
