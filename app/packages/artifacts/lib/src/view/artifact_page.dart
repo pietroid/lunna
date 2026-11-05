@@ -673,6 +673,8 @@ class _Tasks extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: AppButton.icon(
+              variant: AppButtonVariant.secondary,
+              color: AppColors.ink2,
               icon: const AppIcon(iconData: AppIcons.plus, size: 20),
               text: l10n.composeAdd,
               onPressed: () => ComposeLauncher.maybeOf(

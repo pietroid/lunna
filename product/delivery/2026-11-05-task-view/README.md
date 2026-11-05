@@ -29,6 +29,12 @@ Reply on the issue (verbatim):
 
 > keep design consistent. You should only use the same components as the home one. the "escrever uma tarefa" should be just adicionar and the swipe to left and to right must be the same as the home. But I liked it the swipe.
 
+Second reply (verbatim):
+
+> adicionar should not have red button. The rest seems good.
+
+Revised: the empty **Adicionar** is an outlined neutral button (`AppButton.icon`, `secondary`, `color: AppColors.ink2`), no longer accent red.
+
 Decided unattended: the home's list has no swipe; the calendar (`timeline_list.dart` ~1196) does, so "same as the home" is read as that: right = done at once with a green check, left = delete after `confirmDelete`. This drops the done dialog the first brief asked for.
  "the task page" is `ArtifactPage` (a task with
 subtasks); the "Nova tarefa" row/`artifactAddTask` is read as the
@@ -47,7 +53,7 @@ Written in this session (kept for the build):
   and `previewLifted` on `ArtifactPage`.
 - `app/packages/timeline/lib/src/widgets/confirm_sheet.dart`: `confirmDone`
   (now unused: remove it and `confirmDone*` from the arb).
-- Empty button reads `composeAdd` ("Adicionar"); `SubtaskRow` shows only the
+- Empty button reads `composeAdd` ("Adicionar"), neutral (`AppColors.ink2`, not red); `SubtaskRow` shows only the
   icon, as the calendar does.
 
 The build must still:
