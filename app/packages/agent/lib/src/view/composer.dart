@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:agent/src/compose_cubit.dart';
 import 'package:agent/src/view/voice_bar.dart';
 import 'package:agent/src/voice/voice_cubit.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
@@ -43,6 +45,7 @@ Future<void> showComposer(
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     backgroundColor: Colors.transparent,
     elevation: 0,
     builder: (_) => MultiBlocProvider(
@@ -100,141 +103,149 @@ class _ComposerSheetState extends State<ComposerSheet> {
     final compose = context.watch<ComposeCubit>().state;
     final voice = context.watch<VoiceCubit>().state;
     final recording = voice.status.recording;
+    // On the web a keyboard is never more than half the screen: a
+    // mis-reported inset must not paint the whole page white.
+    final inset = kIsWeb
+        ? math.min(
+            MediaQuery.viewInsetsOf(context).bottom,
+            MediaQuery.sizeOf(context).height / 2,
+          )
+        : MediaQuery.viewInsetsOf(context).bottom;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Center(
-        heightFactor: 1,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: AppSpacing.maxContentWidth,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (compose.status != ComposeStatus.editing)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.s3,
-                    0,
-                    AppSpacing.s3,
-                    AppSpacing.s2,
-                  ),
-                  child: ComposeSummary(
-                    state: compose,
-                    onAdd: widget.onAdd,
-                    onAdjust: widget.onAdjust,
-                    onTalk: widget.onTalk,
-                  ),
+    return Center(
+      heightFactor: 1,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppSpacing.maxContentWidth,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (compose.status != ComposeStatus.editing)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.s3,
+                  0,
+                  AppSpacing.s3,
+                  AppSpacing.s2,
                 ),
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(AppSpacing.cardRadius),
-                  ),
+                child: ComposeSummary(
+                  state: compose,
+                  onAdd: widget.onAdd,
+                  onAdjust: widget.onAdjust,
+                  onTalk: widget.onTalk,
                 ),
-                child: SafeArea(
-                  top: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.s5,
-                      AppSpacing.s3,
-                      AppSpacing.s3,
-                      AppSpacing.s3,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              color: AppColors.fillStrong,
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(AppSpacing.pillRadius),
-                              ),
+              ),
+            DecoratedBox(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppSpacing.cardRadius),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                // The keyboard inset already lifts the field; the safe area
+                // must not add its own bottom on top of it.
+                bottom: inset == 0,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.s5,
+                    AppSpacing.s3,
+                    AppSpacing.s3,
+                    // The white surface runs down under the keyboard, so no
+                    // dark strip shows between it and the sheet.
+                    AppSpacing.s3 + inset,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: AppColors.fillStrong,
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(AppSpacing.pillRadius),
                             ),
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.s4),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 52),
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              right: AppSpacing.s2,
-                            ),
-                            child: recording
-                                ? VoiceTranscript(voice: voice)
-                                : TextField(
-                                    controller: _field,
-                                    autofocus: true,
-                                    minLines: 1,
-                                    maxLines: 5,
-                                    style: AppTypography.body,
-                                    onChanged: context
-                                        .read<ComposeCubit>()
-                                        .edit,
-                                    decoration: InputDecoration.collapsed(
-                                      hintText: l10n.composeHint,
-                                      hintStyle: AppTypography.body.copyWith(
-                                        color: AppColors.ink3,
-                                      ),
+                      ),
+                      const SizedBox(height: AppSpacing.s4),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 52),
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                            right: AppSpacing.s2,
+                          ),
+                          child: recording
+                              ? VoiceTranscript(voice: voice)
+                              : TextField(
+                                  controller: _field,
+                                  autofocus: true,
+                                  minLines: 1,
+                                  maxLines: 5,
+                                  style: AppTypography.body,
+                                  onChanged: context.read<ComposeCubit>().edit,
+                                  decoration: InputDecoration.collapsed(
+                                    hintText: l10n.composeHint,
+                                    hintStyle: AppTypography.body.copyWith(
+                                      color: AppColors.ink3,
                                     ),
                                   ),
-                          ),
+                                ),
                         ),
-                        const SizedBox(height: AppSpacing.s3),
-                        if (recording)
-                          VoiceBar(
-                            voice: voice,
-                            stopIcon: AppIcons.arrowUp,
-                            stopLabel: l10n.composeSend,
-                            onStop: () => unawaited(_sendVoice()),
-                            onDiscard: () => unawaited(
-                              context.read<VoiceCubit>().cancel(),
-                            ),
-                          )
-                        else
-                          Row(
-                            children: [
-                              VoiceRound(
-                                label: l10n.composeListen,
-                                icon: AppIcons.microphone,
-                                fill: AppColors.fill,
-                                ink: AppColors.ink,
-                                size: 40,
-                                onTap: () => unawaited(
-                                  context.read<VoiceCubit>().start(),
-                                ),
-                              ),
-                              const Spacer(),
-                              VoiceRound(
-                                label: l10n.composeSend,
-                                icon: AppIcons.arrowUp,
-                                fill: compose.text.trim().isEmpty
-                                    ? AppColors.fillStrong
-                                    : AppColors.accent,
-                                ink: compose.text.trim().isEmpty
-                                    ? AppColors.ink3
-                                    : AppColors.onAccent,
-                                size: 40,
-                                onTap: () => unawaited(
-                                  context.read<ComposeCubit>().send(),
-                                ),
-                              ),
-                            ],
+                      ),
+                      const SizedBox(height: AppSpacing.s3),
+                      if (recording)
+                        VoiceBar(
+                          voice: voice,
+                          stopIcon: AppIcons.arrowUp,
+                          stopLabel: l10n.composeSend,
+                          onStop: () => unawaited(_sendVoice()),
+                          onDiscard: () => unawaited(
+                            context.read<VoiceCubit>().cancel(),
                           ),
-                      ],
-                    ),
+                        )
+                      else
+                        Row(
+                          children: [
+                            VoiceRound(
+                              label: l10n.composeListen,
+                              icon: AppIcons.microphone,
+                              fill: AppColors.fill,
+                              ink: AppColors.ink,
+                              size: 40,
+                              onTap: () => unawaited(
+                                context.read<VoiceCubit>().start(),
+                              ),
+                            ),
+                            const Spacer(),
+                            VoiceRound(
+                              label: l10n.composeSend,
+                              icon: AppIcons.arrowUp,
+                              fill: compose.text.trim().isEmpty
+                                  ? AppColors.fillStrong
+                                  : AppColors.accent,
+                              ink: compose.text.trim().isEmpty
+                                  ? AppColors.ink3
+                                  : AppColors.onAccent,
+                              size: 40,
+                              onTap: () => unawaited(
+                                context.read<ComposeCubit>().send(),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -266,6 +277,7 @@ class ComposeSummary extends StatelessWidget {
     this.onAdd,
     this.onAdjust,
     this.onTalk,
+    this.actions = true,
     super.key,
   });
 
@@ -273,6 +285,10 @@ class ComposeSummary extends StatelessWidget {
   final void Function(ComposeDraft draft)? onAdd;
   final void Function(ComposeDraft draft)? onAdjust;
   final void Function(ComposeDraft draft)? onTalk;
+
+  /// Whether the summary offers its buttons (Ajustar/Conversar and
+  /// Adicionar/Aplicar); false when it is drawn read-only in a conversation.
+  final bool actions;
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +316,7 @@ class ComposeSummary extends StatelessWidget {
                 onAdd: onAdd,
                 onAdjust: onAdjust,
                 onTalk: onTalk,
+                actions: actions,
               ),
       ),
     );
@@ -337,12 +354,16 @@ class _Read extends StatelessWidget {
     this.onAdd,
     this.onAdjust,
     this.onTalk,
+    this.actions = true,
   });
 
   final ComposeDraft draft;
   final void Function(ComposeDraft draft)? onAdd;
   final void Function(ComposeDraft draft)? onAdjust;
   final void Function(ComposeDraft draft)? onTalk;
+
+  /// Whether the buttons are drawn; false when the summary is read-only.
+  final bool actions;
 
   @override
   Widget build(BuildContext context) {
@@ -413,27 +434,30 @@ class _Read extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.s3),
-        Row(
-          children: [
-            AppButton.text(
-              text: plan ? l10n.composeTalk : l10n.composeAdjust,
-              onPressed: () => (plan ? onTalk : onAdjust)?.call(draft),
-            ),
-            const Spacer(),
-            // A turn that proposed nothing has nothing to apply: only the
-            // conversation.
-            if (!plan || draft.planId != null) AppButton.icon(
-              icon: const AppIcon(
-                iconData: AppIcons.check,
-                size: 18,
-                color: AppColors.onAccent,
+        if (actions) ...[
+          const SizedBox(height: AppSpacing.s3),
+          Row(
+            children: [
+              AppButton.text(
+                text: plan ? l10n.composeTalk : l10n.composeAdjust,
+                onPressed: () => (plan ? onTalk : onAdjust)?.call(draft),
               ),
-              text: plan ? l10n.composeApply : l10n.composeAdd,
-              onPressed: () => onAdd?.call(draft),
-            ),
-          ],
-        ),
+              const Spacer(),
+              // A turn that proposed nothing has nothing to apply: only the
+              // conversation.
+              if (!plan || draft.planId != null)
+                AppButton.icon(
+                  icon: const AppIcon(
+                    iconData: AppIcons.check,
+                    size: 18,
+                    color: AppColors.onAccent,
+                  ),
+                  text: plan ? l10n.composeApply : l10n.composeAdd,
+                  onPressed: () => onAdd?.call(draft),
+                ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -520,7 +544,9 @@ class _KindMark extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
-      child: Center(child: AppIcon(iconData: icon, size: 16, color: ink)),
+      child: Center(
+        child: AppIcon(iconData: icon, size: 16, color: ink),
+      ),
     );
   }
 }

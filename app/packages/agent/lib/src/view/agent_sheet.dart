@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:agent/src/agent_cubit.dart';
 import 'package:agent/src/agent_links.dart';
 import 'package:agent/src/agent_repository.dart';
+import 'package:agent/src/compose_cubit.dart';
 import 'package:agent/src/models.dart';
 import 'package:agent/src/surface.dart';
 import 'package:agent/src/view/agent_preview.dart';
 import 'package:agent/src/view/apply_plan.dart';
 import 'package:agent/src/view/artifact_peek.dart';
 import 'package:agent/src/view/cards_peek.dart';
+import 'package:agent/src/view/composer.dart';
 import 'package:agent/src/view/day_peek.dart';
 import 'package:agent/src/view/failure_note.dart';
 import 'package:agent/src/view/offer_actions.dart';
@@ -24,7 +26,8 @@ import 'package:timeline/timeline.dart';
 
 /// Opens the conversation over the whole screen, about [day], straight on
 /// the field, with [draft] in it, selected, when there is one. Opened from a
-/// [suggestion], it starts on the agent's first message about it.
+/// [suggestion], it starts on the agent's first message about it. [seed] is
+/// the conversation it opens on, when it is not empty (a composer's read).
 ///
 /// The conversation is a page of its own, which need not sit under whatever
 /// provides the conversation, the agent's routes and the day, so it is handed
@@ -36,6 +39,7 @@ Future<void> showAgentSheet(
   String? draft,
   AgentSubject? about,
   AgentSuggestion? suggestion,
+  List<AgentEntry> seed = const [],
 }) {
   final agent = context.read<AgentCubit>();
   final repository = context.read<AgentRepository>();
@@ -43,7 +47,7 @@ Future<void> showAgentSheet(
   final voice = context.read<VoiceCubit>();
   final links = AgentLinks.of(context);
   // Every opening is a new conversation; the last one goes above it.
-  agent.open(about: about, suggestion: suggestion);
+  agent.open(about: about, suggestion: suggestion, seed: seed);
 
   // Full screen, coming up from the dock it was asked from: a conversation
   // with plans and peeks in it needs the whole height, and nothing under
@@ -422,6 +426,18 @@ class _Current extends StatelessWidget {
                               ? onPick
                               : null,
                         ),
+                        ComposedEntry(:final draft) => Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: AppSpacing.s4,
+                          ),
+                          child: ComposeSummary(
+                            state: ComposeState(
+                              status: ComposeStatus.ready,
+                              draft: draft,
+                            ),
+                            actions: false,
+                          ),
+                        ),
                       },
                     if (state.busy) const _Thinking(),
                     if (state.failure case final failure?)
@@ -461,6 +477,16 @@ class _Past extends StatelessWidget {
               past: true,
             ),
             ReplyEntry() => _Answer(entry: entry),
+            ComposedEntry(:final draft) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.s4),
+              child: ComposeSummary(
+                state: ComposeState(
+                  status: ComposeStatus.ready,
+                  draft: draft,
+                ),
+                actions: false,
+              ),
+            ),
           },
       ],
     );

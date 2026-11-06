@@ -128,8 +128,14 @@ class AgentCubit extends Cubit<AgentState> {
   /// A conversation still being answered is left as it is: the answer is on
   /// its way to it. [about] is the page it is opened from, which every turn
   /// of it is about. Opened from a [suggestion], the agent's first message
-  /// is its opening, there, surface and all, before anything is said.
-  void open({AgentSubject? about, AgentSuggestion? suggestion}) {
+  /// is its opening, there, surface and all, before anything is said. [seed]
+  /// is the conversation it opens on, when it is not empty (a composer's
+  /// read); seed and suggestion are never both given.
+  void open({
+    AgentSubject? about,
+    AgentSuggestion? suggestion,
+    List<AgentEntry> seed = const [],
+  }) {
     _about = about;
     _suggestionId = suggestion?.id;
     if (!state.busy && state.entries.isNotEmpty) {
@@ -158,6 +164,9 @@ class AgentCubit extends Cubit<AgentState> {
           startedAt: _now(),
         ),
       );
+    }
+    if (seed.isNotEmpty && !state.busy) {
+      emit(state.copyWith(entries: seed, startedAt: _now()));
     }
     // The first page is read once; scrolling to the top of it reads more.
     if (!_asked) {

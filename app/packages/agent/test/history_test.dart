@@ -126,6 +126,34 @@ void main() {
         expect(find.text('Aplicar'), findsNothing);
       });
     });
+
+    testWidgets('seeds the conversation from a composer read', (tester) async {
+      agent.open(
+        seed: [
+          const UserEntry('Empurra tudo pra tarde'),
+          const ComposedEntry(
+            ComposeDraft(
+              kind: ComposeKind.plan,
+              title: 'Empurrar a tarde',
+              changes: ['Dentista às 15h'],
+            ),
+          ),
+        ],
+      );
+      await pump(tester);
+
+      expect(find.text('Empurra tudo pra tarde'), findsOneWidget);
+      expect(find.text('Empurrar a tarde'), findsOneWidget);
+      expect(find.text('Dentista às 15h'), findsOneWidget);
+      // The summary is read-only: no buttons.
+      expect(find.text('Conversar'), findsNothing);
+      expect(find.text('Aplicar'), findsNothing);
+      // The field opens blank.
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller?.text,
+        isEmpty,
+      );
+    });
   });
 
   group('PlanCard', () {
