@@ -247,8 +247,6 @@
   "agentOtherTime": "Another time",
   "agentOtherTimeDraft": "I'd rather another time: ",
   "agentSuggestionDismiss": "Not now",
-  "suggestionPreviewTask": "Study",
-  "suggestionPreviewText": "Fit 2h of study in this afternoon. You have a free stretch from 3 pm.",
   "agentSuggestionAccept": "Accept",
   "agentSuggestionDetails": "Details",
   "agentWelcome": "Hi! I'm Lunna. I'll help you plan your month, one step at a time, starting with the goal.",

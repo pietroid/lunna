@@ -995,8 +995,8 @@ describe('the agent', () => {
         expect(next.id).not.toBe(offered.id);
         expect(next.focus).toBe('tasks');
         expect(next.text).toBe('Agora divida o mapa em tarefas.');
-        // No follow-up said: a day.
-        expect(next.nextAt).toBe('2026-03-11T17:00:00.000Z');
+        // No follow-up said: four hours.
+        expect(next.nextAt).toBe('2026-03-10T21:00:00.000Z');
       } finally {
         jest.setSystemTime(NOW);
       }
@@ -1004,9 +1004,9 @@ describe('the agent', () => {
 
     it('hides a turn with its ✕ until its next one, and counts a chat message as an answer', async () => {
       await goal(5000);
-      answers({ caption: 'Que entrega fecha o mês?', followUp: 5, blocks: [] });
+      answers({ caption: 'Que entrega fecha o mês?', followUp: 4, blocks: [] });
       const offered = (await suggestion())!;
-      expect(offered.nextAt).toBe('2026-03-10T18:00:00.000Z');
+      expect(offered.nextAt).toBe('2026-03-10T17:00:00.000Z');
 
       // Talked about: the next one counts from the message.
       jest.setSystemTime(new Date('2026-03-10T15:00:00Z'));
@@ -1020,9 +1020,9 @@ describe('the agent', () => {
         const held = await app
           .get(AgentService)
           .pendingSuggestions(new Date('2026-03-10T15:00:00Z'));
-        // Five hours as the turn said, from the message.
+        // Four hours as the turn said, from the message.
         expect(held).toEqual([
-          { userId: USER.id, nextAt: new Date('2026-03-10T20:00:00Z') },
+          { userId: USER.id, nextAt: new Date('2026-03-10T19:00:00Z') },
         ]);
       } finally {
         jest.setSystemTime(NOW);
@@ -1040,7 +1040,7 @@ describe('the agent', () => {
       const offered = (await suggestion())!;
       expect(offered.kind).toBe('template');
       expect(offered.text).toContain('nenhuma entrega aberta');
-      expect(offered.nextAt).toBe('2026-03-11T13:00:00.000Z');
+      expect(offered.nextAt).toBe('2026-03-10T17:00:00.000Z');
     });
 
     it('asks for a delivery when nothing open counts towards the goal', async () => {
@@ -1072,8 +1072,8 @@ describe('the agent', () => {
         title: 'Escrever a leitura',
         at: '2026-03-10T13:00:00.000Z',
       });
-      // A template looks again in a day.
-      expect(offered.nextAt).toBe('2026-03-11T13:00:00.000Z');
+      // A template looks again in four hours.
+      expect(offered.nextAt).toBe('2026-03-10T17:00:00.000Z');
       expect(offered.validUntil).toBe(offered.nextAt);
       // The opening draws the delivery and the same plan.
       expect(surface(offered)).toContain('ArtifactPeek');

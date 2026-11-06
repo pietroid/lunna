@@ -871,12 +871,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentSuggestionDismiss => 'Not now';
 
   @override
-  String get suggestionPreviewTask => 'Study';
-
-  @override
-  String get suggestionPreviewText => 'Fit 2h of study in this afternoon. You have a free stretch from 3 pm.';
-
-  @override
   String get agentSuggestionAccept => 'Accept';
 
   @override

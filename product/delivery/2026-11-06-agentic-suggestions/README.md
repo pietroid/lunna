@@ -1,6 +1,6 @@
 # Re-enable agentic suggestions (#120)
 
-Status: draft (mockup).
+Status: built.
 
 ## 1. The prompt
 
@@ -55,23 +55,52 @@ Decisions the screens don't show:
 - A suggestion with no plan (a question, the welcome) shows Detalhes (and Agora não) only.
 - Deny reuses `SuggestionCubit.dismiss()`.
 
-## Build brief
+## 3. What was built
 
-Written in this session (kept for the build):
+![The build](img/build.png)
 
-- `app/packages/agent/lib/src/view/suggestion_card.dart`: rewritten as the compact card (gray `AppColors.fill` container instead of `AgentWash`; Aceitar is an `AppButton.icon` with `AppIcons.check`; the pills carry `arrowRight` / `close`; inner padding s4); `_Offer` is stateful and holds the accepting flag (so the cubit needs no new state); `SuggestionCard(accepting:)` is test-only; `suggestionWords()` splits the text.
-- `app/lib/suggestion_preview.dart`: the preview entry point (`?s=1|2|3`). Scene 2 is the card alone on a scaffold (the demo's apply is instant, so it can't show the spinner).
-- `app/lib/plan/view/home_page.dart:20`: `kSuggestionOnPlan = true`.
-- `app/packages/l10n/lib/arb/app_pt.arb` and `app_en.arb`: `agentSuggestionAccept`, `agentSuggestionDetails`, `suggestionPreviewTask`, `suggestionPreviewText` (the last two are for the preview only); gen/ regenerated.
+The prints show the card on Plano, Aceitar's spinner, and Detalhes opening the agent sheet with the prepared suggestion.
 
-Still to do:
+The rule: a suggestion comes at most every 4 h inside working hours, and the first of the day at its start. The model may ask for sooner (1 h); `nextAtOf` still moves the hour into the work day (`intoWorkDay`).
 
-- Server `server/src/agent/agent.service.ts:2283-2312`: `DEFAULT_FOLLOW_UP = 4`, `FOLLOW_UP_RANGE = { min: 1, max: 4 }`, update the doc comments (3–24).
-- Server prompt `server/src/agent/work-quality.ts:182`: replace "3 when under way today, 24 when tomorrow's" with the 1–4 h range.
-- `server/src/agent/suggestion.store.ts:29`: comment says 3–24.
-- Check the `SuggestionTimer` and the AGENTS.md / `product/spec/agent.md` / `home.md` text that mention 24 h or the old card.
-- Tests: one widget test in `app/packages/agent/test/` (card shows title/description, Accept spinner, Details, Deny) and one server spec for `nextAtOf` (4 h default, clamp 1–4, moved into the work day).
-- Remove or drop `suggestionPreview*` strings if the build prefers; run `.tool/check`.
-- Unused now in the card: `OfferActions` import was dropped (still used by the conversation); check no dead code (`kWelcomeAmounts` was removed with `_Answers`; grep for users).
+Server (`server/src/agent/`), no new routes, tables, env vars or analytics rows:
 
-Open questions: none. Decided unattended: a title/description split on the first sentence instead of asking the server for a separate title.
+- `agent.service.ts`: `DEFAULT_FOLLOW_UP = 4` (was 24), `FOLLOW_UP_RANGE = { min: 1, max: 4 }` (was 3 to 24). Dismiss with no held `nextAt`, the template's next, and the `validUntil` fallback all use 4 h.
+- `work-quality.ts` (`requestOf`) and `agent.prompt.ts` (the prompt line and the `answer` tool's `followUp` schema, 1 to 4) tell the model 1 to 4.
+- Comments in `suggestion.store.ts` and `db/schema.ts` updated. No migration: the column is an integer either way.
+
+App:
+
+- `app/lib/plan/view/home_page.dart`: `kSuggestionOnPlan = true`.
+- `app/packages/agent/lib/src/view/suggestion_card.dart`: the compact gray card. Aceitar (filled accent `AppButton.icon`, check), Detalhes (arrow), Agora não (close). The stateful `_Offer` holds the accepting flag; `SuggestionCard(accepting:)` is for tests.
+- Strings `agentSuggestionAccept` and `agentSuggestionDetails` in `app_pt.arb` / `app_en.arb`. The mockup's preview-only strings and `app/lib/suggestion_preview.dart` were removed after the prints.
+
+Tests:
+
+- Server `npm test -- src/agent`: 10 suites, 102 tests pass. `work-quality.spec.ts` covers the clamp 1 to 4, default 4, and a new `nextAtOf` default case; `agent.controller.spec.ts` expectations moved from a day/5 h to 4 h.
+- App: new `app/packages/agent/test/suggestion_card_test.dart` (6 tests: title, description and three actions; spinner when accepting; Agora não dismisses; no Aceitar without a plan; `suggestionWords`). The two old card tests in `test/voice_test.dart` were rewritten (32 pass).
+- `.tool/check`: all 12 steps green.
+
+Differs from the mockup or plan: nothing visible. The code writing went to opencode (`.tool/oc`); it missed the tool schema's 3 to 24 limits, the `schema.ts` comment and the controller spec's expectations. These were fixed in review.
+
+Decided unattended:
+
+- Title and description split on the first sentence, not a new server field (from the mockup).
+- The welcome (no plan) shows only Detalhes and Agora não.
+- Follow-up range 1 to 4 h with a 4 h default.
+- Preview-only strings removed with the preview entry point.
+- The old `voice_test` card tests rewritten, not deleted.
+
+Next:
+
+- The suggestion's push notification still fires at each `nextAt`, now up to every 4 h. Watch whether that is too many.
+- A short `title` written by the model would beat the first-sentence split.
+- Work Quality evals (`npm run eval:agent`) were not rerun for the new `followUp` wording (costs money).
+
+## 4. How to turn it on
+
+On by default once deployed. There is no flag and no env var.
+
+## 5. Cost and time
+
+Measured by the queue: see the pull request.

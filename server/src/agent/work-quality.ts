@@ -179,7 +179,7 @@ export function requestOf(quality: WorkQuality): string {
     `Topic (Work Quality level ${quality.score + 1} of 7, never named to the person): ${quality.topic}. ${TOPICS[quality.topic]}`,
     `Facts: ${JSON.stringify(quality.facts)}`,
     ...(quality.rest === undefined ? [] : [restOf(quality.rest)]),
-    'Propose the one next step: a plan when one fits (with a preview block when it makes a goal, a delivery or a routine), choices when the person must say something first. The caption is the whole message on the card, at most 80 characters, speaking to the person. Set followUp to the hours until you look again: 3 when a step is under way today, 24 when the next step is tomorrow’s.',
+    'Propose the one next step: a plan when one fits (with a preview block when it makes a goal, a delivery or a routine), choices when the person must say something first. The caption is the whole message on the card, at most 80 characters, speaking to the person. Set followUp to the hours until you look again, 1 to 4: 1 when a step is under way right now, 4 otherwise; the server moves it into the working day.',
   ].join('\n');
 }
 

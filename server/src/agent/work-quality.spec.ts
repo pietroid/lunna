@@ -182,11 +182,11 @@ describe('Work Quality', () => {
 describe('the next suggestion’s hour', () => {
   const user = { id: 'u', workDay: DEFAULT_WORK_DAY } as never;
 
-  it('holds the follow-up to 3–24 hours, 24 when none is said', () => {
-    expect(clampFollowUp(undefined)).toBe(24);
-    expect(clampFollowUp(1)).toBe(3);
-    expect(clampFollowUp(48)).toBe(24);
-    expect(clampFollowUp(5.4)).toBe(5);
+  it('holds the follow-up to 1–4 hours, 4 when none is said', () => {
+    expect(clampFollowUp(undefined)).toBe(4);
+    expect(clampFollowUp(0)).toBe(1);
+    expect(clampFollowUp(48)).toBe(4);
+    expect(clampFollowUp(2.4)).toBe(2);
   });
 
   it('moves an hour outside the working day to the next one’s start', () => {
@@ -202,5 +202,17 @@ describe('the next suggestion’s hour', () => {
     expect(
       nextAtOf(new Date('2026-11-04T13:00:00Z'), 3, user, ZONE).toISOString(),
     ).toBe('2026-11-04T16:00:00.000Z');
+  });
+
+  it('defaults to four hours when none is said', () => {
+    // 10:00 São Paulo + 4 h: 17:00 UTC.
+    expect(
+      nextAtOf(
+        new Date('2026-11-04T13:00:00Z'),
+        undefined,
+        user,
+        ZONE,
+      ).toISOString(),
+    ).toBe('2026-11-04T17:00:00.000Z');
   });
 });

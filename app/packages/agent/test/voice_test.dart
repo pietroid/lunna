@@ -751,7 +751,9 @@ void main() {
       );
 
       expect(find.byTooltip('Ditar nas anotações'), findsOneWidget);
-      await tester.tap(find.byTooltip(lookupAppLocalizations(const Locale('pt')).composeOpen));
+      await tester.tap(
+        find.byTooltip(lookupAppLocalizations(const Locale('pt')).composeOpen),
+      );
       expect(opened, [const AgentSubject.task('t1')]);
     });
   });
@@ -802,8 +804,10 @@ void _suggestionCardTests() {
       await tester.pump();
     }
 
-    testWidgets('the welcome asks with amounts, and an amount is said in '
-        'the conversation', (tester) async {
+    testWidgets('the welcome is its question, with Detalhes and Agora não '
+        'and nothing to accept; Detalhes opens the conversation', (
+      tester,
+    ) async {
       await pumpCard(
         tester,
         const AgentSuggestion(
@@ -814,19 +818,18 @@ void _suggestionCardTests() {
       );
 
       expect(find.text('Quanto você quer faturar este mês?'), findsOneWidget);
-      expect(find.text('Outro valor'), findsOneWidget);
-      // No plan: no Aplicar, and no Work Quality anywhere.
-      expect(find.text('Aplicar'), findsNothing);
+      expect(find.text('Agora não'), findsOneWidget);
+      // No plan: no Aceitar, and no Work Quality anywhere.
+      expect(find.text('Aceitar'), findsNothing);
       expect(find.textContaining('/7'), findsNothing);
 
-      await tester.tap(find.text(r'R$ 5.000'));
+      await tester.tap(find.text('Detalhes'));
       await tester.pumpAndSettle();
       expect(find.byType(AgentSheet), findsOneWidget);
-      expect(find.text(r'Quero faturar R$ 5.000 este mês.'), findsOneWidget);
     });
 
-    testWidgets('a turn with a plan is its words, its preview and its '
-        'actions; Ajustar opens it, plan and all', (tester) async {
+    testWidgets('a turn with a plan is a title, a line and Aceitar; '
+        'Detalhes opens the prepared surface, plan and all', (tester) async {
       await pumpCard(
         tester,
         AgentSuggestion(
@@ -856,18 +859,17 @@ void _suggestionCardTests() {
         ),
       );
 
-      expect(find.text(r'Faltam R$ 2.400. Encaixo hoje às 14:00?'), findsOne);
-      // With no tab to draw it, the agent draws the delivery itself.
-      expect(find.textContaining('Mapa da Ana'), findsWidgets);
-      expect(find.text('Aplicar anota a entrega.'), findsOneWidget);
-      expect(find.text('Aplicar'), findsOneWidget);
-      // The focus tag of #67 is gone.
-      expect(find.text('Entrega'), findsNothing);
+      expect(find.text(r'Faltam R$ 2.400'), findsOneWidget);
+      expect(find.text('Encaixo hoje às 14:00?'), findsOneWidget);
+      expect(find.text('Aceitar'), findsOneWidget);
+      // The card is small: the preview waits in Detalhes.
+      expect(find.text('Aplicar anota a entrega.'), findsNothing);
 
-      await tester.tap(find.text('Ajustar'));
+      await tester.tap(find.text('Detalhes'));
       await tester.pumpAndSettle();
       expect(find.byType(AgentSheet), findsOneWidget);
-      expect(find.text(r'Faltam R$ 2.400.'), findsOneWidget);
+      expect(find.textContaining('Mapa da Ana'), findsWidgets);
+      expect(find.text('Aplicar anota a entrega.'), findsOneWidget);
     });
   });
 }

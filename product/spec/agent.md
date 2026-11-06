@@ -283,9 +283,9 @@ kept): the header's caret ⌄ on the left takes it back down. Tapping the bar
 opens it empty, on the field, keyboard up: no welcome and no suggested
 questions. Opened from a suggestion it starts on the suggestion's opening,
 keyboard down. Aplicar closes it, as before.
-The suggestion is drawn at the top of the Feed tab (asked for again each
-time the tab comes forward and when a new day begins), and its ✕ rests it
-for 24 hours on the device. Applying replaces the day
+The suggestion is drawn at the top of Plano (asked for again each
+time the tab comes forward and when a new day begins); *Agora não* dismisses
+it on the server (see "The suggestion"). Applying replaces the day
 (`TimelineReplaced(undoable:)`); the cards it changed are drawn like any
 others. **Desfazer** (`UndoChip`) sits on the Lista/Calendário row while
 `TimelineState.undoable` holds the plan: it does not time out, and any
@@ -295,8 +295,8 @@ were before the plan.
 ### The suggestion
 
 **A suggestion is a turn the agent asks itself, about Work Quality.** One
-thing is offered at the top of the Feed without being asked
-(`SuggestionCard`). **Code picks the topic, the model writes the turn**
+thing is offered at the top of Plano without being asked
+(`SuggestionCard`, `kSuggestionOnPlan`). **Code picks the topic, the model writes the turn**
 ([RFC](../research/2026-10-29-agentic-suggestions/README.md),
 [delivery](../delivery/2026-10-29-agentic-suggestions/README.md)).
 
@@ -342,13 +342,24 @@ Aplicar makes ("Aplicar anota a entrega."). The app draws a goal with
 its hours, its days, its checklist as empty boxes), on the page's
 background; a new working day is told in `applies` ("Aplicar anota a
 rotina e o novo horário do dia."); the plan under it is
-`OfferActions` (the line, Ajustar, Aplicar), on the card and in the chat.
+`OfferActions` (the line, Ajustar, Aplicar) in the chat.
+
+**The card is small and gray** (`AppColors.fill`, inner padding `s4`, aligned
+with the Now card). Its title is the first sentence of `text`; the rest is
+the description, on one line with an ellipsis (`suggestionWords`). Three
+actions: **Aceitar** (filled accent, check icon; only when the suggestion
+has a plan) runs `applyAgentPlan` with a small spinner in its place, then
+`SuggestionCubit.clear()` removes the card (on failure the button returns
+and a snackbar says why); **Detalhes** opens `showAgentSheet(suggestion:)`
+on the prepared opening, no new turn; **Agora não** calls
+`SuggestionCubit.dismiss()`. The welcome (no plan) has only the last two.
 
 **When the next one comes: `nextAt`.** The answer tool's `followUp`
-(hours) is held to 3–24, 24 when absent; `nextAt` is the last answer (or
+(hours) is held to 1–4, 4 when absent (`FOLLOW_UP_RANGE`,
+`DEFAULT_FOLLOW_UP`), so one comes at most every 4 h in working hours; `nextAt` is the last answer (or
 the writing) plus it, moved to the next working day's start when it falls
 outside one (`nextAtOf`, `intoWorkDay`). **Every answer moves it**:
-Aplicar on its plan (`takenAt`), the ✕ (`POST
+Aplicar on its plan (`takenAt`), Agora não (`POST
 /agent/suggestion/:id/dismiss`, `dismissedAt`; keeps `nextAt`), and each
 message in the conversation it opened (`answeredAt`, from that turn's
 `followUp`). An answered one is hidden until `nextAt`, and so is one whose
@@ -361,7 +372,7 @@ read writes a new turn of the day as it is.
 fixed words (`agentWelcome`, `agentWelcomeQuestion`) and the amounts R$
 3.000, 5.000, 8.000 (each sends "Quero faturar R$ … este mês.") and Outro
 valor (opens the chat empty). A message in its conversation answers it;
-✕ puts it away 24 h; a goal made by hand skips it.
+Agora não puts it away until the next `nextAt`; a goal made by hand skips it.
 
 **One timer per person** (`SuggestionTimer`): armed at each `nextAt`
 written, re-armed at boot from `pending`, firing once: catch-up, then
@@ -547,7 +558,7 @@ level** (`agent/work-quality.ts`: goal, reach, shape, tasks, fits,
 routine, pace; the score goes to PostHog as `work_quality`, never on
 screen): code picks the topic, the model writes the words, the plan (drawn
 as a `preview` by the tabs' own widgets, then Ajustar and Aplicar) and
-when to look again (`followUp`, 3–24 h). It is kept in `agent_suggestion`
+when to look again (`followUp`, 1–4 h). It is kept in `agent_suggestion`
 until its `nextAt` (moved by every answer: Aplicar, ✕, a message in its
 conversation); a new person finds the fixed welcome, which never expires,
 and a failed turn falls back to #67's arithmetic template. Its

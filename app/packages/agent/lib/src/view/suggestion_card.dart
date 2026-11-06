@@ -4,9 +4,7 @@ import 'package:agent/src/models.dart';
 import 'package:agent/src/suggestion_cubit.dart';
 import 'package:agent/src/view/agent_sheet.dart';
 import 'package:agent/src/view/apply_plan.dart';
-import 'package:agent/src/view/offer_actions.dart';
 import 'package:app_ui/app_ui.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 
