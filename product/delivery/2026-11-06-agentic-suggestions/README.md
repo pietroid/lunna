@@ -24,6 +24,10 @@ Review reply (revision 2):
 
 > adjust the card background, it could be gray.
 
+Review reply (revision 3):
+
+> spacing is a bit bad on the right button. after that, approve
+
 The plan (by /create, ~2.5 % of the week):
 
 - Turn the suggestion back on in Plano (`kSuggestionOnPlan = true`).
@@ -41,7 +45,7 @@ Not doing: no change to how the model picks the content; no animation polish bey
 
 ![The strip](img/mockup-steps.png)
 
-1. The card sits at the top of Plano, two lines of text and three actions: **Aceitar** (filled accent button, check icon: the highlight), **Detalhes** (arrow icon), **Agora não** (x icon). The card is gray (`AppColors.fill`, not the pink wash). Its inner padding is `AppSpacing.s4`, so its text and mark line up with the Now card's.
+1. The card sits at the top of Plano, two lines of text and three actions: **Aceitar** (filled accent button, check icon: the highlight), **Detalhes** (arrow icon), **Agora não** (x icon). The card is gray (`AppColors.fill`, not the pink wash). Its inner padding is `AppSpacing.s4`, so its text and mark line up with the Now card's. **Agora não** is shifted out by its own pill padding (`AppSpacing.s3`), so its label ends on the card's inner edge, like the text above it (revision 3).
 2. Aceitar swaps for a small spinner while the plan applies; the card goes when it is done (on failure the button returns and a snackbar says why).
 3. Detalhes opens the agent sheet already holding the prepared surface (preview, plan, Adjust/Apply), no new turn.
 

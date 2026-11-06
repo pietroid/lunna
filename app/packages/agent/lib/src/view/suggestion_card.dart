@@ -170,11 +170,16 @@ class _OfferState extends State<_Offer> {
                 ),
                 const Spacer(),
                 if (!_accepting)
-                  AppPillButton(
-                    label: l10n.agentSuggestionDismiss,
-                    iconData: AppIcons.close,
-                    onPressed: () =>
-                        unawaited(context.read<SuggestionCubit>().dismiss()),
+                  // The pill's own padding is moved out so its label ends on
+                  // the card's inner edge, like the text above it.
+                  Transform.translate(
+                    offset: const Offset(AppSpacing.s3, 0),
+                    child: AppPillButton(
+                      label: l10n.agentSuggestionDismiss,
+                      iconData: AppIcons.close,
+                      onPressed: () =>
+                          unawaited(context.read<SuggestionCubit>().dismiss()),
+                    ),
                   ),
               ],
             ),
