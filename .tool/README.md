@@ -1,6 +1,6 @@
 # Internal tools
 
-Scripts for working on Lunna/Focus, not part of the app or the server.
+Scripts for working on Lunna, not part of the app or the server.
 Node ≥ 22 and nothing to install. Run them from the repo root.
 
 Each one does in one call what used to take several, and prints only what
@@ -20,7 +20,7 @@ whole-file `cat`, and keep any single tool result under ~20k chars.
 |------|----------|
 | `check` | CI's checks on what changed, one line per step |
 | `map` | The code map: each source file and what it declares, filtered by words, in one call |
-| `preview` | Build a preview entry point in both brands, screenshot it, lay out the step strip |
+| `preview` | Build a preview entry point (English by default), screenshot it, lay out the step strip |
 | `cost` | What a Claude Code session cost, per message, from its transcript |
 | `doc` | List, open and comment on the Markdown under `product/`; check an RFC's slides and print them |
 | `queue` | GitHub issues worked by Claude Code on this Mac, gate by gate |
@@ -32,27 +32,27 @@ whole-file `cat`, and keep any single tool result under ~20k chars.
 ```bash
 .tool/check                  # what changed against HEAD (untracked included)
 .tool/check --all            # everything, as CI does
-.tool/check --brands lunna   # one brand only, while iterating
 ```
 
 The server's eslint, tsc and tests (under `TZ=UTC`, as CI) run beside the
-app's `flutter analyze` and the tests of each changed package under both
-brands. A change to `app_ui` or `l10n` tests every package. Each step
+app's `flutter analyze` and the tests of each changed package. A change to `app_ui` or `l10n` tests every package. Each step
 prints `✓ name (12s)`, or `✗` with the lines that explain it and its log.
 
 ## `preview`: prints of a preview entry point
 
 ```bash
-.tool/preview <slug> 1 2 3 [--brands lunna,focus] [--out dir] [--steps steps.txt] [--board board.json] [--no-build]
+.tool/preview <slug> 1 2 3 [--lang en|pt] [--out dir] [--steps steps.txt] [--board board.json] [--no-build]
 ```
 
-Builds `app/lib/<slug>_preview.dart` (or `app/lib/<slug>.dart`) for each
-brand at once, screenshots each scene (`?s=<n>`) as a 390×844 phone into
-`<out>/<brand>/<n>.png` plus `strip.png`. It also writes a 240 px-wide
+Builds `app/lib/<slug>_preview.dart` (or `app/lib/<slug>.dart`) with
+`--dart-define=PREVIEW_LANG=<lang>` (**English by default**; the entry point
+reads it as `previewLocale`, and the shipped app stays pt-BR), screenshots
+each scene (`?s=<n>`) as a 390×844 phone into `<out>/<n>.png` plus
+`strip.png`. It also writes a 240 px-wide
 `<n>-thumb.png` and `strip-thumb.png` for cheap LLM review. With `--steps`
-(one line per scene) it writes `<out>/<brand>/steps.png`, the scenes in a
+(one line per scene) it writes `<out>/steps.png`, the scenes in a
 row with a numbered line under each (what `/mockup` sends), and
-`steps-thumb.png` (~140 px a scene, ~60k characters for two). With `--board`
+`steps-thumb.png` (~140 px a scene). With `--board`
 it lays out the annotated board in `<out>/board/` (full `board.png` and
 `board-thumb.png`, plus `screenN.png` and `screenN-thumb.png`). A failed
 build prints its errors. Last, it prints `⚠ off-token <file>:<line>` for
@@ -131,7 +131,7 @@ page redraws whenever the file changes, from any editor.
 **An RFC is a deck** (`/research`): each `##` a slide, a sentence headline
 over one visual. Both pages draw it that way, with one stylesheet and
 script (`<style id="deck">`, `<script id="deck">` in `review.html`, which
-`annotate.mjs` copies): Focus's tokens, Onest, true black, Mermaid
+`annotate.mjs` copies): dark tokens, Onest, true black, Mermaid
 diagrams in the same colours (`:::key` draws a node lime), GitHub alerts
 (`> [!IMPORTANT]` the point, `> [!TIP]` an idea to keep).
 

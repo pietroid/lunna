@@ -85,8 +85,6 @@ class SeamHandle extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.accent,
             borderRadius: BorderRadius.circular(height / 2),
-            // Black on Focus, which is also the default; not on Lunna.
-            // ignore: avoid_redundant_argument_values
             border: Border.all(color: AppColors.bg, width: 2),
           ),
         ),

@@ -1,22 +1,24 @@
 #!/usr/bin/env bash
-# Builds a preview entry point (app/lib/<slug>_preview.dart) for each brand
-# at once, screenshots its scenes as a phone, and lays out the board, in one
-# call. Prints the paths of what it made; a failed build prints its errors.
+# Builds a preview entry point (app/lib/<slug>_preview.dart), screenshots its
+# scenes as a phone, and lays out the strip or the board, in one call. Prints
+# the paths of what it made; a failed build prints its errors.
 #
-# Usage: .tool/preview <slug> <scene>... [--brands lunna,focus] [--out <dir>]
+# Usage: .tool/preview <slug> <scene>... [--lang en|pt] [--out <dir>]
 #                      [--steps <steps.txt>] [--board <board.json>] [--no-build]
-#   <out>/<brand>/<n>.png and strip.png per brand; with --board, the board
-#   (board.png, screen1..n.png) in <out>/board/. With --steps (one line per
-#   scene), <out>/<brand>/steps.png: the step-by-step strip /mockup sends. --no-build reshoots the
-#   last build, for when only the board or a wait changed.
+#   <out>/<n>.png and strip.png; with --steps (one line per scene),
+#   <out>/steps.png, the step-by-step strip /mockup sends; with --board, the
+#   board in <out>/board/. --lang picks the copy the app draws: English by
+#   default, so prints are read in the language the work is talked about in
+#   (the shipped app is pt-BR; the entry point reads it as `previewLocale`).
+#   --no-build reshoots the last build, for when only the board or a wait changed.
 set -uo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
-slug=${1:?usage: .tool/preview <slug> <scene>... [--brands lunna,focus] [--out dir] [--board board.json] [--no-build]}
+slug=${1:?usage: .tool/preview <slug> <scene>... [--lang en|pt] [--out dir] [--steps steps.txt] [--board board.json] [--no-build]}
 shift
-scenes=""; brands="lunna"; out="${TMPDIR:-/tmp}/lunna-preview/$slug"; board=""; steps=""; build=1
+scenes=""; lang="en"; out="${TMPDIR:-/tmp}/lunna-preview/$slug"; board=""; steps=""; build=1
 while [ $# -gt 0 ]; do
   case $1 in
-    --brands) brands=${2//,/ }; shift ;;
+    --lang) lang=$2; shift ;;
     --out) out=$2; shift ;;
     --board) board=$2; shift ;;
     --steps) steps=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift ;;
@@ -32,30 +34,20 @@ entry="lib/${slug}_preview.dart"
 [ -f "$root/app/$entry" ] || { echo "no app/lib/${slug}_preview.dart"; exit 2; }
 
 if [ $build = 1 ]; then
-  # One brand after the other: two builds at once fight over
-  # app/ios/Flutter/ephemeral and one of them fails.
-  for brand in $brands; do
-    start=$SECONDS; log="$out/build-$brand.log"
-    if ! (cd "$root/app" && flutter build web -t "$entry" --dart-define=BRAND=$brand \
-      --no-tree-shake-icons --no-wasm-dry-run -o "$out/web-$brand") >"$log" 2>&1; then
-      grep -nE 'Error|error:|Exception|Unable' "$log" | head -30 || tail -15 "$log"
-      echo "✗ $brand build failed; log: $log"
-      exit 1
-    fi
-    echo "✓ built $brand ($((SECONDS - start))s)"
-  done
+  start=$SECONDS; log="$out/build.log"
+  if ! (cd "$root/app" && flutter build web -t "$entry" --dart-define=PREVIEW_LANG=$lang \
+    --no-tree-shake-icons --no-wasm-dry-run -o "$out/web") >"$log" 2>&1; then
+    grep -nE 'Error|error:|Exception|Unable' "$log" | head -30 || tail -15 "$log"
+    echo "✗ build failed; log: $log"
+    exit 1
+  fi
+  echo "✓ built ($lang, $((SECONDS - start))s)"
 fi
 
-pids=""
-for brand in $brands; do
-  STEPS="$steps" "$root/.tool/mockup/shoot-flutter.sh" "$out/web-$brand" "$out/$brand" $scenes >/dev/null 2>"$out/shoot-$brand.log" &
-  pids="$pids $!"
-done
-for pid in $pids; do wait "$pid" || { echo "✗ screenshots failed; see $out/shoot-*.log"; exit 1; }; done
-for brand in $brands; do
-  echo "$brand: $out/$brand/strip.png ($(for s in $scenes; do printf '%s.png ' "$s"; done))"
-  [ -n "$steps" ] && echo "$brand steps: $out/$brand/steps.png (look at steps-thumb.png)"
-done
+STEPS="$steps" "$root/.tool/mockup/shoot-flutter.sh" "$out/web" "$out" $scenes >/dev/null 2>"$out/shoot.log" \
+  || { echo "✗ screenshots failed; see $out/shoot.log"; exit 1; }
+echo "$out/strip.png ($(for s in $scenes; do printf '%s.png ' "$s"; done))"
+[ -n "$steps" ] && echo "steps: $out/steps.png (look at steps-thumb.png)"
 
 # Off-token lines this branch added to the app: a literal colour, font size or
 # padding instead of AppColors / AppTypography / AppSpacing. The theme itself

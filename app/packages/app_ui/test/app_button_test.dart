@@ -12,7 +12,7 @@ void main() {
     return tester.widget<Text>(find.text('Terminei')).style?.color;
   }
 
-  testWidgets('labels the accent in onAccent: white on red, black on lime', (
+  testWidgets('labels the accent in onAccent: white on red', (
     tester,
   ) async {
     final color = await labelColor(
@@ -23,7 +23,7 @@ void main() {
     expect(color, AppColors.onAccent);
     expect(
       color,
-      AppBrand.isLunna ? const Color(0xFFFFFFFF) : isNot(AppColors.ink),
+      const Color(0xFFFFFFFF),
     );
   });
 

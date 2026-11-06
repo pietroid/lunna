@@ -164,7 +164,7 @@ class _NotesDockViewState extends State<_NotesDockView> {
         SnackBar(
           content: Text(
             dictation.state.status == VoiceStatus.denied
-                ? l10n.agentVoiceDenied(AppBrand.id)
+                ? l10n.agentVoiceDenied
                 : l10n.agentVoiceUnavailable,
           ),
         ),

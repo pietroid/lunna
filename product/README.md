@@ -1,6 +1,6 @@
 # Product
 
-Everything written about Lunna/Focus that is not code. The rules of the
+Everything written about Lunna that is not code. The rules of the
 product as they stand are in [AGENTS.md](../AGENTS.md).
 
 | Folder | What is in it | Written by |

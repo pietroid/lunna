@@ -5,7 +5,7 @@
 # x64 machine (CI or yours) and only copied in here. There are no RUN steps,
 # so building this for linux/arm64 needs no emulation.
 #
-# One image per brand, from the same Dockerfile:
+# Built like this:
 #
 #   (cd app && flutter build web --release --pwa-strategy=none \
 #     --dart-define-from-file env/lunna.production.json && tool/brand_web.sh lunna)

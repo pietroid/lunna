@@ -76,7 +76,7 @@ const TIMEOUT_MS = 20_000;
 /**
  * The model, through OpenRouter's chat completions API.
  *
- * Ported from Focus's agent, where it lived in its own container. Here it is
+ * Ported from an earlier agent that lived in its own container. Here it is
  * one call inside the server: Lunna's agent has two tools and both are the
  * server's own services, so there is nothing a second process would own.
  */

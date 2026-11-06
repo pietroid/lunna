@@ -332,7 +332,7 @@ class _Header extends StatelessWidget {
           const AppIcon(iconData: AppIcons.agent, size: 26),
           const SizedBox(width: AppSpacing.s3),
           Expanded(
-            child: Text(l10n.appName(AppBrand.id), style: AppTypography.title),
+            child: Text(l10n.appName, style: AppTypography.title),
           ),
         ],
       ),
@@ -846,7 +846,7 @@ class _Composer extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final refusal = switch (voice) {
-      VoiceStatus.denied => l10n.agentVoiceDenied(AppBrand.id),
+      VoiceStatus.denied => l10n.agentVoiceDenied,
       VoiceStatus.unavailable => l10n.agentVoiceUnavailable,
       _ => null,
     };

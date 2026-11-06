@@ -54,4 +54,4 @@ not pinned.
 
 `web/index.html` and `web/manifest.json` describe the app as
 "`<name>`: diga o que precisa, o dia se arruma.", which
-`tool/brand_web.sh` stamps with the brand's name.
+`tool/brand_web.sh` stamps with Lunna's name.

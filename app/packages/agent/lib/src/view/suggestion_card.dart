@@ -125,7 +125,7 @@ class _Offer extends StatelessWidget {
             children: suggestion.welcome
                 ? [
                     Text(
-                      l10n.agentWelcome(AppBrand.id),
+                      l10n.agentWelcome,
                       style: AppTypography.body,
                     ),
                     const SizedBox(height: AppSpacing.s3),
@@ -200,7 +200,7 @@ class _Header extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpacing.s2),
                     Text(
-                      l10n.agentSuggestionLabel(AppBrand.id),
+                      l10n.agentSuggestionLabel,
                       style: AppTypography.caption.copyWith(
                         color: AppColors.accent,
                       ),

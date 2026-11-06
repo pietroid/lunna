@@ -2,7 +2,7 @@ import 'package:app_ui/src/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// The type tokens for Focus.
+/// The type tokens for Lunna.
 ///
 /// One face, Onest, across the whole app. Weight and size carry the hierarchy
 /// instead of a second family, and tracking tightens as the size grows so a

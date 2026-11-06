@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DB } from '../db/db';
 import type { Database } from '../db/db';
-import { createAuth, listOf, optionalClient } from './auth';
+import { createAuth, listOf } from './auth';
 import { AUTH } from './auth.tokens';
 import { SessionGuard } from './session.guard';
 
@@ -32,10 +32,6 @@ import { SessionGuard } from './session.guard';
           secret: required('BETTER_AUTH_SECRET'),
           googleClientIds: listOf(required('GOOGLE_CLIENT_IDS')),
           googleClientSecret: required('GOOGLE_CLIENT_SECRET'),
-          focusGoogle: optionalClient(
-            config.get<string>('FOCUS_GOOGLE_CLIENT_ID'),
-            config.get<string>('FOCUS_GOOGLE_CLIENT_SECRET'),
-          ),
           trustedOrigins: listOf(config.get<string>('TRUSTED_ORIGINS')),
           allowedEmails: listOf(config.get<string>('ALLOWED_EMAILS')),
           defaultTimeZone:

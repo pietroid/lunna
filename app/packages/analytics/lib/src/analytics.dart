@@ -11,7 +11,7 @@ abstract class Analytics {
   /// {@macro analytics}
   const Analytics();
 
-  /// Ties what follows to the account [userId], across devices and brands.
+  /// Ties what follows to the account [userId], across devices.
   Future<void> identify(String userId, {Map<String, Object>? properties});
 
   /// Forgets the account: what follows is anonymous again.

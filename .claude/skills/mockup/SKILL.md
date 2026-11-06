@@ -1,5 +1,5 @@
 ---
-description: /mockup - show a Lunna/Focus change as a step-by-step strip, cheaply and in the app's own design - 2 to 5 phone screens drawn by the real Flutter app inside the real screen (real widgets, tokens only, pt-BR copy), one short line under each, reading only the /create plan's scope, one build and at most one fix pass; writes the draft delivery README with a Build brief for /build. Use after a /create plan, or when asked for a quick mockup, prints of an idea, or "how would X look".
+description: /mockup - show a Lunna change as a step-by-step strip, cheaply and in the app's own design - 2 to 5 phone screens drawn by the real Flutter app inside the real screen (real widgets, tokens only, drawn in English), one short line under each, reading only the /create plan's scope, one build and at most one fix pass; writes the draft delivery README with a Build brief for /build. Use after a /create plan, or when asked for a quick mockup, prints of an idea, or "how would X look".
 ---
 
 # Mockup: the strip
@@ -40,11 +40,11 @@ for.
    before writing.
 2. **Write the change where it will live** (the package that owns it),
    every string in `app_pt.arb` (`flutter gen-l10n` in
-   `app/packages/l10n`). Copy in Brazilian Portuguese, mocked but
-   believable. One primary action per screen. No sparkles, wands or
+   `app/packages/l10n`), and its English in `app_en.arb`: the strip is
+   drawn in English, the app ships pt-BR. Copy mocked but believable. One primary action per screen. No sparkles, wands or
    robots: the agent is `AppIcons.agent`.
 3. **The entry point** `app/lib/<slug>_preview.dart`, shaped like
-   `lib/preview.dart` (`AppTheme.current`, pt-BR l10n, `DemoApp` or the
+   `lib/preview.dart` (`AppTheme.current`, `locale: previewLocale`, `DemoApp` or the
    real page with `DemoTimelineRepository` and fakes with canned replies).
    `?s=<n>` (`Uri.base.queryParameters`) picks the scene, and each scene
    seeds its state directly (a cubit built with it, a sheet opened in a
@@ -53,8 +53,8 @@ for.
    difference.
 4. **The steps file**, one line per scene, in order, in the scratchpad.
 5. **Build and shoot once**: `.tool/preview <slug> 1 2 3 --steps
-   <steps.txt> --out <scratchpad>/m` (foreground, ~30 s; Lunna unless the brief
-   says Focus). It writes `<out>/lunna/steps.png` and `steps-thumb.png`.
+   <steps.txt> --out <scratchpad>/m` (foreground, ~30 s, English). It writes `<out>/steps.png` and
+   `steps-thumb.png`.
 6. **Look at `steps-thumb.png` only**, never a full-size PNG: overflow
    stripes, grey boxes (a build exception, often a sheet without its
    `BlocProvider.value`), clipped text, and anything that doesn't match the

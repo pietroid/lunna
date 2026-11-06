@@ -7,44 +7,22 @@ Lunna is a personal day planner with two parts:
 1. **Flutter app** in `app/`: iOS, Android and web.
 2. **NestJS backend** in `server/`: REST API, Better Auth, Postgres.
 
-Each build is one of two brands, Focus or Lunna (see below).
+It started as a copy of an earlier app with the AI agent, the
+conversations, the untimed "things" list and Google Calendar taken out.
+What is left is the timeline and its calendar dynamics, the routines, the
+reminders, and the design system, plus a smaller agent of its own (see
+"The agent").
 
-It started as a copy of Focus with the AI agent, the conversations, the
-untimed "things" list and Google Calendar taken out. What is left is the
-timeline and its calendar dynamics, the routines, the reminders, and the
-design system, plus a smaller agent of its own (see "The agent").
+### The look
 
-### Two brands
-
-The same code builds two apps with the same features: **Focus** (dark,
-lime, `focus.pietroteruya.dev`, `com.pietroid.focus`) and **Lunna** (light,
-red, the crescent mark, `lunna.pietroteruya.dev`, `com.pietroid.lunna`).
-They share one backend and one database.
-
-- The `BRAND` define (`focus`|`lunna`, in `app/env/<brand>.<env>.json`)
-  is read once by `AppBrand` in `app_ui`. Every `AppColors` token is a
-  constant chosen by it, so screens never branch on the brand: give them a
-  token, and if a brand needs a value the other does not, add a token
-  (`freeEdge`, `shadow`). Typography, spacing and radii are shared.
-- A build without `BRAND` is Focus, so tests run against Focus by default;
-  CI runs them under both (`flutter test --dart-define=BRAND=lunna`).
-- Strings that name the app select on `AppBrand.id`
-  (`context.l10n.appName(AppBrand.id)`); Portuguese says "o Focus" but
-  "a Lunna".
-- Native: flavors `focusDev`, `focusProduction`, `lunnaDev`,
-  `lunnaProduction`. Icons and splash come from `app/brands/`
-  ([app/brands/README.md](./app/brands/README.md)). The web build is
-  branded after the fact by `app/tool/brand_web.sh`.
-- The server knows no brand in its data: one user table, one database, so
-  the same Google account is the same person in both apps (and people can
-  share things later). `BETTER_AUTH_URL` lists both origins and Better Auth
-  answers each request on its own host.
-- Each brand is its own Google Cloud project, so Google's consent screen
-  names it. Lunna's web redirect is the `google` provider; Focus's is
-  `google-focus` (generic OAuth, `FOCUS_GOOGLE_CLIENT_ID`), picked by the
-  app's `GOOGLE_WEB_PROVIDER` define. Phones of both brands post ID tokens
-  to `google`, which accepts every client listed in `GOOGLE_CLIENT_IDS`.
-  Account linking joins a verified email to the user it already has.
+One app, light: white, warm rose neutrals, a red accent, the crescent mark
+(`lunna.pietroteruya.dev`, `com.pietroid.lunna`). Every colour is an
+`AppColors` token in `app_ui`; screens never hard-code one. Native flavors
+are `lunnaDev` and `lunnaProduction`; icons and splash come from
+`app/brands/` ([app/brands/README.md](./app/brands/README.md)), and the web
+build is stamped by `app/tool/brand_web.sh lunna`. Google is the only way
+in: phones post ID tokens to the `google` provider, which accepts every
+client listed in `GOOGLE_CLIENT_IDS`.
 
 ### Language
 
@@ -57,7 +35,10 @@ Activity's copy, which Swift draws, is in
 writes its own refusals and reminder copy in Portuguese, and the app shows
 them as written.
 
-Code, comments, commits and this file stay in English.
+Code, comments, commits, issues and this file stay in English.
+`app_en.arb` holds every string in English too, **only for previews and
+prints**: `.tool/preview` builds with `PREVIEW_LANG=en` and a preview entry
+point sets `locale: previewLocale`. The app itself always runs in pt-BR.
 
 ## Stack
 
@@ -66,19 +47,19 @@ Code, comments, commits and this file stay in English.
 - **Database:** Postgres on Neon: a `dev` branch locally, `main` in
   production. `npm run db:local` runs an in-memory Postgres (PGlite) for
   working offline.
-- **Deploy:** three ARM64 images on GHCR (`lunna-backend`, `lunna-web`,
-  `focus-web`), pulled by a Raspberry Pi over SSH through a Cloudflare
-  tunnel. See [SETUP.md](./SETUP.md) and [MIGRATION.md](./MIGRATION.md).
+- **Deploy:** two ARM64 images on GHCR (`lunna-backend`, `lunna-web`),
+  pulled by a Raspberry Pi over SSH through a Cloudflare tunnel. See
+  [SETUP.md](./SETUP.md).
 
 ## Layout
 
 ```
 app/
-  brands/               per-brand icons, splash and web assets (+ README)
-  env/                  <brand>.<env>.json defines (examples committed)
+  brands/               icons, splash and web assets (+ README)
+  env/                  lunna.<env>.json defines (examples committed)
   ios/BlockActivity/    the running block's Live Activity (Widget Extension,
                         iOS 17): SwiftUI views, intents, the shared state
-  tool/brand_web.sh     stamps a brand on a web build
+  tool/brand_web.sh     stamps Lunna's name and icons on a web build
   lib/                  shell, plan (Plano, the home: Agora, Pendentes,
                         Para depois; the play sheets, writeTask), tempo
                         (DayPage, the calendar), feed (the demo's
@@ -91,7 +72,7 @@ app/
                         suggestion, voice
     analytics/          PostHog behind one seam (Analytics, NoAnalytics)
     api_client/         Dio + bearer token interceptor
-    app_ui/             the design system: AppBrand, theme, tokens, widgets
+    app_ui/             the design system: theme, tokens, widgets, assets
     auth/               Better Auth client: Google sign-in, token store
     l10n/               every user-facing string (pt-BR)
     notifications/      local reminder queue, clearing what was shown, background refresh
@@ -393,7 +374,7 @@ code there reads `clock.now()`, never `DateTime.now()`. See
 
 ## Analytics
 
-PostHog (US cloud, one project for both brands) hears of each write that
+PostHog (US cloud, one project) hears of each write that
 succeeded, by route, from `LoggingInterceptor`; of every 5xx and crash; of
 the screens; and records replays with every text and image masked.
 **Nothing a person wrote is ever sent**, and **without `POSTHOG_KEY`
@@ -426,10 +407,9 @@ npm run db:generate     # after editing src/db/schema.ts; commit drizzle/
 # App
 cd app
 flutter run --flavor lunnaDev --dart-define-from-file env/lunna.dev.json
-flutter run --flavor focusDev --dart-define-from-file env/focus.dev.json
 flutter run -d chrome --web-port 5173 --dart-define-from-file env/lunna.dev.json
-flutter test --dart-define=BRAND=lunna     # tests default to Focus
-(cd packages/l10n && flutter gen-l10n)   # after editing app_pt.arb; commit gen/
+flutter test
+(cd packages/l10n && flutter gen-l10n)   # after editing app_pt.arb (and app_en.arb); commit gen/
 ```
 
 Migrations run on server boot (`migrateDatabase` in `main.ts`), so there is

@@ -1,4 +1,4 @@
-/// Reminders for Focus, scheduled on the device from the server's plan.
+/// Reminders for Lunna, scheduled on the device from the server's plan.
 library;
 
 export 'package:flutter_local_notifications/flutter_local_notifications.dart'

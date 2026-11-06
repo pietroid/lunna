@@ -152,7 +152,7 @@ class App extends StatelessWidget {
       child: analytics.wrap(
         MaterialApp.router(
           debugShowCheckedModeBanner: false,
-          onGenerateTitle: (context) => context.l10n.appName(AppBrand.id),
+          onGenerateTitle: (context) => context.l10n.appName,
           theme: AppTheme.current,
           locale: const Locale('pt', 'BR'),
           localizationsDelegates: AppLocalizations.localizationsDelegates,

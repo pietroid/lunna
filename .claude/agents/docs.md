@@ -1,6 +1,6 @@
 ---
 name: docs
-description: Finishes a Lunna/Focus delivery's documents from a build's brief - the delivery README's sections 3 to 5, the feature's spec in product/spec/, and its pointer in AGENTS.md. Use at the end of /build, so the long writing happens in a small, fresh context instead of the build's.
+description: Finishes a Lunna delivery's documents from a build's brief - the delivery README's sections 3 to 5, the feature's spec in product/spec/, and its pointer in AGENTS.md. Use at the end of /build, so the long writing happens in a small, fresh context instead of the build's.
 tools: Read, Edit, Write, Bash
 model: sonnet
 ---
@@ -12,8 +12,7 @@ in slices with `grep -n` and `Read` `offset`/`limit`.
 
 1. **The delivery README** (`product/delivery/<date>-<slug>/README.md`):
    remove the Build brief and write, after sections 1 and 2:
-   3. **What was built**: the build's images (`img/build-lunna.png`,
-      `img/build-focus.png`), or the commands that prove it and what they
+   3. **What was built**: the build's image (`img/build.png`), or the commands that prove it and what they
       printed; the rule that matters; the server files and routes; the app
       pieces; the tests with their counts; and where the build differs
       from the mockup or the plan, and why.

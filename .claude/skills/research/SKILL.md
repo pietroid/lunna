@@ -1,6 +1,6 @@
 ---
 name: research
-description: /research - research a problem in Lunna/Focus and present it as an RFC that reads like a short talk - one Markdown deck in its own product/research/<date>-<slug>/ folder, each heading a slide that states one point over one diagram, table, picture or piece of code, in story order (the finding, today, examples, the change, trade-offs, impact, decisions, where to go deeper) - with the data, code and reports behind it. Trace the symptoms to the code, read the literature, measure the impact, build the visuals and check them with .tool/doc shape and shot, answer the person's notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
+description: /research - research a problem in Lunna and present it as an RFC that reads like a short talk - one Markdown deck in its own product/research/<date>-<slug>/ folder, each heading a slide that states one point over one diagram, table, picture or piece of code, in story order (the finding, today, examples, the change, trade-offs, impact, decisions, where to go deeper) - with the data, code and reports behind it. Trace the symptoms to the code, read the literature, measure the impact, build the visuals and check them with .tool/doc shape and shot, answer the person's notes (GitHub line comments or .tool/doc), then verify the weakest claims with a deep-research pass. When the RFC is approved it lands on main and its implementation is opened as a /create issue the queue builds into a PR. Use when asked to "research", "investigate how to improve", write an RFC, a proposal, a thesis, or to compare approaches before building.
 ---
 
 # Research: the digging is long, the RFC is a short talk
@@ -61,12 +61,12 @@ Make the visuals **before** the prose; the prose is their caption.
 |---|---|---|
 | a flow, a call sequence, states, before → after | Mermaid (```` ```mermaid ````) | ≤ 12 nodes; mark the one that matters `:::key` (drawn lime) |
 | a comparison, a diagnosis, options | a table | ≤ 5 columns, first column the name |
-| numbers over a range | a chart PNG in `img/` | a `code/` script; the `dataviz` skill; dark, Focus's colours |
+| numbers over a range | a chart PNG in `img/` | a `code/` script; the `dataviz` skill; dark, the review page's colours |
 | the app, a screen, a page | a screenshot in `img/` | `.tool/preview`, `.tool/doc shot` |
 | how the code does it | an excerpt, ≤ 15 lines | with its `path:line` link above it |
 
-GitHub draws Mermaid natively; the review page draws it in Focus's
-colours. **Draw for a 390 px screen:** a diagram wider than the phone
+GitHub draws Mermaid natively; the review page draws it in its own
+dark colours. **Draw for a 390 px screen:** a diagram wider than the phone
 shrinks until its text can't be read, so prefer `flowchart TD`, at most
 three boxes side by side, and no sequence diagram past three participants.
 Pictures go in `img/`, never only in the scratchpad.

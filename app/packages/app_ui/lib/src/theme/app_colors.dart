@@ -1,234 +1,158 @@
-import 'package:app_ui/src/theme/app_brand.dart';
 import 'package:flutter/material.dart';
 
-/// The color tokens, one set per [Brand].
+/// The color tokens.
 ///
-/// **Focus** is a dark-only app built on true black, so the screen disappears
-/// and only the content is lit. Surfaces are opaque greys rather than
-/// translucent whites: on black a translucent white lifts the hue of whatever
-/// sits behind it, and the app leans on a single neutral ramp.
+/// Lunna is drawn in daylight: white, warm neutrals with a trace of rose in
+/// them, a red accent, routines in a pale blue.
 ///
-/// **Lunna** is the same app in daylight: white, warm neutrals with a trace
-/// of rose in them, a red accent, routines in a pale blue. Every token keeps
-/// its meaning; only the values change, so no screen knows which app it is.
-///
-/// Against either ramp sits a five-colour palette, and every one of them
+/// Against that ramp sits a five-colour palette, and every one of them
 /// means something. Colour in this app is reserved for what can be acted on
 /// or what carries a state: a button, an icon that says how something went, a
 /// caption that is a warning. Nothing is coloured to be pretty, because once
 /// anything is, nothing is legible at a glance.
 abstract final class AppColors {
-  /// The page background behind every screen. True black.
-  static const bg = AppBrand.isLunna ? Color(0xFFFFFFFF) : Color(0xFF000000);
+  /// The page background behind every screen. White.
+  static const bg = Color(0xFFFFFFFF);
 
   /// The surface a sheet, a menu, or a dialog sits on.
-  static const surface = AppBrand.isLunna
-      ? Color(0xFFFFFFFF)
-      : Color(0xFF0D0D0D);
+  static const surface = Color(0xFFFFFFFF);
 
   /// The borderless fill that gives a field or a card its shape.
-  static const fill = AppBrand.isLunna ? Color(0xFFF7F3F3) : Color(0xFF1C1C1C);
+  static const fill = Color(0xFFF7F3F3);
 
   /// A heavier [fill], for pressed states, tracks, and inactive bars.
-  static const fillStrong = AppBrand.isLunna
-      ? Color(0xFFEEE7E8)
-      : Color(0xFF2B2B2B);
+  static const fillStrong = Color(0xFFEEE7E8);
 
   /// Hairline separators.
-  static const line = AppBrand.isLunna ? Color(0xFFEEE7E8) : Color(0xFF232323);
+  static const line = Color(0xFFEEE7E8);
 
   /// Text primary: the lit content.
-  static const ink = AppBrand.isLunna ? Color(0xFF1C1517) : Color(0xFFF5F5F5);
+  static const ink = Color(0xFF1C1517);
 
   /// Text secondary: labels, captions, and subtitles.
-  static const ink2 = AppBrand.isLunna ? Color(0xFF6F6468) : Color(0xFFA1A1A1);
+  static const ink2 = Color(0xFF6F6468);
 
   /// Text tertiary: placeholders and disabled content.
-  static const ink3 = AppBrand.isLunna ? Color(0xFFA89DA1) : Color(0xFF6B6B6B);
+  static const ink3 = Color(0xFFA89DA1);
 
-  /// The accent: pale lime on Focus, red on Lunna. The one colour that says
-  /// "this is the thing to tap". On either page it is the loudest thing on
-  /// screen, so it is spent carefully: one primary action per view.
-  static const accent = AppBrand.isLunna
-      ? Color(0xFFE2394F)
-      : Color(0xFFEEFFBB);
+  /// The accent, red. The one colour that says "this is the thing to tap".
+  /// It is the loudest thing on screen, so it is spent carefully: one
+  /// primary action per view.
+  static const accent = Color(0xFFE2394F);
 
-  /// Content drawn on top of [accent]: black on the lime, white on the red.
-  static const onAccent = AppBrand.isLunna
-      ? Color(0xFFFFFFFF)
-      : Color(0xFF000000);
+  /// Content drawn on top of [accent]: white on the red.
+  static const onAccent = Color(0xFFFFFFFF);
 
   /// A 14% accent tint, for accent-washed fills.
-  static const accentSoft = AppBrand.isLunna
-      ? Color(0x24E2394F)
-      : Color(0x24EEFFBB);
+  static const accentSoft = Color(0x24E2394F);
 
   /// A 7% accent tint: the quietest wash, behind what the agent offers
   /// without being asked.
-  static const accentWash = AppBrand.isLunna
-      ? Color(0x12E2394F)
-      : Color(0x12EEFFBB);
+  static const accentWash = Color(0x12E2394F);
 
   /// Done, free, available, confirmed.
-  static const success = AppBrand.isLunna
-      ? Color(0xFF0E8F68)
-      : Color(0xFF00B481);
+  static const success = Color(0xFF0E8F68);
 
   /// Neutral context: something true but not an outcome.
   ///
-  /// The deep navy is too dark to read as text on black, so [infoInk] is what
-  /// text and icons use, and this stays for fills and borders.
-  static const info = AppBrand.isLunna ? Color(0xFFEEF0F9) : Color(0xFF1B318F);
+  /// A pale blue, too light to read as text, so [infoInk] is what text and
+  /// icons use, and this stays for fills and borders.
+  static const info = Color(0xFFEEF0F9);
 
-  /// A lifted [info], legible as text and icons on the black background.
-  static const infoInk = AppBrand.isLunna
-      ? Color(0xFF4B5AA6)
-      : Color(0xFF7C92E8);
+  /// A deeper [info], legible as text and icons on the white page.
+  static const infoInk = Color(0xFF4B5AA6);
 
   /// Blocked, failed, destructive.
-  static const danger = AppBrand.isLunna
-      ? Color(0xFFFCE5E8)
-      : Color(0xFF9E2B3D);
+  static const danger = Color(0xFFFCE5E8);
 
-  /// A lifted [danger], legible as text and icons on the black background.
-  static const dangerInk = AppBrand.isLunna
-      ? Color(0xFFB4243A)
-      : Color(0xFFE8697C);
+  /// A deeper [danger], legible as text and icons on the white page.
+  static const dangerInk = Color(0xFFB4243A);
 
   /// Needs attention, but nothing has gone wrong yet.
-  static const warning = AppBrand.isLunna
-      ? Color(0xFFD9603A)
-      : Color(0xFFFF9A6B);
+  static const warning = Color(0xFFD9603A);
 
   /// The time a delivery has used, in its pace bar: always red, the red of
-  /// a clock running. Lunna's accent; on Focus, whose accent is lime, the
-  /// lifted [danger].
-  static const paceTime = AppBrand.isLunna
-      ? Color(0xFFE2394F)
-      : Color(0xFFE8697C);
+  /// a clock running: the accent.
+  static const paceTime = Color(0xFFE2394F);
 
   /// The work a delivery has done, drawn over [paceTime] in the same bar:
   /// always green, so green covering the red reads as ahead and red showing
-  /// past it as behind. On Lunna a fresh emerald, as light as the red so the
-  /// two weigh the same beside the rose neutrals; on Focus [success].
-  static const paceDone = AppBrand.isLunna
-      ? Color(0xFF1FA37A)
-      : Color(0xFF00B481);
+  /// past it as behind. A fresh emerald, as light as the red so the two weigh
+  /// the same beside the rose neutrals.
+  static const paceDone = Color(0xFF1FA37A);
 
   /// The piece of a task at work right now, in its pace bar (#92): a short
   /// yellow run right after the [paceDone] green, as long as that piece's
   /// minutes, so what is being done reads as on its way to green.
-  static const paceDoing = AppBrand.isLunna
-      ? Color(0xFFF2B705)
-      : Color(0xFFFFD43B);
+  static const paceDoing = Color(0xFFF2B705);
 
   /// The fill behind a delivery that is late: [fill] with a little red in
   /// it, so the card reads as urgent before its tag is read.
-  static const urgentFill = AppBrand.isLunna
-      ? Color(0xFFFDEDEF)
-      : Color(0xFF2A1418);
+  static const urgentFill = Color(0xFFFDEDEF);
 
   /// The fill behind a block a routine puts on every day.
   ///
   /// One of the two fills that is not a state. Lunch and the morning routine
   /// are the same blocks every day, and the calendar should tell them apart
-  /// from what was written down this morning without being read: on Focus a
-  /// deep navy from the [info] family, plain enough beside [fill] to see at a
-  /// glance and still darker than anything that asks to be tapped; on Lunna
-  /// the same blue, washed out to a pale tint.
-  static const routineFill = AppBrand.isLunna
-      ? Color(0xFFEEF0F9)
-      : Color(0xFF17204A);
+  /// from what was written down this morning without being read: the [info]
+  /// blue, washed out to a pale tint.
+  static const routineFill = Color(0xFFEEF0F9);
 
   /// Marks and hours on [routineFill].
-  static const routineInk = AppBrand.isLunna
-      ? Color(0xFF4B5AA6)
-      : Color(0xFF9AABEF);
+  static const routineInk = Color(0xFF4B5AA6);
 
   /// The fill behind a fixed block: a meeting, a day of a fixed routine,
   /// anything whose hour is the point of it.
   ///
   /// Nothing moves these, and everything else flows around them, so the
   /// calendar shows them as the walls of the day: a warm sand, apart from
-  /// the routines' blue and the accent's red, washed pale on Lunna and
-  /// deepened to a dark umber on Focus.
-  static const fixedFill = AppBrand.isLunna
-      ? Color(0xFFFBF1E6)
-      : Color(0xFF2A1D10);
+  /// the routines' blue and the accent's red, washed pale.
+  static const fixedFill = Color(0xFFFBF1E6);
 
   /// Marks and hours on [fixedFill].
-  static const fixedInk = AppBrand.isLunna
-      ? Color(0xFFA0602A)
-      : Color(0xFFE5B27F);
+  static const fixedInk = Color(0xFFA0602A);
 
   /// The fill behind a stretch of the day with nothing on it.
   ///
   /// The other one, quieter than any card, so free time reads as room to
-  /// breathe rather than as one more thing on the list: a faint green off
-  /// black on Focus, and nothing at all on Lunna, where [freeEdge] alone
-  /// draws the room.
-  static const freeFill = AppBrand.isLunna
-      ? Color(0x00FFFFFF)
-      : Color(0xFF101A16);
+  /// breathe rather than as one more thing on the list: nothing at all, so
+  /// [freeEdge] alone draws the room.
+  static const freeFill = Color(0x00FFFFFF);
 
   /// Text on [freeFill].
-  static const freeInk = AppBrand.isLunna
-      ? Color(0xFFA89DA1)
-      : Color(0xFF7FA496);
+  static const freeInk = Color(0xFFA89DA1);
 
-  /// The shadow under something that floats over the page: deep on black,
-  /// where it barely shows, and a light warm ink on Lunna's white.
-  static const shadow = AppBrand.isLunna
-      ? Color(0x401C1517)
-      : Color(0x99000000);
+  /// The shadow under something that floats over the page: a light warm ink.
+  static const shadow = Color(0x401C1517);
 
-  /// The hairline around a free stretch. Focus needs none: its [freeFill]
-  /// already gives the room its shape.
-  static const freeEdge = AppBrand.isLunna
-      ? Color(0xFFEEE7E8)
-      : Color(0x00000000);
+  /// The hairline around a free stretch, which has no fill of its own.
+  static const freeEdge = Color(0xFFEEE7E8);
 
-  /// The period on the cycle: Lunna's own red, the phase that asks for the
+  /// The period on the cycle: the accent's red, the phase that asks for the
   /// least work. Marks and text; its fill is [cycleMenstrualFill].
-  static const cycleMenstrual = AppBrand.isLunna
-      ? Color(0xFFE2394F)
-      : Color(0xFFF07A8A);
+  static const cycleMenstrual = Color(0xFFE2394F);
 
   /// The fill behind [cycleMenstrual].
-  static const cycleMenstrualFill = AppBrand.isLunna
-      ? Color(0xFFFDEDEF)
-      : Color(0xFF2A1418);
+  static const cycleMenstrualFill = Color(0xFFFDEDEF);
 
   /// The follicular phase, energy coming back: a rose, between the period's
   /// red and the luteal lilac.
-  static const cycleFollicular = AppBrand.isLunna
-      ? Color(0xFFB4467F)
-      : Color(0xFFE59BC4);
+  static const cycleFollicular = Color(0xFFB4467F);
 
   /// The fill behind [cycleFollicular].
-  static const cycleFollicularFill = AppBrand.isLunna
-      ? Color(0xFFF9ECF3)
-      : Color(0xFF2A1422);
+  static const cycleFollicularFill = Color(0xFFF9ECF3);
 
   /// Ovulation, the peak: a warm amber, the sun of its icon.
-  static const cycleOvulatory = AppBrand.isLunna
-      ? Color(0xFFB86A12)
-      : Color(0xFFF2B567);
+  static const cycleOvulatory = Color(0xFFB86A12);
 
   /// The fill behind [cycleOvulatory].
-  static const cycleOvulatoryFill = AppBrand.isLunna
-      ? Color(0xFFFFF3E2)
-      : Color(0xFF2B1F0E);
+  static const cycleOvulatoryFill = Color(0xFFFFF3E2);
 
   /// The luteal phase, winding down: a lilac, the moon of its icon.
-  static const cycleLuteal = AppBrand.isLunna
-      ? Color(0xFF6B57B0)
-      : Color(0xFFB3A3EE);
+  static const cycleLuteal = Color(0xFF6B57B0);
 
   /// The fill behind [cycleLuteal].
-  static const cycleLutealFill = AppBrand.isLunna
-      ? Color(0xFFF1EEF9)
-      : Color(0xFF1D1830);
+  static const cycleLutealFill = Color(0xFFF1EEF9);
 
   /// Positive / success. Retained as the semantic name used by older widgets.
   static const Color positive = success;

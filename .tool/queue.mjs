@@ -213,7 +213,7 @@ export const SCHEMA = JSON.stringify({
         },
         mockup: { type: 'boolean', description: 'True when there is a layout to approve before building.' },
         does: { type: 'string', description: 'Markdown: the changes this issue makes, one line each, by impact.' },
-        notDoing: { type: 'string', description: 'Markdown: what the plan deliberately leaves out to stay light (polish, edge cases, a second brand screen, extra tests), one line each. The mockup and the build must not add them.' },
+        notDoing: { type: 'string', description: 'Markdown: what the plan deliberately leaves out to stay light (polish, edge cases, extra tests), one line each. The mockup and the build must not add them.' },
         scope: { type: 'string', description: 'Markdown: the scope map. One line per file to change (path:line, the class or route, what changes), then the nearest existing screen or widget the change must look like, then the spec to read. Nothing else is read.' },
         rest: {
           type: 'object',

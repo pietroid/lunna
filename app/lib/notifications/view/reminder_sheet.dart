@@ -203,7 +203,7 @@ class ReminderSheet extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.s2),
               AppButton.icon(
-                text: l10n.notificationActionTalk(AppBrand.id),
+                text: l10n.notificationActionTalk,
                 icon: const AppIcon(
                   iconData: AppIcons.agent,
                   size: AppSpacing.s4,

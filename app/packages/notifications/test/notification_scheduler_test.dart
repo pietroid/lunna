@@ -110,8 +110,7 @@ void main() {
       expect(first.timeSensitive, isTrue);
     });
 
-    test("names the brand's agent on the suggestion, the rest as "
-        'written', () async {
+    test('names Lunna on the suggestion, the rest as written', () async {
       final suggestion = PlannedNotification(
         id: 'suggestion',
         kind: NotificationKind.suggestion,
@@ -121,26 +120,22 @@ void main() {
       );
       planIs([_item('a'), suggestion]);
 
-      for (final (brand, title) in [
-        ('lunna', 'A Lunna te mandou uma mensagem'),
-        ('focus', 'O Focus te mandou uma mensagem'),
-      ]) {
-        queue.queued.clear();
-        await NotificationScheduler(
-          repository: repository,
-          queue: queue,
-          now: () => _now,
-          supported: true,
-          brand: brand,
-        ).sync();
+      await NotificationScheduler(
+        repository: repository,
+        queue: queue,
+        now: () => _now,
+        supported: true,
+      ).sync();
 
-        expect(queue.queued[queueIdOf('suggestion')]!.title, title);
-        expect(
-          queue.queued[queueIdOf('suggestion')]!.body,
-          'Tenho uma ideia para o próximo passo. Vem ver?',
-        );
-        expect(queue.queued[queueIdOf('a')]!.title, 'Revisão de código');
-      }
+      expect(
+        queue.queued[queueIdOf('suggestion')]!.title,
+        'A Lunna te mandou uma mensagem',
+      );
+      expect(
+        queue.queued[queueIdOf('suggestion')]!.body,
+        'Tenho uma ideia para o próximo passo. Vem ver?',
+      );
+      expect(queue.queued[queueIdOf('a')]!.title, 'Revisão de código');
     });
 
     test('leaves what is already queued alone', () async {

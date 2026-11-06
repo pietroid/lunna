@@ -3,8 +3,7 @@
 > Moved out of [AGENTS.md](../../AGENTS.md) to keep every session's context
 > small. It is binding the same way: read it before changing this feature.
 
-The agent (named after the brand: "Pergunte à Lunna", "Pergunte ao
-Focus") reads the day and proposes changes to it. It runs inside the Nest
+The agent ("Pergunte à Lunna") reads the day and proposes changes to it. It runs inside the Nest
 server (`server/src/agent/`) and calls a model through OpenRouter
 (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`; with no key, `POST /agent/turn`
 answers 503 and nothing else changes).
@@ -369,10 +368,9 @@ written, re-armed at boot from `pending`, firing once: catch-up, then
 `suggestion()`. The one exception to "nothing on a timer touches
 Postgres", and never periodic; a lost timer costs seconds, since the read
 writes a passed one. The reminder plan (`NotificationsService.plan`) has
-a `suggestion` item a minute after `nextAt`. The server names no brand
-("Uma sugestão para o seu mês"), so the phone rewrites it
-(`NotificationScheduler.brand`, `AppBrand.id`): "A Lunna te mandou uma
-mensagem" / "O Focus te mandou uma mensagem"
+a `suggestion` item a minute after `nextAt`. The server's copy names nobody
+("Uma sugestão para o seu mês"), so the phone rewrites it in Lunna's name
+(`NotificationScheduler`): "A Lunna te mandou uma mensagem"
 (`notificationSuggestionTitle`).
 
 **It holds** in `agent_suggestion`, one row per person (`SuggestionStore`).

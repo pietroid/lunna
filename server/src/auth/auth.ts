@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError } from 'better-auth/api';
-import { bearer, genericOAuth } from 'better-auth/plugins';
+import { bearer } from 'better-auth/plugins';
 import { Database } from '../db/db';
 import { schema } from '../db/schema';
 import { baseUrlOf } from './base-url';
@@ -9,43 +9,28 @@ import { baseUrlOf } from './base-url';
 /** Where Better Auth's routes live, behind the same `/api` as everything else. */
 export const AUTH_BASE_PATH = '/api/auth';
 
-/**
- * The provider Focus's web build signs in through: Google again, with
- * Focus's own client. Its callback is `/api/auth/callback/google-focus`.
- */
-export const FOCUS_GOOGLE_PROVIDER = 'google-focus';
-
 /** What the auth instance is built from. All of it comes from the env. */
 export interface AuthSettings {
   /**
-   * The public origins the apps are served from, e.g.
-   * https://lunna.pietroteruya.dev and https://focus.pietroteruya.dev.
+   * The public origins the app is served from, e.g.
+   * https://lunna.pietroteruya.dev.
    *
-   * One server answers for every brand, each from its own host, so each
-   * signs in on its own origin: the Google redirect comes back to the host
-   * it left from, and the cookie is set there. The first is the fallback for
-   * a request whose host is none of these.
+   * Each host signs in on its own origin: the Google redirect comes back to
+   * the host it left from, and the cookie is set there. The first is the
+   * fallback for a request whose host is none of these.
    */
   baseUrls: string[];
   secret: string;
   /**
-   * Every Google OAuth client allowed to mint a token for these apps, from
-   * any of their Google Cloud projects.
+   * Every Google OAuth client allowed to mint a token for the app.
    *
-   * The first is Lunna's web client, which does Lunna's redirect flow and
-   * owns [googleClientSecret]. The others (Focus's web client, every iOS and
-   * Android client) only ever hand the server an ID token, which is accepted
-   * when its audience is any of these.
+   * The first is the web client, which does the redirect flow and owns
+   * [googleClientSecret]. The others (the web client the phones' tokens are
+   * minted for, every iOS and Android client) only ever hand the server an
+   * ID token, which is accepted when its audience is any of these.
    */
   googleClientIds: string[];
   googleClientSecret: string;
-  /**
-   * Focus's own web client, in Focus's own Google Cloud project, so Google's
-   * consent screen names Focus. Its redirect flow is the `google-focus`
-   * provider. Unset, Focus's web build signs in through `google` like
-   * Lunna's (as in local development, where one dev project serves both).
-   */
-  focusGoogle?: { clientId: string; clientSecret: string };
   /** Origins a browser may call from, beyond [baseUrls]. */
   trustedOrigins: string[];
   /** Who may sign up. Empty means anyone with a Google account. */
@@ -57,8 +42,7 @@ export interface AuthSettings {
 /**
  * Sign-in, sessions and the user table.
  *
- * Google is the only way in, for both apps, into one user table: the same
- * Google account is the same person in Focus and in Lunna. The web app goes through the redirect flow and
+ * Google is the only way in. The web app goes through the redirect flow and
  * ends up with a session cookie on the same origin; the phones sign in with
  * the native Google SDK, send its ID token here, and keep the session token
  * the bearer plugin answers with.
@@ -111,34 +95,14 @@ export function createAuth(db: Database, settings: AuthSettings) {
       updateAge: 60 * 60 * 24,
     },
     account: {
-      // One person, one user, whichever app or Google project they come in
+      // One person, one user, whichever Google client they come in
       // through: a Google-verified email joins the account it already has.
       accountLinking: {
         enabled: true,
-        trustedProviders: ['google', FOCUS_GOOGLE_PROVIDER],
+        trustedProviders: ['google'],
       },
     },
-    plugins: [
-      bearer(),
-      ...(settings.focusGoogle
-        ? [
-            genericOAuth({
-              config: [
-                {
-                  providerId: FOCUS_GOOGLE_PROVIDER,
-                  discoveryUrl:
-                    'https://accounts.google.com/.well-known/openid-configuration',
-                  clientId: settings.focusGoogle.clientId,
-                  clientSecret: settings.focusGoogle.clientSecret,
-                  scopes: ['openid', 'email', 'profile'],
-                  prompt: 'select_account',
-                  pkce: true,
-                },
-              ],
-            }),
-          ]
-        : []),
-    ],
+    plugins: [bearer()],
     databaseHooks: {
       user: {
         create: {
@@ -170,20 +134,4 @@ export function listOf(value: string | undefined): string[] {
     .split(',')
     .map((item) => item.trim())
     .filter((item) => item !== '');
-}
-
-/**
- * An OAuth client from its two env values: both set, or neither. One without
- * the other is a typo in the env, so it stops the boot rather than quietly
- * falling back.
- */
-export function optionalClient(
-  clientId: string | undefined,
-  clientSecret: string | undefined,
-): { clientId: string; clientSecret: string } | undefined {
-  if (!clientId && !clientSecret) return undefined;
-  if (!clientId || !clientSecret) {
-    throw new Error('Set both the client ID and its secret, or neither');
-  }
-  return { clientId, clientSecret };
 }

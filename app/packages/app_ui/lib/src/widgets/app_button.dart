@@ -145,9 +145,9 @@ class AppButton extends StatelessWidget {
   }
 
   /// Black or white, whichever stays readable on [background]: the
-  /// accent's own [AppColors.onAccent] (white on Lunna's red, black on
-  /// Focus's lime), and by luminance for any other fill. The brand's ink is
-  /// not used here: on Lunna it is near black, which drew black on red.
+  /// accent's own [AppColors.onAccent] (white on the red), and by luminance
+  /// for any other fill. [AppColors.ink] is not used here: it is near black,
+  /// which drew black on red.
   static Color _onColor(Color background) {
     if (background == AppColors.accent) return AppColors.onAccent;
     return background.computeLuminance() > 0.5

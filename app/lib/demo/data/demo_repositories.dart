@@ -1,4 +1,3 @@
-import 'package:app_ui/app_ui.dart';
 import 'package:clock/clock.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
@@ -81,7 +80,7 @@ class DemoTimelineRepository implements TimelineRepository {
       if (!resting)
         _Task(
           'lunna',
-          l10n.demoBuilding(AppBrand.id),
+          l10n.demoBuilding,
           45,
           startedAt: now.subtract(Duration(minutes: late > 0 ? 45 + late : 12)),
         ),

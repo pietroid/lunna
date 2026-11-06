@@ -63,7 +63,7 @@ void main() {
       );
       await pumpEventQueue();
 
-      expect(analytics.calls, ['identify user-1 {brand: ${AppBrand.id}}']);
+      expect(analytics.calls, ['identify user-1 null']);
       await bloc.close();
     });
 
@@ -77,7 +77,7 @@ void main() {
       await pumpEventQueue();
 
       expect(analytics.calls, [
-        'identify user-1 {brand: ${AppBrand.id}}',
+        'identify user-1 null',
         'reset',
       ]);
       await bloc.close();

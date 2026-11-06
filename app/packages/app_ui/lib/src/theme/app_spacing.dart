@@ -1,4 +1,4 @@
-/// The spacing, radius, and sizing tokens for Focus.
+/// The spacing, radius, and sizing tokens for Lunna.
 ///
 /// One 4pt grid, so every gap, pad, and corner in the app comes from the same
 /// scale. Nothing hard-codes a number that could have come from here.

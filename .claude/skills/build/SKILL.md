@@ -1,5 +1,5 @@
 ---
-description: /build - build one piece of a Lunna/Focus feature in the server and the app, starting from its brief (a /create plan and its scope map, or the Build brief of an approved /mockup) and reading only the files it names, prove it (prints of the real build in both brands, or the commands that show it working), and finish its product/delivery/ folder, with the docs written by the docs subagent. Use to build, implement or ship a piece of work that is already decided.
+description: /build - build one piece of a Lunna feature in the server and the app, starting from its brief (a /create plan and its scope map, or the Build brief of an approved /mockup) and reading only the files it names, prove it (prints of the real build, in English, or the commands that show it working), and finish its product/delivery/ folder, with the docs written by the docs subagent. Use to build, implement or ship a piece of work that is already decided.
 ---
 
 # Build: one piece, start to proof
@@ -51,8 +51,8 @@ want otherwise, and how it will be proved.
 ## 3. App
 
 - A new feature is its own package under `app/packages/`.
-- Every string in `app_pt.arb` (`flutter gen-l10n`); a brand's name
-  selects on `AppBrand.id`; colours from tokens.
+- Every string in `app_pt.arb` and, translated, in `app_en.arb`
+  (`flutter gen-l10n`); colours from tokens.
 - A modal sheet is its own route: hand it the blocs it reads
   (`BlocProvider.value`). Inside a `BlocBuilder`, read `bloc.state`.
 - Tooling (release, CI, deploy): the vendor's docs for the versions in
@@ -73,11 +73,10 @@ want otherwise, and how it will be proved.
 
 - **Something to see**: bring `app/lib/<slug>_preview.dart` up to the
   final code (the mockup's, or a small new one): fakes behind the real
-  cubits, `?s=<n>` per scene. `.tool/preview <slug> 1 2 3 --brands
-  lunna,focus --steps <steps.txt> --out <scratchpad>/b` (foreground), then
-  read the two `steps-thumb.png`. Copy the two `steps.png` to the
-  delivery's `img/build-lunna.png` and `img/build-focus.png`, and
-  **delete the entry point**.
+  cubits, `?s=<n>` per scene, `locale: previewLocale`. `.tool/preview
+  <slug> 1 2 3 --steps <steps.txt> --out <scratchpad>/b` (foreground,
+  English by default), then read `steps-thumb.png`. Copy `steps.png` to
+  the delivery's `img/build.png`, and **delete the entry point**.
 - **Nothing to see**: run the plan's proof for real and keep the
   commands and the lines they printed.
 

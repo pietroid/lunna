@@ -20,8 +20,6 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LunnaBrand</key>
-	<string>$(BRAND_ID)</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Onest.ttf</string>

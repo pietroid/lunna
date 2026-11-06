@@ -8,12 +8,12 @@ Better Auth for the session behind the request and puts an `AuthUser` on it.
 Google is the only way in, by two roads:
 
 - **Web:** the OAuth redirect. `POST /api/auth/sign-in/social` (provider
-  `google` on Lunna, `google-focus` on Focus) answers with Google's URL, the
+  `google`) answers with Google's URL, the
   browser leaves, comes back to `/`, and from then on sends the session
   cookie. The web app is served from the same origin as the API,
   so the cookie needs no CORS.
 - **iOS/Android:** the native `google_sign_in` SDK produces an ID token
-  (minted for the brand's web client, via `serverClientId`), the app posts
+  (minted for the web client, via `serverClientId`), the app posts
   it to the same route as provider `google`, and the server verifies it against `GOOGLE_CLIENT_IDS` and
   answers with a session token. The app keeps it in the Keychain/Keystore
   (`TokenStore`) and sends it as `Authorization: Bearer` (Better Auth's

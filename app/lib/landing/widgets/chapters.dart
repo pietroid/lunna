@@ -22,7 +22,7 @@ extension DemoChapterCopy on DemoChapter {
   };
 
   String text(AppLocalizations l10n) => switch (this) {
-    DemoChapter.ask => l10n.landingChapterAskText(AppBrand.id),
+    DemoChapter.ask => l10n.landingChapterAskText,
     DemoChapter.time => l10n.landingChapterTimeText,
     DemoChapter.deliveries => l10n.landingChapterDeliveriesText,
   };

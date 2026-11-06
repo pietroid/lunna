@@ -1,5 +1,5 @@
 ---
-description: /create - grill and plan a Lunna/Focus feature request as ONE lean piece of work - first question the ask (the decisions that could make it smaller or lighter, each with a recommended answer, "yes" takes them all), then estimate it in % of the WEEKLY window (a day ≈ 14 %, a medium ask ≈ 2 %); over 3 % keep the most impactful slice and open the rest as one backlog issue; pin the scope (files, classes, routes, the screen it must look like) and what it will NOT do, so the mockup and the build read and write nothing else. Use for any feature, design proposal, mockup, "prints", "how would X look", a piece of tooling, or an approved RFC from product/research/.
+description: /create - grill and plan a Lunna feature request as ONE lean piece of work - first question the ask (the decisions that could make it smaller or lighter, each with a recommended answer, "yes" takes them all), then estimate it in % of the WEEKLY window (a day ≈ 14 %, a medium ask ≈ 2 %); over 3 % keep the most impactful slice and open the rest as one backlog issue; pin the scope (files, classes, routes, the screen it must look like) and what it will NOT do, so the mockup and the build read and write nothing else. Use for any feature, design proposal, mockup, "prints", "how would X look", a piece of tooling, or an approved RFC from product/research/.
 ---
 
 # Create: grill, then plan one lean piece
@@ -38,7 +38,6 @@ gives the person what they asked for**, and say so in the plan:
 - **App-only when the app can do it**; a server change only when the data
   or a rule has to live there.
 - **No mockup** unless there is a new layout to approve. 2 screens over 5.
-- **One brand's look is enough to approve** (both are proved at build).
 - **No polish, no edge cases nobody asked for, no refactor on the way**:
   they go in **Not doing**, which the mockup and the build must not add.
 - **Tests**: the one spec that proves the rule; not a suite.

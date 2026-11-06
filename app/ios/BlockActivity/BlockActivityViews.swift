@@ -34,18 +34,19 @@ struct BlockPalette {
     mark: "LunnaMark",
     islandAccent: Color(hex: 0xF0596C), islandOnAccent: Color(hex: 0xFFFFFF))
 
-  static let focus = BlockPalette(
+  /// The dark ground the Dynamic Island is drawn on.
+  static let night = BlockPalette(
     surface: Color(hex: 0x0D0D0D), ink: Color(hex: 0xF5F5F5),
     ink2: Color(hex: 0xA1A1A1), ink3: Color(hex: 0x6B6B6B),
     fill: Color(hex: 0x1C1C1C), accent: Color(hex: 0xEEFFBB),
     onAccent: Color(hex: 0x000000), warning: Color(hex: 0xFF9A6B),
-    mark: "FocusMark",
+    mark: "LunnaMark",
     islandAccent: Color(hex: 0xEEFFBB), islandOnAccent: Color(hex: 0x000000))
 
-  /// The Dynamic Island is always black: the dark brand's colours, with
-  /// this brand's accent (lifted for black) and mark.
+  /// The Dynamic Island is always black: the [night] colours, with the
+  /// accent lifted for black, and the mark.
   var island: BlockPalette {
-    var p = BlockPalette.focus
+    var p = BlockPalette.night
     p.accent = islandAccent
     p.onAccent = islandOnAccent
     p.mark = mark

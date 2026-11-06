@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:analytics/analytics.dart';
-import 'package:app_ui/app_ui.dart';
 import 'package:auth/auth.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -12,8 +11,8 @@ part 'app_state.dart';
 /// {@template app_bloc}
 /// Manages application-wide state derived from the authenticated user.
 ///
-/// It also tells [Analytics] who is behind the session: the account's id
-/// and the brand, never a name or an email, and forgets them on sign-out.
+/// It also tells [Analytics] who is behind the session: the account's id,
+/// never a name or an email, and forgets them on sign-out.
 /// {@endtemplate}
 class AppBloc extends Bloc<AppEvent, AppState> {
   /// {@macro app_bloc}
@@ -44,7 +43,7 @@ class AppBloc extends Bloc<AppEvent, AppState> {
   StreamSubscription<AppUser?>? _userSubscription;
 
   Future<void> _identify(AppUser user) =>
-      _analytics.identify(user.id, properties: {'brand': AppBrand.id});
+      _analytics.identify(user.id);
 
   void _onUserChanged(AppUserChanged event, Emitter<AppState> emit) {
     final user = event.user;

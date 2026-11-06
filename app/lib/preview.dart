@@ -21,7 +21,7 @@ class _PreviewApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.current,
-      locale: const Locale('pt', 'BR'),
+      locale: previewLocale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: DemoApp(resting: _resting),

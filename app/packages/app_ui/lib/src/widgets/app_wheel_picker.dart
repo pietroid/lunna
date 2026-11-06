@@ -237,7 +237,7 @@ class _Sheet extends StatelessWidget {
                 // handed to it rather than inherited from the sheet.
                 child: CupertinoTheme(
                   data: const CupertinoThemeData(
-                    brightness: AppBrand.brightness,
+                    brightness: Brightness.light,
                     textTheme: CupertinoTextThemeData(
                       dateTimePickerTextStyle: TextStyle(
                         color: AppColors.ink,

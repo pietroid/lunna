@@ -12,16 +12,7 @@ class AppLocalizationsPt extends AppLocalizations {
   AppLocalizationsPt([String locale = 'pt']) : super(locale);
 
   @override
-  String appName(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Lunna',
-        'other': 'Focus',
-      },
-    );
-    return '$_temp0';
-  }
+  String get appName => 'Lunna';
 
   @override
   String get authSignIn => 'Entrar';
@@ -107,7 +98,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String longDate(DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('EEEE, d \'de\' MMMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMMEEEEd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString';
@@ -372,7 +363,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String sectionDay(DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('EEEE, d \'de\' MMMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMMEEEEd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString';
@@ -531,16 +522,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationActionLater => '+10 min';
 
   @override
-  String notificationActionTalk(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Falar com a Lunna',
-        'other': 'Falar com o Focus',
-      },
-    );
-    return '$_temp0';
-  }
+  String get notificationActionTalk => 'Falar com a Lunna';
 
   @override
   String get notificationChannelDaily => 'Bom dia e boa noite';
@@ -549,16 +531,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get notificationChannelDailyDescription => 'Um recado no começo e no fim do dia.';
 
   @override
-  String notificationSuggestionTitle(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'A Lunna te mandou uma mensagem',
-        'other': 'O Focus te mandou uma mensagem',
-      },
-    );
-    return '$_temp0';
-  }
+  String get notificationSuggestionTitle => 'A Lunna te mandou uma mensagem';
 
   @override
   String get notificationSuggestionBody => 'Tenho uma ideia para o próximo passo. Vem ver?';
@@ -622,16 +595,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingHeadline => 'Diga o que precisa. O dia se arruma.';
 
   @override
-  String landingPitch(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.',
-        'other': 'O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.',
-      },
-    );
-    return '$_temp0';
-  }
+  String get landingPitch => 'A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.';
 
   @override
   String get landingDemoHint => 'O celular ao lado é o app de verdade, com um dia de exemplo. Toque, arraste e peça.';
@@ -640,16 +604,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingChapterAskTitle => 'Peça';
 
   @override
-  String landingChapterAskText(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.',
-        'other': 'Escreva ou fale o que precisa. O Focus lê o seu dia, monta um plano e espera o seu sim.',
-      },
-    );
-    return '$_temp0';
-  }
+  String get landingChapterAskText => 'Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.';
 
   @override
   String get landingChapterTimeTitle => 'Tempo';
@@ -706,28 +661,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get landingPrivacy => 'Registramos o uso e os erros do app para melhorá-lo. Textos e imagens nunca saem do seu aparelho nas gravações.';
 
   @override
-  String landingFooter(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Lunna',
-        'other': 'Focus',
-      },
-    );
-    return '$_temp0 · Organização pessoal';
-  }
+  String get landingFooter => 'Lunna · Organização pessoal';
 
   @override
-  String demoBuilding(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Fazendo a Lunna',
-        'other': 'Fazendo o Focus',
-      },
-    );
-    return '$_temp0';
-  }
+  String get demoBuilding => 'Fazendo a Lunna';
 
   @override
   String get demoGroceries => 'Comprar leite e ovos';
@@ -793,28 +730,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get demoDeliveryPedro => 'Mapa astral · Pedro';
 
   @override
-  String agentAsk(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Pergunte à Lunna…',
-        'other': 'Pergunte ao Focus…',
-      },
-    );
-    return '$_temp0';
-  }
+  String get agentAsk => 'Pergunte à Lunna…';
 
   @override
-  String agentSuggestionLabel(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Sugestão da Lunna',
-        'other': 'Sugestão do Focus',
-      },
-    );
-    return '$_temp0';
-  }
+  String get agentSuggestionLabel => 'Sugestão da Lunna';
 
   @override
   String get agentInputHint => 'Pergunte ou peça algo…';
@@ -895,7 +814,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String agentHistoryDay(DateTime day, DateTime time) {
-    final intl.DateFormat dayDateFormat = intl.DateFormat('EEE, d \'de\' MMM', localeName);
+    final intl.DateFormat dayDateFormat = intl.DateFormat.MMMEd(localeName);
     final String dayString = dayDateFormat.format(day);
     final intl.DateFormat timeDateFormat = intl.DateFormat('HH:mm', localeName);
     final String timeString = timeDateFormat.format(time);
@@ -952,16 +871,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSuggestionDismiss => 'Agora não';
 
   @override
-  String agentWelcome(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.',
-        'other': 'Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.',
-      },
-    );
-    return '$_temp0';
-  }
+  String get agentWelcome => 'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.';
 
   @override
   String get agentWelcomeQuestion => 'Quanto você quer faturar este mês?';
@@ -1090,16 +1000,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String agentVoiceDenied(String brand) {
-    String _temp0 = intl.Intl.selectLogic(
-      brand,
-      {
-        'lunna': 'A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.',
-        'other': 'O Focus não tem acesso ao microfone. Libere nos Ajustes do aparelho.',
-      },
-    );
-    return '$_temp0';
-  }
+  String get agentVoiceDenied => 'A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.';
 
   @override
   String get agentVoiceUnavailable => 'Este aparelho não reconhece fala em português.';
@@ -1927,7 +1828,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String cyclePhaseUntil(String phase, DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$phase até $dateString';
@@ -2008,7 +1909,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String cycleDate(DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString';
@@ -2016,7 +1917,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String daysOffEntry(DateTime date, String title) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('EEE, d \'de\' MMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMEd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString · $title';
@@ -2026,7 +1927,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String daysOffRange(DateTime from, DateTime to, String title) {
     final intl.DateFormat fromDateFormat = intl.DateFormat.d(localeName);
     final String fromString = fromDateFormat.format(from);
-    final intl.DateFormat toDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final intl.DateFormat toDateFormat = intl.DateFormat.MMMd(localeName);
     final String toString = toDateFormat.format(to);
 
     return '$fromString a $toString · $title';
@@ -2052,7 +1953,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String cycleNextPredicted(DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString · prevista';
@@ -2060,7 +1961,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String cycleNextCorrected(DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('d \'de\' MMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString · corrigida por você';
@@ -2068,7 +1969,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String cycleDayTitle(DateTime date) {
-    final intl.DateFormat dateDateFormat = intl.DateFormat('EEEE, d \'de\' MMMM', localeName);
+    final intl.DateFormat dateDateFormat = intl.DateFormat.MMMMEEEEd(localeName);
     final String dateString = dateDateFormat.format(date);
 
     return '$dateString';
@@ -2096,9 +1997,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String daysOffWeekendEntry(DateTime saturday, DateTime sunday) {
-    final intl.DateFormat saturdayDateFormat = intl.DateFormat('d/M', localeName);
+    final intl.DateFormat saturdayDateFormat = intl.DateFormat.Md(localeName);
     final String saturdayString = saturdayDateFormat.format(saturday);
-    final intl.DateFormat sundayDateFormat = intl.DateFormat('d/M', localeName);
+    final intl.DateFormat sundayDateFormat = intl.DateFormat.Md(localeName);
     final String sundayString = sundayDateFormat.format(sunday);
 
     return '$saturdayString e $sundayString';

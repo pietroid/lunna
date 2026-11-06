@@ -5,14 +5,14 @@ describe('baseUrlOf', () => {
     expect(baseUrlOf(['http://localhost:3000'])).toBe('http://localhost:3000');
   });
 
-  it('answers on each brand host, falling back to the first', () => {
+  it('answers on each host, falling back to the first', () => {
     expect(
       baseUrlOf([
         'https://lunna.pietroteruya.dev',
-        'https://focus.pietroteruya.dev',
+        'https://www.lunna.pietroteruya.dev',
       ]),
     ).toEqual({
-      allowedHosts: ['lunna.pietroteruya.dev', 'focus.pietroteruya.dev'],
+      allowedHosts: ['lunna.pietroteruya.dev', 'www.lunna.pietroteruya.dev'],
       fallback: 'https://lunna.pietroteruya.dev',
       protocol: 'https',
     });

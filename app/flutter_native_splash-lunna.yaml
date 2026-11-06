@@ -1,4 +1,4 @@
-# Lunna's splash: `dart run flutter_native_splash:create --flavors focus,lunna`.
+# Lunna's splash: `dart run flutter_native_splash:create --flavors lunna`.
 flutter_native_splash:
   color: "#FFFFFF"
   image: brands/lunna/splash.png

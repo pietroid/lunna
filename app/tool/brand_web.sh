@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Stamps a brand on a Flutter web build: its name and colours in index.html
-# and manifest.json, and its icons, favicon and splash from brands/<brand>/web.
+# Stamps Lunna on a Flutter web build: its name and colours in index.html
+# and manifest.json, and its icons, favicon and splash from brands/lunna/web.
 # POSTHOG_KEY, from the environment, goes in the PostHog snippet; without it
 # the snippet loads nothing.
 #
@@ -8,7 +8,7 @@
 #   tool/brand_web.sh lunna            # defaults to build/web
 set -euo pipefail
 
-brand="${1:?usage: tool/brand_web.sh focus|lunna [build/web]}"
+brand="${1:?usage: tool/brand_web.sh lunna [build/web]}"
 app="$(cd "$(dirname "$0")/.." && pwd)"
 out="${2:-$app/build/web}"
 posthog_key="${POSTHOG_KEY:-}"
@@ -17,7 +17,6 @@ case "$posthog_key" in
 esac
 
 case "$brand" in
-  focus) name="Focus"; bg="#000000"; bar="black" ;;
   lunna) name="Lunna"; bg="#FFFFFF"; bar="default" ;;
   *) echo "unknown brand: $brand" >&2; exit 1 ;;
 esac

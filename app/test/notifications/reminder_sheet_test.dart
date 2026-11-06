@@ -123,7 +123,7 @@ void main() {
           'Café',
           'Começando agora, certo?',
           'Esperar 10 min',
-          l10n.notificationActionTalk(AppBrand.id),
+          l10n.notificationActionTalk,
         ],
       );
 
@@ -178,7 +178,7 @@ void main() {
       final action = await answer(
         tester,
         ask(NotificationCard.task, NotificationEdge.end, late: 12),
-        tap: l10n.notificationActionTalk(AppBrand.id),
+        tap: l10n.notificationActionTalk,
         expectAll: ['Atraso no término · 12 minutos', 'Terminei'],
       );
 

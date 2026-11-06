@@ -32,6 +32,7 @@ void main() {
       value: bloc,
       child: MaterialApp(
         theme: AppTheme.current,
+        locale: const Locale('pt', 'BR'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: GuardSheet(guard: guard, busy: false)),

@@ -72,8 +72,8 @@ and `via` accepts `live_activity` (`analytics/events.ts`).
   `BlockState.running(in:)`, the same rule as `blockOf`) and
   `BlockActivities.swift` (start/update/end, the intent, the Keychain
   read) are in both targets; `BlockActivityViews.swift` (the views and
-  `BlockPalette`, both brands' `AppColors` values), `BlockMark.swift`
-  (the brand, from `LunnaBrand` = `$(BRAND_ID)` in its Info.plist) and
+  `BlockPalette`: Lunna's `AppColors` values and the island's night ones),
+  `BlockMark.swift` (the palette and the mark) and
   `BlockActivityWidget.swift` (the `ActivityConfiguration`) are the
   extension's. Onest is bundled (`Fonts/`, OFL); the copy is pt-BR in
   `Localizable.xcstrings`, since Swift cannot read `app_pt.arb`.

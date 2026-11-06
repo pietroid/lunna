@@ -43,9 +43,6 @@ Future<void> _main() async {
     // The ID token is minted for the web client, which is the one the
     // server always accepts.
     googleServerClientId: kIsWeb ? null : nullIfEmpty(kGoogleWebClientId),
-    // Per brand and env, from the define; only equal to the default here.
-    // ignore: avoid_redundant_argument_values
-    googleWebProvider: kGoogleWebProvider,
   );
   final apiClient = ApiClient(
     baseUrl: kApiBaseUrl,
@@ -75,7 +72,6 @@ Future<void> _main() async {
   );
   final notificationScheduler = NotificationScheduler(
     repository: NotificationsRepository(apiClient: apiClient),
-    brand: AppBrand.id,
   );
   await notificationScheduler.initialize();
   unawaited(registerBackgroundRefresh());

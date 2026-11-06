@@ -56,17 +56,11 @@ android {
         }
     }
 
-    // Two apps from one codebase: the brand picks the package and the
-    // name (and, through src/<brand>/res, the launcher icon and the splash);
-    // the env picks dev or production. Flutter names the pair, e.g.
-    // `flutter run --flavor lunnaDev`.
+    // The brand picks the package and the name (and, through src/lunna/res,
+    // the launcher icon and the splash); the env picks dev or production.
+    // Flutter names the pair, e.g. `flutter run --flavor lunnaDev`.
     flavorDimensions += listOf("brand", "env")
     productFlavors {
-        create("focus") {
-            dimension = "brand"
-            applicationId = "com.pietroid.focus"
-            manifestPlaceholders["brandName"] = "Focus"
-        }
         create("lunna") {
             dimension = "brand"
             applicationId = "com.pietroid.lunna"

@@ -26,8 +26,8 @@ if (location.protocol === 'http:' && !/^(localhost|127\.0\.0\.1)$/.test(location
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
 <!--
   The deck: how an RFC reads, shared with .tool/annotate.mjs, which copies
-  the style and the script marked id="deck" into its own page. Focus's
-  tokens (app_ui: app_colors, app_typography, app_spacing): true black, Onest
+  the style and the script marked id="deck" into its own page. Dark
+  tokens (Onest, the old app_ui scale): true black, Onest
   only, borderless fills, 24/14/12 radii, lime only where it means something.
   Each `##` is a slide, an Onest display headline over its one point.
 -->
@@ -151,7 +151,7 @@ function deckQuotes(el) {
   }
 }
 
-// ```mermaid blocks become diagrams in Focus's colours. Each source is drawn
+// ```mermaid blocks become diagrams in the dark deck's colours. Each source is drawn
 // once and kept, since the pages redraw on every change.
 let mermaidLoaded = null;
 const drawn = new Map();

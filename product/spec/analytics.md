@@ -1,7 +1,7 @@
 # Analytics (PostHog)
 
 Who uses the app, what they do with it, what broke, and replays of the
-sessions, for both brands, in **one PostHog project on the US cloud**. The
+sessions, in **one PostHog project on the US cloud**. The
 research and its decisions are in
 [product/research/2026-10-21-posthog](../research/2026-10-21-posthog/README.md);
 the delivery in [product/delivery/2026-10-21-posthog](../delivery/2026-10-21-posthog/README.md).
@@ -10,16 +10,15 @@ the delivery in [product/delivery/2026-10-21-posthog](../delivery/2026-10-21-pos
 
 **Nothing a person wrote leaves for PostHog.** No title, no note, no body,
 no query, no name, no email. The server sends route names and statuses; the
-app sends the account id, the brand, screen names and errors; replays mask
+app sends the account id, screen names and errors; replays mask
 every text, every image and everything custom-painted. **Off without a
 key**: no `POSTHOG_KEY`, nothing is sent (dev, tests, CI, previews).
 
 ## Who
 
 The account is the person: `distinctId` is Better Auth's user id, on the
-server (`req.user.id`) and in the app (`AppBloc` identifies on sign-in,
-with `{brand}`, and resets on sign-out). The same Google account in Focus
-and in Lunna is one person, as it is one row in the database. Before
+server (`req.user.id`) and in the app (`AppBloc` identifies on sign-in
+and resets on sign-out). Before
 sign-in nothing makes a person profile (`identified_only`).
 
 ## The person's actions: on the server

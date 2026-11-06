@@ -67,7 +67,6 @@ void notificationsRefreshDispatcher() {
       );
       await NotificationScheduler(
         repository: NotificationsRepository(apiClient: apiClient),
-        brand: AppBrand.id,
       ).sync();
     } on Object catch (error, stackTrace) {
       log(

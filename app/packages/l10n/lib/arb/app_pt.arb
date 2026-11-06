@@ -1,14 +1,6 @@
 {
   "@@locale": "pt",
-  "appName": "{brand, select, lunna{Lunna} other{Focus}}",
-  "@appName": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
+  "appName": "Lunna",
   "authSignIn": "Entrar",
   "authSignInWithGoogle": "Entrar com Google",
   "authSignInFailed": "Não foi possível entrar",
@@ -57,8 +49,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "EEEE, d 'de' MMMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMMEEEEd"
       }
     }
   },
@@ -300,8 +291,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "EEEE, d 'de' MMMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMMEEEEd"
       }
     }
   },
@@ -415,25 +405,15 @@
   "notificationChannelBlocksDescription": "Quando um bloco começa e quando termina, com um botão para responder.",
   "notificationActionConfirm": "Confirmar",
   "notificationActionLater": "+10 min",
-  "notificationActionTalk": "{brand, select, lunna{Falar com a Lunna} other{Falar com o Focus}}",
+  "notificationActionTalk": "Falar com a Lunna",
   "@notificationActionTalk": {
-    "description": "A reminder's third button: opens the app with the agent asked about that card.",
-    "placeholders": {
-      "brand": {
-        "type": "String"
-      }
-    }
+    "description": "A reminder's third button: opens the app with the agent asked about that card."
   },
   "notificationChannelDaily": "Bom dia e boa noite",
   "notificationChannelDailyDescription": "Um recado no começo e no fim do dia.",
-  "notificationSuggestionTitle": "{brand, select, lunna{A Lunna te mandou uma mensagem} other{O Focus te mandou uma mensagem}}",
+  "notificationSuggestionTitle": "A Lunna te mandou uma mensagem",
   "@notificationSuggestionTitle": {
-    "description": "The local notification when the agent's next suggestion is on the Feed.",
-    "placeholders": {
-      "brand": {
-        "type": "String"
-      }
-    }
+    "description": "The local notification when the agent's next suggestion is on the Feed."
   },
   "notificationSuggestionBody": "Tenho uma ideia para o próximo passo. Vem ver?",
   "remindersAskTitle": "Quer lembretes?",
@@ -469,26 +449,10 @@
   "routinesDelete": "Excluir rotina",
   "routinesNew": "Nova rotina",
   "landingHeadline": "Diga o que precisa. O dia se arruma.",
-  "landingPitch": "{brand, select, lunna{A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.} other{O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.}}",
-  "@landingPitch": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
+  "landingPitch": "A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.",
   "landingDemoHint": "O celular ao lado é o app de verdade, com um dia de exemplo. Toque, arraste e peça.",
   "landingChapterAskTitle": "Peça",
-  "landingChapterAskText": "{brand, select, lunna{Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.} other{Escreva ou fale o que precisa. O Focus lê o seu dia, monta um plano e espera o seu sim.}}",
-  "@landingChapterAskText": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
+  "landingChapterAskText": "Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.",
   "landingChapterTimeTitle": "Tempo",
   "landingChapterTimeText": "O dia como uma fila: cada coisa com a sua hora, e quando algo atrasa o resto anda junto.",
   "landingChapterDeliveriesTitle": "Entregas",
@@ -513,24 +477,8 @@
   "@landingPrivacy": {
     "description": "One muted line at the foot of the landing page: what PostHog records, and that replays mask every text and image."
   },
-  "landingFooter": "{brand, select, lunna{Lunna} other{Focus}} · Organização pessoal",
-  "@landingFooter": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
-  "demoBuilding": "{brand, select, lunna{Fazendo a Lunna} other{Fazendo o Focus}}",
-  "@demoBuilding": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
+  "landingFooter": "Lunna · Organização pessoal",
+  "demoBuilding": "Fazendo a Lunna",
   "demoGroceries": "Comprar leite e ovos",
   "demoBacklog": "Organizar as fotos da viagem",
   "demoStandup": "Standup",
@@ -552,24 +500,8 @@
   "demoDeliveryPost": "Post: Lua cheia em Touro",
   "demoDeliveryJulia": "Mapa astral · Júlia",
   "demoDeliveryPedro": "Mapa astral · Pedro",
-  "agentAsk": "{brand, select, lunna{Pergunte à Lunna…} other{Pergunte ao Focus…}}",
-  "@agentAsk": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
-  "agentSuggestionLabel": "{brand, select, lunna{Sugestão da Lunna} other{Sugestão do Focus}}",
-  "@agentSuggestionLabel": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
+  "agentAsk": "Pergunte à Lunna…",
+  "agentSuggestionLabel": "Sugestão da Lunna",
   "agentInputHint": "Pergunte ou peça algo…",
   "agentReplyHint": "Responder…",
   "agentThinking": "Olhando seu dia…",
@@ -624,8 +556,7 @@
     "placeholders": {
       "day": {
         "type": "DateTime",
-        "format": "EEE, d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMEd"
       },
       "time": {
         "type": "DateTime",
@@ -671,15 +602,7 @@
   "agentOtherTime": "Outro horário",
   "agentOtherTimeDraft": "Prefiro outro horário: ",
   "agentSuggestionDismiss": "Agora não",
-  "agentWelcome": "{brand, select, lunna{Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.} other{Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.}}",
-  "@agentWelcome": {
-    "placeholders": {
-      "brand": {
-        "type": "String",
-        "description": "AppBrand.id: lunna or focus."
-      }
-    }
-  },
+  "agentWelcome": "Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.",
   "agentWelcomeQuestion": "Quanto você quer faturar este mês?",
   "agentWelcomeAmount": "R$ {amount}",
   "@agentWelcomeAmount": {
@@ -780,14 +703,7 @@
       }
     }
   },
-  "agentVoiceDenied": "{brand, select, lunna{A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.} other{O Focus não tem acesso ao microfone. Libere nos Ajustes do aparelho.}}",
-  "@agentVoiceDenied": {
-    "placeholders": {
-      "brand": {
-        "type": "String"
-      }
-    }
-  },
+  "agentVoiceDenied": "A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.",
   "agentVoiceUnavailable": "Este aparelho não reconhece fala em português.",
   "artifactUntitled": "Sem nome",
   "artifactNoDeadline": "Sem prazo",
@@ -1535,8 +1451,7 @@
       },
       "date": {
         "type": "DateTime",
-        "format": "d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMd"
       }
     }
   },
@@ -1648,8 +1563,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMd"
       }
     }
   },
@@ -1659,8 +1573,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "EEE, d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMEd"
       },
       "title": {
         "type": "String"
@@ -1678,8 +1591,7 @@
       },
       "to": {
         "type": "DateTime",
-        "format": "d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMd"
       },
       "title": {
         "type": "String"
@@ -1716,8 +1628,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMd"
       }
     }
   },
@@ -1727,8 +1638,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "d 'de' MMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMd"
       }
     }
   },
@@ -1738,8 +1648,7 @@
     "placeholders": {
       "date": {
         "type": "DateTime",
-        "format": "EEEE, d 'de' MMMM",
-        "isCustomDateFormat": "true"
+        "format": "MMMMEEEEd"
       }
     }
   },
@@ -1781,13 +1690,11 @@
     "placeholders": {
       "saturday": {
         "type": "DateTime",
-        "format": "d/M",
-        "isCustomDateFormat": "true"
+        "format": "Md"
       },
       "sunday": {
         "type": "DateTime",
-        "format": "d/M",
-        "isCustomDateFormat": "true"
+        "format": "Md"
       }
     }
   },

@@ -1,5 +1,4 @@
 import 'package:app_ui/src/app_icons/app_icon_data.dart';
-import 'package:app_ui/src/theme/app_brand.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
 /// {@template app_icons}
@@ -12,12 +11,12 @@ class AppIcons {
   /// Google Icon (SVG asset).
   static const google = AppIconData.asset('google');
 
-  /// The agent: the brand's crescent without its check (SVG asset).
+  /// The agent: Lunna's crescent without its check (SVG asset).
   ///
   /// Drawn in its own colours, so it is given no `color`; one given a colour
   /// becomes a solid crescent, which is how the small marks on cards use it.
   static const agent = AppIconData.asset(
-    AppBrand.isLunna ? 'agent_lunna' : 'agent_focus',
+    'agent_lunna',
   );
 
   /// The conversations before this one, above it.
@@ -63,7 +62,7 @@ class AppIcons {
   ///
   /// The paper plane rather than an arrow in a filled circle: the sheet's
   /// send sits inside the field, where a solid disc would be the loudest
-  /// thing on a black screen.
+  /// thing on the screen.
   static const send = AppIconData.phosphor(PhosphorIconsFill.paperPlaneRight);
 
   /// Back Icon.

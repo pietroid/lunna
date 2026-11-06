@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_en.dart';
 import 'app_localizations_pt.dart';
 
 // ignore_for_file: type=lint
@@ -92,14 +93,15 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
     Locale('pt')
   ];
 
   /// No description provided for @appName.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Lunna} other{Focus}}'**
-  String appName(String brand);
+  /// **'Lunna'**
+  String get appName;
 
   /// No description provided for @authSignIn.
   ///
@@ -986,8 +988,8 @@ abstract class AppLocalizations {
   /// A reminder's third button: opens the app with the agent asked about that card.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Falar com a Lunna} other{Falar com o Focus}}'**
-  String notificationActionTalk(String brand);
+  /// **'Falar com a Lunna'**
+  String get notificationActionTalk;
 
   /// No description provided for @notificationChannelDaily.
   ///
@@ -1004,8 +1006,8 @@ abstract class AppLocalizations {
   /// The local notification when the agent's next suggestion is on the Feed.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{A Lunna te mandou uma mensagem} other{O Focus te mandou uma mensagem}}'**
-  String notificationSuggestionTitle(String brand);
+  /// **'A Lunna te mandou uma mensagem'**
+  String get notificationSuggestionTitle;
 
   /// No description provided for @notificationSuggestionBody.
   ///
@@ -1112,8 +1114,8 @@ abstract class AppLocalizations {
   /// No description provided for @landingPitch.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.} other{O Focus é uma agenda que conversa. Peça por escrito ou em voz e ele propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.}}'**
-  String landingPitch(String brand);
+  /// **'A Lunna é uma agenda que conversa. Peça por escrito ou em voz e ela propõe as mudanças no seu dia: você vê o plano e aplica, ou não. E o que você entrega, com prazo e valor, vira tarefa no mesmo dia.'**
+  String get landingPitch;
 
   /// No description provided for @landingDemoHint.
   ///
@@ -1130,8 +1132,8 @@ abstract class AppLocalizations {
   /// No description provided for @landingChapterAskText.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.} other{Escreva ou fale o que precisa. O Focus lê o seu dia, monta um plano e espera o seu sim.}}'**
-  String landingChapterAskText(String brand);
+  /// **'Escreva ou fale o que precisa. A Lunna lê o seu dia, monta um plano e espera o seu sim.'**
+  String get landingChapterAskText;
 
   /// No description provided for @landingChapterTimeTitle.
   ///
@@ -1244,14 +1246,14 @@ abstract class AppLocalizations {
   /// No description provided for @landingFooter.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Lunna} other{Focus}} · Organização pessoal'**
-  String landingFooter(String brand);
+  /// **'Lunna · Organização pessoal'**
+  String get landingFooter;
 
   /// No description provided for @demoBuilding.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Fazendo a Lunna} other{Fazendo o Focus}}'**
-  String demoBuilding(String brand);
+  /// **'Fazendo a Lunna'**
+  String get demoBuilding;
 
   /// No description provided for @demoGroceries.
   ///
@@ -1382,14 +1384,14 @@ abstract class AppLocalizations {
   /// No description provided for @agentAsk.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Pergunte à Lunna…} other{Pergunte ao Focus…}}'**
-  String agentAsk(String brand);
+  /// **'Pergunte à Lunna…'**
+  String get agentAsk;
 
   /// No description provided for @agentSuggestionLabel.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Sugestão da Lunna} other{Sugestão do Focus}}'**
-  String agentSuggestionLabel(String brand);
+  /// **'Sugestão da Lunna'**
+  String get agentSuggestionLabel;
 
   /// No description provided for @agentInputHint.
   ///
@@ -1580,8 +1582,8 @@ abstract class AppLocalizations {
   /// No description provided for @agentWelcome.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.} other{Oi! Eu sou o Focus. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.}}'**
-  String agentWelcome(String brand);
+  /// **'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.'**
+  String get agentWelcome;
 
   /// No description provided for @agentWelcomeQuestion.
   ///
@@ -1778,8 +1780,8 @@ abstract class AppLocalizations {
   /// No description provided for @agentVoiceDenied.
   ///
   /// In pt, this message translates to:
-  /// **'{brand, select, lunna{A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.} other{O Focus não tem acesso ao microfone. Libere nos Ajustes do aparelho.}}'**
-  String agentVoiceDenied(String brand);
+  /// **'A Lunna não tem acesso ao microfone. Libere nos Ajustes do aparelho.'**
+  String get agentVoiceDenied;
 
   /// No description provided for @agentVoiceUnavailable.
   ///
@@ -3765,7 +3767,7 @@ class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> 
   }
 
   @override
-  bool isSupported(Locale locale) => <String>['pt'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -3776,6 +3778,7 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
 
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'en': return AppLocalizationsEn();
     case 'pt': return AppLocalizationsPt();
   }
 

@@ -71,7 +71,6 @@ class NotificationScheduler {
     Future<SharedPreferences> Function()? preferences,
     DateTime Function()? now,
     bool? supported,
-    this.brand,
   }) : _queue = queue ?? LocalNotificationQueue(),
        _preferences = preferences ?? SharedPreferences.getInstance,
        _now = now ?? DateTime.now,
@@ -85,11 +84,6 @@ class NotificationScheduler {
 
   /// Whether the user has been asked for permission, so they never are twice.
   static const askedKey = 'notifications.permissionAsked';
-
-  /// The build's brand (`AppBrand.id`), which the suggestion's notification
-  /// names: the server knows no brand, so its copy is rewritten here. Null
-  /// keeps the server's words.
-  final String? brand;
 
   final NotificationsRepository _repository;
   final NotificationQueue _queue;
@@ -273,15 +267,14 @@ class NotificationScheduler {
   }
 
   /// What [item] says: the server's words, but for the suggestion, which
-  /// the brand's agent sends.
+  /// Lunna sends in her own name.
   (String, String) _copyOf(PlannedNotification item) {
-    final brand = this.brand;
-    if (brand == null || item.kind != NotificationKind.suggestion) {
+    if (item.kind != NotificationKind.suggestion) {
       return (item.title, item.body);
     }
     final l10n = lookupAppLocalizations(const Locale('pt'));
     return (
-      l10n.notificationSuggestionTitle(brand),
+      l10n.notificationSuggestionTitle,
       l10n.notificationSuggestionBody,
     );
   }
