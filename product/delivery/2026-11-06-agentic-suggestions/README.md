@@ -16,6 +16,10 @@ Status: draft (mockup).
 >
 > Also, I think we can drop suggestions from 4h to 4h at least in the working hours, that way this is more often.
 
+Review reply (revision 1):
+
+> The card contrast against the button looks awful, can we have a highlight on accept? Also some icons with the button would be good. Also make the left spacing good enough so it aligns with the now task spacing.
+
 The plan (by /create, ~2.5 % of the week):
 
 - Turn the suggestion back on in Plano (`kSuggestionOnPlan = true`).
@@ -33,7 +37,7 @@ Not doing: no change to how the model picks the content; no animation polish bey
 
 ![The strip](img/mockup-steps.png)
 
-1. The card sits at the top of Plano, two lines of text and three small actions: **Aceitar**, **Detalhes**, **Agora não**.
+1. The card sits at the top of Plano, two lines of text and three actions: **Aceitar** (filled accent button, check icon: the highlight), **Detalhes** (arrow icon), **Agora não** (x icon). The card's inner padding is `AppSpacing.s4`, so its text and mark line up with the Now card's.
 2. Aceitar swaps for a small spinner while the plan applies; the card goes when it is done (on failure the button returns and a snackbar says why).
 3. Detalhes opens the agent sheet already holding the prepared surface (preview, plan, Adjust/Apply), no new turn.
 
@@ -47,7 +51,7 @@ Decisions the screens don't show:
 
 Written in this session (kept for the build):
 
-- `app/packages/agent/lib/src/view/suggestion_card.dart`: rewritten as the compact card; `_Offer` is stateful and holds the accepting flag (so the cubit needs no new state); `SuggestionCard(accepting:)` is test-only; `suggestionWords()` splits the text.
+- `app/packages/agent/lib/src/view/suggestion_card.dart`: rewritten as the compact card (Aceitar is an `AppButton.icon` with `AppIcons.check`; the pills carry `arrowRight` / `close`; inner padding s4); `_Offer` is stateful and holds the accepting flag (so the cubit needs no new state); `SuggestionCard(accepting:)` is test-only; `suggestionWords()` splits the text.
 - `app/lib/suggestion_preview.dart`: the preview entry point (`?s=1|2|3`). Scene 2 is the card alone on a scaffold (the demo's apply is instant, so it can't show the spinner).
 - `app/lib/plan/view/home_page.dart:20`: `kSuggestionOnPlan = true`.
 - `app/packages/l10n/lib/arb/app_pt.arb` and `app_en.arb`: `agentSuggestionAccept`, `agentSuggestionDetails`, `suggestionPreviewTask`, `suggestionPreviewText` (the last two are for the preview only); gen/ regenerated.

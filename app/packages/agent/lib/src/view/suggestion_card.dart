@@ -105,7 +105,7 @@ class _OfferState extends State<_Offer> {
         AppSpacing.s3,
       ),
       child: AgentWash(
-        padding: const EdgeInsets.all(AppSpacing.s3),
+        padding: const EdgeInsets.all(AppSpacing.s4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -150,13 +150,15 @@ class _OfferState extends State<_Offer> {
                 if (_plan != null)
                   _accepting
                       ? const _Spinner()
-                      : AppPillButton(
-                          label: l10n.agentSuggestionAccept,
+                      : AppButton.icon(
+                          icon: const AppIcon(iconData: AppIcons.check),
+                          text: l10n.agentSuggestionAccept,
                           onPressed: () => unawaited(_accept()),
                         ),
                 if (_plan != null) const SizedBox(width: AppSpacing.s2),
                 AppPillButton(
                   label: l10n.agentSuggestionDetails,
+                  iconData: AppIcons.arrowRight,
                   onPressed: () => unawaited(
                     showAgentSheet(context, suggestion: suggestion),
                   ),
@@ -165,6 +167,7 @@ class _OfferState extends State<_Offer> {
                 if (!_accepting)
                   AppPillButton(
                     label: l10n.agentSuggestionDismiss,
+                    iconData: AppIcons.close,
                     onPressed: () =>
                         unawaited(context.read<SuggestionCubit>().dismiss()),
                   ),
