@@ -53,7 +53,7 @@ const plistPath = join(homedir(), 'Library', 'LaunchAgents', `${AGENT}.plist`);
 const MARK = '<!-- lunna-queue -->';
 const KINDS = ['create', 'research', 'improve'];
 const STATUS = { working: 'agent:working', waiting: 'agent:waiting', failed: 'agent:failed', done: 'agent:done' };
-const APPROVE = /^(approved?|aprovad[oa]|aprovo|aprova|lgtm|ok(ay)?|go|ship( it)?|build( it)?|merge( it)?|sim|pode|👍|✅|🚀)[\s.!]*$/iu;
+const APPROVE = /^(approved?|aprovad[oa]|aprovo|aprova|lgtm|ok(ay)?|go|ship( it)?|build( it)?|merge( it)?|yes|y|sim|s|pode|👍|✅|🚀)[\s.!]*$/iu;
 // A short reply that says go and asks for nothing else ("Great. Build it",
 // "ok, pode seguir") approves too; one with a but, a change or a question is feedback.
 const GO = /\b(approved?|aprovad[oa]|aprovo|lgtm|ship it|build it|merge it|go ahead|pode seguir|pode mandar|manda ver)\b|👍|✅|🚀/iu;
@@ -184,7 +184,7 @@ export function usageTable(runs) {
 export const SCHEMA = JSON.stringify({
   type: 'object',
   properties: {
-    summary: { type: 'string', description: 'Two to four sentences for the person, in the language of the issue: what you did and what to look at.' },
+    summary: { type: 'string', description: 'Two to four sentences for the person, in English: what you did and what to look at.' },
     doc: { type: 'string', description: 'Path from the repo root of the README the PR shows (the delivery README, the RFC or the improvement report).' },
     questions: { type: 'array', items: { type: 'string' }, description: 'Open questions for the person, if any.' },
     replies: {
@@ -198,14 +198,28 @@ export const SCHEMA = JSON.stringify({
       properties: {
         ask: { type: 'number', description: 'The whole ask, in % of the weekly window.' },
         estimate: { type: 'number', description: 'What this issue will do (the slice, or all of it), in % of the weekly window.' },
+        questions: {
+          type: 'array',
+          description: 'The grill: the open decisions whose answer could make the work smaller or lighter (or that the plan cannot guess), each with the answer you recommend. The rest of the plan assumes every recommendation. Empty when nothing is worth asking.',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'A few words.' },
+              question: { type: 'string', description: 'Worded so that "yes" accepts the recommendation; in English.' },
+              recommended: { type: 'string', description: 'The answer you recommend, preferring the lighter option.' },
+            },
+            required: ['title', 'question', 'recommended'],
+          },
+        },
         mockup: { type: 'boolean', description: 'True when there is a layout to approve before building.' },
         does: { type: 'string', description: 'Markdown: the changes this issue makes, one line each, by impact.' },
+        notDoing: { type: 'string', description: 'Markdown: what the plan deliberately leaves out to stay light (polish, edge cases, a second brand screen, extra tests), one line each. The mockup and the build must not add them.' },
         scope: { type: 'string', description: 'Markdown: the scope map. One line per file to change (path:line, the class or route, what changes), then the nearest existing screen or widget the change must look like, then the spec to read. Nothing else is read.' },
         rest: {
           type: 'object',
-          description: 'Only when the ask is over the threshold: what is left, opened as a backlog issue.',
+          description: 'Required whenever ask is over estimate (the ask was sliced): what is left, opened as a backlog issue. Never only in notDoing.',
           properties: {
-            title: { type: 'string', description: 'In the language of the issue, at most 60 characters.' },
+            title: { type: 'string', description: 'In English, at most 60 characters.' },
             body: { type: 'string', description: 'The left-over changes, one line each, as an ask /create can plan later.' },
             estimate: { type: 'number', description: '% of the weekly window.' },
           },
@@ -235,13 +249,16 @@ const note = (reply) => (reply ? `\n\nThe person's note when approving it:\n\n${
 const slugOf = (doc) => basename(dirname(doc)).replace(/^\d{4}-\d{2}-\d{2}-/, '');
 
 // The plan, for the mockup and the build: what to do and the only files to open.
-const planText = (st) => (st.plan ? `\n\n## The plan (by /create, ~${wk(st.plan.estimate)})\n\n${st.plan.does}\n\n### Scope\n\n${st.plan.scope}${st.plan.restIssue ? `\n\nLeft for #${st.plan.restIssue} (backlog), not this issue: ${st.plan.rest.title}.` : ''}` : '');
+const planText = (st) => (st.plan ? `\n\n## The plan (by /create, ~${wk(st.plan.estimate)})\n\n${st.plan.does}${st.plan.notDoing ? `\n\n### Not doing (don't add these)\n\n${st.plan.notDoing}` : ''}${st.plan.answers ? `\n\n### Decided with the person\n\n${quote(st.plan.answers)}` : ''}\n\n### Scope\n\n${st.plan.scope}${st.plan.restIssue ? `\n\nLeft for #${st.plan.restIssue} (backlog), not this issue: ${st.plan.rest.title}.` : ''}` : '');
 
 export function prompt(st, phase, reply) {
   const ask = `${st.title}\n\n${st.body ?? ''}`.trim();
   switch (`${st.kind}:${phase}`) {
-    case 'create:plan':
-      return `/create ${ask}\n\n---\nUnattended: plan it and return the plan in the structured output (SLICE_MAX is ${SLICE_MAX} % of the week). Write nothing in the tree; doc is "".`;
+    case 'create:plan': {
+      const last = (st.grillRounds ?? 0) >= GRILL_ROUNDS;
+      const asked = reply && st.plan?.questions?.length ? `\n\nYou asked:\n\n${grillText(st.plan.questions)}\n\nThe person answered (a question they skip takes your recommendation):\n\n${quote(reply)}` : '';
+      return `/create ${ask}${asked}\n\n---\nUnattended: grill and plan it, and return the plan in the structured output (SLICE_MAX is ${SLICE_MAX} % of the week). Write the questions, does, notDoing and rest in English (only strings the app shows are Portuguese). When ask is over estimate, rest holds what was left out of the slice. ${last ? 'This was the last round: questions must be empty; decide what is left with your recommendation.' : 'Ask only what is still open.'} Write nothing in the tree; doc is "".`;
+    }
     case 'create:design':
       return `/mockup ${ask}${planText(st)}${note(reply)}\n\n---\nUnattended. Write the draft delivery README with the strip as img/mockup-steps.png and the Build brief; keep the preview entry point and the widgets in the worktree for the build. Section 1 quotes this issue and the plan.`;
     case 'create:revise':
@@ -474,7 +491,7 @@ async function work(cfg, st) {
   const res = await claude(st, phase, prompt(st, phase, reply));
   st.runs.push(res.run);
   if (!res.ok) return stopped(cfg, st, phase, reply, res);
-  if (phase === 'plan') return planned(cfg, st, res.output);
+  if (phase === 'plan') return planned(cfg, st, res.output, reply);
 
   st.summary = res.output.summary;
   st.doc = res.output.doc || st.doc;
@@ -520,19 +537,42 @@ async function stopped(cfg, st, phase, reply, res) {
 // After the plan: the rest (if any) becomes a backlog issue, the plan is
 // posted, and the work goes straight on: the mockup when there is something
 // to see, the build otherwise. No gate: the mockup is the first stop.
-async function planned(cfg, st, out) {
+export const GRILL_ROUNDS = 2;
+export const grillText = (qs) => qs.map((q, i) => `❓ **Q${i + 1}: ${q.title}**: ${q.question}\n➡ ${q.recommended}`).join('\n\n---\n\n');
+
+// The plan's questions first, when it has any: the person answers them (or
+// says yes to all) before anything is drawn or built. "Yes" takes the plan
+// as it is, with no new run; answers plan again, up to GRILL_ROUNDS.
+async function planned(cfg, st, out, reply) {
   const plan = out.plan;
   if (!plan) return stopped(cfg, st, 'plan', null, { run: st.runs.at(-1), why: 'the plan run returned no plan' });
-  if (plan.rest) {
+  if (reply) plan.answers = [st.plan?.answers, reply].filter(Boolean).join('\n\n');
+  st.plan = plan;
+  if (!plan.questions?.length || (st.grillRounds ?? 0) >= GRILL_ROUNDS) return go(cfg, st);
+  st.grillRounds = (st.grillRounds ?? 0) + 1;
+  st.gate = 'grill';
+  st.gateAt = comment(cfg, st.issue, `❓ **Before it starts** (round ${st.grillRounds} of ${GRILL_ROUNDS}): the plan below takes every recommendation; answering otherwise can make it smaller.\n\n${grillText(plan.questions)}\n\nReply **yes** to take them all, answer by number (\"Q2: no, …\"; a question you skip takes the recommendation), or **no** to move the issue to the backlog.\n\n<details><summary>The plan, as recommended: ~${wk(plan.estimate)}</summary>\n\n${plan.does}${plan.notDoing ? `\n\n**Not doing**\n\n${plan.notDoing}` : ''}\n\n</details>\n\n<sub>plan: ${usageLine(st.runs)}</sub>`);
+  st.next = null;
+  setStatus(cfg, st, 'waiting');
+  save(st);
+  await push(cfg, { title: `#${st.issue} questions: ${st.title}`, message: plan.questions.map((q, i) => `Q${i + 1} ${q.title} → ${q.recommended}`).join('\n'), tags: ['question'], priority: 4, click: st.url });
+}
+
+// The plan stands: open the rest, post it, and go on to the mockup or build.
+function go(cfg, st) {
+  const plan = st.plan;
+  // Sliced but no rest: keep what was left over anyway, from Not doing.
+  if (!plan.rest && plan.ask > plan.estimate + 0.05 && plan.notDoing) plan.rest = { title: `${st.title}: the rest`.slice(0, 60), body: plan.notDoing, estimate: +(plan.ask - plan.estimate).toFixed(1) };
+  if (plan.rest && !plan.restIssue) {
     const head = `Left from #${st.issue} (over its ${SLICE_MAX} % slice) · **~${wk(plan.rest.estimate)}**\n\nLabel it \`create\` to plan and build it.`;
     const url = gh(['issue', 'create', '-R', cfg.repo, '--title', plan.rest.title, '--label', 'backlog', '--body-file', '-'], `${head}\n\n${plan.rest.body}`);
     plan.restIssue = +url.trim().split('/').pop();
   }
-  st.plan = plan;
   st.estimate = plan.estimate;
+  st.gate = null;
   const next = plan.mockup ? 'design' : 'build';
   const sliced = plan.rest ? ` of an ask of ~${wk(plan.ask)}; the rest is #${plan.restIssue} in the backlog` : '';
-  comment(cfg, st.issue, `📐 **Plan**: ~${wk(plan.estimate)}${sliced}. ${plan.mockup ? 'The mockup comes next.' : 'Nothing to draw: the build comes next.'}\n\n${plan.does}\n\n<details><summary>Scope</summary>\n\n${plan.scope}\n\n</details>\n\n<sub>plan: ${usageLine(st.runs)}</sub>`);
+  comment(cfg, st.issue, `📐 **Plan**: ~${wk(plan.estimate)}${sliced}. ${plan.mockup ? 'The mockup comes next.' : 'Nothing to draw: the build comes next.'}\n\n${plan.does}${plan.notDoing ? `\n\n**Not doing**\n\n${plan.notDoing}` : ''}\n\n<details><summary>Scope</summary>\n\n${plan.scope}\n\n</details>\n\n<sub>plan: ${usageLine(st.runs)}</sub>`);
   st.next = { phase: next, reply: null };
   save(st);
 }
@@ -669,7 +709,7 @@ async function tick(cfg) {
       const now = ghJson(['issue', 'view', String(st.issue), '-R', cfg.repo, '--json', 'labels']).labels.map((l) => l.name);
       if (!now.includes(st.kind)) continue;
       removeWorktree(st);
-      Object.assign(st, { status: 'waiting', gate: null, gateAt: null, plan: null, doc: null, pr: null, next: { phase: FIRST[st.kind] } });
+      Object.assign(st, { status: 'waiting', gate: null, gateAt: null, plan: null, grillRounds: 0, doc: null, pr: null, next: { phase: FIRST[st.kind] } });
       comment(cfg, st.issue, '📋 **Back in the queue**: it is planned again.');
       save(st);
       continue;
@@ -686,7 +726,13 @@ async function tick(cfg) {
     for (const c of new_) if (c.kind !== 'review') react(cfg, `${c.kind === 'line' ? 'pulls' : 'issues'}/comments/${c.id}`);
     const text = feedback(new_);
     const approved = approves(new_);
-    if (denies(new_) && st.gate === 'design') {
+    if (st.gate === 'grill' && !denies(new_)) {
+      if (approved) go(cfg, st);
+      else { st.next = { phase: 'plan', reply: text }; save(st); }
+      log(`#${st.issue} answered the grill: ${approved ? 'yes to all' : 'answers'}`);
+      continue;
+    }
+    if (denies(new_) && ['design', 'grill'].includes(st.gate)) {
       backlog(cfg, st);
       log(`#${st.issue} answered: backlog`);
       continue;

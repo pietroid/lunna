@@ -23,6 +23,12 @@ ask changes); and new code uses only `app_ui` widgets and the
 `AppColors` / `AppSpacing` / `AppTypography` tokens, never a literal
 colour, font size or numeric padding (`.tool/preview` flags them).
 
+**Lazy on purpose.** Draw what the plan's *does* lists and nothing else:
+its **Not doing** and the answers *Decided with the person* are binding.
+The fewest scenes that show the decision (2 is fine), the change dropped
+into the existing screen rather than a new one, no states nobody asked
+for.
+
 ## Steps
 
 1. **Read only the plan's scope** (the files it lists and the looks-like

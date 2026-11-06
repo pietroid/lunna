@@ -51,8 +51,7 @@ papers for numbers (read the full text where the claim depends on it),
 the docs of the exact stack for what it does today. Each finding gets one
 sentence of "for us that means…", or it doesn't go in. Read
 `product/research/concepts.md` first: an idea already there is one line
-and a link, and this RFC goes a level deeper on it. Load the matching
-project skill (`tool-design`, `context-degradation`, `evaluation`…).
+and a link, and this RFC goes a level deeper on it.
 
 ## 3. Build the material, then write the deck
 

@@ -176,6 +176,37 @@ Files: `.claude/skills/create/SKILL.md`, `.claude/skills/mockup/SKILL.md`,
 - `product/improvements/2026-11-05-create-orchestrator/`: the flow this replaces, and the $2.70 fit.
 - `product/improvements/2026-11-03-cut-design-cost/`: the earlier cuts (thumbnails, read caps).
 
+## Addendum: the grill, a lazier /create, and four skills removed
+
+> ok a bit more changes: remove any skills not used in this repo and infuse the same idea around grill me https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md to the create skill. So before planning everything, the agent will try to question everything, but most importantly anything that makes the task simpler and lighter, so we also can push the create skill to be a bit "lazy" to consume less tokens possible in the design and build part.
+
+| Area | Before | After |
+|------|--------|-------|
+| Skills | 9 in `.claude/skills/` | **5**: `advanced-evaluation`, `context-degradation`, `evaluation`, `tool-design` removed (~264 KB, generic, their descriptions in every session). One load in 132 transcripts and every queue log (`tool-design`, research run #20) |
+| `/create` | plan straight away | **grill first**, after Matt Pocock's *grilling*: the frontier of open decisions in one round, ≤ ~5, each with a recommended answer **that is the lighter one**, worded so "yes" takes it; facts come from the repo, never the person; at most 2 rounds |
+| Laziness | | a **Be lazy** section (reuse before writing, app-only when possible, no mockup without a new layout, 2 screens over 5, no polish/edge cases/refactors, one spec per rule) and a **Not doing** list in the plan, binding on `/mockup` and `/build` |
+| Queue | plan → mockup | plan run returns `questions` + the plan **as if every recommendation were taken** → `grill` gate: **"yes" goes on with that plan, no new run**; answers re-plan (~$0.15) with them; "no" sends to the backlog. `yes`/`y`/`s` now count as approval |
+| Sliced, no `rest` | (would lose the rest) | the queue opens the backlog issue from Not doing |
+
+**Verified** (the habits ask, the queue's args, Sonnet low; `data/plan-run-grill.json` is the last):
+
+| Run | Turns | $ | Questions | `rest` | Language |
+|-----|-------|---|-----------|--------|----------|
+| 1 | 4 | 0.17 | 4, each lighter (no custom weekdays, no hour yet, no chart package, out of the timeline) | ✗ missing | ✗ English |
+| 2 (rules for rest and language) | 3 | 0.15 | ✗ none ("an empty grill is the best grill" read too strongly) | ✓ | pt-BR (then the rule) |
+| 3 (ask nothing only when ≤ ~1 % and clear) | 3 | 0.11 | 4, each lighter (a strip with the streak and 7 squares instead of a chart) | ✗ missing: covered by the queue's fallback | pt-BR (then the rule) |
+
+✓ `prompt()` for a second round (carries the questions and the answers),
+the last round (questions must be empty), and a build carrying *Not
+doing* and *Decided with the person*. ✗ Not verified: the `grill` gate on
+GitHub (posting, "yes", answers): it runs when this reaches main.
+
+**Language:** the user corrected it mid-run: the conversation on an issue (questions, plan, backlog issue) is **always English**; only what the app shows is Portuguese. The prompt, the schema and the skill now say English; runs 2–3 above followed the earlier "language of the issue" rule.
+
+**Not done:** the model still drops `rest` about half the time; the
+fallback covers it, but if backlog titles read badly, make `rest`
+required by the schema when sliced (a check in `planned` that re-asks).
+
 ## 7. Cost and time
 
 This session: ~25 minutes, **~$4.4 API-eq ≈ 1.8 % of the week**

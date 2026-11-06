@@ -165,8 +165,11 @@ behind a long build; each phase is a fresh `claude -p` in its own worktree
 running and for how long:
 
 ```
-create issue ─▶ 👀 ─▶ plan (/create, Sonnet low, ~$0.15, seconds)
-                      📐 estimate in % of the week + scope (files to touch)
+create issue ─▶ 👀 ─▶ grill + plan (/create, Sonnet low, ~$0.15, seconds)
+                      ❓ questions that could make it lighter, each with a
+                      recommendation ─▶ "yes" (no new run) or answers
+                      (re-plans; at most 2 rounds); none when small and clear
+                      📐 estimate in % of the week + scope + not doing
                       over 3 %: the most impactful slice; the rest ─▶ one
                       new issue labelled `backlog`
              ─▶ (no gate) /mockup ─▶ step strip + draft PR ─▶ you reply

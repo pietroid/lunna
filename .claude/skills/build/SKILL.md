@@ -13,6 +13,11 @@ Read outside the scope only when a compile error or a failing test points
 there, and never with a wide grep. Without a plan (in a terminal),
 `.tool/map <words>` once.
 
+**Lazy on purpose.** Build what the plan's *does* lists, the smallest
+way that works: reuse what exists, no refactor on the way, no polish or
+edge case from its **Not doing**, one spec per rule. What you notice and
+would like to fix goes in the README as a line, not in the diff.
+
 **Budget.** The estimate is in the plan, in **% of the weekly window**
 (1 % ≈ $2.40 API-eq, about 55 turns at a 200k context; a build M ≈ 1.5 %).
 Cost is turns × context, and the context only grows, so: few turns, small
