@@ -104,8 +104,13 @@ class _OfferState extends State<_Offer> {
         AppSpacing.s6,
         AppSpacing.s3,
       ),
-      child: AgentWash(
+      child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.all(AppSpacing.s4),
+        decoration: BoxDecoration(
+          color: AppColors.fill,
+          borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
