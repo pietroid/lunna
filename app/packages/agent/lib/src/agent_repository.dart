@@ -129,6 +129,10 @@ class AgentRepository {
                 'role': 'assistant',
                 'text': reply.text,
               },
+              ComposedEntry(:final draft) => {
+                'role': 'assistant',
+                'text': [draft.title, ...draft.changes].join('\n'),
+              },
             },
         ],
         if (day != null) 'day': _isoDay(day),
@@ -148,6 +152,7 @@ class AgentRepository {
   static bool _hasWords(AgentEntry entry) => switch (entry) {
     UserEntry() => true,
     ReplyEntry(:final reply) => reply.text.isNotEmpty,
+    ComposedEntry() => true,
   };
 
   /// Up to [limit] conversations that started before [before], the most

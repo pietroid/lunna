@@ -61,10 +61,15 @@ Future<void> openComposer(BuildContext context, {AgentSubject? about}) async {
           ),
         );
       },
-      onTalk: (_) {
+      onTalk: (draft) {
+        final text = cubit.state.text.trim();
         close();
         unawaited(
-          showAgentSheet(context, draft: cubit.state.text, about: about),
+          showAgentSheet(
+            context,
+            about: about,
+            seed: [UserEntry(text), ComposedEntry(draft)],
+          ),
         );
       },
     );

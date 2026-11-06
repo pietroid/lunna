@@ -266,10 +266,22 @@ is written until the person says Adicionar** (or Aplicar).
   title, "Evento · amanhã, 15:00 · 1h" / "Tarefa · na fila · 2h" /
   "Objetivo · R$ 10.000 até 30/11", the delivery as `AppTag` "em …", the
   subtasks listed, and *Ajustar* (the creation sheet, filled) or
-  *Conversar* (the conversation, with the words in its field) beside
+  *Conversar* (the conversation, see below) beside
   *Adicionar* / *Aplicar* (not drawn when the turn proposed nothing).
   Editing the field drops the box; a read that comes back after an edit
   is ignored; a failed read says so and keeps the words.
+- **Conversar** opens the agent sheet seeded (`showAgentSheet(seed:)`,
+  `AgentCubit.open(seed:)`) with `[UserEntry(sent text), ComposedEntry(draft)]`
+  and a blank, unselected field. `ComposedEntry` (the third `AgentEntry`) is
+  what the composer understood: the sheet draws it as
+  `ComposeSummary(actions: false)` (no buttons), and `AgentRepository.turn`
+  sends it to `/agent/turn` as an assistant line (the title, then one change
+  per line). The seeded conversation does not reuse the compose turn's
+  `conversationId`.
+- **The sheet's keyboard**: the inset is padding inside the field's white
+  box (not outside the sheet), so no barrier shows between keyboard and
+  sheet; the route uses the safe area. On the web the inset is clamped to
+  half the screen (a guess at the full-screen bug, unverified on a phone).
 - The app finds the composer through `ComposeLauncher` (above the router
   in `main.dart`), since what it writes goes through the app's blocs.
 - Measured: `compose.read` in the trace (kind, ms, fast) and

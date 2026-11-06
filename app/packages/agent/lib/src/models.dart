@@ -1,3 +1,4 @@
+import 'package:agent/src/compose_cubit.dart';
 import 'package:agent/src/surface.dart';
 import 'package:equatable/equatable.dart';
 import 'package:timeline/timeline.dart' show RoutineDays;
@@ -726,6 +727,17 @@ final class ReplyEntry extends AgentEntry {
 
   @override
   List<Object?> get props => [reply, status, chosen];
+}
+
+/// What the composer understood, carried into the conversation it opened.
+final class ComposedEntry extends AgentEntry {
+  /// {@macro agent_entry}
+  const ComposedEntry(this.draft);
+
+  final ComposeDraft draft;
+
+  @override
+  List<Object?> get props => [draft];
 }
 
 /// {@template past_conversation}

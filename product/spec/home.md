@@ -192,7 +192,9 @@ cards on screen. From the top (the Offer sits under the Agora heading, before it
 `app/lib/plan/view/compose.dart`): one field, typed or spoken, read once
 into one summary over the sheet (see "The composer" in
 [agent.md](agent.md)), and nothing written until Adicionar. *Ajustar*
-opens the creation sheet below, filled with what was read; a tap on the
+opens the creation sheet below, filled with what was read; *Conversar*
+opens the agent sheet with the sent line and the understood plan in its
+history and a blank field; a tap on the
 calendar's empty room, its +, Em seguida's + Adicionar and the break
 still open the creation sheet at that place.
 
