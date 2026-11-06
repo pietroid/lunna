@@ -252,9 +252,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
         ),
         if (empty) ...[
           const SizedBox(height: AppSpacing.s3),
-          _EmptyCatalog(
-            onNewType: () => unawaited(showTypeSheet(context)),
-          ),
+          _EmptyCatalog(onNewType: () => unawaited(showTypeSheet(context))),
         ],
         for (final category in categories) ...[
           Padding(
@@ -270,10 +268,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
             children: [
               for (final type in category.types)
                 if (query.isEmpty || type.name.toLowerCase().contains(query))
-                  _TypeRow(
-                    type: type,
-                    onTap: () => _pick(category, type),
-                  ),
+                  _TypeRow(type: type, onTap: () => _pick(category, type)),
             ],
           ),
         ],
@@ -368,9 +363,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
             focusedBorder: InputBorder.none,
             filled: false,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.s4,
-            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.s4),
           ),
         ),
         SheetGroup(
@@ -391,9 +384,7 @@ class _ArtifactSheetState extends State<ArtifactSheet> {
                 segments: [
                   AppSegment(label: l10n.artifactSplitWhole),
                   AppSegment(
-                    label: l10n.artifactSplitBlocks(
-                      formatMinutes(l10n, block),
-                    ),
+                    label: l10n.artifactSplitBlocks(formatMinutes(l10n, block)),
                   ),
                 ],
               ),

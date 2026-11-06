@@ -1417,7 +1417,11 @@ class _TimelineListState extends State<TimelineList> {
     unawaited(HapticFeedback.mediumImpact());
     final bloc = context.read<TimelineBloc>();
 
-    if (await confirmDelete(context, card.title)) {
+    if (await confirmDelete(
+      context,
+      card.title,
+      body: card.isTask ? context.l10n.confirmDeleteTaskBody : null,
+    )) {
       bloc.add(EventDeleted(card.id));
     }
   }

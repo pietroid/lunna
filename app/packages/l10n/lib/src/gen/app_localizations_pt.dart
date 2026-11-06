@@ -146,6 +146,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get confirmDeleteBody => 'Sai da agenda e não volta.';
 
   @override
+  String get confirmDeleteTaskBody => 'Sai da sua lista e não volta.';
+
+  @override
+  String get confirmDeleteSubtaskBody => 'Sai desta lista e da agenda, e não volta.';
+
+  @override
   String get confirmDeleteAction => 'Excluir';
 
   @override
@@ -260,9 +266,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNoArtifact => 'Nenhuma';
-
-  @override
-  String get eventNotesLabel => 'Notas';
 
   @override
   String get restTip01 => 'Respire fundo. Três vezes, devagar.';
@@ -1181,9 +1184,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get artifactPendingEmpty => 'Nada esperando. O + escreve uma tarefa desta.';
-
-  @override
   String get artifactDoneEmpty => 'Nada feito ainda. O que você terminar desta entrega fica aqui.';
 
   @override
@@ -1194,9 +1194,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get artifactNotesHint => 'Escreva o que quiser sobre a entrega…';
-
-  @override
-  String get artifactAddTask => 'Nova tarefa';
 
   @override
   String artifactTasksDone(int count) {
