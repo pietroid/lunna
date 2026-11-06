@@ -148,6 +148,13 @@
       "when": 1793730840126,
       "tag": "0020_lonely_kree",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793986394220,
+      "tag": "0021_old_star_brand",
+      "breakpoints": true
     }
   ]
 }

@@ -176,6 +176,7 @@ function toTask(stored: Task & { userId?: string }): Task {
     'occurrence',
     'artifactId',
     'checklist',
+    'createdAt',
   ] as const) {
     if (task[key] === undefined) delete task[key];
   }

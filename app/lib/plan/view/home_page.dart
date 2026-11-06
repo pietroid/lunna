@@ -260,11 +260,11 @@ class _HomePageState extends State<HomePage> {
                           kNotesDockClearance,
                     ),
                     children: [
-                      // The agent's one unasked-for offer, first: it is
-                      // about the day below it, and goes once taken or
-                      // turned down.
-                      if (kSuggestionOnPlan) const SuggestionCard(),
                       _Heading(title: l10n.feedNow, mark: day.marks.on(now)),
+                      // The agent's one unasked-for offer, inside Agora
+                      // before its card: it goes once taken or turned down,
+                      // and Agora is as it always was.
+                      if (kSuggestionOnPlan) const SuggestionCard(),
                       if (loading)
                         ..._skeleton(context)
                       else ...[

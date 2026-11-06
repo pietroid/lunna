@@ -580,6 +580,8 @@ export const agentSuggestion = pgTable('agent_suggestion', {
   dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
   /** Talked about, in a conversation opened from it. */
   answeredAt: timestamp('answered_at', { withTimezone: true }),
+  /** The suggestions before this one, newest first, at most 10: topic, kind, outcome, when. */
+  history: jsonb('history').$type<unknown>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
 

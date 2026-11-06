@@ -1,0 +1,1 @@
+ALTER TABLE "agent_suggestion" ADD COLUMN "history" jsonb;

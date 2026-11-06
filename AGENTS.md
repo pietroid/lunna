@@ -86,8 +86,8 @@ server/
                         one Action per verb), the answer and its A2UI
                         (answer.ts, speech.ts), gestures and the dry run, plans,
                         the composer's read (compose.ts, POST /agent/compose),
-                        the suggestion (SuggestionStore, work-quality.ts,
-                        SuggestionTimer),
+                        the suggestion (SuggestionStore + history, work-quality.ts
+                        with tactical candidates, SuggestionTimer),
                         conversations (ConversationStore), plans
                         (PlanStore), evals/
     analytics/          PostHog: the provider, the route → event table

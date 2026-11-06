@@ -109,7 +109,14 @@ import {
   SuggestionStore,
 } from './suggestion.store';
 import { appliesOf } from './speech';
-import { basisOf, requestOf, workQuality, WorkQuality } from './work-quality';
+import {
+  basisOf,
+  requestOf,
+  tacticalOf,
+  Tactical,
+  workQuality,
+  WorkQuality,
+} from './work-quality';
 
 export type { Subject } from './actions';
 
@@ -168,6 +175,8 @@ export interface TurnResult extends AgentReply {
   raw: string[];
   /** The hours the model said to look again after this turn, as it said them. */
   followUp?: number;
+  /** Only for a suggestion nobody asked for: the topic the model chose. */
+  topic?: string;
 }
 
 /** The one thing the agent offers without being asked, as the app reads it. */
@@ -233,6 +242,8 @@ interface Answered {
   blocks: Block[];
   plan?: Plan;
   followUp?: number;
+  /** Only for a suggestion nobody asked for: the topic the model chose. */
+  topic?: string;
 }
 
 /** At most this many blocks in one answer. */
@@ -672,7 +683,7 @@ export class AgentService {
     turn: Turn,
     answered: Answered,
   ): Omit<TurnResult, 'conversationId'> {
-    const { blocks, plan, followUp } = answered;
+    const { blocks, plan, followUp, topic } = answered;
     const choices = blocks.flatMap((it) =>
       it.kind === 'choices' ? it.options : [],
     );
@@ -687,6 +698,7 @@ export class AgentService {
       leaks: turn.leaks,
       raw: turn.raw,
       ...(followUp === undefined ? {} : { followUp }),
+      ...(topic === undefined ? {} : { topic }),
     };
   }
 
@@ -896,6 +908,14 @@ export class AgentService {
       timeGone: running === undefined ? 0 : running.view.timeGone,
       mark: day.rhythm === undefined ? undefined : board.mark(board.today),
     });
+    const tactical = tacticalOf(
+      day.tasks,
+      day.backlog,
+      new Set(day.live.keys()),
+      now,
+    );
+    // A tier suggestion is about its facts; a tactical one about its
+    // candidates too, so a new short task does not hide a goal's card.
     const basis = basisOf(quality);
 
     const held = await this._suggestions.current(user.id);
@@ -903,15 +923,17 @@ export class AgentService {
       // Someone who already set a goal by hand is past the welcome.
       return quality.topic === 'goal'
         ? this._welcome(user, quality, basis, now)
-        : this._write(user, board, view, quality, basis, now);
+        : this._write(user, board, view, quality, basis, tactical, now);
     }
 
     if (held.kind === 'welcome' && held.answeredAt === undefined) {
       if (quality.topic !== 'goal') {
-        return this._write(user, board, view, quality, basis, now);
+        return this._write(user, board, view, quality, basis, tactical, now);
       }
-      if (held.dismissedAt !== undefined && now < held.nextAt!) {
-        return undefined;
+      if (held.dismissedAt !== undefined) {
+        return now < held.nextAt!
+          ? undefined
+          : this._write(user, board, view, quality, basis, tactical, now);
       }
       return suggestionView(held, undefined);
     }
@@ -921,7 +943,11 @@ export class AgentService {
         held.takenAt !== undefined ||
         held.dismissedAt !== undefined ||
         held.answeredAt !== undefined ||
-        held.basis !== basis
+        held.basis !==
+          basisOf(
+            quality,
+            tactical.filter((it) => it.topic === held.focus),
+          )
       ) {
         return undefined;
       }
@@ -934,7 +960,7 @@ export class AgentService {
       }
     }
 
-    return this._write(user, board, view, quality, basis, now);
+    return this._write(user, board, view, quality, basis, tactical, now);
   }
 
   /** Puts away [suggestionId], the ✕: the welcome for a day, a turn until its `nextAt`. */
@@ -1036,6 +1062,7 @@ export class AgentService {
     view: Timeline,
     quality: WorkQuality,
     basis: string,
+    tactical: Tactical[],
     now: Date,
   ): Promise<Suggestion | undefined> {
     const zone = board.zone;
@@ -1045,10 +1072,16 @@ export class AgentService {
     if (this._model.configured) {
       const trace = Trace.start(user.id, 'suggestion');
       try {
+        const history = await this._suggestions.recent(user.id);
         const turn = await this._answer(
           user,
           randomUUID(),
-          [{ role: 'user', text: requestOf(quality) }],
+          [
+            {
+              role: 'user',
+              text: requestOf(quality, { history, tactical, now }),
+            },
+          ],
           undefined,
           undefined,
           trace,
@@ -1060,16 +1093,20 @@ export class AgentService {
             : await this._plans.get(user.id, turn.plan.id);
         const caption = turn.blocks.find((it) => it.kind === 'caption');
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { blocks, leaks, raw, followUp, ...opening } = turn;
+        const { blocks, leaks, raw, followUp, topic, ...opening } = turn;
+        const focus = topic ?? quality.topic;
         made = {
           kind: 'turn',
-          focus: quality.topic,
+          focus,
           text: caption?.text ?? turn.reply,
           ...(plan === undefined
             ? {}
             : { action: { label: 'Aplicar', planId: plan.id } }),
           opening,
-          basis,
+          basis: basisOf(
+            quality,
+            tactical.filter((it) => it.topic === focus),
+          ),
           workQuality: quality.score,
           followUp: clampFollowUp(followUp),
           nextAt: nextAtOf(now, followUp, user, zone),
@@ -1581,11 +1618,13 @@ export class AgentService {
     }
     const followUp =
       typeof args.followUp === 'number' ? args.followUp : undefined;
+    const topic = typeof args.topic === 'string' ? args.topic : undefined;
 
     return {
       blocks: [...(caption === undefined ? [] : [caption]), ...ordered],
       plan,
       ...(followUp === undefined ? {} : { followUp }),
+      ...(topic === undefined ? {} : { topic }),
     };
   }
 

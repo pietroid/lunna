@@ -900,16 +900,27 @@ describe('the agent', () => {
       expect((await dismiss(offered)).status).toBe(201);
       expect(await suggestion()).toBeNull();
       expect((await dismiss(offered)).status).toBe(201);
-
-      jest.setSystemTime(new Date('2026-03-11T13:00:00Z'));
-      try {
-        expect((await suggestion())!.id).toBe(offered.id);
-      } finally {
-        jest.setSystemTime(NOW);
-      }
       expect(
         (await post(`/agent/suggestion/${NOW.getTime()}/dismiss`)).status,
       ).toBe(400);
+    });
+
+    it('writes a turn when a dismissed welcome is past its next one', async () => {
+      const offered = (await suggestion())!;
+      expect(offered.kind).toBe('welcome');
+      expect((await dismiss(offered)).status).toBe(201);
+
+      answers({ caption: 'Vamos começar por um objetivo?', blocks: [] });
+      jest.setSystemTime(new Date('2026-03-11T13:00:00Z'));
+      try {
+        expect((await suggestion())?.kind).toBe('turn');
+        expect(model.seen).toHaveLength(1);
+        const request = model.seen[0].at(-1)!.content;
+        expect(request).toContain('dismissed');
+        expect(request).toContain('goal');
+      } finally {
+        jest.setSystemTime(NOW);
+      }
     });
 
     it('asks the agent about the first unmet level, and shows its plan as the tabs will', async () => {

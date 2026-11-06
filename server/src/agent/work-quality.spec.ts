@@ -1,7 +1,16 @@
 import { ArtifactView, GoalView } from '../artifacts/artifact.types';
 import { DEFAULT_WORK_DAY } from '../time/work-hours';
 import { clampFollowUp, intoWorkDay, nextAtOf } from './agent.service';
-import { basisOf, requestOf, workQuality, QualityState } from './work-quality';
+import {
+  basisOf,
+  requestOf,
+  tacticalOf,
+  Tactical,
+  workQuality,
+  QualityState,
+} from './work-quality';
+import { PastSuggestion } from './suggestion.store';
+import { Task } from '../tasks/task.types';
 
 const TODAY = '2026-11-03';
 const ZONE = 'America/Sao_Paulo';
@@ -176,6 +185,118 @@ describe('Work Quality', () => {
     expect(basisOf(later)).toBe(basisOf(reach));
     const closer = workQuality(state([goal(5000, 0, 4500)], [], 0, 9000, 0, 0));
     expect(basisOf(closer)).not.toBe(basisOf(reach));
+  });
+});
+
+describe('tactical candidates', () => {
+  const NOW = new Date('2026-11-06T12:00:00Z');
+
+  const task = (over: Partial<Task> = {}): Task => ({
+    id: 't',
+    title: 'Título',
+    notes: '',
+    minutes: 30,
+    position: 0,
+    backlog: false,
+    ...over,
+  });
+
+  it('picks stuck, waiting and quick, skipping begun, routine and done', () => {
+    const tasks: Task[] = [
+      task({ id: 'q1', title: 'Curta', minutes: 10, position: 1 }),
+      task({ id: 'b1', title: 'Começada', minutes: 10, position: 2 }),
+      task({
+        id: 'r1',
+        title: 'Rotina',
+        minutes: 10,
+        position: 3,
+        routineId: 'r',
+      }),
+      task({
+        id: 'o1',
+        title: 'Atrasada',
+        minutes: 60,
+        position: 4,
+        notBefore: '2026-11-06T10:00:00Z',
+      }),
+    ];
+    const backlog: Task[] = [
+      task({
+        id: 's1',
+        title: 'Preso',
+        backlog: true,
+        pendingAt: '2026-11-01T12:00:00Z',
+      }),
+      task({
+        id: 'w1',
+        title: 'Esperando',
+        backlog: true,
+        createdAt: '2026-10-20T12:00:00Z',
+      }),
+      task({
+        id: 'd1',
+        title: 'Feita',
+        backlog: true,
+        doneAt: '2026-11-05T12:00:00Z',
+      }),
+    ];
+
+    expect(tacticalOf(tasks, backlog, new Set(['b1']), NOW)).toEqual([
+      {
+        topic: 'stuck',
+        title: 'Preso',
+        minutes: 30,
+        where: 'pending',
+        days: 5,
+      },
+      {
+        topic: 'waiting',
+        title: 'Esperando',
+        minutes: 30,
+        where: 'backlog',
+        days: 17,
+      },
+      { topic: 'quick', title: 'Curta', minutes: 10, where: 'queue' },
+      {
+        topic: 'quick',
+        title: 'Atrasada',
+        minutes: 60,
+        where: 'queue',
+        overdue: true,
+      },
+    ]);
+  });
+
+  it('tells the model the history, the candidates and to weigh refusals', () => {
+    const quality = workQuality(state([], [], 0, 0, 0, 0));
+    const history: PastSuggestion[] = [
+      {
+        focus: 'goal',
+        kind: 'welcome',
+        outcome: 'dismissed',
+        createdAt: new Date('2026-11-04T12:00:00Z'),
+      },
+    ];
+    const tactical: Tactical[] = [
+      {
+        topic: 'stuck',
+        title: 'Preso',
+        minutes: 30,
+        where: 'pending',
+        days: 5,
+      },
+    ];
+    const text = requestOf(quality, { history, tactical, now: NOW });
+    expect(text).toContain('dismissed');
+    expect(text).toContain('Preso');
+    expect(text).toContain('Even one refusal counts');
+  });
+
+  it('leaves the basis unchanged when no candidate is named', () => {
+    const quality = workQuality(
+      state([goal(5000, 0, 4200)], [], 0, 9000, 0, 0),
+    );
+    expect(basisOf(quality)).toBe(basisOf(quality, []));
   });
 });
 
