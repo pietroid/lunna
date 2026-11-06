@@ -1579,6 +1579,30 @@ abstract class AppLocalizations {
   /// **'Agora não'**
   String get agentSuggestionDismiss;
 
+  /// No description provided for @suggestionPreviewTask.
+  ///
+  /// In pt, this message translates to:
+  /// **'Estudo'**
+  String get suggestionPreviewTask;
+
+  /// No description provided for @suggestionPreviewText.
+  ///
+  /// In pt, this message translates to:
+  /// **'Encaixar 2 h de estudo hoje à tarde. Você tem um tempo livre a partir das 15h.'**
+  String get suggestionPreviewText;
+
+  /// No description provided for @agentSuggestionAccept.
+  ///
+  /// In pt, this message translates to:
+  /// **'Aceitar'**
+  String get agentSuggestionAccept;
+
+  /// No description provided for @agentSuggestionDetails.
+  ///
+  /// In pt, this message translates to:
+  /// **'Detalhes'**
+  String get agentSuggestionDetails;
+
   /// No description provided for @agentWelcome.
   ///
   /// In pt, this message translates to:

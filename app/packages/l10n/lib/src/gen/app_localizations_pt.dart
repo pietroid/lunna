@@ -871,6 +871,18 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSuggestionDismiss => 'Agora não';
 
   @override
+  String get suggestionPreviewTask => 'Estudo';
+
+  @override
+  String get suggestionPreviewText => 'Encaixar 2 h de estudo hoje à tarde. Você tem um tempo livre a partir das 15h.';
+
+  @override
+  String get agentSuggestionAccept => 'Aceitar';
+
+  @override
+  String get agentSuggestionDetails => 'Detalhes';
+
+  @override
   String get agentWelcome => 'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.';
 
   @override
