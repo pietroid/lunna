@@ -224,6 +224,7 @@ Nobody is at the keyboard and nobody answers until you finish: AskUserQuestion i
 - This worktree is fresh: run npm ci in server/ or flutter pub get if a command needs them.
 - A reply that starts "On \`<file>\` line N (thread T)" is a comment the person left on that line of the PR: work on that spot of the file, and answer it in replies under thread T.
 - Every turn re-reads the whole conversation, so cost is turns × context. Batch independent reads and commands in one message; read slices (grep -n, Read with offset/limit), never a whole file, never a result over ~20k characters, never the same file twice; write with Edit or Write, not edit scripts in Bash. Look only at -thumb.png images, never a full-size PNG.
+- Run .tool/check, .tool/preview, builds and tests in the foreground: they take a few minutes, under the 10-minute limit. Never start one in the background and wait for it with until/sleep/pgrep loops: such a loop can match itself and wait out the 10 minutes (it cost #92 and #93 ten minutes each).
 - Finish with the structured output as soon as the work is done.`;
 
 const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');

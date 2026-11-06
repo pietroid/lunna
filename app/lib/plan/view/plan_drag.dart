@@ -87,8 +87,13 @@ final class CarryDelivery extends PlanCarry {
 ///   owing what it had left. A delivery's task goes back to its
 ///   delivery's backlog, and a delivery not begun is begun (its day asked
 ///   when it has none).
-/// - **Para depois** puts a task in the backlog, stopped and not pending,
-///   and stops a delivery begun.
+/// - **Para depois** is a queue too: a task goes into the backlog, stopped
+///   and not pending, and a delivery begun is stopped, each [beforeLater]
+///   that item, or at the end when it is null. A card of Para depois let
+///   go in it again is a reorder. Loose tasks come first, then the
+///   deliveries, so a loose task let go among the deliveries goes after
+///   the last loose one, and a delivery let go among the loose tasks
+///   before the first delivery.
 ///
 /// Out of Agora never asks: what it means is clear from where it lands.
 Future<void> dropOnPlan(
@@ -97,8 +102,10 @@ Future<void> dropOnPlan(
   PlanSection to,
   PlanItems items, {
   TimelineEvent? before,
+  Later? beforeLater,
 }) async {
-  if (carry.from == to && to != PlanSection.next) return;
+  final queue = to == PlanSection.next || to == PlanSection.later;
+  if (carry.from == to && !queue) return;
   final bloc = context.read<TimelineBloc>();
   final deliveries = context.read<ArtifactsCubit>();
 
@@ -122,7 +129,7 @@ Future<void> dropOnPlan(
       );
       if (amount == null) return;
       final minutes = amount.minutes;
-      // A piece is split off, the rest staying where it was.
+      // A piece is split off, the rest waiting in Pendentes (#92).
       bloc.add(
         EventMoved(
           id: card.id,
@@ -155,9 +162,26 @@ Future<void> dropOnPlan(
       await _begin(context, artifact);
 
     case (CarryCard(:final card), PlanSection.later):
-      bloc.add(EventMoved(id: card.id, index: 0, backlog: true));
+      if (card.id == beforeLater?.id) return;
+      // A delivery's task goes back to the top of its delivery's backlog:
+      // it is drawn in its delivery, not in this list.
+      final index = card.artifactId != null
+          ? 0
+          : _backlogPlace(bloc.state.backlog, items, card.id, beforeLater);
+      bloc.add(EventMoved(id: card.id, index: index, backlog: true));
     case (CarryDelivery(:final artifact), PlanSection.later):
-      if (isStarted(artifact)) await deliveries.stop(artifact.id, 0);
+      if (artifact.id == beforeLater?.id) return;
+      final index = _deliveryPlace(
+        deliveries.state.queue,
+        items,
+        artifact.id,
+        beforeLater,
+      );
+      if (isStarted(artifact)) {
+        await deliveries.stop(artifact.id, index);
+      } else {
+        await deliveries.move(artifact.id, index);
+      }
   }
 }
 
@@ -200,6 +224,64 @@ int _placeIn(
   }
   final now = items.now;
   return now != null && now.isTask && now.id != id ? 1 : 0;
+}
+
+/// The place in the backlog ([backlog], the day's) that a loose task [id]
+/// let go in Para depois [before] an item means, counted with it taken
+/// out: that task's place, or right after the last loose task Para depois
+/// draws (the deliveries come after them all), or the top.
+int _backlogPlace(
+  List<TimelineEvent> backlog,
+  PlanItems items,
+  String id,
+  Later? before,
+) {
+  final rest = [
+    for (final t in backlog)
+      if (t.id != id) t,
+  ];
+  if (before is LaterTask) {
+    final i = rest.indexWhere((t) => t.id == before.id);
+    if (i >= 0) return i;
+  }
+  final last = items.later
+      .whereType<LaterTask>()
+      .where((t) => t.id != id)
+      .lastOrNull;
+  if (last == null) return 0;
+  return rest.indexWhere((t) => t.id == last.id) + 1;
+}
+
+/// The place in the queue of deliveries ([queue], every open one) that a
+/// delivery [id] let go in Para depois [before] an item means, counted with
+/// it taken out: that delivery's place, or the first of Para depois's
+/// before a loose task, or right after the last of them at the end.
+int _deliveryPlace(
+  List<Artifact> queue,
+  PlanItems items,
+  String id,
+  Later? before,
+) {
+  final rest = [
+    for (final a in queue)
+      if (a.id != id) a,
+  ];
+  final waiting = [
+    for (final item in items.later)
+      if (item is LaterDelivery && item.id != id) item,
+  ];
+  final target = switch (before) {
+    LaterDelivery() => before,
+    LaterTask() => waiting.firstOrNull,
+    null => null,
+  };
+  if (target != null) {
+    final i = rest.indexWhere((a) => a.id == target.id);
+    if (i >= 0) return i;
+  }
+  final last = waiting.lastOrNull;
+  if (last == null) return rest.length;
+  return rest.indexWhere((a) => a.id == last.id) + 1;
 }
 
 /// The place in the list of tasks ([tasks]) right after the last task Em
@@ -301,15 +383,16 @@ class PlanDropTarget extends StatelessWidget {
 }
 
 /// {@template plan_queue}
-/// Em seguida as a queue: [cards] one under another, each a place to let a
-/// card go **before** it, and the room under the last one a place after
-/// it. Where the carried card would land, its quiet copy opens
-/// ([PlanDropGhost]) and the cards under it make room.
+/// A section as a queue (Em seguida, Para depois): [items] one under
+/// another, each a place to let a card go **before** it, and the room under
+/// the last one a place after it. Where the carried card would land, its
+/// quiet copy opens ([PlanDropGhost]) and the cards under it make room.
 /// {@endtemplate}
-class PlanQueue extends StatelessWidget {
+class PlanQueue<T> extends StatelessWidget {
   /// {@macro plan_queue}
   const PlanQueue({
-    required this.cards,
+    required this.items,
+    required this.idOf,
     required this.itemBuilder,
     required this.onDrop,
     this.padding = EdgeInsets.zero,
@@ -317,22 +400,26 @@ class PlanQueue extends StatelessWidget {
   });
 
   /// The queue, in order.
-  final List<TimelineEvent> cards;
+  final List<T> items;
 
-  /// Draws one card (carriable or not).
-  final Widget Function(BuildContext context, TimelineEvent card) itemBuilder;
+  /// The id of an item, the one its carried card has.
+  final String Function(T item) idOf;
 
-  /// Letting a card go before a card of the queue, or at its end (null).
-  final void Function(PlanCarry carry, TimelineEvent? before) onDrop;
+  /// Draws one item (carriable or not).
+  final Widget Function(BuildContext context, T item) itemBuilder;
+
+  /// Letting a card go before an item of the queue, or at its end (null).
+  final void Function(PlanCarry carry, T? before) onDrop;
 
   /// Around each card and copy.
   final EdgeInsets padding;
 
   @override
   Widget build(BuildContext context) {
-    Widget slot(TimelineEvent? before, Widget? child) {
+    Widget slot(T? before, Widget? child) {
+      final id = before == null ? null : idOf(before);
       return DragTarget<PlanCarry>(
-        onWillAcceptWithDetails: (details) => details.data.id != before?.id,
+        onWillAcceptWithDetails: (details) => details.data.id != id,
         onAcceptWithDetails: (details) => onDrop(details.data, before),
         builder: (context, candidates, _) {
           final carried = candidates.firstOrNull;
@@ -348,7 +435,7 @@ class PlanQueue extends StatelessWidget {
                 Padding(padding: padding, child: child)
               else
                 // The room under the last card, so the end of the queue is
-                // somewhere to aim.
+                // somewhere to aim, and its + stands off the last card.
                 const SizedBox(height: AppSpacing.s3),
             ],
           );
@@ -359,10 +446,10 @@ class PlanQueue extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final card in cards)
+        for (final item in items)
           KeyedSubtree(
-            key: ValueKey(card.id),
-            child: slot(card, itemBuilder(context, card)),
+            key: ValueKey(idOf(item)),
+            child: slot(item, itemBuilder(context, item)),
           ),
         slot(null, null),
       ],
@@ -416,4 +503,13 @@ void Function(PlanCarry, TimelineEvent?) queueDropper(
 ) =>
     (carry, before) => unawaited(
       dropOnPlan(context, carry, PlanSection.next, items, before: before),
+    );
+
+/// Unawaited [dropOnPlan] on Para depois, before an item or at its end.
+void Function(PlanCarry, Later?) laterDropper(
+  BuildContext context,
+  PlanItems items,
+) =>
+    (carry, before) => unawaited(
+      dropOnPlan(context, carry, PlanSection.later, items, beforeLater: before),
     );

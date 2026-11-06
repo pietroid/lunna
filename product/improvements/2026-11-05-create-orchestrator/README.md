@@ -208,6 +208,21 @@ other stays proposed, no new split): 16 checks pass.
 On #91 itself, by hand: #92, #93, #94 reopened and started; #105–#113
 closed as not planned.
 
+**The first pieces, measured** (`code/runs.mjs`):
+
+| Piece | Estimate | Used | Wall | of which waiting on a dead loop |
+|-------|----------|------|------|-------------------------------|
+| #92 build | 2.5 pt | $3.00 ≈ 1.1 pt | 19 min | 10 min |
+| #93 build (+ conflicts run) | 1.0 pt | $3.10 ≈ 1.15 pt | 18 + 8 min | 10 min |
+| #94 mockup (design + 2 revises) | 1.0 pt | ~$1.1 ≈ 0.4 pt | 5 + 4 + 4 min | — |
+
+Against #85's single $13.19 build. **Time, not tokens, was the waste:**
+both builds ran `.tool/check` in the background (as `/build` said) and
+waited with `until ! pgrep -f "tool/check"` or `until [ -s file ]`; the
+first matches its own shell and never ends, and both sat out the
+10-minute Bash limit. `/build` and `/mockup` now run checks and previews
+in the foreground, and the queue's rules forbid wait loops.
+
 ## 8. Cost and time
 
 This `/improve` run (from the request above): 56 turns, 15.5M tokens in

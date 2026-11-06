@@ -79,11 +79,12 @@ class TimelineRepository {
   /// [backlog] says it was dropped into the backlog instead, and then
   /// [index] counts the backlog. Nothing there has an hour, so a drop there
   /// never starts anything and never asks. With [pending] too, it was
-  /// dropped into Pendentes: it waits there begun.
+  /// dropped into Pendentes: it waits there begun; without, it is in Para
+  /// depois, and a task taken out of Pendentes says so (`pending: false`,
+  /// #92).
   ///
   /// With [split], [minutes] is a piece: only that much takes the place,
-  /// and the rest stays where the task was (its turn, its hour, the
-  /// backlog or Pendentes).
+  /// and the rest waits in Pendentes (#92).
   ///
   /// With [start], [decision] is the guard's answer, asked first (#89).
   Future<Timeline> moveTask(
@@ -104,7 +105,7 @@ class TimelineRepository {
         'index': index,
         if (backlog) 'backlog': true,
         if (start) 'start': true,
-        if (pending) 'pending': true,
+        if (backlog) 'pending': pending,
         if (after != null) 'after': after.toUtc().toIso8601String(),
         'minutes': ?minutes,
         if (split) 'split': true,

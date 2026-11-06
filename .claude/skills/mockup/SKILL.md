@@ -34,7 +34,7 @@ build starts from the widgets written here.
    callback).
 4. **The steps file**, one line per scene, in order, in the scratchpad.
 5. **Build and shoot once**: `.tool/preview <slug> 1 2 3 --steps
-   <steps.txt> --out <scratchpad>/m` (background; Lunna unless the brief
+   <steps.txt> --out <scratchpad>/m` (foreground, ~30 s; Lunna unless the brief
    says Focus). It writes `<out>/lunna/steps.png` and `steps-thumb.png`.
 6. **Look at `steps-thumb.png` only**, never a full-size PNG: overflow
    stripes, grey boxes (a build exception, often a sheet without its

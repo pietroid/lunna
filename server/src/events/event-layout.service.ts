@@ -616,9 +616,10 @@ export class EventLayoutService {
       }
     }
 
-    // A piece put in a place (#87): it takes the place, and the rest stays
-    // where the task was. A task already begun owes what it owes, whole.
-    let rest: Task | undefined;
+    // A piece put in a place (#87): it takes the place, and the rest waits
+    // in Pendentes (#92), as the rest of a piece begun does: no part of a
+    // task is left on the day beside it. A task already begun owes what it
+    // owes, whole.
     if (action.split === true && action.minutes) {
       if (own !== undefined) {
         throw new BadRequestException(
@@ -628,21 +629,8 @@ export class EventLayoutService {
       minutes = Math.min(action.minutes, task.minutes);
       if (minutes < task.minutes) {
         task = await this._withSubtasks(user, task, trace);
-        const written = await this._tasks.insert(user, {
-          title: task.title,
-          minutes: task.minutes - minutes,
-          position: task.position,
-          backlog: task.backlog,
-          ...(task.artifactId === undefined
-            ? {}
-            : { artifactId: task.artifactId }),
-        });
-        rest = { ...task, id: written.id, minutes: written.minutes };
-        trace.log('task.split', {
-          taskId: task.id,
-          rest: written.id,
-          minutes: rest.minutes,
-        });
+        await this._splitRest(user, day, task, task.minutes - minutes, trace);
+        await this._beginArtifact(user, task, floorToMinute(now));
       }
     }
 
@@ -660,24 +648,6 @@ export class EventLayoutService {
       // Back on the day, it no longer waits in Pendentes.
       pendingAt: undefined,
     });
-
-    // The rest keeps the task's place; when the piece landed on that very
-    // place, right after it.
-    if (rest !== undefined) {
-      const later = queue
-        .map((it) => it.position)
-        .filter((position) => position > task.position);
-      const next = later.length === 0 ? undefined : Math.min(...later);
-      await this._tasks.update(user, {
-        ...rest,
-        position:
-          moved.position !== task.position || rest.backlog
-            ? task.position
-            : next === undefined
-              ? task.position + 0.5
-              : (task.position + next) / 2,
-      });
-    }
 
     // What was running and was put off is the next thing after this one.
     if (postponed !== undefined) {
