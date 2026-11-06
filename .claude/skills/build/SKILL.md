@@ -22,8 +22,11 @@ would like to fix goes in the README as a line, not in the diff.
 (1 % ≈ $2.40 API-eq, about 55 turns at a 200k context; a build M ≈ 1.5 %).
 Cost is turns × context, and the context only grows, so: few turns, small
 results, chores to the subagent. If the piece turns out much bigger than
-its estimate, build a coherent part, and name the rest in the README and
-in the structured output's questions.
+its estimate, build a coherent part, and name the rest in the README.
+
+**Ask nothing once it is built.** Every open point is decided with your
+recommendation and listed in the README under "Decided unattended"; what
+you'd do next is a line there too, never a question.
 
 ## 1. The delivery README
 
@@ -35,9 +38,12 @@ want otherwise, and how it will be proved.
 
 ## 1b. Delegate the writing to opencode
 
-**Always try it first** when the piece writes code (skip it for docs,
-config or a one-file change): opencode writes the bulk cheaply, you
-finish. Write a brief outside the tree,
+**Mandatory: run `.tool/oc` before you write any code.** No judgment
+call, whatever the size: the first Edit or Write to a source file comes
+after its verdict. Opencode writes the bulk cheaply; you finish. Only a
+piece that changes no code at all (docs only) skips it. Read only the
+scope you need for the brief (the plan already has the `path:line`), not
+everything you'd read to build it yourself. Write a brief outside the tree,
 `$TMPDIR/oc-<slug>/brief.md`: **Does** (the plan's changes with their
 `path:line`), **Not doing**, **Done when** (the narrowest commands that
 show it: `npm test -- <spec>`, `flutter analyze packages/<pkg>`), and the

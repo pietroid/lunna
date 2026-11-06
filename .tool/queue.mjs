@@ -264,9 +264,9 @@ export function prompt(st, phase, reply) {
     case 'create:revise':
       return `/mockup ${st.title}\n\nThe mockup in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nRevise it, unattended.`;
     case 'create:build':
-      return `/build ${ask}${st.doc ? `\n\nThe approved mockup and its Build brief are in ${st.doc}; this branch has its files.` : planText(st)}${note(reply)}\n\n---\nUnattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README.`;
+      return `/build ${ask}${st.doc ? `\n\nThe approved mockup and its Build brief are in ${st.doc}; this branch has its files.` : planText(st)}${note(reply)}\n\n---\nUnattended. .tool/check must pass before you finish; a failure your change didn't cause is proved (stash, rerun) and named in the README. Ask nothing: decide every open point with your recommendation, list it under "Decided unattended", and leave questions empty; what you'd do next is a line in the README.`;
     case 'create:fix':
-      return `/build ${st.title}\n\nThis is a follow-up: the build in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo what they ask, unattended: keep .tool/check green, re-shoot the prints if the UI changed, and update the README (the reply in section 1, what was built).`;
+      return `/build ${st.title}\n\nThis is a follow-up: the build in ${st.doc} was reviewed on the issue, and the person replied:\n\n${quote(reply)}\n\n---\nDo what they ask, unattended: keep .tool/check green, re-shoot the prints if the UI changed, and update the README (the reply in section 1, what was built). Ask nothing: decide every open point with your recommendation, list it under "Decided unattended", and leave questions empty; what you'd do next is a line in the README.`;
     case 'research:start':
       return `/research ${ask}\n\n---\nUnattended: do Phases 1 to 3 and write the RFC in its product/research/ folder. Leave Phase 4 (the deep-research pass) until the person asks for it.`;
     case 'research:fix':
@@ -495,7 +495,8 @@ async function work(cfg, st) {
 
   st.summary = res.output.summary;
   st.doc = res.output.doc || st.doc;
-  st.questions = res.output.questions ?? [];
+  // A build asks nothing: what it decided is in the README, under "Decided unattended".
+  st.questions = phase === 'build' || phase === 'fix' ? [] : res.output.questions ?? [];
   commit(st, `${st.kind}(#${st.issue}): ${phase} · ${st.title}`);
   git(st.worktree, 'push', '-q', '-u', 'origin', st.branch);
 
