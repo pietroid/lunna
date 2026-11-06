@@ -567,7 +567,7 @@ export const agentSuggestion = pgTable('agent_suggestion', {
   kind: text('kind').notNull().default('template'),
   /** Its Work Quality score when it was made, 0–7. */
   workQuality: integer('work_quality'),
-  /** The hours the turn said to look again after an answer, 3–24. */
+  /** The hours the turn said to look again after an answer, 1–4. */
   followUp: integer('follow_up'),
   /**
    * When the next one is made: its last answer plus [followUp], inside the

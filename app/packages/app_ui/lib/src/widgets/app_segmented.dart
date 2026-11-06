@@ -130,8 +130,12 @@ class AppPillButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.iconData,
+    this.fill = AppColors.fill,
     super.key,
   });
+
+  /// Its background; [AppColors.surface] on a card that is already a fill.
+  final Color fill;
 
   /// What it currently says.
   final String label;
@@ -155,7 +159,7 @@ class AppPillButton extends StatelessWidget {
             vertical: AppSpacing.s3 - 1,
           ),
           decoration: BoxDecoration(
-            color: AppColors.fill,
+            color: fill,
             borderRadius: BorderRadius.circular(AppSpacing.pillRadius),
           ),
           child: Row(

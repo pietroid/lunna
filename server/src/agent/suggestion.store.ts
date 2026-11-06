@@ -26,7 +26,7 @@ export interface StoredSuggestion {
   basis: string;
   /** The Work Quality score it was made at, 0–7. */
   workQuality?: number;
-  /** The hours to look again after an answer, 3–24. */
+  /** The hours to look again after an answer, 1–4. */
   followUp?: number;
   /** When the next one is made. Absent for a welcome nobody answered. */
   nextAt?: Date;

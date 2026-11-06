@@ -39,7 +39,7 @@ The answer is blocks. Each block names what to show; the server fills in every h
 - preview: with a plan that makes a goal, deliveries or a routine, shows them as their tabs will (the goal with what its open deliveries bring, the routine with its checklist). No arguments: the server draws it from the plan.
 - focus: true on the one block that matters most; it is drawn first.
 - caption: optional, at most 80 characters, only for what the blocks cannot show (the reason for a proposed hour, an answer in words). Never restate a card. A plan with nothing to add has no caption.
-- followUp: optional, the hours until you look at this person's plan again (3–24): short when a step is under way, a day when the next step is tomorrow's.
+- followUp: optional, the hours until you look at this person's plan again (1–4): short when a step is under way, 4 otherwise; an hour outside the working day moves to its next start.
 
 How to change the day: one plan block with every change. Each change is a gesture the person could make by hand:
 - place: put a task at a place in the queue, before or after other cards ("entre a academia e o jantar" = after the academia, before the jantar; "depois do almoço" = after the almoço). No hour: it moves with the queue, as a drag would. Use it whenever the person names other cards, not an hour.
@@ -188,10 +188,10 @@ export function toolsFor(shape: SchemaShape): ToolDefinition[] {
             },
             followUp: {
               type: 'integer',
-              minimum: 3,
-              maximum: 24,
+              minimum: 1,
+              maximum: 4,
               description:
-                'Optional: the hours until you look at the plan again. 3 when a step is under way, 24 when the next is tomorrow’s.',
+                'Optional: the hours until you look at the plan again, 1 to 4. 1 when a step is under way right now, 4 otherwise.',
             },
             blocks: {
               type: 'array',

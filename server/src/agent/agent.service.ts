@@ -2267,7 +2267,8 @@ function suggestionView(
     nextAt: held.nextAt?.toISOString() ?? null,
     // Builds before `nextAt` read this, and cannot read a null.
     validUntil: (
-      held.nextAt ?? new Date(held.createdAt.getTime() + 24 * 3_600_000)
+      held.nextAt ??
+      new Date(held.createdAt.getTime() + DEFAULT_FOLLOW_UP * 3_600_000)
     ).toISOString(),
     ...(held.action === undefined || plan === undefined
       ? {}
@@ -2280,15 +2281,15 @@ function suggestionView(
 const WELCOME_QUESTION = 'Quanto você quer faturar este mês?';
 
 /** The hours until the next suggestion when a turn says nothing. */
-export const DEFAULT_FOLLOW_UP = 24;
+export const DEFAULT_FOLLOW_UP = 4;
 
 /** What a turn may say about its follow-up, in hours. */
-const FOLLOW_UP_RANGE = { min: 3, max: 24 };
+const FOLLOW_UP_RANGE = { min: 1, max: 4 };
 
 /** Captured each time a suggestion is written, with `work_quality`. */
 export const SUGGESTION_EVENT = 'suggestion_written';
 
-/** [hours] held to 3–24, or 24 when none was given. */
+/** [hours] held to 1–4, or 4 when none was given. */
 export function clampFollowUp(hours: number | undefined): number {
   if (hours === undefined || !Number.isFinite(hours)) return DEFAULT_FOLLOW_UP;
   return Math.min(
@@ -2298,7 +2299,7 @@ export function clampFollowUp(hours: number | undefined): number {
 }
 
 /**
- * When the next suggestion comes: [followUp] hours (3–24, 24 by default)
+ * When the next suggestion comes: [followUp] hours (1–4, 4 by default)
  * after [answered], moved into the working day, so none lands at 23:00.
  */
 export function nextAtOf(

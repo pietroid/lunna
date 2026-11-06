@@ -17,7 +17,7 @@ import 'package:timeline/timeline.dart';
 
 /// Whether Plano draws the agent's offer. Off for now (#79): the card and
 /// its cubit stay, so turning it back on is this line.
-const kSuggestionOnPlan = false;
+const kSuggestionOnPlan = true;
 
 /// {@template home_page}
 /// Plano: what to do now, what is under way, and what comes later.

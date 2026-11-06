@@ -1579,6 +1579,18 @@ abstract class AppLocalizations {
   /// **'Agora não'**
   String get agentSuggestionDismiss;
 
+  /// No description provided for @agentSuggestionAccept.
+  ///
+  /// In pt, this message translates to:
+  /// **'Aceitar'**
+  String get agentSuggestionAccept;
+
+  /// No description provided for @agentSuggestionAdjust.
+  ///
+  /// In pt, this message translates to:
+  /// **'Ajustar'**
+  String get agentSuggestionAdjust;
+
   /// No description provided for @agentWelcome.
   ///
   /// In pt, this message translates to:
