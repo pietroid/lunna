@@ -365,12 +365,6 @@ abstract class AppLocalizations {
   /// **'Entregar'**
   String get confirmDeliverAction;
 
-  /// No description provided for @confirmDeleteTaskBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'Sai da lista e não volta.'**
-  String get confirmDeleteTaskBody;
-
   /// No description provided for @confirmShortenTitle.
   ///
   /// In pt, this message translates to:

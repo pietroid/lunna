@@ -177,9 +177,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get confirmDeliverAction => 'Entregar';
 
   @override
-  String get confirmDeleteTaskBody => 'Sai da lista e não volta.';
-
-  @override
   String get confirmShortenTitle => 'Não cabe inteiro aqui';
 
   @override
