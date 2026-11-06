@@ -5,6 +5,8 @@ import type {
   GoalView,
 } from '../artifacts/artifact.types';
 import type { DayMark } from '../time/day-kinds';
+import type { Task } from '../tasks/task.types';
+import type { PastSuggestion } from './suggestion.store';
 
 /**
  * Work Quality: how defined a person's plan is, in seven levels, each one
@@ -161,27 +163,205 @@ export function workQuality(state: QualityState): WorkQuality {
   return { score, topic: 'keep', goal, counted, facts: {}, ...rest };
 }
 
+/** A task paused in Pendentes long enough that it is worth a word. */
+export const STUCK_PENDING_DAYS = 3;
+/** A task written down this many days ago and still not done. */
+export const WAITING_DAYS = 7;
+/** A task short enough that it is done soon, unless it is overdue. */
+export const QUICK_MINUTES = 15;
+/** At most this many candidates per topic. */
+const TACTICAL_PER_KIND = 3;
+
+/** What a tactical suggestion is about: one task, beside the Work Quality topic. */
+export type TacticalTopic = 'quick' | 'stuck' | 'waiting';
+
+/** One task the suggestion could be about: quick, long stuck, or long waiting. */
+export interface Tactical {
+  topic: TacticalTopic;
+  title: string;
+  minutes: number;
+  where: 'queue' | 'pending' | 'backlog';
+  days?: number;
+  overdue?: boolean;
+}
+
 /**
- * What a suggestion about [quality] is made from, hashed: its topic and its
- * facts. A change to the very thing it is about hides it; a change to
- * anything else leaves it.
+ * The day's tactical candidates, one task each. A task begun, done,
+ * cancelled or a routine's day is no candidate. For each task only the
+ * first that applies: stuck (paused in Pendentes for days), waiting
+ * (written down long ago, still not done) then quick (short, or overdue in
+ * the queue). At most [TACTICAL_PER_KIND] of each, stuck and waiting oldest
+ * first, quick in queue order, then stuck, waiting, quick.
  */
-export function basisOf(quality: WorkQuality): string {
-  return createHash('sha256')
-    .update(JSON.stringify([quality.topic, quality.facts]))
-    .digest('hex');
+export function tacticalOf(
+  tasks: Task[],
+  backlog: Task[],
+  begun: ReadonlySet<string>,
+  now: Date,
+): Tactical[] {
+  const skip = (task: Task) =>
+    task.doneAt !== undefined ||
+    task.cancelled === true ||
+    task.routineId !== undefined ||
+    begun.has(task.id);
+  const seen = new Set<string>();
+  const stuck: Tactical[] = [];
+  const waiting: Tactical[] = [];
+  const quick: Tactical[] = [];
+
+  for (const task of backlog) {
+    if (seen.has(task.id) || skip(task)) continue;
+    if (task.pendingAt === undefined) continue;
+    const days = daysAgo(task.pendingAt, now);
+    if (days >= STUCK_PENDING_DAYS) {
+      stuck.push({
+        topic: 'stuck',
+        title: task.title,
+        minutes: task.minutes,
+        where: 'pending',
+        days,
+      });
+      seen.add(task.id);
+    }
+  }
+
+  for (const task of [...tasks, ...backlog]) {
+    if (seen.has(task.id) || skip(task)) continue;
+    if (task.pendingAt !== undefined || task.createdAt === undefined) continue;
+    const days = daysAgo(task.createdAt, now);
+    if (days >= WAITING_DAYS) {
+      waiting.push({
+        topic: 'waiting',
+        title: task.title,
+        minutes: task.minutes,
+        where: task.backlog ? 'backlog' : 'queue',
+        days,
+      });
+      seen.add(task.id);
+    }
+  }
+
+  for (const task of tasks) {
+    if (seen.has(task.id) || skip(task)) continue;
+    const overdue =
+      task.notBefore !== undefined && new Date(task.notBefore) < now;
+    if (task.minutes <= QUICK_MINUTES || overdue) {
+      quick.push({
+        topic: 'quick',
+        title: task.title,
+        minutes: task.minutes,
+        where: 'queue',
+        ...(overdue ? { overdue: true } : {}),
+      });
+      seen.add(task.id);
+    }
+  }
+
+  const oldestFirst = (a: Tactical, b: Tactical) =>
+    (b.days ?? 0) - (a.days ?? 0);
+  return [
+    ...stuck.sort(oldestFirst).slice(0, TACTICAL_PER_KIND),
+    ...waiting.sort(oldestFirst).slice(0, TACTICAL_PER_KIND),
+    ...quick.slice(0, TACTICAL_PER_KIND),
+  ];
+}
+
+/** Whole days between [at] and [now], rounded down. */
+function daysAgo(at: string, now: Date): number {
+  return Math.floor((now.getTime() - new Date(at).getTime()) / 86_400_000);
+}
+
+/**
+ * What a suggestion about [quality] is made from, hashed: its topic, its
+ * facts, and the tactical candidates of its topic when it chose one (none
+ * for a tier topic, so its hash is as before). A change to the very
+ * thing it is about hides it; a change to anything else leaves it.
+ */
+export function basisOf(
+  quality: WorkQuality,
+  tactical: Tactical[] = [],
+): string {
+  const basis: unknown[] = [quality.topic, quality.facts];
+  if (tactical.length > 0) {
+    basis.push(tactical.map((it) => [it.topic, it.title]));
+  }
+  return createHash('sha256').update(JSON.stringify(basis)).digest('hex');
 }
 
 /** The request the server writes for a turn about [quality]: the person asked nothing. */
-export function requestOf(quality: WorkQuality): string {
-  return [
+export function requestOf(
+  quality: WorkQuality,
+  context?: { history: PastSuggestion[]; tactical: Tactical[]; now: Date },
+): string {
+  const lines = [
     'Nobody asked: this is the suggestion the app shows on its home, written by the server for the person.',
     `Topic (Work Quality level ${quality.score + 1} of 7, never named to the person): ${quality.topic}. ${TOPICS[quality.topic]}`,
     `Facts: ${JSON.stringify(quality.facts)}`,
     ...(quality.rest === undefined ? [] : [restOf(quality.rest)]),
+  ];
+  if (context !== undefined) {
+    if (context.history.length > 0) {
+      lines.push(
+        `Your last suggestions to this person, newest first: ${context.history
+          .map((it) => historyLine(it, context.now))
+          .join('; ')}.`,
+      );
+    }
+    if (context.tactical.length > 0) {
+      lines.push(
+        `Tactical candidates, one task each: ${context.tactical
+          .map(tacticalLine)
+          .join('; ')}. What each means: ${TACTICAL_LEGEND}.`,
+      );
+    }
+    lines.push(PRIORITISE);
+  }
+  lines.push(
     'Propose the one next step: a plan when one fits (with a preview block when it makes a goal, a delivery or a routine), choices when the person must say something first. The caption is the whole message on the card, at most 80 characters, speaking to the person. Set followUp to the hours until you look again, 1 to 4: 1 when a step is under way right now, 4 otherwise; the server moves it into the working day.',
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
+
+/** One past suggestion, as the model is told of it, oldest worded in time. */
+function historyLine(it: PastSuggestion, now: Date): string {
+  const kind = it.kind === 'welcome' ? ' (welcome)' : '';
+  return `${it.focus}${kind}, ${it.outcome} ${ago(it.createdAt, now)} ago`;
+}
+
+/** One tactical candidate, as the model is told of it. */
+function tacticalLine(it: Tactical): string {
+  if (it.topic === 'stuck') {
+    return `stuck "${it.title}" (in Pendentes ${it.days} days)`;
+  }
+  if (it.topic === 'waiting') {
+    const where = it.where === 'backlog' ? 'Para depois' : 'the queue';
+    return `waiting "${it.title}" (in ${where} ${it.days} days)`;
+  }
+  return `quick "${it.title}" (${it.minutes} min in the queue${it.overdue === true ? ', its hour has passed' : ''})`;
+}
+
+/** How long ago [at] was, in hours under two days, then in days. */
+function ago(at: Date, now: Date): string {
+  const hours = Math.max(
+    1,
+    Math.round((now.getTime() - at.getTime()) / 3_600_000),
+  );
+  if (hours < 48) return `${hours} hour${hours === 1 ? '' : 's'}`;
+  return `${Math.round((now.getTime() - at.getTime()) / 86_400_000)} days`;
+}
+
+/** What the turn is told of each tactical topic, as a one-line legend. */
+const TACTICAL: Record<TacticalTopic, string> = {
+  stuck: 'paused in Pendentes for days',
+  waiting: 'written down long ago, still not done',
+  quick: 'short or overdue, done soon',
+};
+const TACTICAL_LEGEND = (['stuck', 'waiting', 'quick'] as const)
+  .map((it) => `${it}: ${TACTICAL[it]}`)
+  .join('; ');
+
+const PRIORITISE =
+  'Pick the one topic that matters most to this person now: the Work Quality topic above, a tactical candidate when it matters more, or another topic when they have been turning this one down. Even one refusal counts: weigh it, there is no fixed rule. A tactical suggestion proposes one gesture they could make by hand on that one task (start it, give it an hour, move it to another day or to Para depois, or drop it), as a plan. Set topic to what you chose.';
 
 /**
  * What the turn is told of a day that is not a working one: no delivery's

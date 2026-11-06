@@ -187,6 +187,7 @@ function toTask(row: TaskRow): Task {
     minutes: row.minutes,
     position: row.position,
     backlog: row.backlog,
+    createdAt: row.createdAt.toISOString(),
     ...(row.notBefore === null
       ? {}
       : { notBefore: row.notBefore.toISOString() }),

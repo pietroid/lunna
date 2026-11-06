@@ -81,4 +81,17 @@ describe('suggestions in Postgres', () => {
     expect((await store.current('u1'))?.nextAt).toBeUndefined();
     expect(await store.pending(NOW)).toEqual([]);
   });
+
+  it('remembers the last two, oldest after the current one', async () => {
+    const first = await store.put('u1', made('Primeira'), NOW);
+    await store.answer('u1', first.id, { dismissedAt: NOW, nextAt: NOW });
+    const second = await store.put('u1', made('Segunda'), NOW);
+
+    expect(await store.recent('u1')).toEqual([
+      { focus: 'pace', kind: 'turn', outcome: 'unanswered', createdAt: NOW },
+      { focus: 'pace', kind: 'turn', outcome: 'dismissed', createdAt: NOW },
+    ]);
+    expect(await store.recent('u1')).toHaveLength(2);
+    expect(second.id).not.toBe(first.id);
+  });
 });

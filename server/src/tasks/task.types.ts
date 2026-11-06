@@ -17,6 +17,8 @@ export interface Task {
   minutes: number;
   /** Its place in the queue, smallest first. Only the order means anything. */
   position: number;
+  /** ISO 8601, when it was written down. */
+  createdAt?: string;
   /**
    * ISO 8601, the hour it is anchored at, when it has one.
    *

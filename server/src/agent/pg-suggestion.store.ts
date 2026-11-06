@@ -4,8 +4,11 @@ import { DB } from '../db/db';
 import type { Database } from '../db/db';
 import { agentSuggestion, AgentSuggestionRow } from '../db/schema';
 import {
+  HISTORY_LIMIT,
   NewSuggestion,
   Opening,
+  PastSuggestion,
+  pastOf,
   StoredSuggestion,
   SuggestionAnswer,
   SuggestionKind,
@@ -28,11 +31,28 @@ export class PgSuggestionStore extends SuggestionStore {
     return row === undefined ? undefined : suggestionOf(row);
   }
 
+  async recent(
+    userId: string,
+    limit = HISTORY_LIMIT,
+  ): Promise<PastSuggestion[]> {
+    const current = await this.current(userId);
+    if (current === undefined) return [];
+    return [pastOf(current), ...(current.history ?? [])].slice(0, limit);
+  }
+
   async put(
     userId: string,
     made: NewSuggestion,
     now: Date,
   ): Promise<StoredSuggestion> {
+    const previous = await this.current(userId);
+    const history =
+      previous === undefined
+        ? null
+        : [pastOf(previous), ...(previous.history ?? [])].slice(
+            0,
+            HISTORY_LIMIT,
+          );
     const values = {
       kind: made.kind,
       focus: made.focus,
@@ -47,6 +67,7 @@ export class PgSuggestionStore extends SuggestionStore {
       takenAt: null,
       dismissedAt: null,
       answeredAt: null,
+      history,
       createdAt: now,
     };
     // A new suggestion is a new id, so a conversation opened from the last
@@ -107,6 +128,7 @@ function suggestionOf(row: AgentSuggestionRow): StoredSuggestion {
     takenAt: when(row.takenAt),
     dismissedAt: when(row.dismissedAt),
     answeredAt: when(row.answeredAt),
+    ...(row.history == null ? {} : { history: historyOf(row.history) }),
     createdAt: row.createdAt,
   };
   // Absent rather than undefined, as the memory store keeps them.
@@ -114,4 +136,13 @@ function suggestionOf(row: AgentSuggestionRow): StoredSuggestion {
     if (kept[key] === undefined) delete kept[key];
   }
   return kept;
+}
+
+function historyOf(history: unknown): PastSuggestion[] {
+  return (history as PastSuggestion[]).map((it) => ({
+    focus: it.focus,
+    kind: it.kind,
+    outcome: it.outcome,
+    createdAt: new Date(it.createdAt),
+  }));
 }

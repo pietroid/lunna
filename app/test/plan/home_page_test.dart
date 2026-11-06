@@ -295,6 +295,34 @@ void main() {
     verify(() => timeline.add(const EventPauseToggled('a'))).called(1);
   });
 
+  testAt('draws the offer inside Agora, before its card, and ✕ leaves Agora', (
+    tester,
+  ) async {
+    when(() => agent.suggestion()).thenAnswer(
+      (_) async => const AgentSuggestion(id: 's1', text: 'Começa o Roteiro?'),
+    );
+    when(() => agent.dismissSuggestion('s1')).thenAnswer((_) async {});
+    await pump(
+      tester,
+      cards: [card('a', 'Roteiro', TimelineSection.agora, at: 5)],
+    );
+    // The offer is asked for once the page is up; no settling, the now
+    // card keeps ticking.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    double top(Finder finder) => tester.getTopLeft(finder.first).dy;
+    final offer = find.text('Começa o Roteiro?');
+    expect(top(find.text(l10n.feedNow)), lessThan(top(offer)));
+    expect(top(offer), lessThan(top(find.text('Roteiro'))));
+
+    await tester.tap(find.text(l10n.agentSuggestionDismiss));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(offer, findsNothing);
+    expect(find.text('Roteiro'), findsWidgets);
+  });
+
   testAt('draws Pendentes with where each stands, its controls and bar', (
     tester,
   ) async {

@@ -193,6 +193,24 @@ export function toolsFor(shape: SchemaShape): ToolDefinition[] {
               description:
                 'Optional: the hours until you look at the plan again, 1 to 4. 1 when a step is under way right now, 4 otherwise.',
             },
+            topic: {
+              type: 'string',
+              enum: [
+                'goal',
+                'reach',
+                'shape',
+                'tasks',
+                'fits',
+                'routine',
+                'pace',
+                'keep',
+                'quick',
+                'stuck',
+                'waiting',
+              ],
+              description:
+                'Only for a suggestion nobody asked for: the topic you chose.',
+            },
             blocks: {
               type: 'array',
               minItems: 1,

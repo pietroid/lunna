@@ -295,7 +295,7 @@ were before the plan.
 ### The suggestion
 
 **A suggestion is a turn the agent asks itself, about Work Quality.** One
-thing is offered at the top of Plano without being asked
+thing is offered on Plano, under the Agora heading and before its card, without being asked
 (`SuggestionCard`, `kSuggestionOnPlan`). **Code picks the topic, the model writes the turn**
 ([RFC](../research/2026-10-29-agentic-suggestions/README.md),
 [delivery](../delivery/2026-10-29-agentic-suggestions/README.md)).
@@ -318,6 +318,31 @@ The first level not met is the **topic**; the count met is the score,
 sent to PostHog as `work_quality` (`suggestion_written`, with the topic
 and whether it has a plan) each time one is written. **It is internal**:
 no screen draws a level or a score.
+
+**What it remembers: `history`.** `agent_suggestion` has one row per
+person, so when `put` replaces a suggestion it folds it into the new one's
+nullable jsonb `history` (`pastOf`): `{ focus, kind, outcome, createdAt }`,
+newest first, at most 10 (`HISTORY_LIMIT`). The outcome is `taken`,
+`dismissed`, `answered` or `unanswered`. `SuggestionStore.recent(userId,
+limit)` is the current one plus its history (Pg and Memory).
+
+**Tactical candidates.** Besides the tier topic, `tacticalOf(tasks,
+backlog, begun, now)` finds up to 3 tasks per kind (never begun, done,
+cancelled or routine days):
+
+| Kind | Task |
+|------|------|
+| `stuck` | in Pendentes for `STUCK_PENDING_DAYS` (3) days or more, from `pending_at` |
+| `waiting` | in the queue or Para depois, not pending, written `WAITING_DAYS` (7) days ago or more, from `created_at` (`Task.createdAt`; the memory store leaves it out) |
+| `quick` | in the queue, at most `QUICK_MINUTES` (15) long, or an anchor whose hour has passed |
+
+`requestOf(quality, { history, tactical, now })` tells the model its last
+suggestions with their ages, the candidates with a legend, and to pick the
+one topic that matters most: the tier topic, a tactical one, or another
+when the person keeps turning one down (even one refusal counts; no fixed
+rule). A tactical suggestion proposes one hand gesture on that task, as a
+plan. The answer tool takes an optional `topic` (the 8 topics, `quick`,
+`stuck`, `waiting`); the stored `focus` is `topic ?? quality.topic`.
 
 **The turn.** `AgentService._write` runs an ordinary turn (`_answer`, the
 same tools and dry run) on a request the server writes (`requestOf`: the
@@ -366,7 +391,8 @@ Aplicar on its plan (`takenAt`), Agora não (`POST
 /agent/suggestion/:id/dismiss`, `dismissedAt`; keeps `nextAt`), and each
 message in the conversation it opened (`answeredAt`, from that turn's
 `followUp`). An answered one is hidden until `nextAt`, and so is one whose
-`basis` (the hash of its topic and facts) changed; a plan past its two
+`basis` changed (the hash of its topic and facts, plus the tactical
+candidates of its own focus only, none for a tier topic; `basisOf`); a plan past its two
 hours makes the turn be asked again on the next read. At `nextAt` the next
 read writes a new turn of the day as it is.
 
@@ -376,6 +402,8 @@ fixed words (`agentWelcome`, `agentWelcomeQuestion`) and the amounts R$
 3.000, 5.000, 8.000 (each sends "Quero faturar R$ … este mês.") and Outro
 valor (opens the chat empty). A message in its conversation answers it;
 Agora não puts it away until the next `nextAt`; a goal made by hand skips it.
+Once dismissed and past that `nextAt`, the next suggestion is a turn told
+the welcome was dismissed, never the welcome again.
 
 **One timer per person** (`SuggestionTimer`): armed at each `nextAt`
 written, re-armed at boot from `pending`, firing once: catch-up, then
