@@ -19,6 +19,7 @@ whole-file `cat`, and keep any single tool result under ~20k chars.
 | Tool | One line |
 |------|----------|
 | `check` | CI's checks on what changed, one line per step |
+| `oc` | Hands a /build's code writing to opencode; ✓ ok, or ✗ and the reason to fall back to Claude |
 | `map` | The code map: each source file and what it declares, filtered by words, in one call |
 | `preview` | Build a preview entry point (English by default), screenshot it, lay out the step strip |
 | `cost` | What a Claude Code session cost, per message, from its transcript |
@@ -37,6 +38,27 @@ whole-file `cat`, and keep any single tool result under ~20k chars.
 The server's eslint, tsc and tests (under `TZ=UTC`, as CI) run beside the
 app's `flutter analyze` and the tests of each changed package. A change to `app_ui` or `l10n` tests every package. Each step
 prints `✓ name (12s)`, or `✗` with the lines that explain it and its log.
+
+## `oc`: opencode writes, Claude finishes
+
+```bash
+.tool/oc <brief.md> [--minutes 9] [--model provider/model]   # OC_MODEL overrides the default, opencode/deepseek-v4-pro
+```
+
+Runs `opencode run` in this checkout on the brief and prints one verdict:
+`ok`, or `limit`, `permission`, `timeout`, `error`, `no_changes`,
+`missing`, each exiting 2, which `/build` reads as *build it yourself*.
+It writes `report.md` (opencode's last words), `oc.json` and `oc.log`
+next to the brief, so keep the brief outside the tree.
+
+**It can't get stuck.** `opencode run` never waits on a permission: an
+ask is auto-rejected and the run stops (exit 0, which is why the
+wrapper reads the events and calls it `permission`). The repo's
+`opencode.json` answers every permission up front: edits and shell
+allowed, git writes, `gh`, `curl`, web fetches, servers and paths
+outside the repo denied. A run is killed, with its children, at
+`--minutes`. Only one opencode runs per machine (a second one is
+`database is locked`, an `error`).
 
 ## `preview`: prints of a preview entry point
 

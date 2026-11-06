@@ -33,6 +33,34 @@ and the brief, verbatim) and section 2, **The plan**, in a few lines:
 the approach (files, routes, env vars), the decisions a reviewer might
 want otherwise, and how it will be proved.
 
+## 1b. Delegate the writing to opencode
+
+**Always try it first** when the piece writes code (skip it for docs,
+config or a one-file change): opencode writes the bulk cheaply, you
+finish. Write a brief outside the tree,
+`$TMPDIR/oc-<slug>/brief.md`: **Does** (the plan's changes with their
+`path:line`), **Not doing**, **Done when** (the narrowest commands that
+show it: `npm test -- <spec>`, `flutter analyze packages/<pkg>`), and the
+rules from 2 and 3 below that apply (they are what it forgets). Then, in
+the foreground:
+
+```bash
+.tool/oc $TMPDIR/oc-<slug>/brief.md      # 9 min cap; OC_MODEL to change the model
+```
+
+- `✓ ok`: read its `report.md` and `git diff` of the files it lists,
+  **never `oc.log`**, then go through 2 to 5 as a reviewer: fill what it
+  missed (strings in `app_pt.arb`, the analytics row, the spec), fix what
+  fails, prove it.
+- `✗` anything else (`limit`, `permission`, `timeout`, `error`,
+  `no_changes`, `missing`): **fall back, always**. Build the piece
+  yourself from the tree as it is: keep what compiles and belongs to the
+  plan, `git checkout` the rest. Don't retry opencode, don't ask; name the
+  outcome in the README's notes.
+
+Only one opencode runs on the machine at a time ("database is locked" is
+an `error`, so it falls back too).
+
 ## 2. Server
 
 `server/src/<feature>/`, a Nest module.
