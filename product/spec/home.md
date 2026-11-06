@@ -163,7 +163,8 @@ cards on screen. From the top:
   (#89); `solve_current` and `later_current` stay on the server for
   older apps.
 - A tap on a delivery opens its page on Pendentes; on a loose task its
-  `EventPage`.
+  `TaskPage`: Notas, Pendentes and Feitas always, under the task's own
+  summary (#118).
 - The offer is asked for when the tab comes forward, at midnight, and on
   coming back on another day. The day is asked for on every minute while
   Plano is in front (`MinuteRefresh`), and the deliveries whenever the
@@ -210,9 +211,13 @@ the end of the queue, so it waits in Para depois too.
   about the page it is on (a task's, a delivery's). A screen with a button
   of its own keeps it (Nova rotina on Rotina, a delivery on Produtos), and
   the notes put their dictation microphone beside it.
-- **+ Subtarefa** on a loose task's page (`EventPage.onAddSubtask`) gives
-  it a subtask: `POST /tasks/:id/subtasks`, the first one making it a task
-  with tasks (see [artifacts.md](artifacts.md)).
+- **A loose task's page** (`TaskPage`, `/evento/:id`) has the delivery's
+  three tabs. Pendentes is empty with *Adicionar* (prompt sheet, then
+  `POST /tasks/:id/subtasks`); the first subtask makes the task a delivery
+  and the page becomes the delivery's, on Pendentes (see
+  [artifacts.md](artifacts.md)). A fixed block and a finished task get
+  `EventPage` alone. Pendentes' drag keeps the order it leaves until the
+  delivery is read again.
 - Menu holds what hung off the greeting (**Sair**) and the catalogue:
   **Produtos** (every delivery, searched and filtered by product,
   `AllArtifactsPage`) and **Novo produto** (`TypeSheet`).
@@ -265,7 +270,7 @@ field, typed or spoken, read by `POST /agent/compose` into one summary
 the agent's plan), and nothing written until Adicionar; *Ajustar* opens
 the creation sheet (`writeTask`: Tarefa | Evento, and a Produto chip),
 which a tap on the calendar's room still opens directly. A loose task's
-page has *+ Subtarefa* (`POST /tasks/:id/subtasks`). See
+page has the three tabs and *Adicionar* (`POST /tasks/:id/subtasks`). See
 [product/spec/home.md](./home.md).
 The landing's demo shell keeps
 its old three tabs (Tempo, Entregas, Menu), as the landing has three chapters. It sits in the same spot on

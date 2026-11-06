@@ -12,5 +12,6 @@ export 'goals_page.dart';
 export 'pace_bars.dart';
 export 'shelf_filter.dart';
 export 'start_sheet.dart';
+export 'task_page.dart';
 export 'type_sheet.dart';
 export 'value_sheet.dart';

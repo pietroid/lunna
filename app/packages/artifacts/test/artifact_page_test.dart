@@ -128,6 +128,7 @@ void main() {
     DictationCubit? dictation,
     Artifact? shown,
     ComposeOpener? compose,
+    Widget? page,
   }) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -159,7 +160,7 @@ void main() {
               locale: const Locale('pt', 'BR'),
               localizationsDelegates: AppLocalizations.localizationsDelegates,
               supportedLocales: AppLocalizations.supportedLocales,
-              home: ArtifactPage(id: id, dictation: dictation),
+              home: page ?? ArtifactPage(id: id, dictation: dictation),
             ),
           ),
         ),
@@ -418,6 +419,11 @@ void main() {
       await finger.up();
       await tester.pumpAndSettle();
 
+      // It settles where it was let go, before the day answers (#118).
+      expect(
+        tester.getCenter(find.text('Tarefa d')).dy,
+        lessThan(tester.getCenter(find.text('Tarefa c')).dy),
+      );
       // Before c, which has an hour: c's place in the day's tasks.
       verify(
         () => timeline.add(const EventMoved(id: 'd', index: 1)),
@@ -445,6 +451,18 @@ void main() {
       // Nothing it knows on the day: no move.
       expect(subtaskMove('d', [task('z', TaskPlace.backlog)], 0, day), isNull);
     });
+  });
+
+  testAt('a loose task opens on the three tabs, Pendentes an Adicionar', (
+    tester,
+  ) async {
+    await pump(tester, page: const TaskPage(id: 'x'));
+
+    expect(find.text(l10n.artifactNotesTab), findsOneWidget);
+    expect(find.text(l10n.artifactDoneTab(0)), findsOneWidget);
+    await tester.tap(find.text(l10n.artifactPendingTab(0)));
+    await tester.pump();
+    expect(find.byType(AppAddRow), findsOneWidget);
   });
 
   testAt('draws its task running on Agora, with pause, over the rest', (
