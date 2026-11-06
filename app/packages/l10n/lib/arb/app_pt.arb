@@ -1966,10 +1966,6 @@
   "@composeFailed": {
     "description": "The composer's read failed (no connection, the model down)."
   },
-  "subtaskAdd": "Subtarefa",
-  "@subtaskAdd": {
-    "description": "The button on a loose task's page that gives it a subtask."
-  },
   "homeSeeCalendar": "Ver calendário",
   "homeNextEmpty": "Nada marcado daqui para a frente.",
   "playWhenTitle": "Quando fazer {title}?",

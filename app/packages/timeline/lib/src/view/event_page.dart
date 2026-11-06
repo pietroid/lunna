@@ -8,8 +8,11 @@ import 'package:timeline/src/bloc/timeline_bloc.dart';
 import 'package:timeline/src/models/models.dart';
 import 'package:timeline/src/widgets/widgets.dart';
 
-/// Writes a subtask called [title], [minutes] long, under the task [taskId].
-typedef SubtaskWriter = void Function(String taskId, String title, int minutes);
+/// What a loose task's page draws under its summary instead of the notes
+/// alone: the delivery's tabs (Notas, Pendentes, Feitas), given the [notes]
+/// to put in the first.
+typedef TaskTabsBuilder =
+    Widget Function(BuildContext context, TimelineEvent card, Widget notes);
 
 /// {@template event_page}
 /// One task or one block of time, opened.
@@ -43,14 +46,14 @@ class EventPage extends StatelessWidget {
     required this.id,
     this.finished,
     this.dock,
-    this.onAddSubtask,
+    this.tabs,
     super.key,
   });
 
-  /// Gives a loose task a subtask (#81's "+ Subtarefa"): the first one
-  /// makes it a task with tasks, keeping it as its first. Null offers
-  /// nothing.
-  final SubtaskWriter? onAddSubtask;
+  /// Draws a live loose task's notes inside the delivery's tabs, so a task
+  /// with no subtasks yet reads as one with tasks (#118). Null draws the
+  /// notes alone, as a fixed block and a finished task have them.
+  final TaskTabsBuilder? tabs;
 
   /// The card's id: the task's for a task, the event's for an event.
   final String id;
@@ -111,11 +114,7 @@ class EventPage extends StatelessWidget {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _Summary(
-                            card: card,
-                            done: done,
-                            onAddSubtask: onAddSubtask,
-                          ),
+                          _Summary(card: card, done: done),
                           if (card.checklist.isNotEmpty) ...[
                             const Divider(height: 1, color: AppColors.line),
                             _Checklist(card: card, editable: !done),
@@ -124,10 +123,15 @@ class EventPage extends StatelessWidget {
                           Expanded(
                             // Keyed by the block, so the field never carries
                             // one block's text over to another.
-                            child: _Notes(
-                              key: ValueKey(card.id),
-                              card: card,
-                              dock: card.isInteractive ? dock : null,
+                            child: _body(
+                              context,
+                              card,
+                              done,
+                              _Notes(
+                                key: ValueKey(card.id),
+                                card: card,
+                                dock: card.isInteractive ? dock : null,
+                              ),
                             ),
                           ),
                         ],
@@ -141,6 +145,19 @@ class EventPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// The notes, inside [tabs] when the card is a live loose task.
+  Widget _body(
+    BuildContext context,
+    TimelineEvent card,
+    bool done,
+    Widget notes,
+  ) {
+    final tabs = this.tabs;
+    final loose =
+        card.isTask && card.isInteractive && !done && card.artifactId == null;
+    return tabs != null && loose ? tabs(context, card, notes) : notes;
   }
 
   Future<void> _delete(BuildContext context, TimelineEvent card) async {
@@ -232,11 +249,9 @@ class _TitleState extends State<_Title> {
 /// whether or not it is running. Running only adds the progress bar, which
 /// is the one thing that is true of a running block and of nothing else.
 class _Summary extends StatelessWidget {
-  const _Summary({required this.card, required this.done, this.onAddSubtask});
+  const _Summary({required this.card, required this.done});
 
   final TimelineEvent card;
-
-  final SubtaskWriter? onAddSubtask;
 
   /// Whether it is a finished task: when it was done, and nothing to press.
   final bool done;
@@ -319,21 +334,11 @@ class _Summary extends StatelessWidget {
             _Property(
               label: l10n.eventArtifactLabel,
               child: artifact == null
-                  ? Row(
-                      children: [
-                        Text(
-                          l10n.eventNoArtifact,
-                          style: AppTypography.labelStrong.copyWith(
-                            color: AppColors.ink3,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (editable && onAddSubtask != null)
-                          AppButton.text(
-                            text: '+ ${l10n.subtaskAdd}',
-                            onPressed: () => unawaited(_subtask(context)),
-                          ),
-                      ],
+                  ? Text(
+                      l10n.eventNoArtifact,
+                      style: AppTypography.labelStrong.copyWith(
+                        color: AppColors.ink3,
+                      ),
                     )
                   : AppTag(text: artifact),
             ),
@@ -347,19 +352,6 @@ class _Summary extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  /// Asks the subtask's name and length, and writes it.
-  Future<void> _subtask(BuildContext context) async {
-    final write = onAddSubtask;
-    if (write == null) return;
-    final result = await AppPromptSheet.show(
-      context,
-      fixable: false,
-      initialDuration: const Duration(minutes: 30),
-    );
-    if (result == null || result.text.trim().isEmpty) return;
-    write(card.id, result.text.trim(), result.duration.inMinutes);
   }
 
   Widget _controls(BuildContext context) {

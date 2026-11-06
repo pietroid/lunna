@@ -583,7 +583,6 @@
   "composeGoalBy": "{value} by {day}",
   "composeAdded": "Added",
   "composeFailed": "Couldn't understand right now. Try again.",
-  "subtaskAdd": "Subtask",
   "homeSeeCalendar": "See calendar",
   "homeNextEmpty": "Nothing scheduled from here on.",
   "playWhenTitle": "When to do {title}?",

@@ -2214,9 +2214,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get composeFailed => 'Couldn\'t understand right now. Try again.';
 
   @override
-  String get subtaskAdd => 'Subtask';
-
-  @override
   String get homeSeeCalendar => 'See calendar';
 
   @override

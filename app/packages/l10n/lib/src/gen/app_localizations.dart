@@ -3595,12 +3595,6 @@ abstract class AppLocalizations {
   /// **'Não consegui entender agora. Tente de novo.'**
   String get composeFailed;
 
-  /// The button on a loose task's page that gives it a subtask.
-  ///
-  /// In pt, this message translates to:
-  /// **'Subtarefa'**
-  String get subtaskAdd;
-
   /// No description provided for @homeSeeCalendar.
   ///
   /// In pt, this message translates to:

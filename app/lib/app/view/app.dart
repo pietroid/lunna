@@ -38,20 +38,14 @@ class App extends StatelessWidget {
              name: 'Inicio',
              builder: (context, state) => const ShellPage(),
            ),
-           // One block of time, opened from the timeline.
+           // One block of time, opened from the timeline: a loose task on
+           // a delivery's tabs (#118), a fixed block on its own page.
            GoRoute(
              path: '/evento/:id',
              name: 'Evento',
-             builder: (context, state) => EventPage(
+             builder: (context, state) => TaskPage(
                id: state.pathParameters['id']!,
                dock: NotesDock.task,
-               onAddSubtask: (id, title, minutes) => unawaited(
-                 context.read<ArtifactsCubit>().addSubtask(
-                   id,
-                   title,
-                   minutes: minutes,
-                 ),
-               ),
              ),
            ),
            // The routines: what happens every day, and on which days.

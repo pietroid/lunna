@@ -593,10 +593,28 @@ class _Action extends StatelessWidget {
 /// has no tasks of its own: one level.
 ///
 /// Tapped, a task opens its page and its notes.
-class _Tasks extends StatelessWidget {
+class _Tasks extends StatefulWidget {
   const _Tasks({required this.artifact});
 
   final Artifact artifact;
+
+  @override
+  State<_Tasks> createState() => _TasksState();
+}
+
+class _TasksState extends State<_Tasks> {
+  Artifact get artifact => widget.artifact;
+
+  /// The order a drag left the subtasks in (#118), held until the
+  /// delivery is read again, so the card settles where it was let go
+  /// instead of jumping back while the move is on its way.
+  List<String>? _order;
+
+  @override
+  void didUpdateWidget(_Tasks oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.artifact != widget.artifact) _order = null;
+  }
 
   void _open(BuildContext context, String id) => unawaited(
     Navigator.of(context).push(
@@ -618,7 +636,11 @@ class _Tasks extends StatelessWidget {
     final rest = [...later]..removeAt(from);
     final bloc = context.read<TimelineBloc>();
     final move = subtaskMove(later[from].id, rest, at, bloc.state);
-    if (move != null) bloc.add(move);
+    if (move == null) return;
+    setState(
+      () => _order = [for (final t in rest..insert(at, later[from])) t.id],
+    );
+    bloc.add(move);
   }
 
   @override
@@ -639,6 +661,12 @@ class _Tasks extends StatelessWidget {
     final timed = open.where((t) => t.at != null).toList()
       ..sort((a, b) => a.at!.compareTo(b.at!));
     final later = [...timed, ...open.where((t) => t.at == null)];
+    final order = _order;
+    if (order != null &&
+        order.length == later.length &&
+        later.every((t) => order.contains(t.id))) {
+      later.sort((a, b) => order.indexOf(a.id).compareTo(order.indexOf(b.id)));
+    }
 
     Widget heading(String text) => Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -727,12 +755,18 @@ class _Tasks extends StatelessWidget {
             itemCount: later.length,
             itemBuilder: (context, index) => row(index),
             onReorderItem: (from, to) => _reorder(context, later, from, to),
-            // Lifted as the home lifts a card it carries.
-            proxyDecorator: (child, _, _) => Material(
-              color: Colors.transparent,
-              elevation: 6,
-              shadowColor: AppColors.shadow,
-              borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+            // Lifted as the home lifts a card it carries: it rises to the
+            // home's elevation when held and settles back as it lands.
+            proxyDecorator: (child, _, animation) => AnimatedBuilder(
+              animation: animation,
+              builder: (context, child) => Material(
+                color: Colors.transparent,
+                elevation:
+                    6 * Curves.easeInOut.transform(animation.value.clamp(0, 1)),
+                shadowColor: AppColors.shadow,
+                borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                child: child,
+              ),
               child: child,
             ),
           ),
