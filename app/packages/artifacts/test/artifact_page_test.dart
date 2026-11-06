@@ -127,6 +127,7 @@ void main() {
     String id = 'p',
     DictationCubit? dictation,
     Artifact? shown,
+    ComposeOpener? compose,
   }) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -151,12 +152,15 @@ void main() {
               ),
             ),
           ],
-          child: MaterialApp(
-            theme: AppTheme.current,
-            locale: const Locale('pt', 'BR'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: ArtifactPage(id: id, dictation: dictation),
+          child: ComposeLauncher(
+            open: compose ?? (_, {about}) async {},
+            child: MaterialApp(
+              theme: AppTheme.current,
+              locale: const Locale('pt', 'BR'),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: ArtifactPage(id: id, dictation: dictation),
+            ),
           ),
         ),
       ),
@@ -299,6 +303,148 @@ void main() {
     verify(
       () => timeline.add(const EventMoved(id: 'd', index: 0, start: true)),
     ).called(1);
+  });
+
+  testAt('opens on the notes when nothing is pending, and an empty '
+      "Pendentes offers the home's Adicionar, about this task", (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
+    AgentSubject? asked;
+    var opened = 0;
+    await pump(
+      tester,
+      shown: Artifact(
+        id: 'p',
+        title: 'Site do estúdio',
+        minutes: 90,
+        createdAt: DateTime(2026, 6),
+        tasks: [task('e', TaskPlace.done, doneAt: DateTime(2026, 6, 10, 9))],
+      ),
+      compose: (_, {about}) async {
+        opened++;
+        asked = about;
+      },
+    );
+    expect(find.text(l10n.artifactNotesHint), findsOneWidget);
+
+    await tester.tap(find.text(l10n.artifactPendingTab(0)));
+    await tester.pump();
+    expect(find.byType(AppAddRow), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppAddRow),
+        matching: find.byType(InkWell),
+      ),
+    );
+    await tester.pump();
+    expect(opened, 1);
+    expect(asked, isNotNull);
+  });
+
+  group('a subtask', () {
+    final timed = Artifact(
+      id: 'p',
+      title: 'Site do estúdio',
+      minutes: 90,
+      createdAt: DateTime(2026, 6),
+      tasks: [
+        ArtifactTask(
+          id: 'c',
+          title: 'Tarefa c',
+          minutes: 30,
+          place: TaskPlace.queue,
+          at: now.add(const Duration(minutes: 65)),
+        ),
+        task('d', TaskPlace.backlog),
+      ],
+    );
+
+    testAt('swiped left asks, and only yes deletes it', (tester) async {
+      SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
+      await pump(tester);
+
+      await tester.drag(find.text('Tarefa d'), const Offset(-150, 0));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.confirmDeleteSubtaskBody), findsOneWidget);
+      // Tapping outside is a no.
+      await tester.tapAt(const Offset(195, 40));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.confirmDeleteSubtaskBody), findsNothing);
+      verifyNever(() => timeline.add(any(that: isA<EventDeleted>())));
+
+      await tester.drag(find.text('Tarefa d'), const Offset(-150, 0));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.confirmDeleteAction));
+      await tester.pumpAndSettle();
+      verify(() => timeline.add(const EventDeleted('d'))).called(1);
+    });
+
+    testAt('swiped right is ticked off at once; a short swipe does nothing', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
+      await pump(tester);
+
+      await tester.drag(find.text('Tarefa d'), const Offset(40, 0));
+      await tester.pumpAndSettle();
+      verifyNever(() => timeline.add(any(that: isA<EventFinished>())));
+
+      await tester.drag(find.text('Tarefa d'), const Offset(150, 0));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.confirmDeleteAction), findsNothing);
+      verify(() => timeline.add(const EventFinished('d'))).called(1);
+    });
+
+    testAt('held and dragged above another takes its place in the day', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({'artifact.tab.p': 1});
+      await pump(tester, shown: timed);
+
+      final from = tester.getCenter(find.text('Tarefa d'));
+      final to = tester.getCenter(find.text('Tarefa c'));
+      final finger = await tester.startGesture(from);
+      await tester.pump(
+        const Duration(milliseconds: 500) + const Duration(milliseconds: 100),
+      );
+      for (var i = 1; i <= 10; i++) {
+        await finger.moveTo(
+          Offset(from.dx, from.dy + (to.dy - from.dy - 20) * i / 10),
+        );
+        await tester.pump(const Duration(milliseconds: 30));
+      }
+      await finger.up();
+      await tester.pumpAndSettle();
+
+      // Before c, which has an hour: c's place in the day's tasks.
+      verify(
+        () => timeline.add(const EventMoved(id: 'd', index: 1)),
+      ).called(1);
+    });
+
+    test('a move lands in the queue or the backlog, as its neighbour', () {
+      final c = timed.tasks[0];
+      final d = timed.tasks[1];
+      // Before a task with an hour: its place in the queue.
+      expect(
+        subtaskMove('d', [c], 0, day),
+        const EventMoved(id: 'd', index: 1),
+      );
+      // After the last one, which waits in the backlog: right under it.
+      expect(
+        subtaskMove('c', [d], 1, day),
+        const EventMoved(id: 'c', index: 1, backlog: true),
+      );
+      // Before one waiting in the backlog: its place there.
+      expect(
+        subtaskMove('c', [d], 0, day),
+        const EventMoved(id: 'c', index: 0, backlog: true),
+      );
+      // Nothing it knows on the day: no move.
+      expect(subtaskMove('d', [task('z', TaskPlace.backlog)], 0, day), isNull);
+    });
   });
 
   testAt('draws its task running on Agora, with pause, over the rest', (

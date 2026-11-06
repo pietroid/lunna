@@ -311,29 +311,23 @@ abstract class AppLocalizations {
   /// **'Sai da agenda e não volta.'**
   String get confirmDeleteBody;
 
+  /// Asked before a task (not a fixed block) is deleted, from its page or a swipe on the calendar.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sai da sua lista e não volta.'**
+  String get confirmDeleteTaskBody;
+
+  /// Asked before a subtask is deleted by a swipe on its task page.
+  ///
+  /// In pt, this message translates to:
+  /// **'Sai desta lista e da agenda, e não volta.'**
+  String get confirmDeleteSubtaskBody;
+
   /// No description provided for @confirmDeleteAction.
   ///
   /// In pt, this message translates to:
   /// **'Excluir'**
   String get confirmDeleteAction;
-
-  /// No description provided for @confirmDoneTitle.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir “{title}”?'**
-  String confirmDoneTitle(String title);
-
-  /// No description provided for @confirmDoneBody.
-  ///
-  /// In pt, this message translates to:
-  /// **'Ela vai para Feitas e sai da fila.'**
-  String get confirmDoneBody;
-
-  /// No description provided for @confirmDoneAction.
-  ///
-  /// In pt, this message translates to:
-  /// **'Concluir'**
-  String get confirmDoneAction;
 
   /// No description provided for @confirmShortenTitle.
   ///
@@ -466,12 +460,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Nenhuma'**
   String get eventNoArtifact;
-
-  /// No description provided for @eventNotesLabel.
-  ///
-  /// In pt, this message translates to:
-  /// **'Notas'**
-  String get eventNotesLabel;
 
   /// No description provided for @restTip01.
   ///
@@ -1841,12 +1829,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{Feitas} other{Feitas · {count}}}'**
   String artifactDoneTab(int count);
 
-  /// A task's own page, Pendentes' Para depois with nothing in it.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nada esperando. O + escreve uma tarefa desta.'**
-  String get artifactPendingEmpty;
-
   /// No description provided for @artifactDoneEmpty.
   ///
   /// In pt, this message translates to:
@@ -1870,12 +1852,6 @@ abstract class AppLocalizations {
   /// In pt, this message translates to:
   /// **'Escreva o que quiser sobre a entrega…'**
   String get artifactNotesHint;
-
-  /// No description provided for @artifactAddTask.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nova tarefa'**
-  String get artifactAddTask;
 
   /// No description provided for @artifactTasksDone.
   ///

@@ -101,17 +101,15 @@
     }
   },
   "confirmDeleteBody": "Sai da agenda e não volta.",
-  "confirmDeleteAction": "Excluir",
-  "confirmDoneTitle": "Concluir “{title}”?",
-  "@confirmDoneTitle": {
-    "placeholders": {
-      "title": {
-        "type": "String"
-      }
-    }
+  "confirmDeleteTaskBody": "Sai da sua lista e não volta.",
+  "@confirmDeleteTaskBody": {
+    "description": "Asked before a task (not a fixed block) is deleted, from its page or a swipe on the calendar."
   },
-  "confirmDoneBody": "Ela vai para Feitas e sai da fila.",
-  "confirmDoneAction": "Concluir",
+  "confirmDeleteSubtaskBody": "Sai desta lista e da agenda, e não volta.",
+  "@confirmDeleteSubtaskBody": {
+    "description": "Asked before a subtask is deleted by a swipe on its task page."
+  },
+  "confirmDeleteAction": "Excluir",
   "confirmShortenTitle": "Não cabe inteiro aqui",
   "confirmShortenBody": "“{title}” leva {duration} min e esse intervalo tem espaço para {minutes} min, já contando a pausa. Ajustar para {minutes} min?",
   "@confirmShortenBody": {
@@ -229,7 +227,6 @@
   "eventLengthLabel": "Duração",
   "eventArtifactLabel": "Entrega",
   "eventNoArtifact": "Nenhuma",
-  "eventNotesLabel": "Notas",
   "restTip01": "Respire fundo. Três vezes, devagar.",
   "restTip02": "Levante, alongue as costas e olhe pela janela.",
   "restTip03": "Beba um copo d’água antes de continuar.",
@@ -827,15 +824,10 @@
       }
     }
   },
-  "artifactPendingEmpty": "Nada esperando. O + escreve uma tarefa desta.",
-  "@artifactPendingEmpty": {
-    "description": "A task's own page, Pendentes' Para depois with nothing in it."
-  },
   "artifactDoneEmpty": "Nada feito ainda. O que você terminar desta entrega fica aqui.",
   "artifactNotesTab": "Notas",
   "artifactDeadlineLabel": "Prazo",
   "artifactNotesHint": "Escreva o que quiser sobre a entrega…",
-  "artifactAddTask": "Nova tarefa",
   "artifactTasksDone": "{count, plural, =1{1 feita} other{{count} feitas}}",
   "@artifactTasksDone": {
     "placeholders": {
@@ -2204,15 +2196,28 @@
   "guardWaitTitle": "Começar depois de {title}?",
   "@guardWaitTitle": {
     "description": "The guard when what runs is a fixed block (#89): it is not paused, and the task begins after it.",
-    "placeholders": { "title": { "type": "String" } }
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
   },
   "guardWaitBody": "{title} é fixo e segue até {end}.",
   "@guardWaitBody": {
     "description": "Under guardWaitTitle: the fixed block and its end.",
-    "placeholders": { "title": { "type": "String" }, "end": { "type": "String" } }
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
   },
   "guardWaitYes": "Sim, começar depois",
-  "@guardWaitYes": { "description": "Yes on the guard over a fixed block: the task begins after it." },
+  "@guardWaitYes": {
+    "description": "Yes on the guard over a fixed block: the task begins after it."
+  },
   "playMuchUntil": "{title}, às {hour}",
   "@playMuchUntil": {
     "description": "What the room runs up to: the next fixed block.",

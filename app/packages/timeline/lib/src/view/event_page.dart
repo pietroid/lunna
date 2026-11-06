@@ -147,7 +147,11 @@ class EventPage extends StatelessWidget {
     final bloc = context.read<TimelineBloc>();
     final navigator = Navigator.of(context);
 
-    if (await confirmDelete(context, card.title)) {
+    if (await confirmDelete(
+      context,
+      card.title,
+      body: card.isTask ? context.l10n.confirmDeleteTaskBody : null,
+    )) {
       bloc.add(EventDeleted(card.id));
       navigator.pop();
     }
@@ -669,24 +673,15 @@ class _NotesState extends State<_Notes> {
     final dock = widget.dock;
     final notes = SingleChildScrollView(
       controller: _scroll,
+      // The body a delivery's Notas has: the field alone, no heading.
       padding: EdgeInsets.fromLTRB(
         AppSpacing.s6,
-        AppSpacing.s4,
+        AppSpacing.s3,
         AppSpacing.s6,
         // Room to scroll the last line clear of the dock.
         dock == null ? AppSpacing.s8 : kNotesDockClearance,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            context.l10n.eventNotesLabel,
-            style: AppTypography.label.copyWith(color: AppColors.ink3),
-          ),
-          const SizedBox(height: AppSpacing.s2),
-          _field(context),
-        ],
-      ),
+      child: _field(context),
     );
     if (dock == null) return notes;
 
@@ -715,7 +710,7 @@ class _NotesState extends State<_Notes> {
       focusNode: _focus,
       enabled: widget.card.isInteractive,
       maxLines: null,
-      minLines: 6,
+      minLines: 8,
       keyboardType: TextInputType.multiline,
       textCapitalization: TextCapitalization.sentences,
       style: AppTypography.body,

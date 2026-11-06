@@ -212,3 +212,19 @@ was done, newest first under Hoje / Ontem / the date), under the same
 delivered** (`done_at`). The routes and the rules are in
 [product/spec/artifacts.md](./artifacts.md): read it before
 touching `server/src/artifacts/` or `app/packages/artifacts/`.
+
+## The task page's Pendentes (#95)
+
+- Open subtasks are `SubtaskRow`s in a reorderable list, gap `AppSpacing.s1`
+  as on the home. A long press lifts one; letting go posts the day's move
+  (`subtaskMove`): it takes the place of the subtask it lands before, or
+  follows the one it lands after, in the queue or in the backlog.
+- Swipe right (past 96 px) ticks it off at once; swipe left asks
+  (`confirmDelete`, `confirmDeleteSubtaskBody`) and then deletes. The
+  running subtask is under Agora, outside the list, so it has no swipe.
+- With nothing pending the tab shows the home's `AppAddRow` ("Adicionar"),
+  which opens the composer about this task, and the page opens on Notas
+  whatever tab was remembered.
+- A loose task's page shows the same Notas body, with no heading.
+- Delete confirmations take a body per type: block, task, subtask,
+  delivery, goal. There is no done confirmation.

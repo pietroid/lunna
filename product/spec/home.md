@@ -163,7 +163,8 @@ cards on screen. From the top:
 - **A delivery's page** (`ArtifactPage`): Pendentes is two sections,
   **Agora** (its task running, `NowTaskCard` titled by the task) and
   **Para depois** (the rest, the queue's first first, then its backlog),
-  each with play; the guard is drawn over it.
+  each with play; the guard is drawn over it. Its subtasks drag and swipe
+  (see [artifacts.md](./artifacts.md), "The task page's Pendentes").
 
 ## Writing a task
 

@@ -51,16 +51,8 @@ class ArtifactPage extends StatefulWidget {
     required this.id,
     this.initialTab,
     this.dictation,
-    this.previewSwipe,
-    this.previewLifted,
     super.key,
   });
-
-  /// The subtask id and distance of a swipe drawn mid-way, for previews.
-  final (String, double)? previewSwipe;
-
-  /// The subtask id drawn lifted by a drag, for previews.
-  final String? previewLifted;
 
   /// The artifact's id.
   final String id;
@@ -97,7 +89,15 @@ class _ArtifactPageState extends State<ArtifactPage> {
   Future<void> _restoreTab() async {
     try {
       final saved = (await SharedPreferences.getInstance()).getInt(_tabKey);
-      if (saved != null && mounted) setState(() => _tab = saved);
+      if (saved == null || !mounted) return;
+      // With nothing pending, the page opens on the notes whatever was left.
+      final artifact = context.read<ArtifactsCubit>().state.byId(widget.id);
+      if (saved == _tasksTab &&
+          artifact != null &&
+          artifact.steps == artifact.stepsDone) {
+        return;
+      }
+      setState(() => _tab = saved);
     } on Object {
       // Nothing remembered opens on the notes.
     }
@@ -223,12 +223,7 @@ class _ArtifactPageState extends State<ArtifactPage> {
                             ),
                             Expanded(
                               child: _tab == _tasksTab
-                                  ? _Tasks(
-                                      artifact: artifact,
-                                      swipeId: widget.previewSwipe?.$1,
-                                      swipe: widget.previewSwipe?.$2 ?? 0,
-                                      liftedId: widget.previewLifted,
-                                    )
+                                  ? _Tasks(artifact: artifact)
                                   : _tab == _doneTab
                                   ? _Done(artifact: artifact)
                                   : _Notes(
@@ -599,19 +594,9 @@ class _Action extends StatelessWidget {
 ///
 /// Tapped, a task opens its page and its notes.
 class _Tasks extends StatelessWidget {
-  const _Tasks({
-    required this.artifact,
-    this.swipeId,
-    this.swipe = 0,
-    this.liftedId,
-  });
+  const _Tasks({required this.artifact});
 
   final Artifact artifact;
-
-  /// A swipe or drag already under way, for the previews.
-  final String? swipeId;
-  final double swipe;
-  final String? liftedId;
 
   void _open(BuildContext context, String id) => unawaited(
     Navigator.of(context).push(
@@ -620,6 +605,21 @@ class _Tasks extends StatelessWidget {
       ),
     ),
   );
+
+  /// Writes the place a subtask was dragged to ([from] to [at], counted
+  /// with it taken out) through the day's move.
+  void _reorder(
+    BuildContext context,
+    List<ArtifactTask> later,
+    int from,
+    int at,
+  ) {
+    if (at == from) return;
+    final rest = [...later]..removeAt(from);
+    final bloc = context.read<TimelineBloc>();
+    final move = subtaskMove(later[from].id, rest, at, bloc.state);
+    if (move != null) bloc.add(move);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -650,74 +650,149 @@ class _Tasks extends StatelessWidget {
       child: Text(text, style: AppTypography.title),
     );
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.s5,
-        0,
-        AppSpacing.s5,
-        kNotesDockClearance,
-      ),
-      children: [
-        if (running != null) ...[
-          heading(l10n.feedNow),
-          NowTaskCard(
-            card: running,
-            now: now,
-            byParent: false,
-            onTap: () => _open(context, running.id),
-          ),
-        ],
-        heading(l10n.stageBacklog),
-        if (later.isEmpty)
-          // The empty list offers the way out instead of describing it.
-          AppAddRow(
-            onTap: () => ComposeLauncher.maybeOf(
-              context,
-            )?.open(context, about: AgentSubject.artifact(artifact.id)),
-          ),
-        for (final task in later)
-          Padding(
-            key: ValueKey(task.id),
-            // The gap the home keeps between its cards (kQueueGap).
-            padding: const EdgeInsets.only(bottom: AppSpacing.s1),
-            child: SubtaskRow(
-              offset: swipeId == task.id ? swipe : 0,
-              lifted: liftedId == task.id,
-              onDone: () async {
-                context.read<TimelineBloc>().add(EventFinished(task.id));
-              },
-              onDelete: () async {
+    Widget row(int index) {
+      final task = later[index];
+      return Padding(
+        key: ValueKey(task.id),
+        // The gap the home keeps between its cards (kQueueGap).
+        padding: const EdgeInsets.only(bottom: AppSpacing.s1),
+        // Held, it lifts and goes where it is let go, as on the home.
+        child: ReorderableDelayedDragStartListener(
+          index: index,
+          child: SubtaskRow(
+            onDone: () =>
+                context.read<TimelineBloc>().add(EventFinished(task.id)),
+            onDelete: () => unawaited(_delete(context, task)),
+            child: TaskCard(
+              title: task.title,
+              subtitle: task.at == null
+                  ? null
+                  : AppWheelPicker.dayLabel(l10n, task.at!, now: now),
+              trailing: task.at == null
+                  ? formatMinutes(l10n, task.minutes)
+                  : hhmm(task.at!),
+              // Play on a subtask asks by play's rules (#89), about the
+              // subtask alone.
+              onPlay: () {
                 final bloc = context.read<TimelineBloc>();
-                if (await confirmDelete(context, task.title)) {
-                  bloc.add(EventDeleted(task.id));
+                final card = bloc.state.byId(task.id);
+                if (card != null) {
+                  unawaited(playTask(context, card));
+                } else {
+                  bloc.add(EventMoved(id: task.id, index: 0, start: true));
                 }
               },
-              child: TaskCard(
-                title: task.title,
-                subtitle: task.at == null
-                    ? null
-                    : AppWheelPicker.dayLabel(l10n, task.at!, now: now),
-                trailing: task.at == null
-                    ? formatMinutes(l10n, task.minutes)
-                    : hhmm(task.at!),
-                // Play on a subtask asks by play's rules (#89), about the
-                // subtask alone.
-                onPlay: () {
-                  final bloc = context.read<TimelineBloc>();
-                  final card = bloc.state.byId(task.id);
-                  if (card != null) {
-                    unawaited(playTask(context, card));
-                  } else {
-                    bloc.add(EventMoved(id: task.id, index: 0, start: true));
-                  }
-                },
-                onTap: () => _open(context, task.id),
-              ),
+              onTap: () => _open(context, task.id),
             ),
           ),
+        ),
+      );
+    }
+
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.s5),
+          sliver: SliverList.list(
+            children: [
+              if (running != null) ...[
+                heading(l10n.feedNow),
+                NowTaskCard(
+                  card: running,
+                  now: now,
+                  byParent: false,
+                  onTap: () => _open(context, running.id),
+                ),
+              ],
+              heading(l10n.stageBacklog),
+              if (later.isEmpty)
+                // The empty list offers the home's own way to add, about
+                // this task, instead of describing it.
+                AppAddRow(
+                  onTap: () => ComposeLauncher.maybeOf(
+                    context,
+                  )?.open(context, about: AgentSubject.artifact(artifact.id)),
+                ),
+            ],
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.s5,
+            0,
+            AppSpacing.s5,
+            kNotesDockClearance,
+          ),
+          sliver: SliverReorderableList(
+            itemCount: later.length,
+            itemBuilder: (context, index) => row(index),
+            onReorderItem: (from, to) => _reorder(context, later, from, to),
+            // Lifted as the home lifts a card it carries.
+            proxyDecorator: (child, _, _) => Material(
+              color: Colors.transparent,
+              elevation: 6,
+              shadowColor: AppColors.shadow,
+              borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+              child: child,
+            ),
+          ),
+        ),
       ],
     );
   }
+
+  /// Asks, and deletes [task] if the answer was yes.
+  Future<void> _delete(BuildContext context, ArtifactTask task) async {
+    final bloc = context.read<TimelineBloc>();
+    if (await confirmDelete(
+      context,
+      task.title,
+      body: context.l10n.confirmDeleteSubtaskBody,
+    )) {
+      bloc.add(EventDeleted(task.id));
+    }
+  }
+}
+
+/// The move that puts subtask [id] at [at] among the rest of its task's
+/// open subtasks ([rest], in the page's order, with it taken out).
+///
+/// It takes the place of the subtask it lands before, or follows the one
+/// it lands after: in the day's queue when that one has an hour, in the
+/// backlog when it waits there. Null when neither is on [day].
+@visibleForTesting
+EventMoved? subtaskMove(
+  String id,
+  List<ArtifactTask> rest,
+  int at,
+  TimelineState day,
+) {
+  int? placeOf(ArtifactTask neighbour) {
+    final list = [
+      for (final t in neighbour.at == null ? day.backlog : day.tasks)
+        if (t.id != id) t.id,
+    ];
+    final i = list.indexOf(neighbour.id);
+    return i < 0 ? null : i;
+  }
+
+  EventMoved moveTo(ArtifactTask neighbour, int index) => EventMoved(
+    id: id,
+    index: index,
+    backlog: neighbour.at == null,
+  );
+
+  final before = at < rest.length ? rest[at] : null;
+  if (before != null) {
+    final i = placeOf(before);
+    if (i != null) return moveTo(before, i);
+  }
+  final after = at > 0 ? rest[at - 1] : null;
+  if (after != null) {
+    final i = placeOf(after);
+    if (i != null) return moveTo(after, i + 1);
+  }
+  return null;
 }
 
 /// What was done of the artifact, newest first, under the day it was done
