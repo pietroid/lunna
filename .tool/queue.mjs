@@ -538,7 +538,7 @@ async function stopped(cfg, st, phase, reply, res) {
 // posted, and the work goes straight on: the mockup when there is something
 // to see, the build otherwise. No gate: the mockup is the first stop.
 export const GRILL_ROUNDS = 2;
-export const grillText = (qs) => qs.map((q, i) => `❓ **Q${i + 1}: ${q.title}**: ${q.question}\n➡ ${q.recommended}`).join('\n\n---\n\n');
+export const grillText = (qs) => qs.map((q, i) => `${i + 1}. **${q.title}**: ${q.question}\n   Recommended: ${q.recommended}`).join('\n');
 
 // The plan's questions first, when it has any: the person answers them (or
 // says yes to all) before anything is drawn or built. "Yes" takes the plan
@@ -551,7 +551,7 @@ async function planned(cfg, st, out, reply) {
   if (!plan.questions?.length || (st.grillRounds ?? 0) >= GRILL_ROUNDS) return go(cfg, st);
   st.grillRounds = (st.grillRounds ?? 0) + 1;
   st.gate = 'grill';
-  st.gateAt = comment(cfg, st.issue, `❓ **Before it starts** (round ${st.grillRounds} of ${GRILL_ROUNDS}): the plan below takes every recommendation; answering otherwise can make it smaller.\n\n${grillText(plan.questions)}\n\nReply **yes** to take them all, answer by number (\"Q2: no, …\"; a question you skip takes the recommendation), or **no** to move the issue to the backlog.\n\n<details><summary>The plan, as recommended: ~${wk(plan.estimate)}</summary>\n\n${plan.does}${plan.notDoing ? `\n\n**Not doing**\n\n${plan.notDoing}` : ''}\n\n</details>\n\n<sub>plan: ${usageLine(st.runs)}</sub>`);
+  st.gateAt = comment(cfg, st.issue, `❓ **Before it starts** (round ${st.grillRounds} of ${GRILL_ROUNDS}): the plan below takes every recommendation; answering otherwise can make it smaller.\n\n${grillText(plan.questions)}\n\nReply **yes** to take them all, or answer by number, one per line (\"2. no, …\"; a number you skip takes the recommendation), or **no** to move the issue to the backlog.\n\n<details><summary>The plan, as recommended: ~${wk(plan.estimate)}</summary>\n\n${plan.does}${plan.notDoing ? `\n\n**Not doing**\n\n${plan.notDoing}` : ''}\n\n</details>\n\n<sub>plan: ${usageLine(st.runs)}</sub>`);
   st.next = null;
   setStatus(cfg, st, 'waiting');
   save(st);

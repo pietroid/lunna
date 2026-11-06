@@ -68,9 +68,15 @@ it (at most 2 rounds; then decide the rest with your recommendation).
 Format, always in English (the issue is English; only what the app shows is Portuguese):
 
 ```
-❓ **Q1: <title>**: <question, yes = the recommendation>
-➡ <recommended answer>
+1. **<title>**: <question, yes = the recommendation>
+   Recommended: <recommended answer>
+2. …
 ```
+
+Under the queue there is no asking: the questions go in the structured
+output, the queue posts them as this numbered list in one comment, and the
+person's reply comment ("yes", or "2. no, …" by number) comes back with
+the next run.
 
 **In a terminal**: ask with AskUserQuestion (recommended option first),
 then plan. Don't act on the plan until the answers are in.
