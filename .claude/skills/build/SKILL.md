@@ -1,22 +1,24 @@
 ---
-description: /build - build one piece of a Lunna/Focus feature in the server and the app, starting from its brief (a /create piece, or the Build brief of an approved /mockup), prove it (prints of the real build in both brands, or the commands that show it working), and finish its product/delivery/ folder, with the docs written by the docs subagent. Use to build, implement or ship a piece of work that is already decided.
+description: /build - build one piece of a Lunna/Focus feature in the server and the app, starting from its brief (a /create plan and its scope map, or the Build brief of an approved /mockup) and reading only the files it names, prove it (prints of the real build in both brands, or the commands that show it working), and finish its product/delivery/ folder, with the docs written by the docs subagent. Use to build, implement or ship a piece of work that is already decided.
 ---
 
 # Build: one piece, start to proof
 
-A piece starts decided: its brief says what to change and where, and a
-mockup's Build brief lists the files and spots. **Don't explore.** Read
-the brief, the files it names (the slices you will edit), and the
-`product/spec/<feature>.md` of any feature it touches; `AGENTS.md` is in
-context and is the spec of how the day works.
+A piece starts decided: the `/create` plan says what to change and its
+**scope map** lists the files (`path:line`), the looks-like widget and the
+spec; after a mockup, its Build brief does. **Don't explore: the scope is
+the reading list.** Open those slices and the `product/spec/<feature>.md`
+it names; `AGENTS.md` is in context and is the spec of how the day works.
+Read outside the scope only when a compile error or a failing test points
+there, and never with a wide grep. Without a plan (in a terminal),
+`.tool/map <words>` once.
 
-**Budget.** The piece's estimate is in its issue, in points of the week
-(1 point ≈ $2.70, about 65 turns at a 200k context). Cost is turns ×
-context, and the
-context only grows, so: few turns, small results, chores to the
-subagent. If the piece turns out much bigger than its estimate, build a
-coherent part, and name the rest in the README and in the structured
-output's questions.
+**Budget.** The estimate is in the plan, in **% of the weekly window**
+(1 % ≈ $2.40 API-eq, about 55 turns at a 200k context; a build M ≈ 1.5 %).
+Cost is turns × context, and the context only grows, so: few turns, small
+results, chores to the subagent. If the piece turns out much bigger than
+its estimate, build a coherent part, and name the rest in the README and
+in the structured output's questions.
 
 ## 1. The delivery README
 

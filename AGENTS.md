@@ -130,7 +130,7 @@ product/
   improvements/         one folder per /improve run: what changed, evidence, references
   research/             one folder per topic: the RFC (README.md, a deck), img/, data/, code/, reports/;
                         concepts.md, the ideas every RFC taught
-.tool/                  internal tools: check (CI on what changed), preview (prints),
+.tool/                  internal tools: check (CI on what changed), map (where things are), preview (prints),
                         cost (session tokens), doc (open/annotate Markdown,
                         check an RFC's slides, print them),
                         queue (GitHub issues worked unattended, gate by gate),

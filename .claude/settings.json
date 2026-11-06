@@ -2,6 +2,7 @@
   "permissions": {
     "allow": [
       "Bash(.tool/doc:*)",
+      "Bash(.tool/map:*)",
       "Bash(.tool/check:*)",
       "Bash(.tool/preview:*)",
       "Bash(.tool/cost:*)",

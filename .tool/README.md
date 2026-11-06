@@ -19,6 +19,7 @@ whole-file `cat`, and keep any single tool result under ~20k chars.
 | Tool | One line |
 |------|----------|
 | `check` | CI's checks on what changed, one line per step |
+| `map` | The code map: each source file and what it declares, filtered by words, in one call |
 | `preview` | Build a preview entry point in both brands, screenshot it, lay out the step strip |
 | `cost` | What a Claude Code session cost, per message, from its transcript |
 | `doc` | List, open and comment on the Markdown under `product/`; check an RFC's slides and print them |
@@ -54,7 +55,25 @@ row with a numbered line under each (what `/mockup` sends), and
 `steps-thumb.png` (~140 px a scene, ~60k characters for two). With `--board`
 it lays out the annotated board in `<out>/board/` (full `board.png` and
 `board-thumb.png`, plus `screenN.png` and `screenN-thumb.png`). A failed
-build prints its errors.
+build prints its errors. Last, it prints `⚠ off-token <file>:<line>` for
+each line the branch added to the app with a literal colour, font size,
+padding, radius or `TextStyle(` instead of a token (at most 12; the theme
+is skipped), so a mockup stays in the app's design.
+
+## `map`: where things are, in one call
+
+```bash
+.tool/map home task card     # files whose path or names match any word (~5k characters)
+.tool/map                    # every file (~23k characters)
+.tool/map --files agent      # paths only
+```
+
+One line per source file under `app/lib`, `app/packages/*/lib` and
+`server/src` (tests and generated code skipped) with what it declares:
+Dart classes, enums, extensions and top-level functions; Nest routes
+(`POST /tasks/:id/move`) and exported TS symbols. The `/create` plan
+reads it once to write the scope map, so the mockup and the build open
+the files it names instead of grepping for them.
 
 ## `cost`: what a session cost
 
@@ -146,41 +165,37 @@ behind a long build; each phase is a fresh `claude -p` in its own worktree
 running and for how long:
 
 ```
-create issue ─▶ 👀 ─▶ split (/create, ~$0.15) ─▶ one child issue per piece,
-                      each with its brief and ~points of the week ─▶ you reply
-                      ("approve" on the parent starts them all; on a child:
-                       approve, "no" to the backlog, or a note)
-
-mockup child ─▶ /mockup ─▶ step strip + draft PR ─▶ you reply
-                  ▲                                  │
-                  └────── what to change ◀───────────┤
-                                                     ▼ "approve"
-                       PR closed unmerged, child closed, branch kept
-
-build child  ─▶ /build (from its mockup's branch) + .tool/check
-             ─▶ PR ready ─▶ you reply ─▶ "approve" ─▶ merge origin/main
-             ─▶ squash into main ─▶ child closed
-
-no child left open ─▶ the parent closes, estimate against what was used
+create issue ─▶ 👀 ─▶ plan (/create, Sonnet low, ~$0.15, seconds)
+                      📐 estimate in % of the week + scope (files to touch)
+                      over 3 %: the most impactful slice; the rest ─▶ one
+                      new issue labelled `backlog`
+             ─▶ (no gate) /mockup ─▶ step strip + draft PR ─▶ you reply
+                  ▲                                          │
+                  └────── what to change ◀───────────────────┤ "no": backlog
+                                                             ▼ "approve"
+             ─▶ /build on the same branch + .tool/check ─▶ PR ready
+             ─▶ you reply ─▶ "approve" ─▶ merge origin/main ─▶ squash into
+                main ─▶ issue closed, planned against used
 ```
 
-A piece with nothing to draw (tooling, CI, a server rule, a fix) is a build
-alone, its brief the plan. **"No"** (or *depois*, *backlog*) on a proposed
-piece or a mockup moves it out of its parent into the backlog: its labels
-become `backlog`, nobody works it, and labelling it again brings it back.
-The parent's comments give each piece's estimate and, at the end, what it
-used, in **points of the weekly window** (1 pt ≈ $2.70 of API-equivalent
-tokens; a full week is ~$270). An issue labelled `mockup` or `build` by
-hand works alone, without a parent. Research and improve run as before.
+With nothing to draw (tooling, CI, a server rule, a fix) the plan goes
+straight to the build. **"No"** (or *depois*, *backlog*) at the mockup
+moves the issue to the backlog (label `backlog`, its PR closed); nobody
+works it, and labelling it `create` again plans it afresh, as it does the
+rest of a sliced ask. **Everything is in % of the weekly window**, never
+the 5-hour one: a day is ~14 %, a medium ask (mockup + build) ~2 %, so ~7
+a day, and an issue does at most 3 % (`SLICE_MAX`). An issue's figure is
+its own tokens at $2.40 API-eq per 1 % (`USD_PER_WEEK_PCT`, measured on
+the queue's runs); `/usage week a→b%` beside it is the account's reading
+before the first run and after the last. Research and improve run as before.
 **An approved RFC goes on**:
 once merged, the queue opens `Implement: <RFC title>` as a `create` issue
 pointing at it, and the next pass plans it and opens its PR, so research
 flows into a build with one "approve". **The PR description is short**:
 the run's summary, the link to the review page (and to the README at that
 commit), the board if there is one, the open questions, and the usage
-folded under a line (per run, time, turns, tokens, API-equivalent USD and
-the 5-hour and weekly windows before and after, from `claude -p /usage`,
-free). The topic's README itself (delivery, RFC or report) is read on the
+folded under a line (per run, time, turns, tokens, API-equivalent USD,
+its % of the week and the weekly `/usage` before and after, free). The topic's README itself (delivery, RFC or report) is read on the
 page, or in *Files changed*. Each push carries the totals.
 
 **It runs what is merged.** The LaunchAgent runs `queue.mjs` from its own

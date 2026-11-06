@@ -57,6 +57,16 @@ for brand in $brands; do
   [ -n "$steps" ] && echo "$brand steps: $out/$brand/steps.png (look at steps-thumb.png)"
 done
 
+# Off-token lines this branch added to the app: a literal colour, font size or
+# padding instead of AppColors / AppTypography / AppSpacing. The theme itself
+# defines them, so it is skipped. At most 12 lines.
+base=$(git -C "$root" merge-base HEAD origin/main 2>/dev/null)
+if [ -n "$base" ]; then
+  git -C "$root" diff -U0 "$base" -- 'app/lib/*.dart' 'app/packages/*.dart' ':!app/packages/app_ui/lib/src/theme' ':!*/gen/*' ':!*_test.dart' \
+    | awk '/^\+\+\+ b\//{f=substr($0,7)} /^@@/{split($3,a,",");n=substr(a[1],2)-1} /^\+[^+]/{n++; if ($0 ~ /Color\(0x|fontSize: *[0-9]|EdgeInsets\.[a-zA-Z]+\([^)A-Za-z]*[1-9]|BorderRadius\.circular\([0-9]|[^A-Za-z]TextStyle\(/) print "⚠ off-token " f ":" n ": " substr($0,2)}' \
+    | sed 's/  */ /g' | head -12
+fi
+
 if [ -n "$board" ]; then
   node "$root/.tool/mockup/board.mjs" "$board" "$out/board" >/dev/null || exit 1
   echo "board: $out/board/board.png"
