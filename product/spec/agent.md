@@ -347,12 +347,15 @@ rotina e o novo horário do dia."); the plan under it is
 **The card is small and gray** (`AppColors.fill`, inner padding `s4`, aligned
 with the Now card). Its title is the first sentence of `text`; the rest is
 the description, on one line with an ellipsis (`suggestionWords`). Three
-actions: **Aceitar** (filled accent, check icon; only when the suggestion
-has a plan) runs `applyAgentPlan` with a small spinner in its place, then
-`SuggestionCubit.clear()` removes the card (on failure the button returns
-and a snackbar says why); **Detalhes** opens `showAgentSheet(suggestion:)`
-on the prepared opening, no new turn; **Agora não** calls
-`SuggestionCubit.dismiss()`. The welcome (no plan) has only the last two.
+actions, in this order: **Aceitar** (filled accent, check icon; only when
+the suggestion has a plan) runs `applyAgentPlan` with a small spinner in its
+place, then `SuggestionCubit.clear()` removes the card (on failure the
+button returns and a snackbar says why); **Agora não** (white pill, x icon)
+calls `SuggestionCubit.dismiss()`; **Ajustar** (white pill, note icon, at
+the card's right edge) opens `showAgentSheet(suggestion:)` on the prepared
+opening, no new turn. Aceitar starts and Ajustar ends on the card's inner
+padding, so the row is symmetric. The welcome (no plan) has only the last
+two.
 
 **When the next one comes: `nextAt`.** The answer tool's `followUp`
 (hours) is held to 1–4, 4 when absent (`FOLLOW_UP_RANGE`,

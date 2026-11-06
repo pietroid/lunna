@@ -874,7 +874,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get agentSuggestionAccept => 'Accept';
 
   @override
-  String get agentSuggestionDetails => 'Details';
+  String get agentSuggestionAdjust => 'Adjust';
 
   @override
   String get agentWelcome => 'Hi! I\'m Lunna. I\'ll help you plan your month, one step at a time, starting with the goal.';

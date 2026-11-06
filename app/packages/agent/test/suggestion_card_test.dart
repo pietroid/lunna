@@ -55,8 +55,22 @@ void main() {
       expect(find.text('Encaixe a revisão hoje'), findsOneWidget);
       expect(find.text('Sobram 2 horas antes do almoço.'), findsOneWidget);
       expect(find.text('Aceitar'), findsOneWidget);
-      expect(find.text('Detalhes'), findsOneWidget);
+      expect(find.text('Ajustar'), findsOneWidget);
       expect(find.text('Agora não'), findsOneWidget);
+    });
+
+    testWidgets('the three actions are in order Aceitar, Agora não, Ajustar', (
+      tester,
+    ) async {
+      final cubit = await loaded(_suggestion(action: _action));
+
+      await tester.pumpWidget(_app(const SuggestionCard(), cubit));
+
+      final aceitar = tester.getTopLeft(find.text('Aceitar')).dx;
+      final agoraNao = tester.getTopLeft(find.text('Agora não')).dx;
+      final ajustar = tester.getTopLeft(find.text('Ajustar')).dx;
+      expect(aceitar, lessThan(agoraNao));
+      expect(agoraNao, lessThan(ajustar));
     });
 
     testWidgets('accepting draws the spinner in Aceitar’s place', (
@@ -84,14 +98,14 @@ void main() {
       expect(cubit.state, isNull);
     });
 
-    testWidgets('no plan: Detalhes and Agora não, but no Aceitar', (
+    testWidgets('no plan: Ajustar and Agora não, but no Aceitar', (
       tester,
     ) async {
       final cubit = await loaded(_suggestion(text: 'Quer encaixar?'));
 
       await tester.pumpWidget(_app(const SuggestionCard(), cubit));
 
-      expect(find.text('Detalhes'), findsOneWidget);
+      expect(find.text('Ajustar'), findsOneWidget);
       expect(find.text('Agora não'), findsOneWidget);
       expect(find.text('Aceitar'), findsNothing);
     });

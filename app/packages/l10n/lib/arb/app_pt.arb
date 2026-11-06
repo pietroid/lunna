@@ -603,7 +603,7 @@
   "agentOtherTimeDraft": "Prefiro outro horário: ",
   "agentSuggestionDismiss": "Agora não",
   "agentSuggestionAccept": "Aceitar",
-  "agentSuggestionDetails": "Detalhes",
+  "agentSuggestionAdjust": "Ajustar",
   "agentWelcome": "Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.",
   "agentWelcomeQuestion": "Quanto você quer faturar este mês?",
   "agentWelcomeAmount": "R$ {amount}",

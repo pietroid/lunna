@@ -16,11 +16,12 @@ import 'package:l10n/l10n.dart';
 /// - **Aceitar** applies the plan, with a spinner in its place while the
 ///   changes are made; the card goes when it is done.
 /// - **Agora não** puts the suggestion away until the next one is due.
-/// - **Detalhes** opens the conversation on the suggestion's prepared
+/// - **Ajustar** opens the conversation on the suggestion's prepared
 ///   surface (preview, plan, choices), where the person can talk, change
 ///   it or accept it.
 ///
-/// A suggestion with no plan (a question, the welcome) has Detalhes only.
+/// A suggestion with no plan (a question, the welcome) has Agora não and
+/// Ajustar only.
 /// {@endtemplate}
 class SuggestionCard extends StatelessWidget {
   /// {@macro suggestion_card}
@@ -159,26 +160,23 @@ class _OfferState extends State<_Offer> {
                           onPressed: () => unawaited(_accept()),
                         ),
                 if (_plan != null) const SizedBox(width: AppSpacing.s2),
+                if (!_accepting)
+                  AppPillButton(
+                    label: l10n.agentSuggestionDismiss,
+                    iconData: AppIcons.close,
+                    fill: AppColors.surface,
+                    onPressed: () =>
+                        unawaited(context.read<SuggestionCubit>().dismiss()),
+                  ),
+                const Spacer(),
                 AppPillButton(
-                  label: l10n.agentSuggestionDetails,
-                  iconData: AppIcons.arrowRight,
+                  label: l10n.agentSuggestionAdjust,
+                  iconData: AppIcons.note,
+                  fill: AppColors.surface,
                   onPressed: () => unawaited(
                     showAgentSheet(context, suggestion: suggestion),
                   ),
                 ),
-                const Spacer(),
-                if (!_accepting)
-                  // The pill's own padding is moved out so its label ends on
-                  // the card's inner edge, like the text above it.
-                  Transform.translate(
-                    offset: const Offset(AppSpacing.s3, 0),
-                    child: AppPillButton(
-                      label: l10n.agentSuggestionDismiss,
-                      iconData: AppIcons.close,
-                      onPressed: () =>
-                          unawaited(context.read<SuggestionCubit>().dismiss()),
-                    ),
-                  ),
               ],
             ),
           ],

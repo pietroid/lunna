@@ -248,7 +248,7 @@
   "agentOtherTimeDraft": "I'd rather another time: ",
   "agentSuggestionDismiss": "Not now",
   "agentSuggestionAccept": "Accept",
-  "agentSuggestionDetails": "Details",
+  "agentSuggestionAdjust": "Adjust",
   "agentWelcome": "Hi! I'm Lunna. I'll help you plan your month, one step at a time, starting with the goal.",
   "agentWelcomeQuestion": "How much do you want to bill this month?",
   "agentWelcomeAmount": "R$ {amount}",

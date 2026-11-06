@@ -1585,11 +1585,11 @@ abstract class AppLocalizations {
   /// **'Aceitar'**
   String get agentSuggestionAccept;
 
-  /// No description provided for @agentSuggestionDetails.
+  /// No description provided for @agentSuggestionAdjust.
   ///
   /// In pt, this message translates to:
-  /// **'Detalhes'**
-  String get agentSuggestionDetails;
+  /// **'Ajustar'**
+  String get agentSuggestionAdjust;
 
   /// No description provided for @agentWelcome.
   ///

@@ -28,6 +28,10 @@ Review reply (revision 3):
 
 > spacing is a bit bad on the right button. after that, approve
 
+Review reply (revision 4):
+
+> adjust the alignment of the right button, the padding should be symmetric, also the order should be accept, not now, adjust (instead of details)
+
 The plan (by /create, ~2.5 % of the week):
 
 - Turn the suggestion back on in Plano (`kSuggestionOnPlan = true`).
@@ -45,21 +49,21 @@ Not doing: no change to how the model picks the content; no animation polish bey
 
 ![The strip](img/mockup-steps.png)
 
-1. The card sits at the top of Plano, two lines of text and three actions: **Aceitar** (filled accent button, check icon: the highlight), **Detalhes** (arrow icon), **Agora não** (x icon). The card is gray (`AppColors.fill`, not the pink wash). Its inner padding is `AppSpacing.s4`, so its text and mark line up with the Now card's. **Agora não** is shifted out by its own pill padding (`AppSpacing.s3`), so its label ends on the card's inner edge, like the text above it (revision 3).
+1. The card sits at the top of Plano, two lines of text and three actions, in this order (revision 4): **Aceitar** (filled accent button, check icon: the highlight), **Agora não** (x icon), and **Ajustar** (note icon) at the right. The card is gray (`AppColors.fill`, not the pink wash). Its inner padding is `AppSpacing.s4`, so its text and mark line up with the Now card's. Agora não and Ajustar are white pills, so their edges show on the gray card: Aceitar starts and Ajustar ends on the card's inner padding, symmetric (revision 4; replaces revision 3's shifted pill).
 2. Aceitar swaps for a small spinner while the plan applies; the card goes when it is done (on failure the button returns and a snackbar says why).
-3. Detalhes opens the agent sheet already holding the prepared surface (preview, plan, Adjust/Apply), no new turn.
+3. Ajustar opens the agent sheet already holding the prepared surface (preview, plan, Adjust/Apply), no new turn.
 
 Decisions the screens don't show:
 
 - Title = the first sentence of the suggestion's `text`; description = the rest, one line, ellipsis. No new field, so the model's content is untouched.
-- A suggestion with no plan (a question, the welcome) shows Detalhes (and Agora não) only.
+- A suggestion with no plan (a question, the welcome) shows Agora não and Ajustar only.
 - Deny reuses `SuggestionCubit.dismiss()`.
 
 ## 3. What was built
 
 ![The build](img/build.png)
 
-The prints show the card on Plano, Aceitar's spinner, and Detalhes opening the agent sheet with the prepared suggestion.
+The prints show the card on Plano (Aceitar, Agora não, Ajustar), Aceitar's spinner, and Ajustar opening the agent sheet with the prepared suggestion.
 
 The rule: a suggestion comes at most every 4 h inside working hours, and the first of the day at its start. The model may ask for sooner (1 h); `nextAtOf` still moves the hour into the work day (`intoWorkDay`).
 
@@ -72,16 +76,17 @@ Server (`server/src/agent/`), no new routes, tables, env vars or analytics rows:
 App:
 
 - `app/lib/plan/view/home_page.dart`: `kSuggestionOnPlan = true`.
-- `app/packages/agent/lib/src/view/suggestion_card.dart`: the compact gray card. Aceitar (filled accent `AppButton.icon`, check), Detalhes (arrow), Agora não (close). The stateful `_Offer` holds the accepting flag; `SuggestionCard(accepting:)` is for tests.
-- Strings `agentSuggestionAccept` and `agentSuggestionDetails` in `app_pt.arb` / `app_en.arb`. The mockup's preview-only strings and `app/lib/suggestion_preview.dart` were removed after the prints.
+- `app/packages/agent/lib/src/view/suggestion_card.dart`: the compact gray card. Aceitar (filled accent `AppButton.icon`, check), Agora não (close), a spacer, Ajustar (note). Agora não and Ajustar are `AppPillButton(fill: AppColors.surface)`; no `Transform` shift, so the row's padding is the card's `s4` on both sides. The stateful `_Offer` holds the accepting flag; `SuggestionCard(accepting:)` is for tests.
+- `app_ui`'s `AppPillButton` takes an optional `fill` (default `AppColors.fill`, so every other pill is unchanged).
+- Strings `agentSuggestionAccept` and `agentSuggestionAdjust` (Ajustar / Adjust; was `agentSuggestionDetails`) in `app_pt.arb` / `app_en.arb`. The mockup's preview-only strings and `app/lib/suggestion_preview.dart` were removed after the prints.
 
 Tests:
 
 - Server `npm test -- src/agent`: 10 suites, 102 tests pass. `work-quality.spec.ts` covers the clamp 1 to 4, default 4, and a new `nextAtOf` default case; `agent.controller.spec.ts` expectations moved from a day/5 h to 4 h.
-- App: new `app/packages/agent/test/suggestion_card_test.dart` (6 tests: title, description and three actions; spinner when accepting; Agora não dismisses; no Aceitar without a plan; `suggestionWords`). The two old card tests in `test/voice_test.dart` were rewritten (32 pass).
-- `.tool/check`: all 12 steps green.
+- App: new `app/packages/agent/test/suggestion_card_test.dart` (7 tests: title, description and three actions; their order Aceitar, Agora não, Ajustar; spinner when accepting; Agora não dismisses; no Aceitar without a plan; `suggestionWords`). The two old card tests in `test/voice_test.dart` were rewritten (32 pass).
+- `.tool/check`: all steps green (after revision 4: app-analyze and the 8 app package suites).
 
-Differs from the mockup or plan: nothing visible. The code writing went to opencode (`.tool/oc`); it missed the tool schema's 3 to 24 limits, the `schema.ts` comment and the controller spec's expectations. These were fixed in review.
+Differs from the mockup or plan: nothing visible. The code writing went to opencode (`.tool/oc`); it missed the tool schema's 3 to 24 limits, the `schema.ts` comment and the controller spec's expectations. These were fixed in review. Revision 4 went to opencode too (`ok`): the reorder, the rename and the tests; the white pill fill was added in review after the first print showed the gray pill could not be seen.
 
 Decided unattended:
 
@@ -90,6 +95,9 @@ Decided unattended:
 - Follow-up range 1 to 4 h with a 4 h default.
 - Preview-only strings removed with the preview entry point.
 - The old `voice_test` card tests rewritten, not deleted.
+- Revision 4, "symmetric": the two pills became white (`AppColors.surface`) on the gray card, so their boxes are seen and Ajustar's right edge mirrors Aceitar's left edge at `s4`. On the gray card a gray pill was invisible, so its label sat 12 px further in than Aceitar's box.
+- Revision 4, Ajustar's icon is the note pencil (`AppIcons.note`); the label is a new key `agentSuggestionAdjust`, not the agent sheet's `agentAdjust`, so the two can change apart.
+- Revision 4, while Aceitar spins, Agora não is hidden and Ajustar stays at the right.
 
 Next:
 

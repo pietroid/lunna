@@ -874,7 +874,7 @@ class AppLocalizationsPt extends AppLocalizations {
   String get agentSuggestionAccept => 'Aceitar';
 
   @override
-  String get agentSuggestionDetails => 'Detalhes';
+  String get agentSuggestionAdjust => 'Ajustar';
 
   @override
   String get agentWelcome => 'Oi! Eu sou a Lunna. Vou te ajudar a montar o seu mês, um passo de cada vez, começando pelo objetivo.';

@@ -804,8 +804,8 @@ void _suggestionCardTests() {
       await tester.pump();
     }
 
-    testWidgets('the welcome is its question, with Detalhes and Agora não '
-        'and nothing to accept; Detalhes opens the conversation', (
+    testWidgets('the welcome is its question, with Ajustar and Agora não '
+        'and nothing to accept; Ajustar opens the conversation', (
       tester,
     ) async {
       await pumpCard(
@@ -823,13 +823,13 @@ void _suggestionCardTests() {
       expect(find.text('Aceitar'), findsNothing);
       expect(find.textContaining('/7'), findsNothing);
 
-      await tester.tap(find.text('Detalhes'));
+      await tester.tap(find.text('Ajustar'));
       await tester.pumpAndSettle();
       expect(find.byType(AgentSheet), findsOneWidget);
     });
 
     testWidgets('a turn with a plan is a title, a line and Aceitar; '
-        'Detalhes opens the prepared surface, plan and all', (tester) async {
+        'Ajustar opens the prepared surface, plan and all', (tester) async {
       await pumpCard(
         tester,
         AgentSuggestion(
@@ -862,10 +862,10 @@ void _suggestionCardTests() {
       expect(find.text(r'Faltam R$ 2.400'), findsOneWidget);
       expect(find.text('Encaixo hoje às 14:00?'), findsOneWidget);
       expect(find.text('Aceitar'), findsOneWidget);
-      // The card is small: the preview waits in Detalhes.
+      // The card is small: the preview waits in Ajustar.
       expect(find.text('Aplicar anota a entrega.'), findsNothing);
 
-      await tester.tap(find.text('Detalhes'));
+      await tester.tap(find.text('Ajustar'));
       await tester.pumpAndSettle();
       expect(find.byType(AgentSheet), findsOneWidget);
       expect(find.textContaining('Mapa da Ana'), findsWidgets);
