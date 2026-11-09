@@ -250,12 +250,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventLengthLabel => 'Length';
 
   @override
-  String get eventArtifactLabel => 'Delivery';
-
-  @override
-  String get eventNoArtifact => 'None';
-
-  @override
   String get restTip01 => 'Take a deep breath. Three times, slowly.';
 
   @override

@@ -155,6 +155,7 @@ schedule: { needMinutes, freeMinutes, until }, topTypes: [typeId] }`.
 | `POST /artifacts/:id/move` | `{ index, started?: false }` in the queue; `started: false` stops it (one call for a drop into Não iniciadas) |
 | `POST /artifacts/:id/tasks` | `{ title, minutes }`, at the end of the backlog |
 | `POST /tasks/:id/subtasks` | `{ title, minutes? }` (30 when unsaid): a subtask of a task. The first one of a loose task makes it a task with tasks: a delivery with the task's title, notes and length, the task's own row its first task, untouched (a begun one keeps running, its hour and place as they were). Every subtask goes at the end of its tasks (the backlog). Answers Entregas and `artifactId`; 404 "Essa tarefa não existe mais." |
+| `PATCH /tasks/:id/delivery` | body as `PATCH /artifacts/:id`: makes a delivery of a loose task the same way as its first subtask (`ArtifactsService.promote`; a task already in a delivery answers that one), then edits it. Answers Entregas and `artifactId`. A deadline or a value set on a loose task goes through it, so a task and a delivery are one thing |
 | `POST /tasks/of/:id/play?days=` | `{ minutes? }`; play: begins its next task (the queue's first, else its backlog's first, else a new one of its name for what it owes, 30 min when nothing, or a piece of `minutes`, 5 to 480, when given), as a drop on Agora, guard and all; answers the timeline. Refuses a delivered one |
 | `POST /catalog/types` | `{ name, minutes, price?, blockMinutes?, categoryId \| category }` |
 | `POST /goals`, `PATCH /goals/:id`, `DELETE /goals/:id` | see [goals.md](./goals.md) |
@@ -172,12 +173,13 @@ refusal);
 `ArtifactsPage` (the tab), `AllArtifactsPage` (search by name, kind or
 shelf, the same filter line), `ArtifactSheet` (catalogue → details; a
 one-off is timed and priced by hand), `TypeSheet` (the least that fills the
-catalogue), `ArtifactPage` (whose Valor row opens `ValueSheet`). The
+catalogue), `ArtifactPage` (whose Valor row opens `ValueSheet`, which takes a value and a save function). A loose task's page (`TaskPage`) draws the same rows: Prazo, Tipo (read-only "Avulsa · length") and Valor. Setting Prazo or Valor promotes it, the day reloads and the page becomes `ArtifactPage`. `EventPage` has no Delivery row. The
 goals' widgets are in [goals.md](./goals.md). Entregas reads itself again whenever it comes to the front, and
 the delivery page whenever the day's tasks change.
 
 ## Not yet
 
+A type picker for a delivery (so for a loose task too).
 How the timeline cuts a delivery into blocks (`block_minutes` is only
 stored), the catalogue's own page (editing, ordering, removing kinds),
 keeping a one-off as a kind, paging the delivered list, and cycles. The

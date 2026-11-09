@@ -154,6 +154,23 @@ class ArtifactsCubit extends Cubit<ArtifactsState> {
     return done;
   }
 
+  /// Gives the task [taskId] a deadline: a loose task becomes a delivery,
+  /// and the day is read again so its page turns into the delivery's.
+  Future<void> setTaskDeadline(String taskId, DateTime deadline) async {
+    final done = await _run(
+      () => _repository.editTaskDelivery(taskId, deadline: () => deadline),
+    );
+    if (done) onDayChanged?.call();
+  }
+
+  /// Gives the task [taskId] a value, as [setTaskDeadline] does a deadline.
+  Future<void> setTaskValue(String taskId, int? value) async {
+    final done = await _run(
+      () => _repository.editTaskDelivery(taskId, value: () => value),
+    );
+    if (done) onDayChanged?.call();
+  }
+
   /// Renames a delivery.
   Future<void> rename(String id, String title) =>
       _run(() => _repository.update(id, title: title));

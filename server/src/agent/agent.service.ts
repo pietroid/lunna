@@ -489,6 +489,7 @@ export class AgentService {
       return [
         'The person is on this task’s page:',
         ...this._read(board, card.ref),
+        'A new task written here goes in as its subtask (a loose task becomes a delivery).',
       ].join('\n');
     }
 

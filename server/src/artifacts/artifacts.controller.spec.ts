@@ -372,6 +372,36 @@ describe('ArtifactsController', () => {
         .send({ title: 'X' })
         .expect(404);
     });
+
+    it('makes a delivery of a loose task given a deadline or a value', async () => {
+      const written = await http()
+        .post('/tasks')
+        .send({ title: 'Logo', minutes: 90 })
+        .expect(201);
+      const id = (written.body as Timeline).backlog[0].id;
+
+      const dated = await http()
+        .patch(`/tasks/${id}/delivery`)
+        .send({ deadline: '2026-06-12' })
+        .expect(200);
+      const { artifactId } = dated.body as { artifactId: string };
+      const made = artifacts(dated).find((it) => it.id === artifactId)!;
+      expect(made).toMatchObject({ title: 'Logo', deadline: '2026-06-12' });
+      expect(made.tasks.map((it) => it.id)).toEqual([id]);
+
+      const priced = await http()
+        .patch(`/tasks/${id}/delivery`)
+        .send({ value: 800 })
+        .expect(200);
+      expect((priced.body as { artifactId: string }).artifactId).toBe(
+        artifactId,
+      );
+      expect(artifacts(priced)).toHaveLength(1);
+      expect(artifacts(priced)[0]).toMatchObject({
+        deadline: '2026-06-12',
+        value: 800,
+      });
+    });
   });
 
   it('answers 404 for an artifact that is not there', async () => {
