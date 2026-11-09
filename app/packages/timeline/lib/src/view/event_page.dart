@@ -14,6 +14,12 @@ import 'package:timeline/src/widgets/widgets.dart';
 typedef TaskTabsBuilder =
     Widget Function(BuildContext context, TimelineEvent card, Widget notes);
 
+/// What a live loose task's page adds under its length, as labelled rows
+/// (label, value): the delivery's own (Data, Tipo, Valor), since a task and
+/// a delivery are one thing (#126).
+typedef TaskDetailsBuilder =
+    List<(String, Widget)> Function(BuildContext context, TimelineEvent card);
+
 /// {@template event_page}
 /// One task or one block of time, opened.
 ///
@@ -47,8 +53,12 @@ class EventPage extends StatelessWidget {
     this.finished,
     this.dock,
     this.tabs,
+    this.details,
     super.key,
   });
+
+  /// The rows a live loose task adds under its length. Null adds none.
+  final TaskDetailsBuilder? details;
 
   /// Draws a live loose task's notes inside the delivery's tabs, so a task
   /// with no subtasks yet reads as one with tasks (#118). Null draws the
@@ -114,7 +124,7 @@ class EventPage extends StatelessWidget {
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _Summary(card: card, done: done),
+                          _Summary(card: card, done: done, details: details),
                           if (card.checklist.isNotEmpty) ...[
                             const Divider(height: 1, color: AppColors.line),
                             _Checklist(card: card, editable: !done),
@@ -241,15 +251,18 @@ class _TitleState extends State<_Title> {
   }
 }
 
-/// When the block is, how long it takes, which artifact it is of, and the
-/// buttons.
+/// When the block is, how long it takes, what a delivery keeps (on a loose
+/// task), and the buttons.
 ///
 /// Each a labelled row, the label on the left in ink3, so the page reads as
 /// a card's properties rather than a line of loose words. The same rows
 /// whether or not it is running. Running only adds the progress bar, which
 /// is the one thing that is true of a running block and of nothing else.
 class _Summary extends StatelessWidget {
-  const _Summary({required this.card, required this.done});
+  const _Summary({required this.card, required this.done, this.details});
+
+  /// The rows a live loose task adds under its length.
+  final TaskDetailsBuilder? details;
 
   final TimelineEvent card;
 
@@ -264,7 +277,6 @@ class _Summary extends StatelessWidget {
     final controls = card.isInteractive && !done ? _controls(context) : null;
     final editable = card.isInteractive && !done;
     final started = !card.startTime.isAfter(now);
-    final artifact = card.artifactTitle;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -330,18 +342,9 @@ class _Summary extends StatelessWidget {
               onTap: editable ? () => _pickDuration(context) : null,
             ),
           ),
-          if (card.isTask)
-            _Property(
-              label: l10n.eventArtifactLabel,
-              child: artifact == null
-                  ? Text(
-                      l10n.eventNoArtifact,
-                      style: AppTypography.labelStrong.copyWith(
-                        color: AppColors.ink3,
-                      ),
-                    )
-                  : AppTag(text: artifact),
-            ),
+          if (card.isTask && !done && details != null)
+            for (final (label, value) in details!(context, card))
+              _Property(label: label, child: value),
           if (running && !card.isBacklog) ...[
             const SizedBox(height: AppSpacing.s3),
             NowProgress(card: card, trailing: controls),

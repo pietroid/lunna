@@ -98,6 +98,11 @@ export interface NewThing {
   artifactId?: string;
   /** The delivery it belongs to, made earlier in the same plan (`as`). */
   artifactAs?: string;
+  /**
+   * The task it is a subtask of, by id, when that task is loose: the task
+   * becomes a delivery as it is written, as its first subtask by hand does.
+   */
+  subtaskOf?: string;
 }
 
 /**

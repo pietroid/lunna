@@ -2064,6 +2064,38 @@ describe('the agent', () => {
       });
     });
 
+    it('writes a new task on a loose task’s page as its subtask, and undoes it', async () => {
+      const id = ((await task('Vídeo', 60, true)).body as Timeline).backlog[0]
+        .id;
+      model.steps = [
+        () =>
+          propose({
+            data: { what: 'roteiro' },
+            changes: [
+              { do: 'to_backlog', new: { title: 'Roteiro', minutes: 30 } },
+            ],
+          }),
+      ];
+
+      const reply = (
+        await post('/agent/turn', {
+          messages: [{ role: 'user', text: 'Adiciona a subtarefa roteiro' }],
+          about: { taskId: id },
+        })
+      ).body as AgentReply;
+
+      expect(reply.plan!.changes[0]).toMatchObject({ artifact: 'Vídeo' });
+      await applyAndUndo(reply.plan!.id, async () => {
+        const [made] = await app.get(ArtifactStore).list(USER);
+        expect(made.title).toBe('Vídeo');
+        const tasks = await app.get(TaskStore).ofArtifacts(USER);
+        expect(tasks.map((it) => [it.title, it.artifactId])).toEqual([
+          ['Vídeo', made.id],
+          ['Roteiro', made.id],
+        ]);
+      });
+    });
+
     it('refuses an argument a verb does not take', async () => {
       await delivery('Tese');
       model.steps = [

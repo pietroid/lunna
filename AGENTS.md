@@ -324,7 +324,7 @@ sets it; any other move clears it. The card carries `pending: true`.
 
 ### Entregas (artifacts)
 
-A **delivery** (*entrega*; `Artifact` in code) is something owed by a day, with an optional kind from the person's catalogue, a total time and a value; there is no Entregas tab, it is drawn as a task on Plano. Its tasks are ordinary tasks (`task.artifact_id`). **Money counts when it is delivered** (`done_at`). Read [product/spec/artifacts.md](./product/spec/artifacts.md) before touching `server/src/artifacts/` or `app/packages/artifacts/`.
+A **delivery** (*entrega*; `Artifact` in code) is something owed by a day, with an optional kind from the person's catalogue, a total time and a value; there is no Entregas tab, it is drawn as a task on Plano. Its tasks are ordinary tasks (`task.artifact_id`); **a loose task is the same thing**: a deadline, a value or a subtask makes it a delivery (`promote`). **Money counts when it is delivered** (`done_at`). Read [product/spec/artifacts.md](./product/spec/artifacts.md) before touching `server/src/artifacts/` or `app/packages/artifacts/`.
 
 ### Objetivos (goals)
 

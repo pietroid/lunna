@@ -8,7 +8,9 @@ import {
 import { addMinutes, BLOCK_GAP_MINUTES } from '../../time/work-hours';
 import { formatTimeIn, instantOf } from '../../time/zone';
 import { BoardCard } from '../board';
-import type { Made } from '../gestures';
+import { CalendarUser } from '../../calendar/calendar.types';
+import { Trace } from '../../common/trace';
+import type { Hands, Made } from '../gestures';
 import { Gesture, NewThing, PlanChange } from '../plan';
 import { Action, as, Draft, Drawing, Refusal, Resolving } from './action';
 
@@ -69,7 +71,7 @@ export const QUEUE: Action[] = [
         return hands.layout.createTask(
           user,
           {
-            ...created(g.new, made),
+            ...(await created(hands, user, g.new, made, trace)),
             backlog: false,
             ...('at' in where
               ? { notBefore: where.at.toISOString() }
@@ -157,7 +159,8 @@ export const QUEUE: Action[] = [
       const delivery =
         card?.artifactId !== undefined ||
         thing?.artifactId !== undefined ||
-        thing?.artifactAs !== undefined;
+        thing?.artifactAs !== undefined ||
+        thing?.subtaskOf !== undefined;
       if (
         !fixed &&
         delivery &&
@@ -197,7 +200,11 @@ export const QUEUE: Action[] = [
       if (g.new !== undefined) {
         return layout.createTask(
           user,
-          { ...created(g.new, made), backlog: false, notBefore: g.at },
+          {
+            ...(await created(hands, user, g.new, made, trace)),
+            backlog: false,
+            notBefore: g.at,
+          },
           trace,
           now,
         );
@@ -292,7 +299,10 @@ export const QUEUE: Action[] = [
       if (g.new !== undefined) {
         return hands.layout.createTask(
           user,
-          { ...created(g.new, made), backlog: true },
+          {
+            ...(await created(hands, user, g.new, made, trace)),
+            backlog: true,
+          },
           trace,
           now,
         );
@@ -403,13 +413,14 @@ function subject(
 
 /**
  * The delivery something new belongs to: the one named, one made earlier in
- * the plan, or, on a delivery's page, that one.
+ * the plan, on a delivery's page that one, and on a task's page that task's
+ * (a loose one becomes a delivery, the new task its subtask).
  */
 function belongsTo(
   r: Resolving,
   value: unknown,
   fixed: boolean,
-): Pick<NewThing, 'artifactId' | 'artifactAs'> {
+): Pick<NewThing, 'artifactId' | 'artifactAs' | 'subtaskOf'> {
   const said = typeof value === 'string' ? value.trim() : '';
   if (said !== '' && fixed) {
     throw new Refusal('A fixed event belongs to no delivery: only tasks do.');
@@ -425,7 +436,14 @@ function belongsTo(
     }
     return { artifactId: artifact.artifact.id };
   }
-  if (fixed || r.about === undefined || !('artifactId' in r.about)) return {};
+  if (fixed || r.about === undefined) return {};
+  if ('taskId' in r.about) {
+    const task = r.board.byId(r.about.taskId);
+    if (task === undefined || task.done === true) return {};
+    if (task.artifactId === undefined) return { subtaskOf: task.id };
+    const open = r.board.artifactById(task.artifactId);
+    return open === undefined ? {} : { artifactId: task.artifactId };
+  }
   const page = r.board.artifactById(r.about.artifactId);
   return page === undefined || page.artifact.doneAt !== undefined
     ? {}
@@ -441,9 +459,11 @@ function artifactView(
   const title =
     thing.artifactAs !== undefined
       ? r.declared.get(thing.artifactAs)?.title
-      : thing.artifactId === undefined
-        ? undefined
-        : r.board.artifactById(thing.artifactId)?.artifact.title;
+      : thing.subtaskOf !== undefined
+        ? r.board.byId(thing.subtaskOf)?.title
+        : thing.artifactId === undefined
+          ? undefined
+          : r.board.artifactById(thing.artifactId)?.artifact.title;
   return title === undefined
     ? {}
     : {
@@ -456,11 +476,24 @@ function artifactView(
       };
 }
 
-/** What [thing] is written down with: its delivery, when it has one. */
-function created(thing: NewThing, made: Made) {
+/**
+ * What [thing] is written down with: its delivery, when it has one. A
+ * subtask of a loose task makes a delivery of that task first.
+ */
+async function created(
+  hands: Hands,
+  user: CalendarUser,
+  thing: NewThing,
+  made: Made,
+  trace: Trace,
+) {
   const artifactId =
     thing.artifactId ??
-    (thing.artifactAs === undefined ? undefined : made.get(thing.artifactAs));
+    (thing.artifactAs !== undefined
+      ? made.get(thing.artifactAs)
+      : thing.subtaskOf !== undefined
+        ? await hands.deliveries.promote(user, thing.subtaskOf, trace)
+        : undefined);
   return {
     title: thing.title,
     minutes: thing.minutes,

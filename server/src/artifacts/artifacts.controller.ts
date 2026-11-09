@@ -142,6 +142,27 @@ export class ArtifactsController {
     return { ...(await this._answer(user)), artifactId };
   }
 
+  /**
+   * Edits a task's delivery (its deadline, its value, as `PATCH
+   * /artifacts/:id`), making one of a loose task first, as its first
+   * subtask would. Answers Entregas, with the delivery.
+   */
+  @Patch('tasks/:id/delivery')
+  async editTaskDelivery(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body() dto: EditArtifactDto,
+  ): Promise<ArtifactsAnswer & { artifactId: string }> {
+    const edit = requireArtifactEdit(dto);
+    const artifactId = await this.artifacts.promote(
+      owner(user),
+      id,
+      Trace.start(user.id, id),
+    );
+    await this.artifacts.edit(owner(user), artifactId, edit);
+    return { ...(await this._answer(user)), artifactId };
+  }
+
   /** Writes a kind down in the catalogue, on a shelf she has or a new one. */
   @Post('catalog/types')
   async addType(

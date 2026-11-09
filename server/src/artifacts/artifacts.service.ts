@@ -306,6 +306,23 @@ export class ArtifactsService {
     input: { title: string; minutes: number },
     trace: Trace,
   ): Promise<string> {
+    const artifactId = await this.promote(user, taskId, trace);
+    await this.addTask(user, artifactId, input, trace);
+    return artifactId;
+  }
+
+  /**
+   * The delivery of the task [taskId], made now when it is loose: written
+   * with the task's title, notes and length, the task's own row its first
+   * task, untouched. A task and a delivery are one thing, so whatever only
+   * a delivery keeps (a deadline, a value, a subtask) makes one of a loose
+   * task the moment it is given. Answers its id.
+   */
+  async promote(
+    user: CalendarUser,
+    taskId: string,
+    trace: Trace,
+  ): Promise<string> {
     const task = await this._tasks.get(user, taskId);
     if (task === undefined || task.doneAt !== undefined) {
       throw new NotFoundException('Essa tarefa não existe mais.');
@@ -323,8 +340,6 @@ export class ArtifactsService {
       await this._tasks.update(user, { ...task, artifactId });
       trace.log('task.subtasks', { taskId, artifactId });
     }
-
-    await this.addTask(user, artifactId, input, trace);
     return artifactId;
   }
 

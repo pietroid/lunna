@@ -487,18 +487,6 @@ abstract class AppLocalizations {
   /// **'Duração'**
   String get eventLengthLabel;
 
-  /// No description provided for @eventArtifactLabel.
-  ///
-  /// In pt, this message translates to:
-  /// **'Entrega'**
-  String get eventArtifactLabel;
-
-  /// No description provided for @eventNoArtifact.
-  ///
-  /// In pt, this message translates to:
-  /// **'Nenhuma'**
-  String get eventNoArtifact;
-
   /// No description provided for @restTip01.
   ///
   /// In pt, this message translates to:

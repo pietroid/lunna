@@ -11,7 +11,26 @@ import 'package:l10n/l10n.dart';
 /// Opens the sheet that gives [artifact] its value.
 ///
 /// The sheet is its own route, so it is handed the cubit it writes with.
-Future<void> showValueSheet(BuildContext context, Artifact artifact) {
+Future<void> showValueSheet(BuildContext context, Artifact artifact) =>
+    _showValueSheet(
+      context,
+      artifact.value,
+      (cubit, value) => cubit.setValue(artifact.id, value),
+    );
+
+/// Opens the same sheet over a loose task: a value makes it a delivery.
+Future<void> showTaskValueSheet(BuildContext context, String taskId) =>
+    _showValueSheet(
+      context,
+      null,
+      (cubit, value) => cubit.setTaskValue(taskId, value),
+    );
+
+Future<void> _showValueSheet(
+  BuildContext context,
+  int? value,
+  Future<void> Function(ArtifactsCubit cubit, int? value) save,
+) {
   final cubit = context.read<ArtifactsCubit>();
   return showModalBottomSheet<void>(
     context: context,
@@ -20,7 +39,7 @@ Future<void> showValueSheet(BuildContext context, Artifact artifact) {
     barrierColor: AppColors.bg.withValues(alpha: 0.72),
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: ValueSheet(artifact: artifact),
+      child: ValueSheet(value: value, save: save),
     ),
   );
 }
@@ -32,10 +51,13 @@ Future<void> showValueSheet(BuildContext context, Artifact artifact) {
 /// {@endtemplate}
 class ValueSheet extends StatefulWidget {
   /// {@macro value_sheet}
-  const ValueSheet({required this.artifact, super.key});
+  const ValueSheet({required this.value, required this.save, super.key});
 
-  /// The delivery it prices.
-  final Artifact artifact;
+  /// What it is worth now, if anything.
+  final int? value;
+
+  /// Writes the value (null takes it away).
+  final Future<void> Function(ArtifactsCubit cubit, int? value) save;
 
   @override
   State<ValueSheet> createState() => _ValueSheetState();
@@ -43,7 +65,7 @@ class ValueSheet extends StatefulWidget {
 
 class _ValueSheetState extends State<ValueSheet> {
   late final _amount = TextEditingController(
-    text: widget.artifact.value?.toString(),
+    text: widget.value?.toString(),
   );
 
   @override
@@ -54,7 +76,7 @@ class _ValueSheetState extends State<ValueSheet> {
 
   void _save(int? value) {
     unawaited(
-      context.read<ArtifactsCubit>().setValue(widget.artifact.id, value),
+      widget.save(context.read<ArtifactsCubit>(), value),
     );
     unawaited(Navigator.of(context).maybePop());
   }
@@ -104,7 +126,7 @@ class _ValueSheetState extends State<ValueSheet> {
             expand: true,
             onPressed: value > 0 ? () => _save(value) : null,
           ),
-          if (widget.artifact.value != null) ...[
+          if (widget.value != null) ...[
             const SizedBox(height: AppSpacing.s2),
             AppButton(
               text: l10n.artifactValueClear,

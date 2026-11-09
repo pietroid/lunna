@@ -190,7 +190,7 @@ artifact's name, deadline, notes and tasks; the model is told "isso" means
 it. Notes are cut at 2000 characters. A subject that is not the person's is
 refused (404, `refused`, "Não encontrei essa tarefa."), anything else that
 is not one is a 400. The agent still only changes the day: it reads notes
-and never writes them.
+and never writes them. **A new task written on a task's page is its subtask** (`NewThing.subtaskOf`): it goes into the task's open delivery, or, for a loose task, applying the plan promotes the task first (`hands.deliveries.promote`), undo included.
 
 **A conversation is its own context.** Every turn is written to
 `agent_message` (`ConversationStore`: Postgres, memory in tests), keyed by a

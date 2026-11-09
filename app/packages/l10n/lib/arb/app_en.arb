@@ -65,8 +65,6 @@
   "eventNotesHint": "Notes",
   "eventWhenLabel": "Time",
   "eventLengthLabel": "Length",
-  "eventArtifactLabel": "Delivery",
-  "eventNoArtifact": "None",
   "restTip01": "Take a deep breath. Three times, slowly.",
   "restTip02": "Stand up, stretch your back and look out the window.",
   "restTip03": "Drink a glass of water before you go on.",

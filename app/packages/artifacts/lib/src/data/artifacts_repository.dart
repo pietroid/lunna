@@ -112,6 +112,22 @@ class ArtifactsRepository {
     ),
   );
 
+  /// Gives a task's delivery a [deadline] or a [value], making one of a
+  /// loose task first, as its first subtask would.
+  Future<ArtifactsData> editTaskDelivery(
+    String taskId, {
+    DateTime? Function()? deadline,
+    int? Function()? value,
+  }) => _data(
+    () => apiClient.patch<Map<String, dynamic>>(
+      '/tasks/${Uri.encodeComponent(taskId)}/delivery',
+      data: {
+        if (deadline != null) 'deadline': _day(deadline()),
+        if (value != null) 'value': value(),
+      },
+    ),
+  );
+
   /// Changes a delivery's name, deadline, value, notes or doneness, or
   /// begins it ([started], which needs a deadline). A [deadline] or
   /// [value] function that answers null takes it away.

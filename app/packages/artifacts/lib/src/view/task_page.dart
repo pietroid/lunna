@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:agent/agent.dart';
 import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/src/bloc/artifacts_cubit.dart';
+import 'package:artifacts/src/format.dart';
 import 'package:artifacts/src/view/artifact_page.dart';
+import 'package:artifacts/src/view/value_sheet.dart';
+import 'package:clock/clock.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:l10n/l10n.dart';
 import 'package:timeline/timeline.dart';
@@ -42,6 +45,7 @@ class TaskPage extends StatelessWidget {
     return EventPage(
       id: id,
       dock: dock,
+      details: _looseDetails,
       tabs: (context, card, notes) =>
           _LooseTabs(card: card, notes: notes, tab: initialTab ?? 0),
     );
@@ -177,6 +181,83 @@ class _NoSubtasks extends StatelessWidget {
           child: Center(child: AskDock(about: AgentSubject.task(card.id))),
         ),
       ],
+    );
+  }
+}
+
+/// A loose task's Data, Tipo and Valor, as a delivery's page draws them
+/// with none set (#126): a task and a delivery are one thing, so setting
+/// either makes a delivery of the task, and the page becomes the delivery's.
+List<(String, Widget)> _looseDetails(BuildContext context, TimelineEvent card) {
+  final l10n = context.l10n;
+  return [
+    (
+      l10n.artifactDeadlineLabel,
+      _Add(
+        text: l10n.artifactGiveDeadline,
+        onTap: () => unawaited(_pickDeadline(context, card.id)),
+      ),
+    ),
+    (
+      l10n.artifactKindLabel,
+      Text(
+        [
+          l10n.artifactLoose,
+          if (card.workMinutes > 0) formatMinutes(l10n, card.workMinutes),
+        ].join(' · '),
+        style: AppTypography.labelStrong.copyWith(color: AppColors.ink),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    ),
+    (
+      l10n.artifactValue,
+      _Add(
+        text: l10n.artifactValueAdd,
+        onTap: () => unawaited(showTaskValueSheet(context, card.id)),
+      ),
+    ),
+  ];
+}
+
+Future<void> _pickDeadline(BuildContext context, String taskId) async {
+  final cubit = context.read<ArtifactsCubit>();
+  final now = clock.now();
+  final picked = await AppWheelPicker.dayAndTime(
+    context,
+    initial: now.add(const Duration(days: 7)),
+    earliest: now,
+  );
+  if (picked == null) return;
+
+  await cubit.setTaskDeadline(
+    taskId,
+    DateTime(picked.year, picked.month, picked.day),
+  );
+}
+
+/// A field not set yet, in the accent, a tap from its picker.
+class _Add extends StatelessWidget {
+  const _Add({required this.text, required this.onTap});
+
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s1),
+          child: Text(
+            text,
+            style: AppTypography.labelStrong.copyWith(color: AppColors.accent),
+          ),
+        ),
+      ),
     );
   }
 }
