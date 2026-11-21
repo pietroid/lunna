@@ -370,8 +370,9 @@ and Entregas as three chapters beside a phone running the real app on
 fakes (`app/lib/demo/`), or on a narrow screen each chapter's piece of it.
 **The demo never reaches a server**, and while it is up **the app's clock
 reads 10:00** (`DemoClock`, wrapped around the app in `main.dart`), so
-code there reads `clock.now()`, never `DateTime.now()`. See
-[product/spec/landing.md](./product/spec/landing.md).
+code there reads `clock.now()`, never `DateTime.now()`. Signed out, the
+landing is English or pt-BR (`?lang=`, else the browser); signed in, pt-BR.
+See [product/spec/landing.md](./product/spec/landing.md).
 
 ## Analytics
 

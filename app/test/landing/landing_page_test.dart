@@ -42,8 +42,9 @@ void main() {
   void testAt(
     String description,
     Size size,
-    Future<void> Function(WidgetTester tester) body,
-  ) {
+    Future<void> Function(WidgetTester tester) body, {
+    Locale locale = const Locale('pt', 'BR'),
+  }) {
     testWidgets(description, (tester) async {
       tester.view
         ..physicalSize = size
@@ -53,7 +54,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             theme: AppTheme.current,
-            locale: const Locale('pt', 'BR'),
+            locale: locale,
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             supportedLocales: AppLocalizations.supportedLocales,
             home: const Scaffold(
@@ -96,6 +97,21 @@ void main() {
       expect(find.text(l10n.demoReplyStudy), findsOneWidget);
       expect(find.byType(PlanCard), findsOneWidget);
     });
+
+    testAt(
+      'draws the landing and the demo in English for ?lang=en',
+      wide,
+      (tester) async {
+        final en = lookupAppLocalizations(const Locale('en'));
+        await settle(tester);
+
+        expect(find.text(en.landingHeadline), findsOneWidget);
+        expect(find.text(en.landingChapterTimeTitle), findsWidgets);
+        expect(find.text(en.demoReplyStudy), findsOneWidget);
+        expect(find.text(l10n.landingHeadline), findsNothing);
+      },
+      locale: landingLocale({'lang': 'en'}, const Locale('pt', 'BR')),
+    );
 
     testAt('shows the demo at ten in the morning, whatever the hour', wide, (
       tester,

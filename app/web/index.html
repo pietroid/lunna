@@ -21,6 +21,19 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="__APP_NAME__: diga o que precisa, o dia se arruma.">
+  <script>
+    // The landing's language, as landingLocale decides it in the app:
+    // ?lang=en or ?lang=pt, else English for a browser that is not Portuguese.
+    (function () {
+      var lang = new URLSearchParams(location.search).get('lang');
+      var browser = (navigator.language || '').toLowerCase();
+      if (lang === 'en' || (lang !== 'pt' && browser.indexOf('pt') !== 0)) {
+        document.documentElement.lang = 'en';
+        document.querySelector('meta[name="description"]').content =
+          '__APP_NAME__: say what you need, the day sorts itself out.';
+      }
+    })();
+  </script>
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">

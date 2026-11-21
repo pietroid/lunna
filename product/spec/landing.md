@@ -50,8 +50,31 @@ pinned it is the real clock, unshifted. Code in `lib/demo` and
 `lib/preview.dart` draws `DemoApp` alone for the timeline's prints; it is
 not pinned.
 
+## Language
+
+The landing and its demo come in Portuguese (pt-BR) or English.
+`landingLocale(query, browser)` (`packages/l10n/lib/src/landing_locale.dart`,
+exported by `package:l10n/l10n.dart`) picks:
+
+- `lang=en` gives English; `lang=pt` gives pt-BR.
+- Otherwise pt-BR when the browser's language code is `pt`, English for
+  any other. An unknown `lang` (e.g. `fr`) follows the browser rule.
+
+`App` reads it once at start, on the web only (`Uri.base.queryParameters`,
+`PlatformDispatcher.instance.locale`); off the web it is always pt-BR. A
+`BlocSelector` over `AppStatus.authenticated` gives the `MaterialApp` pt-BR
+when signed in and the landing locale otherwise, so the signed-in app is
+never English. While the session is being restored the landing locale
+holds, so an English-browser user may see the splash in English for a
+moment. English strings come from `app_en.arb`; the landing and demo read
+every string through l10n, demo fakes included.
+
 ## The web build
 
 `web/index.html` and `web/manifest.json` describe the app as
 "`<name>`: diga o que precisa, o dia se arruma.", which
-`tool/brand_web.sh` stamps with Lunna's name.
+`tool/brand_web.sh` stamps with Lunna's name. A small inline script in
+`index.html` repeats the language rule above; for English it sets
+`<html lang="en">` and the meta description to "`<name>`: say what you
+need, the day sorts itself out." The title is the app's name in both
+languages.
