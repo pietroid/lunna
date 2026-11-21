@@ -6,6 +6,7 @@ import 'package:app_ui/app_ui.dart';
 import 'package:artifacts/artifacts.dart';
 import 'package:auth/auth.dart';
 import 'package:cycle/cycle.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:l10n/l10n.dart';
@@ -16,6 +17,15 @@ import 'package:lunna/routines/routines.dart';
 import 'package:lunna/shell/shell.dart';
 import 'package:notifications/notifications.dart';
 import 'package:timeline/timeline.dart';
+
+/// The language of the signed-out landing: `?lang=` or the browser's on the
+/// web (`landingLocale`), Portuguese anywhere else. Read once, at start.
+final Locale _landingLocale = kIsWeb
+    ? landingLocale(
+        Uri.base.queryParameters,
+        PlatformDispatcher.instance.locale,
+      )
+    : const Locale('pt', 'BR');
 
 /// {@template app}
 /// Root widget for the Lunna application.
@@ -144,14 +154,19 @@ class App extends StatelessWidget {
         }
       },
       child: analytics.wrap(
-        MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          onGenerateTitle: (context) => context.l10n.appName,
-          theme: AppTheme.current,
-          locale: const Locale('pt', 'BR'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          routerConfig: _router,
+        BlocSelector<AppBloc, AppState, bool>(
+          selector: (state) => state.status == AppStatus.authenticated,
+          builder: (context, signedIn) => MaterialApp.router(
+            debugShowCheckedModeBanner: false,
+            onGenerateTitle: (context) => context.l10n.appName,
+            theme: AppTheme.current,
+            // Signed in, always Portuguese; the landing follows the link
+            // and the browser, so it can be shown abroad.
+            locale: signedIn ? const Locale('pt', 'BR') : _landingLocale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            routerConfig: _router,
+          ),
         ),
       ),
     );
